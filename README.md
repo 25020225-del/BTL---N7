@@ -4,6 +4,6 @@ Bài tập lớn môn lập trình nâng cao của nhóm 7: Phát triển hệ t
 Thành viên nhóm:
 - Ngô Vũ Đình Khoa.
 - Cao Dương Lễ.(25020232)
-- Nguyễn Quang Mạnh.
+- Nguyễn Quang Mạnh. (25020256)
 - Khúc Ngọc Minh.
   
