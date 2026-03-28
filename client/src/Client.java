@@ -4,8 +4,8 @@ import java.net.Socket;
 import java.util.Scanner;
 public class Client {
     public static void main(String[] args) {
-        final String SERVER_IP = "127.0.0.1"; // Địa chỉ localhost
-        final int SERVER_PORT = 6969;         // Cổng mà MultiThreadedServer đang chạy
+        final String SERVER_IP = "127.0.0.1";
+        final int SERVER_PORT = 6969;
 
         try (
                 // Kết nối
