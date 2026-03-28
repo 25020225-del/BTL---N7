@@ -1,4 +1,4 @@
-package nhom7.btl.server;
+package server;
 /*
 Test code tạo client
 */

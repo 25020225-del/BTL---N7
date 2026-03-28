@@ -1,4 +1,4 @@
-package nhom7.btl.model;
+package model;
 
 public class User {
     private int id;
