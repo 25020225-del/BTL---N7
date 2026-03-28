@@ -6,7 +6,7 @@ import java.io.*;
 import java.net.Socket;
 public class ClientHandler implements Runnable {
     private Socket clientSocket;
-    public ClientHandler(Socket s){clientSocket=s}
+    public ClientHandler(Socket s){clientSocket=s;}
     @Override
     public void run() {
         try (
