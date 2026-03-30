@@ -125,7 +125,7 @@ public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
         return "=== THÔNG TIN PHIÊN ĐẤU GIÁ ===\n" +
                 "ID Phiên: " + this.id + "\n" +
                 "Sản phẩm: " + (item != null ? item.getItemName() : "N/A") + "\n" +
-                "Giá hiện tại: $" + this.currentPrice + "\n" +
+                "Giá hiện tại: VND" + this.currentPrice + "\n" +
                 "Người dẫn đầu: " + (winningBidder != null ? winningBidder.getUserName() : "Chưa có ai") + "\n" +
                 "Trạng thái: " + this.status;
     }
