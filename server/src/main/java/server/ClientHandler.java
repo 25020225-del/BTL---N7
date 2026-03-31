@@ -21,7 +21,7 @@ public class ClientHandler implements Runnable{
             out.println("[System]: Please enter your ID:");
             this.clientName=in.readLine();
             if(!clientName.trim().equalsIgnoreCase("STOP")){
-                out.println("\r[System]: Your ID has been successfully recognised.");
+                out.println("[System]: Your ID has been successfully recognised.");
                 System.out.println(clientName+" has connected.");
             }
             else{
