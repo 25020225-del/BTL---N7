@@ -17,7 +17,8 @@ public class MainController {
 
     @FXML
     protected void onHelloButtonClick() throws IOException {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("MainView.fxml"));
-        Scene scene = new Scene(loader.load());
+        FXMLLoader fxmlMainView = new FXMLLoader(MainApplication.class.getResource("MainView.fxml"));
+        Scene sceneMainView = new Scene(fxmlMainView.load());
+        MainApplication.primalStage.setScene(sceneMainView);
     }
 }

@@ -6,7 +6,7 @@ import java.util.Scanner;
 
 public class Client {
     public static void main(String[] args) {
-        final String SERVER_IP = "127.0.0.1";
+        final String SERVER_IP = "10.11.205.75";
         final int SERVER_PORT = 6969;
 
         try {
