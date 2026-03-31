@@ -1,4 +1,6 @@
 package client;
+import org.example.demo.Launcher;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
@@ -34,6 +36,9 @@ public class Client{
                     System.out.println("Disconnecting in progress...");
                     socket.close();
                     break;
+                }
+                if ("OPEN AUNCTION".equalsIgnoreCase(messageToSend)) {
+                    Launcher.main(null);
                 }
             }
         }catch (IOException e){
