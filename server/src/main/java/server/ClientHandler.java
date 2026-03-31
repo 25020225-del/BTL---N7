@@ -1,39 +1,52 @@
-/*
-Test code tạo client
-*/
 package server;
 import java.io.*;
 import java.net.Socket;
 public class ClientHandler implements Runnable {
-    private Socket clientSocket;
-    public ClientHandler(Socket s){clientSocket=s;}
+    private Socket socket;
+    private BufferedReader in;
+    private PrintWriter out;
+    private String clientName;
+    public ClientHandler(Socket socket) {
+        this.socket=socket;
+        try{
+            this.in=new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            this.out=new PrintWriter(socket.getOutputStream(), true);
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
     @Override
     public void run() {
-        try (
-            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)
-        ) {
-            String clientMessage;
-
-            // Nhận
-            while ((clientMessage = in.readLine()) != null) {
-                System.out.println("Receiving " + clientSocket.getPort() + ": " + clientMessage);
-
-                // Phản hồi
-                out.println("Received: " + clientMessage);
-
-                // Dừng kết nối
-                if ("STOP".equalsIgnoreCase(clientMessage)) {
-                    System.out.println("Client " + clientSocket.getPort() + " has stopped connecting");
+        try {
+            out.println("[System]: Please enter your ID:");
+            this.clientName=in.readLine();
+            System.out.println(clientName+" has connected.");
+            MultiThreadedServer.broadcast("[System]: " + clientName + " has joined the chat!", this);
+            String message;
+            while((message=in.readLine())!=null){
+                if("STOP".equalsIgnoreCase(message)){
                     break;
                 }
+                MultiThreadedServer.broadcast(clientName + ": " + message, this);
             }
         } catch (IOException e) {
-            System.err.println("Error: " + e.getMessage());
+            System.out.println("Connection lost with " + clientName);
         } finally {
-            try {
-                clientSocket.close();
-            } catch (IOException e) {e.printStackTrace();}
+            closeConnection();
+        }
+    }
+
+    public void sendMessage(String message){
+        out.println(message);
+    }
+
+    private void closeConnection() {
+        MultiThreadedServer.removeClient(this);
+        MultiThreadedServer.broadcast("[System]: " + clientName + " has disconnected.", this);
+        try {
+            if(socket!=null)socket.close();
+        }catch(IOException e){
+            e.printStackTrace();
         }
     }
 }
