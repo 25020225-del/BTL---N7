@@ -21,7 +21,6 @@ public class Client{
                     System.out.println(serverMessage);
                     while((serverMessage=in.readLine())!= null){
                         System.out.println("\n" + serverMessage);
-                        System.out.print("[You]: ");
                     }
                 }catch(IOException e){
                     System.out.println("\nDisconnected from the Server.");
@@ -34,12 +33,12 @@ public class Client{
             while(true){
                 String messageToSend=scanner.nextLine();
                 out.println(messageToSend);
-                if ("STOP".equalsIgnoreCase(messageToSend)) {
+                if ("STOP".equalsIgnoreCase(messageToSend.trim())) {
                     System.out.println("Disconnecting in progress...");
                     socket.close();
                     break;
                 }
-                if ("OPEN AUCTION".equalsIgnoreCase(messageToSend)) {
+                if ("OPEN AUCTION".trim().equalsIgnoreCase(messageToSend.trim())) {
                     Launcher.main(null);
                 }
             }
