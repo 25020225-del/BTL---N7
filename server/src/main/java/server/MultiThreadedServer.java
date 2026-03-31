@@ -1,5 +1,3 @@
-package server;
-
 /*
 Test code tạo luồng
 */
@@ -19,7 +17,7 @@ public class MultiThreadedServer {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("New client has connected: " + clientSocket.getInetAddress().getHostAddress());
                 // Tạo luồng
-                ClientHandler clientHandler = new ClientHandler(clientSocket);
+                server.ClientHandler clientHandler = new server.ClientHandler(clientSocket);
                 Thread thread = new Thread(clientHandler);
                 thread.start();
             }
