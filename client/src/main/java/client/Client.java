@@ -39,7 +39,8 @@ public class Client{
                     break;
                 }
                 if ("OPEN AUCTION".trim().equalsIgnoreCase(messageToSend.trim())) {
-                    Launcher.main(null);
+                    ClientCallLauncher launcher=new ClientCallLauncher();
+                    new Thread(launcher).start();
                 }
             }
         }catch (IOException e){
