@@ -37,7 +37,7 @@ public class Client{
                     socket.close();
                     break;
                 }
-                if ("OPEN AUNCTION".equalsIgnoreCase(messageToSend)) {
+                if ("OPEN AUCTION".equalsIgnoreCase(messageToSend)) {
                     Launcher.main(null);
                 }
             }
