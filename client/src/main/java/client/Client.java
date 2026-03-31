@@ -38,7 +38,6 @@ public class Client {
 
             // LUỒNG CHÍNH ĐỂ GỬI TIN NHẮN
             while (true) {
-                System.out.print("You: ");
                 String messageToSend = scanner.nextLine();
 
                 // Gửi input
