@@ -52,12 +52,12 @@
                   <AnchorPane layoutX="11.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Nigga">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Niggas">
                            <font>
                               <Font size="25.0" />
                            </font>
                         </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
+                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="2 cents">
                            <font>
                               <Font size="18.0" />
                            </font>
