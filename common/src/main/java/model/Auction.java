@@ -8,7 +8,6 @@ public class Auction extends Entity {
     private Item item;
     private Seller seller;
 
-
     private double currentPrice;
     private double highestMaxBid;
     private double bidIncrement;
@@ -17,8 +16,13 @@ public class Auction extends Entity {
     private String status;
     private LocalDateTime endTime;
     private List<BidTransaction> bidHistory;
+    private LocalDateTime startTime;
 
-    public Auction(String id, Item item, Seller seller, double bidIncrement, LocalDateTime endTime) {
+    public Auction() {
+        super();
+    }
+
+    public Auction(String id, Item item, Seller seller, double bidIncrement,LocalDateTime startTime, LocalDateTime endTime) {
         super(id);
         this.item = item;
         this.seller = seller;
@@ -26,11 +30,12 @@ public class Auction extends Entity {
         this.highestMaxBid = 0;
         this.bidIncrement = bidIncrement;
         this.status = "OPEN";
+        this.startTime = startTime;
         this.endTime = endTime;
         this.bidHistory = new ArrayList<>();
     }
 
-
+    // --- GETTER VÀ SETTER (Đã chuẩn, giữ nguyên) ---
     public Item getItem() { return item; }
     public void setItem(Item item) { this.item = item; }
 
@@ -58,74 +63,78 @@ public class Auction extends Entity {
     public List<BidTransaction> getBidHistory() { return bidHistory; }
     public void setBidHistory(List<BidTransaction> bidHistory) { this.bidHistory = bidHistory; }
 
+    public LocalDateTime getStartTime() { return startTime; }
+    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
 
 
-public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
+    // --- HÀM NGHIỆP VỤ ---
+    public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
 
-
-    if (!status.equals("RUNNING") || LocalDateTime.now().isAfter(endTime)) {
-        System.out.println("Phiên đấu giá đã đóng!");
-        return false;
-    }
-
-
-    if (newMaxBid < currentPrice + bidIncrement) {
-        System.out.println("Mức giá tối đa phải lớn hơn " + (currentPrice + bidIncrement));
-        return false;
-    }
-
-
-    if (winningBidder == null) {
-        currentPrice = item.getStartingPrice();
-        highestMaxBid = newMaxBid;
-        winningBidder = bidder;
-
-    } else if (bidder.getId().equals(winningBidder.getId())) {
-
-        if (newMaxBid > highestMaxBid) {
-            highestMaxBid = newMaxBid;
+        // 1. Kiểm tra tính hợp lệ cơ bản nhất
+        if (newMaxBid < 0) {
+            System.out.println("Invalid Bid");
+            return false;
         }
 
-    } else {
+        if (!status.equals("RUNNING") || LocalDateTime.now().isAfter(endTime)) {
+            System.out.println("The Auction has closed!");
+            return false;
+        }
 
-        if (newMaxBid > highestMaxBid) {
+        // 2. Tối ưu logic: Nếu là người đầu tiên bóc tem thì được đặt bằng giá khởi điểm.
+        // Nếu đã có người đặt rồi thì bắt buộc phải cao hơn giá hiện tại + bước giá.
+        double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
+        if (newMaxBid < minRequiredBid) {
+            System.out.println("Bid must be greater than or equal to VND " + minRequiredBid);
+            return false;
+        }
 
-            currentPrice = highestMaxBid + bidIncrement;
-
-
-            if (currentPrice > newMaxBid) {
-                currentPrice = newMaxBid;
-            }
-
+        // 3. Logic Proxy Bidding (eBay style)
+        if (winningBidder == null) {
+            currentPrice = item.getStartingPrice();
             highestMaxBid = newMaxBid;
             winningBidder = bidder;
 
+        } else if (bidder.getId().equals(winningBidder.getId())) {
+            if (newMaxBid > highestMaxBid) {
+                highestMaxBid = newMaxBid;
+            }
         } else {
-            currentPrice = newMaxBid + bidIncrement;
+            if (newMaxBid > highestMaxBid) {
+                currentPrice = highestMaxBid + bidIncrement;
+                if (currentPrice > newMaxBid) {
+                    currentPrice = newMaxBid;
+                }
+                highestMaxBid = newMaxBid;
+                winningBidder = bidder;
 
-            if (currentPrice > highestMaxBid) {
-                currentPrice = highestMaxBid;
+            } else {
+                currentPrice = newMaxBid + bidIncrement;
+                if (currentPrice > highestMaxBid) {
+                    currentPrice = highestMaxBid;
+                }
             }
         }
-    }
 
+        // 4. Ghi nhận lịch sử
+        BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
+        bidHistory.add(transaction);
 
-    BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
-    bidHistory.add(transaction);
-
-    if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
-        endTime = endTime.plusMinutes(2);
-        System.out.println("Thời gian được gia hạn thêm 2 phút!");
+        // 5. Anti-sniping
+        if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
+            endTime = endTime.plusMinutes(2);
+            System.out.println("Time increased 2 minutes!");
         }
 
-    return true;
+        return true;
     }
+
     @Override
     public String getInfo() {
         return "=== THÔNG TIN PHIÊN ĐẤU GIÁ ===\n" +
                 "ID Phiên: " + this.id + "\n" +
                 "Sản phẩm: " + (item != null ? item.getItemName() : "N/A") + "\n" +
-                "Giá hiện tại: VND" + this.currentPrice + "\n" +
+                "Giá hiện tại: VND " + this.currentPrice + "\n" +
                 "Người dẫn đầu: " + (winningBidder != null ? winningBidder.getUserName() : "Chưa có ai") + "\n" +
                 "Trạng thái: " + this.status;
     }

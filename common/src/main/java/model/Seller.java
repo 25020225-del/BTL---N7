@@ -1,15 +1,24 @@
 package model;
 
 public class Seller extends User {
-    private double rating; // Điểm đánh giá độ uy tín của người bán
+    private boolean isGood;
+
+    public Seller() {
+        super();
+    }
 
     public Seller(String id, String userName, String userPass, String name, String email) {
         super(id, userName, userPass, name, email, "Seller");
-        this.rating = 5.0; // Mặc định uy tín tối đa khi mới tham gia
+        this.isGood = false; // Mặc định uy tín tối đa khi mới tham gia
     }
+
+
+    public boolean isMall() { return isGood; }
+    public void setMall(boolean isMall) { this.isGood = isGood; }
 
     @Override
     public String getInfo() {
-        return "[Seller] ID: " + this.id + " | Name: " + this.name + " | Rating: " + this.rating;
+        String mallTag = isGood ? "[GOOD] " : "";
+        return mallTag + super.getInfo() ;
     }
 }
