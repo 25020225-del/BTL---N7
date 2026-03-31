@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.demo.MainController">
+   <children>
+      <Label layoutX="375.0" layoutY="96.0" prefHeight="163.0" prefWidth="639.0" text="Đăng nhập" textAlignment="CENTER">
+         <font>
+            <Font size="96.0" />
+         </font>
+      </Label>
+      <Label layoutX="266.0" layoutY="313.0" text="Tên đăng nhập">
+         <font>
+            <Font size="28.0" />
+         </font>
+      </Label>
+      <Label layoutX="286.0" layoutY="378.0" text="Mật khẩu">
+         <font>
+            <Font size="30.0" />
+         </font>
+      </Label>
+      <TextField fx:id="tenDangNhap" layoutX="547.0" layoutY="320.0" />
+      <PasswordField fx:id="matKhauDangNhap" layoutX="547.0" layoutY="386.0" />
+      <Button layoutX="458.0" layoutY="513.0" mnemonicParsing="false" onAction="#onHelloButtonClick" prefHeight="27.0" prefWidth="283.0" text="Đăng nhập">
+         <font>
+            <Font size="28.0" />
+         </font>
+      </Button>
+   </children>
+</AnchorPane>
