@@ -1,7 +1,7 @@
-package server;
 /*
 Test code tạo client
 */
+package server;
 import java.io.*;
 import java.net.Socket;
 public class ClientHandler implements Runnable {
@@ -10,8 +10,8 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try (
-                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)
+            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)
         ) {
             String clientMessage;
 

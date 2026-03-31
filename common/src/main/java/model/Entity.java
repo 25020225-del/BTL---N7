@@ -18,10 +18,6 @@ public abstract class Entity {
     public void setId(String id) {
         this.id = id;
     }
-
-    // Trong Entity.java
-// Xóa dòng này: public abstract void printInfo();
-
     // Thay bằng dòng này:
     public abstract String getInfo();
 }
