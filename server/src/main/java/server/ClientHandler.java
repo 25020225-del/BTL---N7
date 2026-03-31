@@ -20,12 +20,20 @@ public class ClientHandler implements Runnable{
         try {
             out.println("[System]: Please enter your ID:");
             this.clientName=in.readLine();
-            out.println("[System]: Your ID has been successfully recognised.");
-            System.out.println(clientName+" has connected.");
+            if(!clientName.trim().equalsIgnoreCase("STOP")){
+                out.println("\r[System]: Your ID has been successfully recognised.");
+                System.out.println(clientName+" has connected.");
+            }
+            else{
+                System.out.println("Unrecognised ID has ignored registering ID and stopped connecting");
+            }
             MultiThreadedServer.broadcast("[System]: "+clientName+" has connected.",this);
             String message;
             while((message=in.readLine())!=null){
-                if("STOP".equalsIgnoreCase(message))break;
+                if("STOP".equalsIgnoreCase(message.trim())){
+                    System.out.println(clientName+" has stopped connecting.");
+                    break;
+                }
                 System.out.println("[" + clientName + "]: "+message);
                 MultiThreadedServer.broadcast("["+clientName+"]: "+message,this);
             }
