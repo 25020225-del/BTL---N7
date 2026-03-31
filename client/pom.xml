@@ -30,6 +30,12 @@
             <version>25.0.2</version>
             <scope>compile</scope>
         </dependency>
+         <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>25.0.2</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
 
