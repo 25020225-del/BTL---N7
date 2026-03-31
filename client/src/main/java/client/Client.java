@@ -28,7 +28,6 @@ public class Client{
             System.out.println("Connected to the Server. Type \"STOP\" to stop.");
             try{Thread.sleep(100);}catch(InterruptedException e){e.printStackTrace();}
             while(true){
-                System.out.print("[You]: ");
                 String messageToSend=scanner.nextLine();
                 out.println(messageToSend);
                 if ("STOP".equalsIgnoreCase(messageToSend)) {

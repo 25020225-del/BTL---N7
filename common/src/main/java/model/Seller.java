@@ -1,25 +1,24 @@
 package model;
 
 public class Seller extends User {
-    private double rating; // Điểm đánh giá độ uy tín của người bán
+    private boolean isGood;
 
-    // 1. THÊM HÀM TẠO RỖNG (Bắt buộc cho Jackson/Gson)
     public Seller() {
         super();
     }
 
     public Seller(String id, String userName, String userPass, String name, String email) {
         super(id, userName, userPass, name, email, "Seller");
-        this.rating = 5.0; // Mặc định uy tín tối đa khi mới tham gia
+        this.isGood = false; // Mặc định uy tín tối đa khi mới tham gia
     }
 
-    // 2. THÊM GETTER/SETTER (Để JSON có thể đọc/ghi dữ liệu)
-    public double getRating() { return rating; }
-    public void setRating(double rating) { this.rating = rating; }
+
+    public boolean isMall() { return isGood; }
+    public void setMall(boolean isMall) { this.isGood = isGood; }
 
     @Override
     public String getInfo() {
-        // Lấy toàn bộ thông tin gốc từ User, sau đó nối thêm Rating của Seller
-        return super.getInfo() + " | Rating: " + this.rating;
+        String mallTag = isGood ? "[GOOD] " : "";
+        return mallTag + super.getInfo() ;
     }
 }
