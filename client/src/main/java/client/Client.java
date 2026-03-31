@@ -1,4 +1,5 @@
 package client;
+import org.example.demo.Launcher;
 
 import java.io.*;
 import java.net.Socket;
@@ -34,6 +35,12 @@ public class Client {
                     System.out.println("\nĐã đóng luồng nhận tin nhắn từ Server.");
                 }
             });
+            receiveThread.start();
+            // Main thread for sending messages
+            System.out.println("Connected to the Server. Type \"STOP\" to stop.");
+            try{Thread.sleep(100);}catch(InterruptedException e){e.printStackTrace();}
+            while(true){
+                String messageToSend=scanner.nextLine();
             receiveThread.start(); // Bắt đầu chạy luồng nhận tin
 
             // LUỒNG CHÍNH ĐỂ GỬI TIN NHẮN
@@ -48,6 +55,9 @@ public class Client {
                     System.out.println("Disconnecting in progress...");
                     socket.close(); // Đóng socket sẽ làm `in.readLine()` ở luồng kia văng Exception và dừng lại
                     break;
+                }
+                if ("OPEN AUNCTION".equalsIgnoreCase(messageToSend)) {
+                    Launcher.main(null);
                 }
             }
 
