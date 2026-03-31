@@ -21,13 +21,14 @@ public class ClientHandler implements Runnable {
             out.println("[System]: Please enter your ID:");
             this.clientName=in.readLine();
             System.out.println(clientName+" has connected.");
-            MultiThreadedServer.broadcast("[System]: " + clientName + " has joined the chat!", this);
+            MultiThreadedServer.broadcast("[System]: " + clientName + " has connected!", this);
             String message;
             while((message=in.readLine())!=null){
                 if("STOP".equalsIgnoreCase(message)){
                     break;
                 }
-                MultiThreadedServer.broadcast(clientName + ": " + message, this);
+                System.out.println("[" + clientName + "]: "+message);
+                MultiThreadedServer.broadcast("["+clientName+"]: "+message,this);
             }
         } catch (IOException e) {
             System.out.println("Connection lost with " + clientName);
