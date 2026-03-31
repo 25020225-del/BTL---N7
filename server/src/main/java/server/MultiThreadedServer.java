@@ -3,12 +3,12 @@ package server;
 /*
 Test code tạo luồng
 */
-package server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 public class MultiThreadedServer {
     private static final int PORT = 6969;
+
     public static void main(String[] args) {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Server is running at port: " + PORT);
@@ -23,6 +23,8 @@ public class MultiThreadedServer {
                 Thread thread = new Thread(clientHandler);
                 thread.start();
             }
-        } catch (IOException e) {System.err.println("Error: "+e.getMessage());}
+        } catch (IOException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
     }
-}z
+}

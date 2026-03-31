@@ -64,16 +64,19 @@ public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
 
 
     if (!status.equals("RUNNING") || LocalDateTime.now().isAfter(endTime)) {
-        System.out.println("Phiên đấu giá đã đóng!");
+        System.out.println("The Auction has closed!");
         return false;
     }
 
 
     if (newMaxBid < currentPrice + bidIncrement) {
-        System.out.println("Mức giá tối đa phải lớn hơn " + (currentPrice + bidIncrement));
+        System.out.println("Bid must be greater than" + (currentPrice + bidIncrement));
         return false;
     }
-
+    if (newMaxBid < 0) {
+        System.out.println("Invalid Bid");
+        return false;
+    }
 
     if (winningBidder == null) {
         currentPrice = item.getStartingPrice();
@@ -115,7 +118,7 @@ public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
 
     if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
         endTime = endTime.plusMinutes(2);
-        System.out.println("Thời gian được gia hạn thêm 2 phút!");
+        System.out.println("Time increased 2 minutes!");
         }
 
     return true;
