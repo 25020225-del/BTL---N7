@@ -6,7 +6,7 @@ import java.net.Socket;
 import java.util.Scanner;
 public class Client{
     public static void main(String[] args){
-        final String SERVER_IP="10.11.205.75";
+        final String SERVER_IP="192.168.1.94";
         final int SERVER_PORT = 6969;
         try {
             Socket socket=new Socket(SERVER_IP, SERVER_PORT);
@@ -17,6 +17,8 @@ public class Client{
             Thread receiveThread=new Thread(()->{
                 try{
                     String serverMessage;
+                    serverMessage=in.readLine();
+                    System.out.println(serverMessage);
                     while((serverMessage=in.readLine())!= null){
                         System.out.println("\n" + serverMessage);
                         System.out.print("[You]: ");
