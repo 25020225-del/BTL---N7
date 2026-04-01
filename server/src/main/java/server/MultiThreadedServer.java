@@ -9,13 +9,25 @@ public class MultiThreadedServer{
     private static final List<ClientHandler>clients=new ArrayList<>();
     public static void main(String[] args) {
         final int PORT=6969;
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            broadcast("[System]: Server is being closed. Every connecting client will be disconnected in a moment", null);
+
+            broadcast("Server has been shutdown", null);
+        }));
         //Thread allowing the Server Admin to type and send messages to all clients
         Thread serverChatThread=new Thread(()->{
             Scanner scanner=new Scanner(System.in);
             while(true){
-                String serverMessage=scanner.nextLine();
-                // Send the server's message to everyone. Pass 'null' because the server is the sender.
-                broadcast("[Admin]: "+serverMessage,null);
+                if(scanner.hasNextLine()) {
+                    String serverMessage = scanner.nextLine();
+                    if(serverMessage.startsWith("/kick ")){
+                        String target=serverMessage.substring(6);
+                        System.out.println("Reason: ");
+                        String reason=scanner.nextLine();
+                        kickTarget(target,reason);
+                    }
+                    broadcast("[Admin]: " + serverMessage, null);
+                }
             }
         });
         serverChatThread.start();
@@ -29,6 +41,7 @@ public class MultiThreadedServer{
                 new Thread(clientHandler).start();
             }
         }catch(IOException e){System.err.println("Server Error: "+e.getMessage());}
+
     }
     // Broadcasts a message to all connected clients except the sender
     public static void broadcast(String message, ClientHandler sender) {
@@ -37,4 +50,19 @@ public class MultiThreadedServer{
         }
     }
     public static void removeClient(ClientHandler clientHandler){clients.remove(clientHandler);}
+    public static void kickTarget(String target, String reason){
+        ClientHandler targetToKick=null;
+        for(ClientHandler client:clients){
+            if(client.getClientName()!=null && client.getClientName().equalsIgnoreCase(target)){
+                targetToKick=client;
+                break;
+            }
+        }
+        if(targetToKick!=null){
+            System.out.println(target+" has been kicked");
+            targetToKick.forceDisconnect(reason);
+        }else{
+            System.out.println("ID \""+target+"\" doesn't exist");
+        }
+    }
 }
