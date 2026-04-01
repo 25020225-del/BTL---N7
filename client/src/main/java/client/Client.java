@@ -49,8 +49,10 @@ public class Client{
                     break;
                 }
                 if ("OPEN AUCTION".trim().equalsIgnoreCase(messageToSend.trim())) {
+                    System.out.println("Opening auction...");
                     ClientCallLauncher launcher=new ClientCallLauncher();
                     new Thread(launcher).start();
+                    System.out.println("Auction opened.");
                 }
             }
         }catch (IOException e){
@@ -77,7 +79,7 @@ public class Client{
 
             String jsonResponse = content.toString();
 
-            // XỬ LÝ CHUỖI JSON ĐỂ TÌM IP VÀ PORT (Đã cập nhật theo cấu trúc mới)
+            // Getting IP and PORT
             String ip = "";
             String port = "";
             //IP

@@ -20,7 +20,10 @@ public class ClientHandler implements Runnable{
         try {
             out.println("[System]: Please enter your ID:");
             this.clientName=in.readLine();
-            if(!clientName.trim().equalsIgnoreCase("STOP")){
+            if(this.clientName==null) {
+                System.err.println("Unregognised ID has disconnected");
+                return;
+            } else if(!clientName.trim().equalsIgnoreCase("STOP")){
                 out.println("[System]: Your ID has been successfully recognised.");
                 System.out.println(clientName+" has connected.");
             }
@@ -37,6 +40,9 @@ public class ClientHandler implements Runnable{
                 System.out.println("[" + clientName + "]: "+message);
                 MultiThreadedServer.broadcast("["+clientName+"]: "+message,this);
             }
+            if(message==null&&!clientName.trim().equalsIgnoreCase("STOP")){
+                System.out.println(clientName+" has stopped connecting.");
+            }
         } catch (IOException e) {
             System.out.println("Connection lost with "+clientName);
         } finally {
@@ -52,7 +58,16 @@ public class ClientHandler implements Runnable{
         MultiThreadedServer.removeClient(this);
         MultiThreadedServer.broadcast("[System]: " + clientName + " has disconnected.", this);
         try {
-            if(socket!=null)socket.close();
+            if(socket!=null&&!socket.isClosed())socket.close();
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
+    public String getClientName() {return this.clientName;}
+    public void forceDisconnect(String reason){
+        try{
+            out.println("[System]: You have been kicked by Admin. Reason: "+reason);
+            if (socket!=null&&!socket.isClosed())socket.close();
         }catch(IOException e){
             e.printStackTrace();
         }
