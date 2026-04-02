@@ -26,7 +26,7 @@
                   <AnchorPane prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Trẻ em">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp1">
                            <font>
                               <Font size="25.0" />
                            </font>
@@ -47,7 +47,7 @@
                   <AnchorPane layoutX="11.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Niggas">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp2">
                            <font>
                               <Font size="25.0" />
                            </font>
@@ -68,7 +68,7 @@
                   <AnchorPane layoutX="291.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Ma Tuý Đá">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp3">
                            <font>
                               <Font size="25.0" />
                            </font>
@@ -89,7 +89,7 @@
                   <AnchorPane layoutX="571.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Epstein ticker">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp4">
                            <font>
                               <Font size="25.0" />
                            </font>
@@ -110,7 +110,7 @@
                   <AnchorPane layoutX="851.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Gan">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp5">
                            <font>
                               <Font size="25.0" />
                            </font>
@@ -131,7 +131,7 @@
                   <AnchorPane layoutX="11.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Thận">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp6">
                            <font>
                               <Font size="25.0" />
                            </font>
@@ -152,7 +152,7 @@
                   <AnchorPane layoutX="291.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Mắt">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp7">
                            <font>
                               <Font size="25.0" />
                            </font>
@@ -173,7 +173,7 @@
                   <AnchorPane layoutX="571.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Trẻ em">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp8">
                            <font>
                               <Font size="25.0" />
                            </font>
@@ -194,7 +194,7 @@
                   <AnchorPane layoutX="851.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
                      <children>
                         <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Trẻ em">
+                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp9">
                            <font>
                               <Font size="25.0" />
                            </font>

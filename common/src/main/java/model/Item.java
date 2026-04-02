@@ -4,7 +4,7 @@ public abstract class Item extends Entity {
     protected String itemName;
     protected String description;
     protected double startingPrice;
-    private String approvalStatus;
+    private String approvalStatus; // Pending --> Open --> Running --> Finished --> Paid/ Cancelled
 
     // Hàm tạo rỗng (Bắt buộc để Jackson/Gson giải mã JSON)
     public Item() {
