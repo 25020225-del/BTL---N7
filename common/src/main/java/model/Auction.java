@@ -25,10 +25,12 @@ public class Auction extends Entity {
     private String status;
     private LocalDateTime endTime;
     private List<BidTransaction> bidHistory;
+    private List<AutoBid> activeAutoBids;
     private LocalDateTime startTime;
 
     public Auction() {
         super();
+        this.activeAutoBids = new ArrayList<>(); // Khởi tạo túi rỗng
     }
 
     public Auction(String id, Item item, Seller seller, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
@@ -41,6 +43,7 @@ public class Auction extends Entity {
         this.startTime = startTime;
         this.endTime = endTime;
         this.bidHistory = new ArrayList<>();
+        this.activeAutoBids = new ArrayList<>();
 
         // Đã xóa dòng this.status = "OPEN" thừa thãi ở đây
         if (seller.isGood()) {
@@ -163,6 +166,75 @@ public class Auction extends Entity {
                 System.out.println("Auction session " + this.id + " but there were no bidders (Cancelled).");
             }
         }
+    }
+    // ==========================================
+    // TÍNH NĂNG AUTO-BIDDING (Yêu cầu 3.2.1)
+    // ==========================================
+
+    // 1. Client gọi hàm này để đăng ký Auto-Bid
+    public synchronized boolean registerAutoBid(Bidder bidder, double maxBid, double userIncrement) {
+        if (!status.equals(STATUS_RUNNING)) {
+            System.out.println("Lỗi: Phiên đấu giá không trong trạng thái mở!");
+            return false;
+        }
+
+        if (maxBid <= currentPrice) {
+            System.out.println("Lỗi: Giá tối đa (maxBid) phải lớn hơn giá hiện tại!");
+            return false;
+        }
+
+        // Tạo bot và nhét vào danh sách
+        AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
+        activeAutoBids.add(newAutoBid);
+
+        // Sắp xếp lại danh sách ưu tiên người đăng ký trước (Giải quyết gạch đầu dòng thứ 3 của đề)
+        activeAutoBids.sort((b1, b2) -> b1.getTimeRegistered().compareTo(b2.getTimeRegistered()));
+
+        System.out.println(bidder.getUserName() + " đã đăng ký Auto-Bid thành công (Max: " + maxBid + ")");
+
+        // Ngay khi có Auto-Bid mới, kích hoạt chiến trường để các bot tự đấu với nhau
+        resolveAutoBids();
+
+        return true;
+    }
+
+    // 2. Thuật toán cho các bot tự "đấm" nhau
+    private synchronized void resolveAutoBids() {
+        boolean isPriceChanged;
+
+        // Vòng lặp do-while này sẽ chạy liên tục cho đến khi không còn bot nào
+        // có khả năng trả giá cao hơn người đang dẫn đầu.
+        do {
+            isPriceChanged = false;
+
+            for (AutoBid bot : activeAutoBids) {
+                // Nếu bot này đại diện cho người đang dẫn đầu thì bỏ qua
+                if (winningBidder != null && bot.getBidder().getId().equals(winningBidder.getId())) {
+                    continue;
+                }
+
+                // Tính toán giá cần thiết để giành Top 1 (dùng bước giá riêng của bot đó)
+                double requiredPrice = (winningBidder == null) ? item.getStartingPrice() : currentPrice + bot.getIncrement();
+
+                // Nếu giá cần thiết vẫn nằm trong khả năng chịu đựng của bot (<= maxBid)
+                if (requiredPrice <= bot.getMaxBid()) {
+
+                    currentPrice = requiredPrice;
+                    winningBidder = bot.getBidder();
+
+                    // Ghi vào lịch sử
+                    BidTransaction txn = new BidTransaction("AUTO-" + System.currentTimeMillis(), winningBidder, currentPrice);
+                    bidHistory.add(txn);
+
+                    System.out.println("[Auto-Bid] " + winningBidder.getUserName() + " tự động nâng giá lên: " + currentPrice);
+
+                    // Đánh dấu là có sự thay đổi giá, phá vỡ vòng for hiện tại
+                    // để bắt đầu xét lại từ đầu (đảm bảo luật ưu tiên người đăng ký trước)
+                    isPriceChanged = true;
+                    break;
+                }
+            }
+        } while (isPriceChanged);
     }
 
     @Override
