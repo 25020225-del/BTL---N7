@@ -7,14 +7,14 @@ public class Seller extends User {
         super();
     }
 
-    public Seller(String id, String userName, String userPass, String name, String email) {
-        super(id, userName, userPass, name, email, "Seller");
+    public Seller(String id, String userName, String userPass, String name) {
+        super(id, userName, userPass, name, "Seller");
         this.isGood = false; // Mặc định uy tín tối đa khi mới tham gia
     }
 
 
-    public boolean isMall() { return isGood; }
-    public void setMall(boolean isMall) { this.isGood = isGood; }
+    public boolean isGood() { return isGood; }
+    public void setGood(boolean isGood) { this.isGood = isGood; }
 
     @Override
     public String getInfo() {

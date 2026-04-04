@@ -4,7 +4,6 @@ public abstract class User extends Entity {
     protected String userName;
     protected String userPass;
     protected String name;
-    protected String email;
     protected String role;
 
     // 1. Thêm super() vào hàm tạo rỗng cho chuẩn cấu trúc kế thừa
@@ -12,7 +11,7 @@ public abstract class User extends Entity {
         super();
     }
 
-    public User(String id, String userName, String userPass, String name, String email, String role) {
+    public User(String id, String userName, String userPass, String name, String role) {
         super(id);
         this.userName = userName;
         this.userPass = userPass;
