@@ -5,6 +5,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Auction extends Entity {
+
+    public static final String STATUS_PENDING = "PENDING_APPROVAL"; // Chờ duyệt (Giữ lại để Admin làm việc)
+    public static final String STATUS_OPEN = "OPEN";               // Đã duyệt, chờ đến giờ bắt đầu
+    public static final String STATUS_RUNNING = "RUNNING";         // Đang diễn ra
+    public static final String STATUS_FINISHED = "FINISHED";       // Đã kết thúc (Thay cho chữ CLOSED cũ)
+    public static final String STATUS_PAID = "PAID";               // Người thắng đã thanh toán
+    public static final String STATUS_CANCELED = "CANCELED";       // Bị hủy (Do vi phạm hoặc không ai mua)
+    public static final String STATUS_DELETED = "DELETED";         // Admin xóa
+
     private Item item;
     private Seller seller;
 
@@ -22,20 +31,26 @@ public class Auction extends Entity {
         super();
     }
 
-    public Auction(String id, Item item, Seller seller, double bidIncrement,LocalDateTime startTime, LocalDateTime endTime) {
+    public Auction(String id, Item item, Seller seller, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
         super(id);
         this.item = item;
         this.seller = seller;
         this.currentPrice = item.getStartingPrice();
         this.highestMaxBid = 0;
         this.bidIncrement = bidIncrement;
-        this.status = "OPEN";
         this.startTime = startTime;
         this.endTime = endTime;
         this.bidHistory = new ArrayList<>();
+
+        // Đã xóa dòng this.status = "OPEN" thừa thãi ở đây
+        if (seller.isGood()) {
+            this.status = STATUS_OPEN; // Theo đúng yêu cầu: Mở đầu bằng OPEN
+        } else {
+            this.status = STATUS_PENDING;
+        }
     }
 
-    // --- GETTER VÀ SETTER (Đã chuẩn, giữ nguyên) ---
+    // --- GETTER VÀ SETTER ---
     public Item getItem() { return item; }
     public void setItem(Item item) { this.item = item; }
 
@@ -66,30 +81,34 @@ public class Auction extends Entity {
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
 
-
     // --- HÀM NGHIỆP VỤ ---
     public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
 
-        // 1. Kiểm tra tính hợp lệ cơ bản nhất
+        // 1. Kiểm tra xem phiên đấu giá có bị Admin xóa không
+        if (status.equals(STATUS_DELETED)) {
+            System.out.println("Error: The auction session has been deleted by Admin!");
+            return false;
+        }
+
+        // 2. Gộp kiểm tra trạng thái RUNNING và thời gian kết thúc
+        if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
+            System.out.println("Cannot place a bid: The auction is not running or has already ended!");
+            return false;
+        }
+
+        // 3. Kiểm tra tính hợp lệ cơ bản của số tiền
         if (newMaxBid < 0) {
             System.out.println("Invalid Bid");
             return false;
         }
 
-        if (!status.equals("RUNNING") || LocalDateTime.now().isAfter(endTime)) {
-            System.out.println("The Auction has closed!");
-            return false;
-        }
-
-        // 2. Tối ưu logic: Nếu là người đầu tiên bóc tem thì được đặt bằng giá khởi điểm.
-        // Nếu đã có người đặt rồi thì bắt buộc phải cao hơn giá hiện tại + bước giá.
+        // 4. Logic Proxy Bidding (eBay style)
         double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
             System.out.println("Bid must be greater than or equal to VND " + minRequiredBid);
             return false;
         }
 
-        // 3. Logic Proxy Bidding (eBay style)
         if (winningBidder == null) {
             currentPrice = item.getStartingPrice();
             highestMaxBid = newMaxBid;
@@ -116,17 +135,34 @@ public class Auction extends Entity {
             }
         }
 
-        // 4. Ghi nhận lịch sử
+        // 5. Ghi nhận lịch sử
         BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
         bidHistory.add(transaction);
 
-        // 5. Anti-sniping
+        // 6. Anti-sniping
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             endTime = endTime.plusMinutes(2);
             System.out.println("Time increased 2 minutes!");
         }
 
         return true;
+    }
+
+    public synchronized void closeAuctionIfTimeIsUp() {
+        // Nếu phiên đang chạy và thời gian hiện tại đã vượt quá thời gian kết thúc
+        if (this.status.equals(STATUS_RUNNING) && LocalDateTime.now().isAfter(this.endTime)) {
+
+            if (this.winningBidder != null) {
+                // Kịch bản 1: Có người thắng cuộc
+                this.status = STATUS_FINISHED; // Chuyển sang FINISHED
+                System.out.println("Auction session " + this.id + " has ended");
+                System.out.println("Winner: " + winningBidder.getUserName() + " at VND price " + currentPrice);
+            } else {
+                // Kịch bản 2: Ế, không có ai đặt giá
+                this.status = STATUS_CANCELED; // Chuyển sang CANCELED
+                System.out.println("Auction session " + this.id + " but there were no bidders (Cancelled).");
+            }
+        }
     }
 
     @Override
