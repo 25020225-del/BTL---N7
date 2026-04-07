@@ -11,7 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
-public class SellerController {
+public class ServerSellerController {
 
     // ==========================================
     // 1. THÊM SẢN PHẨM (Lưu vào SQLite)
