@@ -20,6 +20,13 @@ public class User extends Entity {
         this.role = role;
     }
 
+    public User(String id, String userName, String userPass, String name) {
+        super(id);
+        this.userName = userName;
+        this.userPass = userPass;
+        this.name = name;
+    }
+
     // --- GETTER & SETTER ---
     public String getUserName() { return userName; }
     public void setUserName(String userName) { this.userName = userName; }

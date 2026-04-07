@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class MultiThreadedServer {
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-    private static final String BIN_ID="69d48f8e856a68218907fd78";
+    private static final String BIN_ID="69d4960b856a6821890813a2";
     private static final Dotenv dotenv=Dotenv.load();
     private static final String JSONBIN_KEY=Dotenv.load().get("JSONBIN_API_KEY");
     private static final String LOCALTONET_TOKEN=dotenv.get("LOCALTONET_API_TOKEN");
@@ -40,25 +40,34 @@ public class MultiThreadedServer {
 
     public static void updateBulletinBoard(String currentIp, int currentPort) {
         try {
-            URL url = new URL("https://api.jsonbin.io/v3/b/" + BIN_ID);
+            String urlString = "https://api.jsonbin.io/v3/b/" + BIN_ID.trim();
+            URL url = new URL(urlString);
+
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("PUT"); // PUT to overdrive new data
+            conn.setRequestMethod("PUT");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("X-Master-Key", JSONBIN_KEY);
             conn.setDoOutput(true);
 
-            String jsonInputString = String.format("{\"ip\": \"%s\", \"port\": %d}", currentIp, currentPort);
+            String jsonInputString = "{\"ip\": \"" + currentIp + "\", \"port\": " + currentPort + "}";
 
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
             }
 
-            if (conn.getResponseCode() == 200) {
-                System.out.println("New IP and Port has been updated");
+            int responseCode = conn.getResponseCode();
+            if (responseCode == 200) {
+                System.out.println("[JSONBin] New IP - Port synced: " + currentIp + ":" + currentPort);
+            } else {
+                System.err.println("[JSONBin] Error:" + responseCode + " at URL: " + urlString);
+
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
+                    System.err.println("Error details: " + br.readLine());
+                }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("[JSONBin] Connection Error: " + e.getMessage());
         }
     }
 
