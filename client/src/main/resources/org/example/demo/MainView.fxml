@@ -3,6 +3,8 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.TilePane?>
 <?import javafx.scene.shape.Rectangle?>
@@ -10,211 +12,225 @@
 
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
    <children>
-      <AnchorPane layoutX="25.0" layoutY="14.0" prefHeight="690.0" prefWidth="87.0" style="-fx-background-color: b0b0b0; -fx-background-radius: 30;" AnchorPane.bottomAnchor="16.0" AnchorPane.leftAnchor="25.0" AnchorPane.topAnchor="14.0">
-         <children>
-            <Button layoutX="12.0" layoutY="20.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="64.0" style="-fx-background-radius: 80;" text="Button" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" AnchorPane.topAnchor="20.0" />
-            <Button layoutX="12.0" layoutY="92.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="64.0" style="-fx-background-radius: 80;" text="Button" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" AnchorPane.topAnchor="92.0" />
-            <Button layoutX="14.0" layoutY="172.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="64.0" style="-fx-background-radius: 80;" text="Button" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" AnchorPane.topAnchor="172.0" />
-            <Button layoutX="12.0" layoutY="248.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="64.0" style="-fx-background-radius: 80;" text="Button" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" AnchorPane.topAnchor="248.0" />
-            <Button layoutX="10.0" layoutY="606.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="64.0" style="-fx-background-radius: 80;" text="Button" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" />
-         </children>
-      </AnchorPane>
-      <ScrollPane fitToHeight="true" fitToWidth="true" layoutX="135.0" layoutY="14.0" prefHeight="690.0" prefWidth="1130.0" style="-fx-border-color: transparent; -fx-border-width: 0; -fx-focus-traversable: white;" AnchorPane.bottomAnchor="16.0" AnchorPane.leftAnchor="135.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="14.0">
-         <content>
-            <TilePane hgap="20.0" prefHeight="331.0" prefTileWidth="260.0" prefWidth="744.0" style="-fx-border-color: transparent;" vgap="20.0">
+      <SplitPane dividerPositions="0.18427230046948356" layoutX="191.0" layoutY="233.0" prefHeight="160.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+        <items>
+            <AnchorPane prefHeight="690.0" prefWidth="266.0" style="-fx-background-color: ; -fx-background-radius: 0;">
                <children>
-                  <AnchorPane prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                  <Button layoutX="12.0" layoutY="20.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="64.0" stylesheets="@index.css" text="Mua sắm" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" AnchorPane.topAnchor="20.0" />
+                  <Button layoutX="12.0" layoutY="92.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="64.0" stylesheets="@index.css" text="Hàng Nghệ Thuật" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" AnchorPane.topAnchor="92.0" />
+                  <Button layoutX="14.0" layoutY="172.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="64.0" stylesheets="@index.css" text="Hàng Điện Tử" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" AnchorPane.topAnchor="172.0" />
+                  <Button layoutX="12.0" layoutY="248.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="64.0" stylesheets="@index.css" text="Hàng Phương Tiện" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" AnchorPane.topAnchor="248.0" />
+                  <Button layoutX="10.0" layoutY="606.0" mnemonicParsing="false" prefHeight="64.0" prefWidth="243.0" stylesheets="@index.css" text="Tài khoản" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="11.0" />
+               </children>
+            </AnchorPane>
+            <AnchorPane prefHeight="200.0" prefWidth="200.0">
+               <children>
+                  <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="609.0" prefWidth="958.0" style="-fx-border-color: transparent; -fx-border-width: 0; -fx-focus-traversable: white;" AnchorPane.bottomAnchor="16.0" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="95.0">
+                     <content>
+                        <TilePane hgap="20.0" prefHeight="1079.0" prefTileWidth="260.0" prefWidth="942.0" style="-fx-border-color: transparent;" vgap="20.0">
+                           <children>
+                              <AnchorPane prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                                 <children>
+                                    <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="17.0" AnchorPane.topAnchor="16.0" />
+                                    <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp1" AnchorPane.leftAnchor="19.0" AnchorPane.topAnchor="205.0">
+                                       <font>
+                                          <Font size="25.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$" AnchorPane.leftAnchor="19.0" AnchorPane.rightAnchor="18.0" AnchorPane.topAnchor="236.0">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left" AnchorPane.leftAnchor="19.0" AnchorPane.rightAnchor="18.0" AnchorPane.topAnchor="267.0">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" AnchorPane.bottomAnchor="23.0" AnchorPane.leftAnchor="36.0" AnchorPane.rightAnchor="31.0" />
+                                 </children>
+                              </AnchorPane>
+                              <AnchorPane layoutX="11.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                                 <children>
+                                    <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
+                                    <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp2">
+                                       <font>
+                                          <Font size="25.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="2 cents">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
+                                 </children>
+                              </AnchorPane>
+                              <AnchorPane layoutX="291.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                                 <children>
+                                    <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
+                                    <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp3">
+                                       <font>
+                                          <Font size="25.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
+                                 </children>
+                              </AnchorPane>
+                              <AnchorPane layoutX="571.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                                 <children>
+                                    <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
+                                    <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp4">
+                                       <font>
+                                          <Font size="25.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
+                                 </children>
+                              </AnchorPane>
+                              <AnchorPane layoutX="851.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                                 <children>
+                                    <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
+                                    <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp5">
+                                       <font>
+                                          <Font size="25.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
+                                 </children>
+                              </AnchorPane>
+                              <AnchorPane layoutX="11.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                                 <children>
+                                    <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
+                                    <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp6">
+                                       <font>
+                                          <Font size="25.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
+                                 </children>
+                              </AnchorPane>
+                              <AnchorPane layoutX="291.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                                 <children>
+                                    <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
+                                    <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp7">
+                                       <font>
+                                          <Font size="25.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
+                                 </children>
+                              </AnchorPane>
+                              <AnchorPane layoutX="571.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                                 <children>
+                                    <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
+                                    <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp8">
+                                       <font>
+                                          <Font size="25.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
+                                 </children>
+                              </AnchorPane>
+                              <AnchorPane layoutX="851.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
+                                 <children>
+                                    <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
+                                    <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp9">
+                                       <font>
+                                          <Font size="25.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
+                                       <font>
+                                          <Font size="18.0" />
+                                       </font>
+                                    </Label>
+                                    <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
+                                 </children>
+                              </AnchorPane>
+                           </children>
+                        </TilePane>
+                     </content>
+                  </ScrollPane>
+                  <AnchorPane prefHeight="64.0" prefWidth="958.0" style="-fx-background-radius: 10; -fx-background-color: b0b0b0;" AnchorPane.leftAnchor="12.0" AnchorPane.rightAnchor="17.0" AnchorPane.topAnchor="16.0">
                      <children>
-                        <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp1">
-                           <font>
-                              <Font size="25.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
-                     </children>
-                  </AnchorPane>
-                  <AnchorPane layoutX="11.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
-                     <children>
-                        <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp2">
-                           <font>
-                              <Font size="25.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="2 cents">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
-                     </children>
-                  </AnchorPane>
-                  <AnchorPane layoutX="291.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
-                     <children>
-                        <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp3">
-                           <font>
-                              <Font size="25.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
-                     </children>
-                  </AnchorPane>
-                  <AnchorPane layoutX="571.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
-                     <children>
-                        <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp4">
-                           <font>
-                              <Font size="25.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
-                     </children>
-                  </AnchorPane>
-                  <AnchorPane layoutX="851.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
-                     <children>
-                        <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp5">
-                           <font>
-                              <Font size="25.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
-                     </children>
-                  </AnchorPane>
-                  <AnchorPane layoutX="11.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
-                     <children>
-                        <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp6">
-                           <font>
-                              <Font size="25.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
-                     </children>
-                  </AnchorPane>
-                  <AnchorPane layoutX="291.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
-                     <children>
-                        <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp7">
-                           <font>
-                              <Font size="25.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
-                     </children>
-                  </AnchorPane>
-                  <AnchorPane layoutX="571.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
-                     <children>
-                        <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp8">
-                           <font>
-                              <Font size="25.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
-                     </children>
-                  </AnchorPane>
-                  <AnchorPane layoutX="851.0" layoutY="398.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
-                     <children>
-                        <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                        <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp9">
-                           <font>
-                              <Font size="25.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="4.99$">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                           <font>
-                              <Font size="18.0" />
-                           </font>
-                        </Label>
-                        <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
+                        <TextField layoutX="21.0" layoutY="10.0" prefHeight="44.0" prefWidth="799.0" stylesheets="@index.css" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="21.0" AnchorPane.rightAnchor="138.0" AnchorPane.topAnchor="10.0" />
+                        <Button layoutX="838.0" layoutY="14.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="97.0" stylesheets="@index.css" text="Search" AnchorPane.bottomAnchor="15.0" AnchorPane.rightAnchor="23.0" AnchorPane.topAnchor="14.0" />
                      </children>
                   </AnchorPane>
                </children>
-            </TilePane>
-         </content>
-      </ScrollPane>
+            </AnchorPane>
+        </items>
+      </SplitPane>
    </children>
 </AnchorPane>
