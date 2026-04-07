@@ -10,7 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 public class Client {
     private static final String BIN_ID = "69d4960b856a6821890813a2";
-
+    private static volatile boolean isConnected=false;
     public static void main(String[] args) {
         System.out.println("Getting server address from API...");
         String[] serverInfo = getServerAddress();
@@ -22,6 +22,8 @@ public class Client {
         final int SERVER_PORT = Integer.parseInt(serverInfo[1]);
         try {
             Socket socket = new Socket(SERVER_IP, SERVER_PORT);
+            isConnected=true;
+
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             Scanner scanner = new Scanner(System.in);
@@ -33,6 +35,7 @@ public class Client {
                     System.out.println(serverMessage);
                     while ((serverMessage = in.readLine()) != null) {
                         System.out.println("\n" + serverMessage);
+                        if (serverMessage.contains("You have been kicked by Admin")) isConnected = false;
                     }
                 } catch (IOException e) {
                     System.out.println("\nDisconnected from the Server.");
@@ -63,6 +66,9 @@ public class Client {
             }
         } catch (IOException e) {
             System.err.println("Cannot connect to the Server: " + e.getMessage());
+        } finally {
+            System.out.println("Application exited");
+            System.exit(0);
         }
     }
 
