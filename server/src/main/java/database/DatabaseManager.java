@@ -78,7 +78,7 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            System.out.println("✅ Khởi tạo Database SQLite thành công!");
+            System.out.println("Success");
 
             } catch (SQLException e) {
             System.err.println("Database initialization error: " + e.getMessage());

@@ -14,13 +14,13 @@ public class MultiThreadedServer {
     private static final List<ClientHandler> clients = new ArrayList<>();
 
     // 1. THÊM DANH SÁCH ĐẤU GIÁ CHUNG CỦA TOÀN HỆ THỐNG
-    public static final List<Auction> danhSachDauGia = new ArrayList<>();
+    public static final List<Auction> AUCTION_LIST = new ArrayList<>();
 
     public static void main(String[] args) {
         final int PORT = 6969;
         database.DatabaseManager.initializeDatabase();
         // 2. KHỞI TẠO VÀ BẬT HỆ THỐNG GIÁM SÁT THỜI GIAN
-        AuctionMonitor monitor = new AuctionMonitor(danhSachDauGia);
+        AuctionMonitor monitor = new AuctionMonitor(AUCTION_LIST);
         monitor.startMonitoring();
 
         // ShutdownHook của bạn (Đã thêm lệnh tắt monitor)
