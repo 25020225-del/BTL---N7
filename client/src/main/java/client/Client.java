@@ -1,5 +1,6 @@
 package client;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
@@ -8,7 +9,8 @@ import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 public class Client{
-    private static final String API_TOKEN = "YODWeA21rcm9VMvqsugbpjnx0adwZf5PUGTSCHJBt6z8k";
+    private static final Dotenv dotenv = Dotenv.load();
+    private static final String API_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
     public static void main(String[] args){
         System.out.println("Getting server address from API...");
         String[] serverInfo=getServerAddress();
