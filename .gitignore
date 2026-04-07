@@ -47,6 +47,5 @@ build/
 *.sqlite
 *.sqlite3
 *.mv.db
-
-.env
 *secret.properties
+.env

@@ -1,0 +1,86 @@
+.button {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-padding: 10px 20px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+    -fx-transition: 0.3s; /* Lưu ý: JavaFX không hỗ trợ transition như Web,
+                             hiệu ứng sẽ thay đổi lập tức hoặc dùng code Java để hỗ trợ */
+}
+
+/* Khi di chuột qua (Hover) */
+.button:hover {
+    -fx-background-color: #2980b9;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 0);
+}
+.button:pressed {
+     -fx-background-color: #1f6391;
+     -fx-scale-x: 0.95; /* Thu nhỏ nhẹ theo chiều ngang */
+     -fx-scale-y: 0.95; /* Thu nhỏ nhẹ theo chiều dọc */
+     -fx-effect: innershadow(three-pass-box, rgba(0,0,0,0.7), 5, 0, 0, 0);
+ }
+
+ .text-field {
+     -fx-background-color: #ffffff;
+     -fx-background-radius: 5px;
+     -fx-border-color: #dcdde1; /* Màu viền xám nhạt */
+     -fx-border-radius: 5px;
+     -fx-border-width: 1px;
+     -fx-padding: 8px 12px;
+     -fx-font-size: 14px;
+     -fx-text-fill: #2f3640; /* Màu chữ chính */
+     -fx-prompt-text-fill: #7f8c8d; /* Màu chữ gợi ý (Placeholder) */
+ }
+
+ /* Khi di chuột qua (Hover) */
+ .text-field:hover {
+     -fx-border-color: #3498db; /* Viền chuyển sang màu xanh dương */
+ }
+
+ /* Khi đang nhấn vào để nhập liệu (Focused) */
+ .text-field:focused {
+     -fx-background-color: #ffffff;
+     -fx-border-color: #2980b9;
+     /* Tạo hiệu ứng phát sáng xanh nhẹ quanh viền */
+     -fx-effect: dropshadow(three-pass-box, rgba(52, 152, 219, 0.3), 10, 0, 0, 0);
+ }
+
+ /* Trạng thái khi TextField bị vô hiệu hóa (Disabled) */
+ .text-field:disabled {
+     -fx-opacity: 0.5;
+     -fx-background-color: #f5f6fa;
+     -fx-cursor: default;
+ }
+
+ /* Tổng thể SplitPane */
+ .split-pane {
+     -fx-background-color: transparent;
+     -fx-border-color: #dcdde1;
+     -fx-border-width: 1px;
+ }
+
+ /* Thanh chia (Divider) */
+ .split-pane *.split-pane-divider {
+     -fx-background-color: #f1f2f6; /* Màu nền thanh chia */
+     -fx-padding: 0 1px; /* Làm cho thanh chia mỏng lại */
+ }
+
+ /* Hiệu ứng khi di chuột vào thanh chia */
+ .split-pane *.split-pane-divider:hover {
+     -fx-background-color: #3498db; /* Đổi sang màu xanh khi hover */
+ }
+
+ /* Ẩn bớt các chi tiết thừa của các vùng con (Panes) */
+ .split-pane *.content {
+     -fx-background-color: -fx-control-inner-background;
+ }
+
+ /* Thêm một "nút cầm" nhỏ ở giữa thanh chia để người dùng dễ nhận biết */
+ .split-pane *.split-pane-divider {
+    -fx-border-color: transparent #ced4da transparent #ced4da;
+    -fx-border-width: 0 1 0 1;
+ }
+ .split-pane *.split-pane-divider {
+     -fx-cursor: h-resize; /* Biểu tượng mũi tên hai đầu nằm ngang */
+ }
