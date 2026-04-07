@@ -3,21 +3,112 @@ package server;
 import controller.AuctionMonitor;
 import model.Auction;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import io.github.cdimascio.dotenv.Dotenv;
+
 public class MultiThreadedServer {
+    private static final String BIN_ID="69d48f8e856a68218907fd78";
+    private static final Dotenv dotenv=Dotenv.load();
+    private static final String JSONBIN_KEY=Dotenv.load().get("JSONBIN_API_KEY");
+    private static final String LOCALTONET_TOKEN=dotenv.get("LOCALTONET_API_TOKEN");
+
     private static final List<ClientHandler> clients = new ArrayList<>();
 
     // 1. THÊM DANH SÁCH ĐẤU GIÁ CHUNG CỦA TOÀN HỆ THỐNG
     public static final List<Auction> danhSachDauGia = new ArrayList<>();
 
+    public static void updateBulletinBoard(String currentIp, int currentPort) {
+        try {
+            URL url = new URL("https://api.jsonbin.io/v3/b/" + BIN_ID);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("PUT"); // PUT to overdrive new data
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Master-Key", JSONBIN_KEY);
+            conn.setDoOutput(true);
+
+            String jsonInputString = String.format("{\"ip\": \"%s\", \"port\": %d}", currentIp, currentPort);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            if (conn.getResponseCode() == 200) {
+                System.out.println("New IP and Port has been updated");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static String[] getLocaltonetAddress() {
+        try {
+            URL url = new URL("https://localtonet.com/api/GetTunnels");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Authorization", "Bearer " + LOCALTONET_TOKEN);
+            conn.setRequestProperty("Accept", "application/json");
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            String inputLine;
+            StringBuilder content = new StringBuilder();
+            while ((inputLine = in.readLine()) != null) {
+                content.append(inputLine);
+            }
+            in.close();
+
+            String jsonResponse = content.toString();
+
+            String ip = "";
+            String port = "";
+
+            Matcher ipMatcher = Pattern.compile("\"serverDomain\":\"([^\"]+)\"").matcher(jsonResponse);
+            if (ipMatcher.find()) {
+                ip = ipMatcher.group(1);
+            }
+
+            Matcher portMatcher = Pattern.compile("\"serverPort\":(\\d+)").matcher(jsonResponse);
+            if (portMatcher.find()) {
+                port = portMatcher.group(1);
+            }
+
+            if (!ip.isEmpty() && !port.isEmpty()) {
+                return new String[]{ip, port};
+            }
+        } catch (Exception e) {
+            System.out.println("Localtonet API Error: " + e.getMessage());
+        }
+        return null;
+    }
+
     public static void main(String[] args) {
         final int PORT = 6969;
+
+        System.out.println("Getting address");
+        String[] publicAddress = getLocaltonetAddress();
+
+        if (publicAddress!=null){
+            updateBulletinBoard(publicAddress[0], Integer.parseInt(publicAddress[1]));
+        }else{
+            System.err.println("Cannot get Localtonet address. Use localhost");
+            updateBulletinBoard("127.0.0.1", PORT);
+        }
+
         database.DatabaseManager.initializeDatabase();
         // 2. KHỞI TẠO VÀ BẬT HỆ THỐNG GIÁM SÁT THỜI GIAN
         AuctionMonitor monitor = new AuctionMonitor(danhSachDauGia);
