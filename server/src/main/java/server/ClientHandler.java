@@ -68,6 +68,7 @@ public class ClientHandler implements Runnable{
         try{
             out.println("[System]: You have been kicked by Admin. Reason: "+reason);
             if (socket!=null&&!socket.isClosed())socket.close();
+            System.exit(0);
         }catch(IOException e){
             e.printStackTrace();
         }
