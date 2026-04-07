@@ -21,7 +21,13 @@ import java.util.regex.Pattern;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 public class MultiThreadedServer {
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
     private static final String BIN_ID="69d48f8e856a68218907fd78";
     private static final Dotenv dotenv=Dotenv.load();
     private static final String JSONBIN_KEY=Dotenv.load().get("JSONBIN_API_KEY");
@@ -98,6 +104,24 @@ public class MultiThreadedServer {
 
     public static void main(String[] args) {
         final int PORT = 6969;
+
+        scheduler.scheduleAtFixedRate(()->{
+            try {
+                System.out.println("\n[Auto-Sync] Checking new address from Localtonet...");
+                String[] publicAddress = getLocaltonetAddress();
+
+                if(publicAddress!=null){
+                    String newIp=publicAddress[0];
+                    int newPort=Integer.parseInt(publicAddress[1]);
+                    updateBulletinBoard(newIp,newPort);
+                    System.out.println("[Auto-Sync] Synced onto JSONBin: "+newIp+ ":"+newPort);
+                }else{
+                    System.err.println("[Auto-Sync] Error: Cannot get info from Localtonet API.");
+                }
+            }catch(Exception e){
+                System.err.println("[Auto-Sync] System error: "+e.getMessage());
+            }
+        },0,5,TimeUnit.MINUTES);
 
         System.out.println("Getting address");
         String[] publicAddress = getLocaltonetAddress();
