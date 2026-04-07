@@ -51,6 +51,10 @@ public class Client {
             }
             while (true) {
                 String messageToSend = scanner.nextLine();
+                if(!isConnected) {
+                    System.out.println("[System] You are not connected to the server");
+                    System.exit(0);
+                }
                 out.println(messageToSend);
                 if ("STOP".equalsIgnoreCase(messageToSend.trim())) {
                     System.out.println("Disconnecting in progress...");
