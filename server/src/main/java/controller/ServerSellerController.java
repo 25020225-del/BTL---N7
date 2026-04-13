@@ -109,9 +109,7 @@ public class ServerSellerController {
         return false;
     }
 
-    // ==========================================
     // 3. XÓA SẢN PHẨM (Soft Delete trên SQLite)
-    // ==========================================
     public boolean deleteAuction(User currentUser, Auction auction) {
 
         if (!auction.getSeller().getId().equals(currentUser.getId())) {
