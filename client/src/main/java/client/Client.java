@@ -46,9 +46,9 @@ public class Client {
                                     System.out.println("[System] Redirecting you to " + url);
                                 }
                             } catch (Exception e) {
-                                System.err.println("[Error]: Không thể mở trình duyệt: " + e.getMessage());
+                                System.out.println("[System] Can't open browser: " + e.getMessage());
                             }
-                            continue; // Không in lệnh này ra terminal như tin nhắn chat thông thường
+                            continue;
                         }
                         if (serverMessage.contains("[System] Your ID has been successfully recognised.")) {
                             // Activate Launcher

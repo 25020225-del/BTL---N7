@@ -237,6 +237,7 @@ public class MultiThreadedServer {
         int count = 0;
         for (ClientHandler client : clients) {
             System.out.println(count+". "+client.getClientName());
+            count++;
         }
     }
     public static void kickTargetByNumber(int i, String reason) {
