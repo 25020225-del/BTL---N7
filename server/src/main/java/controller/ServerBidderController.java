@@ -10,7 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
-public class BidderController {
+public class ServerBidderController {
 
     // ==========================================
     // 1. ĐẶT GIÁ THỦ CÔNG (Lưu lịch sử vào SQLite)

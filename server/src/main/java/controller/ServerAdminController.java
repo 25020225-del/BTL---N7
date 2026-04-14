@@ -5,7 +5,7 @@ import model.Admin;
 import model.Seller;
 import model.Auction;
 
-public class AdminController {
+public class ServerAdminController {
 
     // Hàm này là hành động "Duyệt sản phẩm"
     public boolean approveAuction(Admin nguoiThucHien, Auction phienDauGia) {

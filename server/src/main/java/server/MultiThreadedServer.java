@@ -2,6 +2,7 @@ package server;
 
 import controller.AuctionMonitor;
 import model.Auction;
+import controller.UserController;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 public class MultiThreadedServer {
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-
+    private static UserController userController = new UserController();
     private static final String BIN_ID="69d4960b856a6821890813a2";
     private static final Dotenv dotenv=Dotenv.load();
     private static final String JSONBIN_KEY=Dotenv.load().get("JSONBIN_API_KEY");
@@ -35,8 +36,9 @@ public class MultiThreadedServer {
 
     private static final List<ClientHandler> clients = new ArrayList<>();
 
+
     // 1. THÊM DANH SÁCH ĐẤU GIÁ CHUNG CỦA TOÀN HỆ THỐNG
-    public static final List<Auction> danhSachDauGia = new ArrayList<>();
+    public static final List<Auction> AUCTION_LIST = new ArrayList<>();
 
     public static void updateBulletinBoard(String currentIp, int currentPort) {
         try {
@@ -146,7 +148,7 @@ public class MultiThreadedServer {
 
         database.DatabaseManager.initializeDatabase();
         // 2. KHỞI TẠO VÀ BẬT HỆ THỐNG GIÁM SÁT THỜI GIAN
-        AuctionMonitor monitor = new AuctionMonitor(danhSachDauGia);
+        AuctionMonitor monitor = new AuctionMonitor(AUCTION_LIST);
         monitor.startMonitoring();
 
         // ShutdownHook của bạn (Đã thêm lệnh tắt monitor)
@@ -180,8 +182,8 @@ public class MultiThreadedServer {
             System.out.println("Server is running on port " + PORT);
             while (true) {
                 Socket socket = serverSocket.accept();
-                System.out.println("New client connected from: " + socket.getInetAddress().getHostAddress());
-                ClientHandler clientHandler = new ClientHandler(socket);
+                System.out.println("New client connected from: " + socket.getInetAddress());
+                ClientHandler clientHandler = new ClientHandler(socket, userController);
                 clients.add(clientHandler);
                 new Thread(clientHandler).start();
             }

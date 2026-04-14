@@ -4,6 +4,9 @@ import database.DatabaseManager;
 import model.Admin;
 import model.User;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -12,7 +15,30 @@ import java.sql.SQLException;
 public class UserController {
 
     // ==========================================
-    // 1. TÍNH NĂNG ĐĂNG KÝ (Register with SQLite)
+    // HÀM BẢO MẬT: BĂM MẬT KHẨU BẰNG SHA-256
+    // ==========================================
+    private String hashPassword(String password) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] encodedHash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+
+            // Chuyển mảng byte thành chuỗi Hexadecimal (hệ cơ số 16) để lưu vào DB
+            StringBuilder hexString = new StringBuilder(2 * encodedHash.length);
+            for (byte b : encodedHash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Hệ thống thiếu thuật toán mã hóa SHA-256!", e);
+        }
+    }
+
+    // ==========================================
+    // 1. TÍNH NĂNG ĐĂNG KÝ (Register with SQLite & SHA-256)
     // ==========================================
     public synchronized String register(String userName, String password, String name, String role) {
 
@@ -24,7 +50,6 @@ public class UserController {
             return "Error: Invalid role!";
         }
 
-        // ĐÃ SỬA: Xóa hoàn toàn rating và giá trị 5.0 khỏi câu lệnh SQL
         String checkSql = "SELECT 1 FROM users WHERE username = ?";
         String insertSql = "INSERT INTO users (id, username, password, name, role, is_good) VALUES (?, ?, ?, ?, ?, 0)";
 
@@ -41,10 +66,14 @@ public class UserController {
 
             // 2. Tạo ID và Lưu vào Database SQLite
             String newId = "U-" + System.currentTimeMillis();
+
+            // BƯỚC NÂNG CẤP: Băm mật khẩu người dùng nhập vào
+            String hashedPassword = hashPassword(password);
+
             try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
                 insertStmt.setString(1, newId);
                 insertStmt.setString(2, userName);
-                insertStmt.setString(3, password);
+                insertStmt.setString(3, hashedPassword); // Lưu chuỗi đã băm thay vì mật khẩu gốc
                 insertStmt.setString(4, name);
                 insertStmt.setString(5, role.toUpperCase());
 
@@ -61,7 +90,7 @@ public class UserController {
     }
 
     // ==========================================
-    // 2. TÍNH NĂNG ĐĂNG NHẬP (Login with SQLite)
+    // 2. TÍNH NĂNG ĐĂNG NHẬP (Login with SQLite & SHA-256)
     // ==========================================
     public User login(String userName, String password) {
 
@@ -72,7 +101,10 @@ public class UserController {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, userName);
-            pstmt.setString(2, password);
+
+            // BƯỚC NÂNG CẤP: Băm mật khẩu nhập vào để so sánh với chuỗi trong DB
+            String hashedPassword = hashPassword(password);
+            pstmt.setString(2, hashedPassword);
 
             ResultSet rs = pstmt.executeQuery();
 
@@ -89,9 +121,9 @@ public class UserController {
 
                 // Đóng gói thành đối tượng User/Admin để trả về cho hệ thống
                 if (role.equalsIgnoreCase("ADMIN")) {
-                    return new Admin(id, userName, password, name);
+                    return new Admin(id, userName, password, name); // Có thể giữ nguyên password truyền vào Admin object
                 } else {
-                    User user = new User(id, userName, password, name, role);
+                    User user = new User(id, userName, password, name, role); // Có thể giữ nguyên password truyền vào User object
                     user.setGood(isGood);
                     return user;
                 }

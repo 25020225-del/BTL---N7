@@ -15,11 +15,9 @@ public class ClientBidderController {
     public static void main(String[] args){
         Bidder user = new Bidder(new User("Bidder01","khoadeptrai","123456","Ngo Vu Dinh Khoa"));
         try{
-            File file = new File("data.json");
             ObjectMapper mapper = new ObjectMapper();
-
-            mapper.writeValue(file, user);
-
+            String jsonUser = mapper.writeValueAsString(user);
+            System.out.println(jsonUser);
         }
         catch (Exception e){}
         finally {

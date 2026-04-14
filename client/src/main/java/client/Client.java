@@ -61,12 +61,9 @@ public class Client {
                     socket.close();
                     break;
                 }
-                if ("OPEN AUCTION".trim().equalsIgnoreCase(messageToSend.trim())) {
-                    System.out.println("Opening auction...");
-                    ClientCallLauncher launcher = new ClientCallLauncher();
-                    new Thread(launcher).start();
-                    System.out.println("Auction opened.");
-                }
+                ClientCallLauncher launcher = new ClientCallLauncher();
+                new Thread(launcher).start();
+
             }
         } catch (IOException e) {
             System.err.println("Cannot connect to the Server: " + e.getMessage());
