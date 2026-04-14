@@ -19,14 +19,14 @@ public class ClientHandler implements Runnable{
     public void run() {
         try {
             while(true) {
-                out.println("[System]: Please enter your ID (20 characters maximum):");
+                out.println("[System] Please enter your ID (20 characters maximum):");
                 this.clientName = in.readLine();
                 if (this.clientName == null || this.clientName.length() > 20) {
                     out.println("[System]: Your ID is invalid");
                 }else break;
             }
             if(!clientName.trim().equalsIgnoreCase("STOP")){
-                out.println("[System]: Your ID has been successfully recognised.");
+                out.println("[System] Your ID has been successfully recognised.");
                 System.out.println(clientName+" has connected.");
             }else{
 
