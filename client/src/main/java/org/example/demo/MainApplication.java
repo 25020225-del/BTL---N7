@@ -10,12 +10,20 @@ import javafx.scene.control.ComboBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.sql.SQLOutput;
+import java.util.Properties;
 
 public class MainApplication extends Application {
     public static Stage primalStage;
     public static Parent rootLogin;
     public static Parent rootRegister;
     public static Parent rootMainView;
+
+    private Properties properties = new Properties();
 
     public static void setNewScene(Parent k) throws IOException {
         primalStage.getScene().setRoot(k);
@@ -38,9 +46,28 @@ public class MainApplication extends Application {
         }
     }
 
+    public void initProperties() throws IOException {
+        InputStream input = MainApplication.class.getResourceAsStream("config.properties");
+        if (input != null) {
+            System.out.println("Reading properties file...");
+            properties.load(input);
+        }
+    }
+
+    public void openClient() throws IOException{
+        String serverURL = properties.getProperty("serverURL");
+        int port = Integer.parseInt(properties.getProperty("serverPort"));
+        Socket socket = new Socket(serverURL,port);
+        System.out.println(1);
+        OutputStream outputStream = socket.getOutputStream();
+        PrintWriter printWriter = new PrintWriter(outputStream);
+    }
+
     @Override
     public void start(Stage stage) throws IOException {
         init();
+        initProperties();
+        openClient();
         primalStage = stage;
         Scene sceneLogin = new Scene(rootLogin);
         stage.setScene(sceneLogin);
