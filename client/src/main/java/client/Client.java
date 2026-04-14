@@ -49,6 +49,7 @@ public class Client {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+            boolean LS=false;
             while (true) {
                 String messageToSend = scanner.nextLine();
                 if(!isConnected) {
@@ -61,8 +62,12 @@ public class Client {
                     socket.close();
                     break;
                 }
-                ClientCallLauncher launcher = new ClientCallLauncher();
-                new Thread(launcher).start();
+
+                if (!LS) {
+                    LS=true;
+                    ClientCallLauncher launcher = new ClientCallLauncher();
+                    new Thread(launcher).start();
+                }
 
             }
         } catch (IOException e) {
