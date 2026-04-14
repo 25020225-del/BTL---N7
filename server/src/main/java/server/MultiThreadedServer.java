@@ -1,6 +1,7 @@
 package server;
 
 import controller.AuctionMonitor;
+import controller.UserController; // THÊM IMPORT NÀY
 import model.Auction;
 
 import java.io.BufferedReader;
@@ -33,6 +34,9 @@ public class MultiThreadedServer {
     private static final String JSONBIN_KEY = Dotenv.load().get("JSONBIN_API_KEY");
     private static final String LOCALTONET_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
     private static final List<ClientHandler> clients = new ArrayList<>();
+
+    // --- KHỞI TẠO BỘ CONTROLLER DÙNG CHUNG CHO TOÀN SERVER ---
+    private static final UserController userController = new UserController();
 
     // 1. THÊM DANH SÁCH ĐẤU GIÁ CHUNG CỦA TOÀN HỆ THỐNG
     public static final List<Auction> danhSachDauGia = new ArrayList<>();
@@ -111,7 +115,7 @@ public class MultiThreadedServer {
     }
 
     public static void main(String[] args) {
-        final int PORT = 6969;
+        final int PORT = 6969; // Port nội bộ của bạn
 
         scheduler.scheduleAtFixedRate(()->{
             try {
@@ -125,9 +129,9 @@ public class MultiThreadedServer {
                 }else{
                     System.err.println("[Auto-Sync] Error: Cannot get info from Localtonet API.");
                 }
-                }catch(Exception e){
-                    System.err.println("[Auto-Sync] System error: "+e.getMessage());
-                }
+            }catch(Exception e){
+                System.err.println("[Auto-Sync] System error: "+e.getMessage());
+            }
         },0,5,TimeUnit.MINUTES);
 
         System.out.println("[System] Getting address");
@@ -198,7 +202,10 @@ public class MultiThreadedServer {
             while (true) {
                 Socket socket = serverSocket.accept();
                 System.out.println("[System] New client connected from: " + socket.getInetAddress().getHostAddress());
-                ClientHandler clientHandler = new ClientHandler(socket);
+
+                // ĐÃ SỬA LỖI Ở ĐÂY: Truyền userController vào cho ClientHandler
+                ClientHandler clientHandler = new ClientHandler(socket, userController);
+
                 clients.add(clientHandler);
                 new Thread(clientHandler).start();
             }
@@ -233,6 +240,7 @@ public class MultiThreadedServer {
             System.out.println("[System] ID \"" + target + "\" doesn't exist");
         }
     }
+
     public static void getClientList(){
         int count = 0;
         for (ClientHandler client : clients) {
@@ -240,6 +248,7 @@ public class MultiThreadedServer {
             count++;
         }
     }
+
     public static void kickTargetByNumber(int i, String reason) {
         ClientHandler targetToKick = null;
         if(i<clients.size()) targetToKick=clients.get(i);
