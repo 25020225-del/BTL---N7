@@ -8,6 +8,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.awt.Desktop;
+import java.net.URI;
 public class Client {
     private static final String BIN_ID = "69d4960b856a6821890813a2";
     private static volatile boolean isConnected=false;
@@ -36,6 +38,18 @@ public class Client {
                     System.out.println(serverMessage);
                     while ((serverMessage = in.readLine()) != null) {
                         System.out.println("\n" + serverMessage);
+                        if (serverMessage.startsWith("[Admin] REDIRECT:")) {
+                            String url = serverMessage.substring(17);
+                            try {
+                                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                                    Desktop.getDesktop().browse(new URI(url));
+                                    System.out.println("[System] Redirecting you to " + url);
+                                }
+                            } catch (Exception e) {
+                                System.err.println("[Error]: Không thể mở trình duyệt: " + e.getMessage());
+                            }
+                            continue; // Không in lệnh này ra terminal như tin nhắn chat thông thường
+                        }
                         if (serverMessage.contains("[System] Your ID has been successfully recognised.")) {
                             // Activate Launcher
                             if(!LS) {
