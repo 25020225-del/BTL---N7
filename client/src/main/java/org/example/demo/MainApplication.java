@@ -1,19 +1,48 @@
 package org.example.demo;
 
 import javafx.application.Application;
+import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.ComboBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
 
 public class MainApplication extends Application {
     public static Stage primalStage;
+    public static Parent rootLogin;
+    public static Parent rootRegister;
+    public static Parent rootMainView;
+
+    public static void setNewScene(Parent k) throws IOException {
+        primalStage.getScene().setRoot(k);
+    }
+
+    public void init() throws IOException {
+        FXMLLoader fxmlLogin = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
+        FXMLLoader fxmlRegister = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
+        FXMLLoader fxmlMainView = new FXMLLoader(MainApplication.class.getResource("MainView.fxml"));
+
+        rootLogin = fxmlLogin.load();
+        rootRegister = fxmlRegister.load();
+        rootMainView = fxmlMainView.load();
+
+        ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
+
+        if(registerRole!=null){
+            registerRole.getItems().clear();
+            registerRole.getItems().addAll("Bidder","Seller","Admin");
+        }
+    }
+
     @Override
     public void start(Stage stage) throws IOException {
+        init();
         primalStage = stage;
-        FXMLLoader fxmlLogin = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
-        Scene sceneLogin = new Scene(fxmlLogin.load());
+        Scene sceneLogin = new Scene(rootLogin);
         stage.setScene(sceneLogin);
         stage.show();
     }

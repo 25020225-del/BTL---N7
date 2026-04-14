@@ -97,41 +97,37 @@
      -fx-transition: all 0.3s;
  }
 
- /* 2. Hiệu ứng khi di chuột qua (Hover) */
- .choice-box:hover {
-     -fx-border-color: #3498db; /* Đổi màu viền sang xanh dương */
-     -fx-background-color: #f7f9fb;
+ /* Giao diện Light Mode thanh lịch cho ComboBox */
+ .combo-box {
+     -fx-background-color: #ffffff;
+     -fx-background-radius: 8;
+     -fx-border-color: #e0e0e0; /* Viền xám nhạt */
+     -fx-border-radius: 8;
+     -fx-padding: 5 10 5 10;
+     -fx-text-fill: #333333;
+     -fx-font-size: 14px;
+     -fx-cursor: hand;
+     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
  }
 
- /* 3. Chỉnh sửa nút mũi tên (Arrow) */
- .choice-box > .arrow-button {
-     -fx-background-color: transparent;
-     -fx-padding: 0 5 0 10;
+ /* Hiệu ứng khi rê chuột vào */
+ .combo-box:hover {
+     -fx-border-color: #2196f3; /* Xanh dương nhẹ */
+     -fx-background-color: #fafafa;
  }
 
- .choice-box > .arrow-button > .arrow {
-     -fx-background-color: #7f8c8d; /* Màu mũi tên */
-     -fx-shape: "M 0 0 L 4 4 L 8 0 Z"; /* Làm mũi tên nhọn hơn */
- }
-
- /* 4. Tùy chỉnh danh sách thả xuống (ContextMenu) */
- .choice-box .context-menu {
+ /* Phần danh sách sổ xuống */
+ .combo-box .list-view {
      -fx-background-color: white;
-     -fx-border-color: #dcdcdc;
-     -fx-border-radius: 5px;
-     -fx-background-radius: 5px;
+     -fx-background-radius: 8;
+     -fx-border-color: #e0e0e0;
+     -fx-border-radius: 8;
      -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);
  }
 
- /* 5. Tùy chỉnh từng mục trong danh sách (MenuItem) */
- .choice-box .menu-item:focused {
-     -fx-background-color: #3498db; /* Màu nền khi chọn */
- }
-
- .choice-box .menu-item > .label {
-     -fx-text-fill: #2c3e50;
- }
-
- .choice-box .menu-item:focused > .label {
-     -fx-text-fill: white; /* Màu chữ khi được chọn */
+ /* Xóa viền focus mặc định */
+ .combo-box:focused {
+     -fx-background-insets: 0;
+     -fx-border-width: 1.5;
+     -fx-border-color: #2196f3;
  }

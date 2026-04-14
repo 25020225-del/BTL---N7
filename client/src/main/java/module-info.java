@@ -7,6 +7,7 @@ module org.example.demo {
     requires com.fasterxml.jackson.annotation;
     requires com.fasterxml.jackson.core;
     requires common;
+    requires jdk.compiler;
 
 
     opens org.example.demo to javafx.fxml;

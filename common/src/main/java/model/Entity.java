@@ -2,6 +2,7 @@ package model;
 
 public abstract class Entity {
     protected String id;
+    protected String command;
 
     public Entity() {
     }
@@ -18,6 +19,8 @@ public abstract class Entity {
         this.id = id;
     }
 
+    public String getCommand() {return command;}
+    public void setCommand(String command) {this.command = command;}
 
     public abstract String getInfo();
 }
