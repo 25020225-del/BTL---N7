@@ -112,6 +112,8 @@ public class MultiThreadedServer {
     }
 
     public static void main(String[] args) {
+        try{
+
         final int PORT = 6969;
 
         scheduler.scheduleAtFixedRate(()->{
@@ -185,6 +187,8 @@ public class MultiThreadedServer {
             }
         } catch (IOException e) {
             System.err.println("Server Error: " + e.getMessage());
+        }}catch(Exception e){
+            System.err.println("Dit me may cut");
         }
     }
 
