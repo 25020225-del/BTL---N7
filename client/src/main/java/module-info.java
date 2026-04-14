@@ -8,6 +8,7 @@ module org.example.demo {
     requires com.fasterxml.jackson.core;
     requires common;
     requires jdk.compiler;
+    requires java.sql;
 
 
     opens org.example.demo to javafx.fxml;
