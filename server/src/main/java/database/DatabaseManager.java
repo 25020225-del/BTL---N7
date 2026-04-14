@@ -20,7 +20,6 @@ public class DatabaseManager {
             // Bật khóa ngoại (Foreign Key)
             stmt.execute("PRAGMA foreign_keys = ON;");
 
-            // 1. Tạo bảng users (Giữ nguyên)
             String createUsersTable = "CREATE TABLE IF NOT EXISTS users (" +
                     "id TEXT PRIMARY KEY, " +
                     "username TEXT UNIQUE NOT NULL, " +
@@ -35,9 +34,6 @@ public class DatabaseManager {
                     "VALUES ('A001', 'admin', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 'Super Admin', 'ADMIN', 1);";
             stmt.execute(insertAdmin);
 
-            // ==========================================
-            // 2. TẠO BẢNG AUCTIONS (MỚI THÊM)
-            // ==========================================
             String createAuctionsTable = "CREATE TABLE IF NOT EXISTS auctions (" +
                     "id TEXT PRIMARY KEY, " +
                     "item_name TEXT NOT NULL, " +
@@ -52,7 +48,7 @@ public class DatabaseManager {
                     "FOREIGN KEY (seller_id) REFERENCES users(id)" + // Liên kết với người bán
                     ");";
             stmt.execute(createAuctionsTable);
-            // Thêm đoạn này vào bên dưới lệnh tạo bảng auctions trong DatabaseManager.java
+
             String createBidTransactionsTable = "CREATE TABLE IF NOT EXISTS bid_transactions (" +
                     "id TEXT PRIMARY KEY, " +
                     "auction_id TEXT NOT NULL, " +
@@ -63,7 +59,7 @@ public class DatabaseManager {
                     "FOREIGN KEY (bidder_id) REFERENCES users(id)" +
                     ");";
             stmt.execute(createBidTransactionsTable);
-            // Thêm đoạn này vào cuối hàm initializeDatabase() trong DatabaseManager.java
+
             String createAutoBidsTable = "CREATE TABLE IF NOT EXISTS auto_bids (" +
                     "id TEXT PRIMARY KEY, " +
                     "auction_id TEXT NOT NULL, " +
