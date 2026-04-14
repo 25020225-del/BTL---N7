@@ -39,8 +39,11 @@ public class MainController {
         FXMLLoader fxmlRegisterView = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
         Scene sceneRegister = new Scene(fxmlRegisterView.load());
         Parent root = sceneRegister.getRoot();
-        ChoiceBox<?> combo = (ChoiceBox<?>) root.lookup("#registerRole");
-        combo.getItems().addAll("Bidder","Seller","Admin");
+        ChoiceBox<String> combo = (ChoiceBox<String>) root.lookup("#registerRole");
+        if (combo != null) {
+            combo.getItems().clear(); // Nên xóa danh sách cũ trước khi add để tránh bị lặp dữ liệu
+            combo.getItems().addAll("Bidder", "Seller", "Admin");
+        }
         MainApplication.primalStage.setScene(sceneRegister);
     }
 }

@@ -2,7 +2,6 @@ package model;
 
 public abstract class Entity {
     protected String id;
-    protected String mission;
 
     public Entity() {
     }
@@ -19,8 +18,6 @@ public abstract class Entity {
         this.id = id;
     }
 
-    public String getMission() {return mission;}
-    public void setMission(String mission) {this.mission = mission;}
 
     public abstract String getInfo();
 }
