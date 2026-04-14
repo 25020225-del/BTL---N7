@@ -73,4 +73,7 @@ public class ClientHandler implements Runnable{
             e.printStackTrace();
         }
     }
+    public void redirectToWebsite(String url) {
+        out.println("[Admin] REDIRECT:" + url);
+    }
 }

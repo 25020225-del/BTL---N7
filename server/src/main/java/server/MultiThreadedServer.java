@@ -165,8 +165,12 @@ public class MultiThreadedServer {
                         System.out.println("Reason: ");
                         String reason = scanner.nextLine();
                         kickTarget(target, reason);
+                        continue;
                     }
-                    if (serverMessage.startsWith("/clist")) getClientList();
+                    if (serverMessage.startsWith("/clist")){
+                        getClientList();
+                        continue;
+                    }
                     if (serverMessage.startsWith("/kickn ")) {
                         try{
                             String index = serverMessage.substring(7);
@@ -176,6 +180,12 @@ public class MultiThreadedServer {
                         }catch(NumberFormatException e){
                             System.out.println("[System] Error: Index of /kickn command must be an integer");
                         }
+                        continue;
+                    }
+                    if (serverMessage.startsWith("/redirect ")) {
+                        String url = serverMessage.substring(10);
+                        broadcast("[Admin] REDIRECT:" + url, null);
+                        continue;
                     }
                     broadcast("[Admin]: "+serverMessage, null);
                 }
