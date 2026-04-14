@@ -11,7 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
-public class SellerController {
+public class ServerSellerController {
 
     // ==========================================
     // 1. THÊM SẢN PHẨM (Lưu vào SQLite)
@@ -109,9 +109,7 @@ public class SellerController {
         return false;
     }
 
-    // ==========================================
     // 3. XÓA SẢN PHẨM (Soft Delete trên SQLite)
-    // ==========================================
     public boolean deleteAuction(User currentUser, Auction auction) {
 
         if (!auction.getSeller().getId().equals(currentUser.getId())) {

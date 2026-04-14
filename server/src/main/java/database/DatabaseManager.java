@@ -31,9 +31,8 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createUsersTable);
 
-            // Thêm Admin mặc định (Giữ nguyên)
             String insertAdmin = "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good) " +
-                    "VALUES ('A001', 'admin', '123456', 'Super Admin', 'ADMIN', 1);";
+                    "VALUES ('A001', 'admin', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 'Super Admin', 'ADMIN', 1);";
             stmt.execute(insertAdmin);
 
             // ==========================================
@@ -78,10 +77,10 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            System.out.println("✅ Khởi tạo Database SQLite thành công!");
+            System.out.println("[Database] Successfully initialized");
 
             } catch (SQLException e) {
-            System.err.println("Database initialization error: " + e.getMessage());
+            System.err.println("[Database] Initialization error: " + e.getMessage());
         }
     }
 }

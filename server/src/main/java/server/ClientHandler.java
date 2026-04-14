@@ -18,17 +18,18 @@ public class ClientHandler implements Runnable{
     @Override
     public void run() {
         try {
-            out.println("[System]: Please enter your ID:");
-            this.clientName=in.readLine();
-            if(this.clientName==null) {
-                System.err.println("Unregognised ID has disconnected");
-                return;
-            } else if(!clientName.trim().equalsIgnoreCase("STOP")){
+            while(true) {
+                out.println("[System]: Please enter your ID (20 characters maximum):");
+                this.clientName = in.readLine();
+                if (this.clientName == null || this.clientName.length() > 20) {
+                    out.println("[System]: Your ID is invalid");
+                }else break;
+            }
+            if(!clientName.trim().equalsIgnoreCase("STOP")){
                 out.println("[System]: Your ID has been successfully recognised.");
                 System.out.println(clientName+" has connected.");
-            }
-            else{
-                System.out.println("Unrecognised ID has ignored registering ID and stopped connecting");
+            }else{
+
             }
             MultiThreadedServer.broadcast("[System]: "+clientName+" has connected.",this);
             String message;
@@ -56,7 +57,7 @@ public class ClientHandler implements Runnable{
 
     private void closeConnection() {
         MultiThreadedServer.removeClient(this);
-        MultiThreadedServer.broadcast("[System]: " + clientName + " has disconnected.", this);
+        MultiThreadedServer.broadcast("[System] " + clientName + " has disconnected.", this);
         try {
             if(socket!=null&&!socket.isClosed())socket.close();
         }catch(IOException e){
@@ -66,7 +67,7 @@ public class ClientHandler implements Runnable{
     public String getClientName() {return this.clientName;}
     public void forceDisconnect(String reason){
         try{
-            out.println("[System]: You have been kicked by Admin. Reason: "+reason);
+            out.println("[System] You have been kicked by Admin. Reason: "+reason);
             if (socket!=null&&!socket.isClosed())socket.close();
         }catch(IOException e){
             e.printStackTrace();
