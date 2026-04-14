@@ -67,7 +67,7 @@ public class Client {
                         }
                     }
                 } catch (IOException e) {
-                    System.out.println("\nDisconnected from the Server.");
+                    System.out.println("\nDisconnected from t2he Server.");
                     System.out.println("Application exited");
                     System.exit(0);
                 }
