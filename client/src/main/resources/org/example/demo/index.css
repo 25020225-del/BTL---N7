@@ -84,3 +84,54 @@
  .split-pane *.split-pane-divider {
      -fx-cursor: h-resize; /* Biểu tượng mũi tên hai đầu nằm ngang */
  }
+
+
+ .choice-box {
+     -fx-background-color: white;
+     -fx-border-color: #dcdcdc;
+     -fx-border-radius: 5px;
+     -fx-background-radius: 5px;
+     -fx-padding: 5px;
+     -fx-font-size: 14px;
+     -fx-cursor: hand;
+     -fx-transition: all 0.3s;
+ }
+
+ /* 2. Hiệu ứng khi di chuột qua (Hover) */
+ .choice-box:hover {
+     -fx-border-color: #3498db; /* Đổi màu viền sang xanh dương */
+     -fx-background-color: #f7f9fb;
+ }
+
+ /* 3. Chỉnh sửa nút mũi tên (Arrow) */
+ .choice-box > .arrow-button {
+     -fx-background-color: transparent;
+     -fx-padding: 0 5 0 10;
+ }
+
+ .choice-box > .arrow-button > .arrow {
+     -fx-background-color: #7f8c8d; /* Màu mũi tên */
+     -fx-shape: "M 0 0 L 4 4 L 8 0 Z"; /* Làm mũi tên nhọn hơn */
+ }
+
+ /* 4. Tùy chỉnh danh sách thả xuống (ContextMenu) */
+ .choice-box .context-menu {
+     -fx-background-color: white;
+     -fx-border-color: #dcdcdc;
+     -fx-border-radius: 5px;
+     -fx-background-radius: 5px;
+     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);
+ }
+
+ /* 5. Tùy chỉnh từng mục trong danh sách (MenuItem) */
+ .choice-box .menu-item:focused {
+     -fx-background-color: #3498db; /* Màu nền khi chọn */
+ }
+
+ .choice-box .menu-item > .label {
+     -fx-text-fill: #2c3e50;
+ }
+
+ .choice-box .menu-item:focused > .label {
+     -fx-text-fill: white; /* Màu chữ khi được chọn */
+ }
