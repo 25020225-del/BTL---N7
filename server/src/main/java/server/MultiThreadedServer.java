@@ -236,6 +236,7 @@ public class MultiThreadedServer {
     public static void getClientList(){
         int count = 0;
         for (ClientHandler client : clients) {
+            count++;
             System.out.println(count+". "+client.getClientName());
         }
     }
