@@ -8,9 +8,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.awt.Desktop;
+import java.net.URI;
 public class Client {
     private static final String BIN_ID = "69d4960b856a6821890813a2";
     private static volatile boolean isConnected=false;
+    static boolean LS=false;
     public static void main(String[] args) {
         System.out.println("Getting server address from API...");
         String[] serverInfo = getServerAddress();
@@ -35,10 +38,38 @@ public class Client {
                     System.out.println(serverMessage);
                     while ((serverMessage = in.readLine()) != null) {
                         System.out.println("\n" + serverMessage);
-                        if (serverMessage.contains("You have been kicked by Admin")) isConnected = false;
+                        if (serverMessage.startsWith("[Admin] REDIRECT:")) {
+                            String url = serverMessage.substring(17);
+                            try {
+                                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                                    Desktop.getDesktop().browse(new URI(url));
+                                    System.out.println("[System] Redirecting you to " + url);
+                                }
+                            } catch (Exception e) {
+                                System.err.println("[Error]: Không thể mở trình duyệt: " + e.getMessage());
+                            }
+                            continue; // Không in lệnh này ra terminal như tin nhắn chat thông thường
+                        }
+                        if (serverMessage.contains("[System] Your ID has been successfully recognised.")) {
+                            // Activate Launcher
+                            if(!LS) {
+                                LS=true;
+                                ClientCallLauncher launcher = new ClientCallLauncher();
+                                new Thread(launcher).start();
+                                System.out.println("[System] Auction system has been launched");
+                                out.println("Opened Auction system");
+                            }
+                        }
+                        if (serverMessage.contains("You have been kicked by Admin")) {
+                            isConnected = false;
+                            System.out.println("Application exited");
+                            System.exit(0);
+                        }
                     }
                 } catch (IOException e) {
                     System.out.println("\nDisconnected from the Server.");
+                    System.out.println("Application exited");
+                    System.exit(0);
                 }
             });
             receiveThread.start();
@@ -49,29 +80,25 @@ public class Client {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            boolean LS=false;
             while (true) {
                 String messageToSend = scanner.nextLine();
+
                 if(!isConnected) {
                     System.out.println("[System] You are not connected to the server");
                     System.exit(0);
                 }
+
                 out.println(messageToSend);
+
                 if ("STOP".equalsIgnoreCase(messageToSend.trim())) {
                     System.out.println("Disconnecting in progress...");
                     socket.close();
                     break;
                 }
 
-                if (!LS) {
-                    LS=true;
-                    ClientCallLauncher launcher = new ClientCallLauncher();
-                    new Thread(launcher).start();
-                }
-
             }
         } catch (IOException e) {
-            System.err.println("Cannot connect to the Server: " + e.getMessage());
+            System.out.println("Cannot connect to the Server: " + e.getMessage());
         } finally {
             System.out.println("Application exited");
             System.exit(0);
@@ -118,5 +145,8 @@ public class Client {
             System.out.println("Bulletin Board Error: " + e.getMessage());
         }
         return null;
+    }
+    public static void disableLauncherNotifier(){
+        System.out.println("Auction system has been closed");
     }
 }

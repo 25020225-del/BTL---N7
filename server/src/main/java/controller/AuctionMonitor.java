@@ -20,7 +20,7 @@ public class AuctionMonitor {
 
     // Hàm kích hoạt hệ thống giám sát
     public void startMonitoring() {
-        System.out.println("The automatic auction monitoring system has been launched!");
+        System.out.println("[Monitor] The automatic auction monitoring system has been launched.");
 
         // Cấu hình: Bắt đầu ngay lập tức (delay = 0), lặp lại sau mỗi 10 giây
         scheduler.scheduleAtFixedRate(() -> {
@@ -36,7 +36,7 @@ public class AuctionMonitor {
                 }
             } catch (Exception e) {
                 // Bắt lỗi (Exception) để đảm bảo luồng ngầm không bị sập nếu có 1 phiên đấu giá bị lỗi dữ liệu
-                System.out.println(" Error during the bidding scan process: " + e.getMessage());
+                System.out.println("Error during the bidding scan process: " + e.getMessage());
             }
         }, 0, 10, TimeUnit.SECONDS);
     }
@@ -44,6 +44,6 @@ public class AuctionMonitor {
     // Hàm tắt hệ thống (dùng khi tắt Server)
     public void stopMonitoring() {
         scheduler.shutdown();
-        System.out.println(" The auction monitoring system has been turned off.");
+        System.out.println("[Monitor] The auction monitoring system has been turned off.");
     }
 }

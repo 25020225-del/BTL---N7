@@ -73,10 +73,10 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            System.out.println("Success");
+            System.out.println("[Database] Successfully initialized");
 
             } catch (SQLException e) {
-            System.err.println("Database initialization error: " + e.getMessage());
+            System.err.println("[Database] Initialization error: " + e.getMessage());
         }
     }
 }
