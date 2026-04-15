@@ -50,7 +50,7 @@ public class LoginController {
     // --- SỰ KIỆN KHI BẤM NÚT "REGISTER" ---
     @FXML
     protected void onRegisterViewButtonClick() {
-        System.out.println("[Log] Register UI view");
+        System.out.println("[Log]: Register UI view");
         // Xóa trắng ô nhập liệu trước khi chuyển đi cho gọn gàng
         tenDangNhap.clear();
         matKhauDangNhap.clear();

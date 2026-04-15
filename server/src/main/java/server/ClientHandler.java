@@ -49,6 +49,10 @@ public class ClientHandler implements Runnable {
                     String command = message.getCommand();
 
                     switch (command) {
+                        case "PING":
+                            sendResponse("PONG", "I am alive");
+                            break;
+
                         case "REGISTER":
                             handleRegister(message.getData());
                             break;

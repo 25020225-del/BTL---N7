@@ -86,7 +86,7 @@ public class RegisterController implements Initializable {
 
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("[Log] Login UI view");
+        System.out.println("[Log]: Login UI view");
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
