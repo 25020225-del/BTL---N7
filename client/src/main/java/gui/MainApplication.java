@@ -18,6 +18,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MainApplication extends Application {
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+
     public static Stage primalStage;
     public static Parent rootLogin;
     public static Parent rootRegister;
@@ -25,9 +28,15 @@ public class MainApplication extends Application {
 
     private Properties properties = new Properties();
 
-    // BIẾN QUẢN LÝ MẠNG DÙNG CHUNG TOÀN APP
+    // Network manager instance
     public static NetworkClient networkClient;
-    public static void main(String[] args) {
+
+    public static void main(String[] args){
+        System.out.println(ANSI_GREEN+"=================================");
+        System.out.println("|                               |");
+        System.out.println("|       CLIENT LOG TABLE        |");
+        System.out.println("|                               |");
+        System.out.println("================================="+ANSI_RESET);
         launch(args);
     }
 
@@ -40,22 +49,22 @@ public class MainApplication extends Application {
     public void initProperties() throws IOException {
         InputStream input = MainApplication.class.getResourceAsStream("config.properties");
         if (input != null) {
-            System.out.println("Đang đọc file cấu hình config.properties...");
+            System.out.println("[System]: Reading config");
             properties.load(input);
         } else {
-            System.err.println("Không tìm thấy file config.properties!");
+            System.out.println("[Error]: Cannot find config.properties");
         }
     }
 
-    // ==============================================================
-    // HÀM GỌI API TỰ ĐỘNG CẬP NHẬT IP (TỪ CODE CŨ CỦA BẠN)
-    // ==============================================================
     private String[] getServerAddress(String binId) {
         try {
-            URL url = new URL("https://api.jsonbin.io/v3/b/" + binId);
+            URL url = new URL("https://api.jsonbin.io/v3/b/"+binId);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("X-Bin-Meta", "false");
+
+            conn.setRequestProperty("Cache-Control", "no-cache");
+            conn.setRequestProperty("Pragma", "no-cache");
 
             BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
             StringBuilder content = new StringBuilder();
@@ -70,48 +79,45 @@ public class MainApplication extends Application {
             String port = "";
 
             Matcher ipMatcher = Pattern.compile("\"ip\"\\s*:\\s*\"([^\"]+)\"").matcher(jsonResponse);
-            if (ipMatcher.find()) { ip = ipMatcher.group(1); }
+            if (ipMatcher.find()) ip = ipMatcher.group(1);
 
             Matcher portMatcher = Pattern.compile("\"port\"\\s*:\\s*(\\d+)").matcher(jsonResponse);
-            if (portMatcher.find()) { port = portMatcher.group(1); }
+            if (portMatcher.find()) port = portMatcher.group(1);
 
-            if (!ip.isEmpty() && !port.isEmpty()) {
-                return new String[]{ip, port};
-            } else {
-                System.out.println("Lỗi dữ liệu từ JSONBin (Debug): " + jsonResponse);
+            if (!ip.isEmpty() && !port.isEmpty()) return new String[]{ip, port};
+            else {
+                System.out.println("[Error]: JSONBin Error: " + jsonResponse
+                                  +"\nUse the above for debugging");
             }
         } catch (Exception e) {
-            System.out.println("Lỗi gọi API: " + e.getMessage());
+            System.out.println("[Error]: API Data Error: " + e.getMessage());
         }
         return null;
     }
 
-    // ==============================================================
-    // KHỞI TẠO MẠNG (TÍCH HỢP TỰ DÒ IP)
-    // ==============================================================
+    //Creating connection to server
     public void openClient() {
-        // Lấy BIN_ID từ config, mặc định là ID của bạn
         String binID = properties.getProperty("binID", "69d4960b856a6821890813a2");
-        System.out.println("Đang lấy địa chỉ Server từ API...");
+        System.out.println("[System]: Getting server address");
 
         String[] serverInfo = getServerAddress(binID);
         String serverURL;
         int port;
 
-        // Nếu lấy được IP từ JSONBin thì dùng luôn
+        // Getting address from JSONBin
         if (serverInfo != null && serverInfo.length == 2) {
             serverURL = serverInfo[0];
             port = Integer.parseInt(serverInfo[1]);
-            System.out.println("Đã lấy được IP động thành công!");
+            System.out.println("[System]: Successfuly got server address");
         }
-        // Nếu đứt cáp quang, web sập hoặc mất mạng -> Dùng localhost làm dự phòng
+        // Localhost for contingency
         else {
-            System.err.println("Không lấy được IP từ API. Chuyển sang kết nối dự phòng (Fallback)...");
+            System.out.println("[Error]: Cannot get serveraddress. Switched to localhost (Fallback)");
             serverURL = properties.getProperty("fallbackServerURL", "localhost");
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("Tiến hành kết nối tới: " + serverURL + ":" + port);
+        System.out.println("[System]: Connecting to: " + serverURL + ":" + port);
         networkClient = new NetworkClient(serverURL, port);
     }
 

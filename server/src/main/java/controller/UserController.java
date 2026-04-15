@@ -93,14 +93,14 @@ public class UserController {
                 insertStmt.executeUpdate(); // Thực thi lưu vào ổ cứng
             }
 
-            System.out.println("System: " + name + " Your account registration was successful. 2FA Enabled.");
+            System.out.println("[System]: "+name+" has just created an account. 2FA Enabled.");
 
             // TRẢ VỀ THÀNH CÔNG KÈM THEO LINK QR ĐỂ CLIENT VẼ ẢNH
             return "SUCCESS|" + qrUrl;
 
         } catch (SQLException e) {
             e.printStackTrace();
-            return "Database Error: " + e.getMessage();
+            return "[Error]: Database Error: " + e.getMessage();
         }
     }
 
@@ -139,11 +139,11 @@ public class UserController {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Database error during login: " + e.getMessage());
+            System.out.println("[Error]: Database error during login: " + e.getMessage());
             e.printStackTrace();
         }
 
-        System.out.println("System: Login failed for username '" + userName + "'");
+        System.out.println("[System]: Login failed for username '" + userName + "'");
         return null;
     }
 }

@@ -12,6 +12,10 @@ import java.net.URI;
 import java.util.function.Consumer;
 
 public class NetworkClient {
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE = "\u001B[34m";
+
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
@@ -24,20 +28,39 @@ public class NetworkClient {
     private Consumer<NetworkMessage> onMessageReceived;
 
     public NetworkClient(String serverAddress, int port) {
-        try {
-            socket = new Socket(serverAddress, port);
-            out = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        int maxRetries = 5;
+        int tries = 0;
+        int retryDelayMs = 2000;
+        System.out.println("=====================================");
+        System.out.println("[System]: Trying to connect to server");
+        System.out.println("Attempting to connect"+ANSI_YELLOW);
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                socket = new Socket(serverAddress, port);
 
-            // Bật luồng chạy ngầm để liên tục nghe ngóng Server
-            Thread listenerThread = new Thread(this::listenToServer);
-            listenerThread.setDaemon(true); // Tự động tắt khi tắt App
-            listenerThread.start();
-            System.out.println("Đã kết nối tới Server thành công!");
+                out = new PrintWriter(socket.getOutputStream(), true);
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-        } catch (IOException e) {
-            System.err.println("Không thể kết nối tới Server: " + e.getMessage());
+                Thread listenerThread = new Thread(this::listenToServer);
+                listenerThread.setDaemon(true);
+                listenerThread.start();
+
+                System.out.println(ANSI_RESET+"[System]: Successfully connected");
+                return;
+
+            } catch (IOException e) {
+                System.out.println("Failed at "+(i+1)+". try: " + e.getMessage());
+                tries++;
+                if (i<maxRetries-1){
+                    try {
+                        Thread.sleep(retryDelayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
         }
+        System.out.println(ANSI_BLUE+"[System]: Failed after 5 tries. Opening offline application"+ANSI_RESET);
     }
 
     // 2. ÁO GIÁP: Kiểm tra xem ống nước đã được nối chưa
@@ -54,7 +77,7 @@ public class NetworkClient {
     public void sendMessage(String command, Object data) {
         // Chặn lỗi null ngay từ đầu nếu rớt mạng
         if (!isConnected()) {
-            System.err.println("Lỗi: Không thể gửi lệnh '" + command + "' vì chưa kết nối tới Server!");
+            System.out.println("[Error]: Cannot send command: '" + command + "' due to not connected");
             return;
         }
 
@@ -69,7 +92,7 @@ public class NetworkClient {
             out.flush(); // LỆNH BẮT BUỘC: Ép đẩy dữ liệu qua mạng ngay lập tức
 
         } catch (Exception e) {
-            System.err.println("Lỗi đóng gói JSON: " + e.getMessage());
+            System.out.println("[Error]: JSON package error: " + e.getMessage());
         }
     }
     // Luồng nghe ngóng Server
@@ -86,17 +109,17 @@ public class NetworkClient {
                     try {
                         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                             Desktop.getDesktop().browse(new URI(url));
-                            System.out.println("[System] Đang mở trình duyệt tới: " + url);
+                            System.out.println("[System]: Redirecting to: " + url);
                         }
                     } catch (Exception e) {
-                        System.out.println("[System] Không thể mở trình duyệt: " + e.getMessage());
+                        System.out.println("[Error]: Cannot redirect: " + e.getMessage());
                     }
                     continue; // Xử lý xong lệnh này thì bỏ qua các dòng dưới, quay lại vòng lặp
                 }
 
                 // 4. TÍNH NĂNG KICKED (BỊ ADMIN ĐUỔI)
                 if ("KICKED".equals(command)) {
-                    System.out.println("Bạn đã bị Admin đuổi khỏi Server. Lý do: " + response.getData());
+                    System.out.println("[System]: You have been kicked. Reason: " + response.getData());
                     // Vẫn đẩy về giao diện để hiện Pop-up cảnh báo (nếu có làm)
                     if (onMessageReceived != null) {
                         Platform.runLater(() -> onMessageReceived.accept(response));
@@ -113,7 +136,7 @@ public class NetworkClient {
                 }
             }
         } catch (IOException e) {
-            System.out.println("Mất kết nối với Server.");
+            System.out.println("[Error]: Lost connection to server: " + e.getMessage());
         }
     }
 }
