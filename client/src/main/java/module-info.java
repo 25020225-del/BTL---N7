@@ -9,6 +9,7 @@ module org.example.demo {
     requires common;
     requires jdk.compiler;
     requires java.sql;
+    requires com.google.zxing;
 
 
     opens org.example.demo to javafx.fxml;

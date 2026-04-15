@@ -8,7 +8,7 @@
 <?import javafx.scene.text.Font?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.demo.MainController">
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.demo.LoginController">
    <children>
       <Label layoutX="474.0" layoutY="66.0" prefHeight="163.0" prefWidth="366.0" text="LOGIN" textAlignment="CENTER">
          <font>
@@ -25,8 +25,11 @@
             <Font size="30.0" />
          </font>
       </Label>
-      <TextField fx:id="loginAccountName" layoutX="547.0" layoutY="320.0" prefHeight="38.0" prefWidth="277.0" />
-      <PasswordField fx:id="loginPasswordAccount" layoutX="547.0" layoutY="386.0" prefHeight="38.0" prefWidth="277.0" />
+
+      <TextField fx:id="tenDangNhap" layoutX="547.0" layoutY="320.0" prefHeight="38.0" prefWidth="277.0" />
+
+      <PasswordField fx:id="matKhauDangNhap" layoutX="547.0" layoutY="386.0" prefHeight="38.0" prefWidth="277.0" />
+
       <Button layoutX="623.0" layoutY="454.0" mnemonicParsing="false" onAction="#onMainViewButtonClick" prefHeight="42.0" prefWidth="199.0" text="Login">
          <font>
             <Font size="27.0" />

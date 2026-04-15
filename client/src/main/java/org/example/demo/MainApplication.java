@@ -1,21 +1,21 @@
 package org.example.demo;
 
+import client.NetworkClient;
 import javafx.application.Application;
-import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.ComboBox;
 import javafx.stage.Stage;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.net.Socket;
-import java.sql.SQLOutput;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MainApplication extends Application {
     public static Stage primalStage;
@@ -25,8 +25,87 @@ public class MainApplication extends Application {
 
     private Properties properties = new Properties();
 
-    public static void setNewScene(Parent k) throws IOException {
-        primalStage.getScene().setRoot(k);
+    // BIẾN QUẢN LÝ MẠNG DÙNG CHUNG TOÀN APP
+    public static NetworkClient networkClient;
+
+    public static void setNewScene(Parent k) {
+        if (primalStage != null && primalStage.getScene() != null) {
+            primalStage.getScene().setRoot(k);
+        }
+    }
+
+    public void initProperties() throws IOException {
+        InputStream input = MainApplication.class.getResourceAsStream("config.properties");
+        if (input != null) {
+            System.out.println("Reading config");
+            properties.load(input);
+        } else {
+            System.err.println("Cannot find config.properties");
+        }
+    }
+
+    private String[] getServerAddress(String binId) {
+        try {
+            URL url = new URL("https://api.jsonbin.io/v3/b/" + binId);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("X-Bin-Meta", "false");
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder content = new StringBuilder();
+            String inputLine;
+            while ((inputLine = in.readLine()) != null) {
+                content.append(inputLine);
+            }
+            in.close();
+
+            String jsonResponse = content.toString().trim();
+            String ip = "";
+            String port = "";
+
+            Matcher ipMatcher = Pattern.compile("\"ip\"\\s*:\\s*\"([^\"]+)\"").matcher(jsonResponse);
+            if (ipMatcher.find()) { ip = ipMatcher.group(1); }
+
+            Matcher portMatcher = Pattern.compile("\"port\"\\s*:\\s*(\\d+)").matcher(jsonResponse);
+            if (portMatcher.find()) { port = portMatcher.group(1); }
+
+            if (!ip.isEmpty() && !port.isEmpty()) {
+                return new String[]{ip, port};
+            } else {
+                System.out.println("JSONBin Error (Debug): " + jsonResponse);
+            }
+        } catch (Exception e) {
+            System.out.println("API Data Error: " + e.getMessage());
+        }
+        return null;
+    }
+
+    // ==============================================================
+    // KHỞI TẠO MẠNG (TÍCH HỢP TỰ DÒ IP)
+    // ==============================================================
+    public void openClient() {
+        String binID = properties.getProperty("binID", "69d4960b856a6821890813a2");
+        System.out.println("Getting server address");
+
+        String[] serverInfo = getServerAddress(binID);
+        String serverURL;
+        int port;
+
+        // Nếu lấy được IP từ JSONBin thì dùng luôn
+        if (serverInfo != null && serverInfo.length == 2) {
+            serverURL = serverInfo[0];
+            port = Integer.parseInt(serverInfo[1]);
+            System.out.println("Successfuly got server address");
+        }
+        // Dùng localhost làm dự phòng
+        else {
+            System.err.println("Cannot get serveraddress. Switched to localhost (Fallback)");
+            serverURL = properties.getProperty("fallbackServerURL", "localhost");
+            port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
+        }
+
+        System.out.println("Connecting to: " + serverURL + ":" + port);
+        networkClient = new NetworkClient(serverURL, port);
     }
 
     public void init() throws IOException {
@@ -38,36 +117,23 @@ public class MainApplication extends Application {
         rootRegister = fxmlRegister.load();
         rootMainView = fxmlMainView.load();
 
-        ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
-
-        if(registerRole!=null){
-            registerRole.getItems().clear();
-            registerRole.getItems().addAll("Bidder","Seller","Admin");
+        RegisterController registerCtrl = fxmlRegister.getController();
+        if (registerCtrl != null) {
+            registerCtrl.setNetworkClient(networkClient);
         }
-    }
 
-    public void initProperties() throws IOException {
-        InputStream input = MainApplication.class.getResourceAsStream("config.properties");
-        if (input != null) {
-            System.out.println("Reading properties file...");
-            properties.load(input);
+        LoginController loginCtrl = fxmlLogin.getController();
+        if (loginCtrl != null) {
+            loginCtrl.setNetworkClient(networkClient);
         }
-    }
-
-    public void openClient() throws IOException{
-        String serverURL = properties.getProperty("serverURL");
-        int port = Integer.parseInt(properties.getProperty("serverPort"));
-        Socket socket = new Socket(serverURL,port);
-        System.out.println(1);
-        OutputStream outputStream = socket.getOutputStream();
-        PrintWriter printWriter = new PrintWriter(outputStream);
     }
 
     @Override
     public void start(Stage stage) throws IOException {
-        init();
         initProperties();
         openClient();
+        init();
+
         primalStage = stage;
         Scene sceneLogin = new Scene(rootLogin);
         stage.setScene(sceneLogin);
