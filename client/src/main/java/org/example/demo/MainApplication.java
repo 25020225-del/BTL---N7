@@ -37,16 +37,13 @@ public class MainApplication extends Application {
     public void initProperties() throws IOException {
         InputStream input = MainApplication.class.getResourceAsStream("config.properties");
         if (input != null) {
-            System.out.println("Đang đọc file cấu hình config.properties...");
+            System.out.println("Reading config");
             properties.load(input);
         } else {
-            System.err.println("Không tìm thấy file config.properties!");
+            System.err.println("Cannot find config.properties");
         }
     }
 
-    // ==============================================================
-    // HÀM GỌI API TỰ ĐỘNG CẬP NHẬT IP (TỪ CODE CŨ CỦA BẠN)
-    // ==============================================================
     private String[] getServerAddress(String binId) {
         try {
             URL url = new URL("https://api.jsonbin.io/v3/b/" + binId);
@@ -75,10 +72,10 @@ public class MainApplication extends Application {
             if (!ip.isEmpty() && !port.isEmpty()) {
                 return new String[]{ip, port};
             } else {
-                System.out.println("Lỗi dữ liệu từ JSONBin (Debug): " + jsonResponse);
+                System.out.println("JSONBin Error (Debug): " + jsonResponse);
             }
         } catch (Exception e) {
-            System.out.println("Lỗi gọi API: " + e.getMessage());
+            System.out.println("API Data Error: " + e.getMessage());
         }
         return null;
     }
@@ -87,9 +84,8 @@ public class MainApplication extends Application {
     // KHỞI TẠO MẠNG (TÍCH HỢP TỰ DÒ IP)
     // ==============================================================
     public void openClient() {
-        // Lấy BIN_ID từ config, mặc định là ID của bạn
         String binID = properties.getProperty("binID", "69d4960b856a6821890813a2");
-        System.out.println("Đang lấy địa chỉ Server từ API...");
+        System.out.println("Getting server address");
 
         String[] serverInfo = getServerAddress(binID);
         String serverURL;
@@ -99,16 +95,16 @@ public class MainApplication extends Application {
         if (serverInfo != null && serverInfo.length == 2) {
             serverURL = serverInfo[0];
             port = Integer.parseInt(serverInfo[1]);
-            System.out.println("Đã lấy được IP động thành công!");
+            System.out.println("Successfuly got server address");
         }
-        // Nếu đứt cáp quang, web sập hoặc mất mạng -> Dùng localhost làm dự phòng
+        // Dùng localhost làm dự phòng
         else {
-            System.err.println("Không lấy được IP từ API. Chuyển sang kết nối dự phòng (Fallback)...");
+            System.err.println("Cannot get serveraddress. Switched to localhost (Fallback)");
             serverURL = properties.getProperty("fallbackServerURL", "localhost");
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("Tiến hành kết nối tới: " + serverURL + ":" + port);
+        System.out.println("Connecting to: " + serverURL + ":" + port);
         networkClient = new NetworkClient(serverURL, port);
     }
 

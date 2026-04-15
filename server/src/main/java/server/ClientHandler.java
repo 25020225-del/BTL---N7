@@ -36,17 +36,12 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            System.out.println("Một Client vô danh vừa kết nối.");
+            System.out.println("[System]: A client has connected");
 
             String jsonMessage;
             while ((jsonMessage = in.readLine()) != null) {
 
-                if ("STOP".equalsIgnoreCase(jsonMessage.trim()) || "QUIT".equalsIgnoreCase(jsonMessage.trim())) {
-                    System.out.println((clientName != null ? clientName : "Client vô danh") + " đã chủ động ngắt kết nối.");
-                    break;
-                }
-
-                System.out.println("Nhận JSON từ Client: " + jsonMessage);
+                System.out.println("[System]: Getting JSON from Client: " + jsonMessage);
 
                 try {
                     NetworkMessage message = mapper.readValue(jsonMessage, NetworkMessage.class);
@@ -62,17 +57,17 @@ public class ClientHandler implements Runnable {
                             break;
 
                         default:
-                            System.out.println("Nhận lệnh không xác định: " + command);
+                            System.out.println("[Error]: Unrecognized command: " + command);
                             sendResponse("ERROR", "Unrecognized command");
                             break;
                     }
                 } catch (Exception e) {
-                    System.err.println("Lỗi phân tích JSON: " + e.getMessage());
+                    System.err.println("[Error]: Invalid JSON format: " + e.getMessage());
                     sendResponse("ERROR", "Invalid JSON format");
                 }
             }
         } catch (IOException e) {
-            System.out.println("Mất kết nối với " + (clientName != null ? clientName : "Client vô danh"));
+            System.out.println("[System]: Lost connection with " + (clientName != null ? clientName : "unknown Client"));
         } finally {
             closeConnection();
         }
@@ -103,8 +98,8 @@ public class ClientHandler implements Runnable {
                 sendResponse("REGISTER_FAIL", result);
             }
         } catch (IllegalArgumentException e) {
-            System.err.println("Lỗi Mapping JSON sang User (Đăng ký): " + e.getMessage());
-            sendResponse("ERROR", "Dữ liệu đăng ký không hợp lệ!");
+            System.err.println("[Error]: Mapping JSON to User (Register): " + e.getMessage());
+            sendResponse("ERROR", "Invalid register data");
         }
     }
 
@@ -118,13 +113,13 @@ public class ClientHandler implements Runnable {
                 this.clientName = user.getName();
 
                 sendResponse("LOGIN_SUCCESS", user);
-                MultiThreadedServer.broadcast("[System]: " + this.clientName + " đã tham gia hệ thống đấu giá.", this);
+                MultiThreadedServer.broadcast("[System]: " + this.clientName + " has joined auction", this);
             } else {
-                sendResponse("LOGIN_FAIL", "Sai tài khoản hoặc mật khẩu");
+                sendResponse("LOGIN_FAIL", "Wrong username or password");
             }
         } catch (IllegalArgumentException e) {
-            System.err.println("Lỗi Mapping JSON sang User (Đăng nhập): " + e.getMessage());
-            sendResponse("ERROR", "Dữ liệu đăng nhập không hợp lệ!");
+            System.err.println("[Error]: Mapping JSON to User (Login): " + e.getMessage());
+            sendResponse("ERROR", "Invalid login data");
         }
     }
 
@@ -138,7 +133,7 @@ public class ClientHandler implements Runnable {
             String jsonOutput = mapper.writeValueAsString(responseMsg);
             out.println(jsonOutput);
         } catch (Exception e) {
-            System.err.println("Lỗi đóng gói JSON gửi đi: " + e.getMessage());
+            System.err.println("[Error]: JSON serialization: " + e.getMessage());
         }
     }
 
@@ -149,7 +144,7 @@ public class ClientHandler implements Runnable {
     private void closeConnection() {
         MultiThreadedServer.removeClient(this);
         if (clientName != null) {
-            MultiThreadedServer.broadcast("[System]: " + clientName + " đã ngắt kết nối.", this);
+            MultiThreadedServer.broadcast("[System]: " + clientName + " has stopped connecting", this);
         }
         try {
             if (socket != null && !socket.isClosed()) socket.close();

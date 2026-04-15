@@ -31,14 +31,14 @@ public class MultiThreadedServer {
 
     private static final String BIN_ID="69d4960b856a6821890813a2";
     private static final Dotenv dotenv = Dotenv.load();
-    private static final String JSONBIN_KEY = Dotenv.load().get("JSONBIN_API_KEY");
+    private static final String JSONBIN_KEY = dotenv.get("JSONBIN_API_KEY");
     private static final String LOCALTONET_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
     private static final List<ClientHandler> clients = new ArrayList<>();
 
-    // --- KHỞI TẠO BỘ CONTROLLER DÙNG CHUNG CHO TOÀN SERVER ---
+    // Controller set
     private static final UserController userController = new UserController();
 
-    // 1. THÊM DANH SÁCH ĐẤU GIÁ CHUNG CỦA TOÀN HỆ THỐNG
+    // System auction list
     public static final List<Auction> danhSachDauGia = new ArrayList<>();
 
     public static void updateBulletinBoard(String currentIp, int currentPort) {
@@ -61,16 +61,16 @@ public class MultiThreadedServer {
 
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
-                System.out.println("[JSONBin] New IP - Port synced: " + currentIp + ":" + currentPort);
+                System.out.println("[JSONBin]: New IP - Port synced: " + currentIp + ":" + currentPort);
             } else {
-                System.err.println("[JSONBin] Error:" + responseCode + " at URL: " + urlString);
+                System.err.println("[JSONBin]: Error:" + responseCode + " at URL: " + urlString);
 
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
                     System.err.println("Error details: " + br.readLine());
                 }
             }
         } catch (Exception e) {
-            System.err.println("[JSONBin] Connection Error: " + e.getMessage());
+            System.err.println("[JSONBin]: Connection Error: " + e.getMessage());
         }
     }
 
@@ -109,52 +109,51 @@ public class MultiThreadedServer {
                 return new String[]{ip, port};
             }
         } catch (Exception e) {
-            System.out.println("[System] Localtonet API Error: " + e.getMessage());
+            System.out.println("[System]: Localtonet API Error: " + e.getMessage());
         }
         return null;
     }
 
     public static void main(String[] args) {
-        final int PORT = 6969; // Port nội bộ của bạn
-
+        final int PORT = 6969;
         scheduler.scheduleAtFixedRate(()->{
             try {
-                System.out.println("\n[Auto-Sync] Checking new address from Localtonet...");
+                System.out.println("\n[Auto-Sync]: Checking new address from Localtonet...");
                 String[] publicAddress = getLocaltonetAddress();
                 if(publicAddress!=null){
                     String newIp=publicAddress[0];
                     int newPort=Integer.parseInt(publicAddress[1]);
                     updateBulletinBoard(newIp,newPort);
-                    System.out.println("[Auto-Sync] Synced onto JSONBin: "+newIp+ ":"+newPort);
+                    System.out.println("[Auto-Sync]: Synced onto JSONBin: "+newIp+ ":"+newPort);
                 }else{
-                    System.err.println("[Auto-Sync] Error: Cannot get info from Localtonet API.");
+                    System.err.println("[Auto-Sync]: Error: Cannot get info from Localtonet API.");
                 }
             }catch(Exception e){
-                System.err.println("[Auto-Sync] System error: "+e.getMessage());
+                System.err.println("[Auto-Sync]: System error: "+e.getMessage());
             }
         },0,5,TimeUnit.MINUTES);
 
-        System.out.println("[System] Getting address");
+        System.out.println("[System]: Getting address");
         String[] publicAddress = getLocaltonetAddress();
 
         if (publicAddress!=null){
             updateBulletinBoard(publicAddress[0], Integer.parseInt(publicAddress[1]));
         }else{
-            System.out.println("[System] Cannot get Localtonet address. Use localhost");
+            System.out.println("[System]: Cannot get Localtonet address. Use localhost");
             updateBulletinBoard("127.0.0.1", PORT);
         }
 
         database.DatabaseManager.initializeDatabase();
-        // 2. KHỞI TẠO VÀ BẬT HỆ THỐNG GIÁM SÁT THỜI GIAN
+        // 2. Initialize and activate time monitor
         AuctionMonitor monitor = new AuctionMonitor(danhSachDauGia);
         monitor.startMonitoring();
 
         // ShutdownHook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            broadcast("[System] Server is being closed. Every connecting client will be disconnected in a moment", null);
-            broadcast("[System] Server has been shutdown", null);
+            broadcast("[System]: Server is being closed. Every connecting client will be disconnected in a moment", null);
+            broadcast("[System]: Server has been shutdown", null);
 
-            // 3. Tắt monitor an toàn khi tắt Server
+            // 3. Safely turn off monitor
             monitor.stopMonitoring();
         }));
 
@@ -198,10 +197,10 @@ public class MultiThreadedServer {
         serverChatThread.start();
 
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("[System] Server is running on port " + PORT);
+            System.out.println("[System]: Server is running on port " + PORT);
             while (true) {
                 Socket socket = serverSocket.accept();
-                System.out.println("[System] New client connected from: " + socket.getInetAddress().getHostAddress());
+                System.out.println("[System]: New client connected from: " + socket.getInetAddress().getHostAddress());
 
                 // ĐÃ SỬA LỖI Ở ĐÂY: Truyền userController vào cho ClientHandler
                 ClientHandler clientHandler = new ClientHandler(socket, userController);
@@ -210,7 +209,7 @@ public class MultiThreadedServer {
                 new Thread(clientHandler).start();
             }
         } catch (IOException e) {
-            System.err.println("[System] Server Error: " + e.getMessage());
+            System.err.println("[System]: Server Error: " + e.getMessage());
         }
     }
 
@@ -234,10 +233,10 @@ public class MultiThreadedServer {
             }
         }
         if (targetToKick != null) {
-            System.out.println("[System] \"" + target + "\" has been kicked");
+            System.out.println("[System]: \"" + target + "\" has been kicked");
             targetToKick.forceDisconnect(reason);
         } else {
-            System.out.println("[System] ID \"" + target + "\" doesn't exist");
+            System.out.println("[System]: ID \"" + target + "\" doesn't exist");
         }
     }
 
@@ -253,10 +252,10 @@ public class MultiThreadedServer {
         ClientHandler targetToKick = null;
         if(i<clients.size()) targetToKick=clients.get(i);
         if (targetToKick != null) {
-            System.out.println("[System] \""+targetToKick.getClientName() + "\" has been kicked");
+            System.out.println("[System]: \""+targetToKick.getClientName() + "\" has been kicked");
             targetToKick.forceDisconnect(reason);
         } else {
-            System.out.println("[System] "+i+". client doesn't exist");
+            System.out.println("[System]: "+i+". client doesn't exist");
         }
     }
 }

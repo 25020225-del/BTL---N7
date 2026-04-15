@@ -33,10 +33,10 @@ public class NetworkClient {
             Thread listenerThread = new Thread(this::listenToServer);
             listenerThread.setDaemon(true); // Tự động tắt khi tắt App
             listenerThread.start();
-            System.out.println("Đã kết nối tới Server thành công!");
+            System.out.println("Successfully connected to server");
 
         } catch (IOException e) {
-            System.err.println("Không thể kết nối tới Server: " + e.getMessage());
+            System.err.println("Cannot connect to server: " + e.getMessage());
         }
     }
 
@@ -54,7 +54,7 @@ public class NetworkClient {
     public void sendMessage(String command, Object data) {
         // Chặn lỗi null ngay từ đầu nếu rớt mạng
         if (!isConnected()) {
-            System.err.println("Lỗi: Không thể gửi lệnh '" + command + "' vì chưa kết nối tới Server!");
+            System.err.println("Error: Cannot send command: '" + command + "' due to not connected");
             return;
         }
 
@@ -63,7 +63,7 @@ public class NetworkClient {
             String json = mapper.writeValueAsString(msg);
             out.println(json);
         } catch (Exception e) {
-            System.err.println("Lỗi đóng gói JSON: " + e.getMessage());
+            System.err.println("JSON package error: " + e.getMessage());
         }
     }
 
@@ -81,17 +81,17 @@ public class NetworkClient {
                     try {
                         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                             Desktop.getDesktop().browse(new URI(url));
-                            System.out.println("[System] Đang mở trình duyệt tới: " + url);
+                            System.out.println("Redirecting to: " + url);
                         }
                     } catch (Exception e) {
-                        System.out.println("[System] Không thể mở trình duyệt: " + e.getMessage());
+                        System.out.println("Cannot redirect: " + e.getMessage());
                     }
                     continue; // Xử lý xong lệnh này thì bỏ qua các dòng dưới, quay lại vòng lặp
                 }
 
                 // 4. TÍNH NĂNG KICKED (BỊ ADMIN ĐUỔI)
                 if ("KICKED".equals(command)) {
-                    System.out.println("Bạn đã bị Admin đuổi khỏi Server. Lý do: " + response.getData());
+                    System.out.println("You have been kicked. Reason: " + response.getData());
                     // Vẫn đẩy về giao diện để hiện Pop-up cảnh báo (nếu có làm)
                     if (onMessageReceived != null) {
                         Platform.runLater(() -> onMessageReceived.accept(response));
@@ -108,7 +108,7 @@ public class NetworkClient {
                 }
             }
         } catch (IOException e) {
-            System.out.println("Mất kết nối với Server.");
+            System.out.println("Lost connection to server: " + e.getMessage());
         }
     }
 }

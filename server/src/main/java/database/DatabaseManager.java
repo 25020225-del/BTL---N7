@@ -38,7 +38,7 @@ public class DatabaseManager {
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
-                System.out.println("[Database] Đã nâng cấp bảng users thành công (Thêm cột 2FA).");
+                System.out.println("[Database]: Successfully upgrade user table (Added 2FA Column)");
             } catch (SQLException e) {
                 // Sẽ ném lỗi nếu cột đã tồn tại rồi, ta bơ đi cho chương trình chạy tiếp
             }
@@ -90,10 +90,10 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            System.out.println("[Database] Successfully initialized");
+            System.out.println("[Database]: Successfully initialized");
 
         } catch (SQLException e) {
-            System.err.println("[Database] Initialization error: " + e.getMessage());
+            System.err.println("[Database]: Initialization error: " + e.getMessage());
         }
     }
 }
