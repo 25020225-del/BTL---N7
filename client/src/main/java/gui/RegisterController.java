@@ -1,4 +1,4 @@
-package org.example.demo;
+package gui;
 
 import client.NetworkClient;
 import model.User;
@@ -18,6 +18,8 @@ public class RegisterController implements Initializable {
     @FXML private TextField registerName;
     @FXML private TextField registerAccountName;
     @FXML private PasswordField registerPasswordAccount;
+    // ĐÃ THÊM: Ô nhập lại mật khẩu (Nhớ đặt fx:id trong Scene Builder là confirmPasswordAccount nhé)
+    @FXML private PasswordField confirmPasswordAccount;
     @FXML private ComboBox<String> registerRole;
     @FXML private Button registerButton;
     @FXML private Button changeLoginScene;
@@ -36,13 +38,23 @@ public class RegisterController implements Initializable {
 
     @FXML
     protected void onRegisterButtonClick() {
+        System.out.println("[Client] Đã bấm nút Đăng ký!");
         String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
+
+        // Tránh lỗi NullPointerException nếu chưa map confirmPasswordAccount
+        String confirmPass = (confirmPasswordAccount != null) ? confirmPasswordAccount.getText().trim() : "";
         String role = registerRole.getValue();
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty() || role == null) {
             showAlert(Alert.AlertType.WARNING, "Thiếu thông tin", "Vui lòng nhập đầy đủ các trường!");
+            return;
+        }
+
+        // ĐÃ THÊM: Kiểm tra 2 mật khẩu có khớp nhau không
+        if (confirmPasswordAccount != null && !password.equals(confirmPass)) {
+            showAlert(Alert.AlertType.WARNING, "Lỗi mật khẩu", "Mật khẩu xác nhận không khớp!");
             return;
         }
 
@@ -64,6 +76,7 @@ public class RegisterController implements Initializable {
 
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
+            System.out.println("[Client] Đang gửi cục data lên Server...");
             networkClient.sendMessage("REGISTER", newUser);
             registerButton.setDisable(true);
         } else {
@@ -84,40 +97,47 @@ public class RegisterController implements Initializable {
             String command = response.getCommand();
             Object data = response.getData();
 
-            if ("REGISTER_SUCCESS".equals(command)) {
+            // LOG RA CONSOLE ĐỂ BẮT BỆNH
+            System.out.println("=== NHẬN PHẢN HỒI TỪ SERVER ===");
+            System.out.println("Lệnh (Command): " + command);
+            System.out.println("Dữ liệu (Data): " + data);
 
-                // ==========================================
-                // HIỂN THỊ MÃ QR ĐỂ NGƯỜI DÙNG QUÉT (2FA)
-                // ==========================================
-                String qrUrl = (String) data; // Ép kiểu data thành chuỗi URL
-                Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
+            try {
+                if ("REGISTER_SUCCESS".equals(command)) {
+                    String qrUrl = (String) data;
+                    System.out.println("[Client] Link QR nhận được: " + qrUrl);
 
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Đăng ký thành công - QUAN TRỌNG");
-                alert.setHeaderText("Bắt buộc: Cài đặt Bảo mật 2 lớp (2FA)");
-                alert.setContentText("Hãy mở App Google/Microsoft Authenticator trên điện thoại và QUÉT MÃ QR NÀY NGAY BÂY GIỜ.\nBạn sẽ cần mã 6 số để đăng nhập ở lần tiếp theo.");
+                    // NẾU LỖI NÓ SẼ BẮN XUỐNG DƯỚI CATCH NGAY LẬP TỨC
+                    Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
 
-                // Gắn bức ảnh QR vào Pop-up
-                if (qrImage != null) {
-                    ImageView imageView = new ImageView(qrImage);
-                    alert.setGraphic(imageView);
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Đăng ký thành công - QUAN TRỌNG");
+                    alert.setHeaderText("Bắt buộc: Cài đặt Bảo mật 2 lớp (2FA)");
+                    alert.setContentText("Hãy mở App Authenticator trên điện thoại và QUÉT MÃ QR NÀY NGAY BÂY GIỜ.");
+
+                    if (qrImage != null) {
+                        ImageView imageView = new ImageView(qrImage);
+                        alert.setGraphic(imageView);
+                    }
+
+                    alert.showAndWait();
+
+                    registerName.clear();
+                    registerAccountName.clear();
+                    registerPasswordAccount.clear();
+                    if (confirmPasswordAccount != null) confirmPasswordAccount.clear();
+
+                    MainApplication.setNewScene(MainApplication.rootLogin);
+
+                } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
+                    String errorMsg = data != null ? data.toString() : "Lỗi không xác định";
+                    showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
                 }
-
-                // Hiển thị và đợi người dùng bấm OK
-                alert.showAndWait();
-
-                // Dọn dẹp form
-                registerName.clear();
-                registerAccountName.clear();
-                registerPasswordAccount.clear();
-
-                // Đã mở comment: Chuyển luôn sang màn hình Login cho mượt
-                MainApplication.setNewScene(MainApplication.rootLogin);
-
-                // Bổ sung thêm || "ERROR".equals(command) để bắt cả lỗi từ Jackson/Server
-            } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
-                String errorMsg = data != null ? data.toString() : "Lỗi không xác định";
-                showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
+            } catch (Exception e) {
+                // ĐÂY LÀ CHỖ CHÚNG TA BẮT QUẢ TANG LỖI
+                System.err.println("[Client] LỖI NGHIÊM TRỌNG KHI VẼ MÃ QR CỦA JAVAFX:");
+                e.printStackTrace();
+                showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đăng ký thành công trên DB nhưng không thể vẽ được mã QR. Vui lòng xem log Console!");
             }
         });
     }

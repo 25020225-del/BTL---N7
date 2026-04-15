@@ -1,12 +1,7 @@
-package org.example.demo;
+package gui;
 
-import com.sun.tools.javac.Main;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
-import org.w3c.dom.Text;
 
 import java.io.IOException;
 

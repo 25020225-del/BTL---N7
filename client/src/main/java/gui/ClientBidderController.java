@@ -1,4 +1,4 @@
-package org.example.demo;
+package gui;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.Bidder;

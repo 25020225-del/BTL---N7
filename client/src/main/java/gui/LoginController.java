@@ -1,4 +1,4 @@
-package org.example.demo;
+package gui;
 
 import client.NetworkClient;
 import javafx.fxml.FXML;

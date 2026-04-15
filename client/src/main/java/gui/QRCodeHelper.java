@@ -1,4 +1,4 @@
-package org.example.demo;
+package gui;
 
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.qrcode.QRCodeWriter;
