@@ -15,6 +15,7 @@ public class NetworkClient {
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_YELLOW = "\u001B[33m";
     public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_GREEN = "\u001B[32m";
 
     private Socket socket;
     private PrintWriter out;
@@ -38,19 +39,38 @@ public class NetworkClient {
             try {
                 socket = new Socket(serverAddress, port);
 
+                socket.setSoTimeout(3000);
+
                 out = new PrintWriter(socket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+                NetworkMessage pingMsg = new NetworkMessage();
+                out.println(mapper.writeValueAsString(pingMsg));
+
+                String responseLine = in.readLine();
+
+                if (responseLine==null) {
+                    throw new IOException("Server is not on");
+                }
+
+                NetworkMessage response = mapper.readValue(responseLine, NetworkMessage.class);
+                if (!"PONG".equals(response.getCommand())) {
+                    throw new IOException("Invalid format from server");
+                }
+
+                socket.setSoTimeout(0);
 
                 Thread listenerThread = new Thread(this::listenToServer);
                 listenerThread.setDaemon(true);
                 listenerThread.start();
 
-                System.out.println(ANSI_RESET+"[System]: Successfully connected");
+                System.out.println(ANSI_GREEN+"[System]: Successfully connected"+ANSI_RESET);
                 return;
 
             } catch (IOException e) {
                 System.out.println("Failed at "+(i+1)+". try: " + e.getMessage());
                 tries++;
+                try{if(socket!=null) socket.close();}catch(Exception ignored){}
                 if (i<maxRetries-1){
                     try {
                         Thread.sleep(retryDelayMs);

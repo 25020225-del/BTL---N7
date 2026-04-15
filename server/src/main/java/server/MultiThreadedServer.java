@@ -27,6 +27,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class MultiThreadedServer {
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private static final String BIN_ID="69d4960b856a6821890813a2";
@@ -67,64 +73,56 @@ public class MultiThreadedServer {
             if (responseCode == 200) {
                 System.out.println("[JSONBin]: New IP - Port synced: " + currentIp + ":" + currentPort);
             } else {
-                System.err.println("[JSONBin]: Error:" + responseCode + " at URL: " + urlString);
+                System.err.println("[JSONBin]: Error:" +ANSI_RED+ responseCode +ANSI_RESET+ " at URL: " +ANSI_YELLOW+ urlString+ANSI_RESET);
 
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
                     System.err.println("Error details: " + br.readLine());
                 }
             }
         } catch (Exception e) {
-            System.err.println("[JSONBin]: Connection Error: " + e.getMessage());
+            System.out.println("[JSONBin]: Connection Error: "+ANSI_RED+e.getMessage()+ANSI_RESET);
         }
     }
 
     private static String[] getLocaltonetAddress() {
         try {
-            URL url = new URL("https://localtonet.com/api/GetTunnels");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            URL url=new URL("https://localtonet.com/api/GetTunnels");
+            HttpURLConnection conn=(HttpURLConnection)url.openConnection();
             conn.setRequestMethod("GET");
-            conn.setRequestProperty("Authorization", "Bearer " + LOCALTONET_TOKEN);
+            conn.setRequestProperty("Authorization","Bearer "+LOCALTONET_TOKEN);
             conn.setRequestProperty("Accept", "application/json");
 
-            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            BufferedReader in=new BufferedReader(new InputStreamReader(conn.getInputStream()));
             String inputLine;
-            StringBuilder content = new StringBuilder();
-            while ((inputLine = in.readLine()) != null) {
-                content.append(inputLine);
-            }
+            StringBuilder content=new StringBuilder();
+            while((inputLine=in.readLine())!= null) content.append(inputLine);
             in.close();
 
-            String jsonResponse = content.toString();
+            String jsonResponse=content.toString();
 
-            String ip = "";
-            String port = "";
+            String ip="";
+            String port="";
 
-            Matcher ipMatcher = Pattern.compile("\"serverDomain\":\"([^\"]+)\"").matcher(jsonResponse);
-            if (ipMatcher.find()) {
-                ip = ipMatcher.group(1);
-            }
+            Matcher ipMatcher=Pattern.compile("\"serverDomain\":\"([^\"]+)\"").matcher(jsonResponse);
+            if(ipMatcher.find()) ip=ipMatcher.group(1);
 
-            Matcher portMatcher = Pattern.compile("\"serverPort\":(\\d+)").matcher(jsonResponse);
-            if (portMatcher.find()) {
-                port = portMatcher.group(1);
-            }
+            Matcher portMatcher=Pattern.compile("\"serverPort\":(\\d+)").matcher(jsonResponse);
+            if(portMatcher.find()) port=portMatcher.group(1);
 
-            if (!ip.isEmpty() && !port.isEmpty()) {
-                return new String[]{ip, port};
-            }
-        } catch (Exception e) {
-            System.out.println("[System]: Localtonet API Error: " + e.getMessage());
+            if(!ip.isEmpty()&&!port.isEmpty()) return new String[]{ip,port};
+        }catch(Exception e){
+            System.out.println("[System]: Localtonet API Error: "+ANSI_RED+e.getMessage()+ANSI_RESET);
         }
         return null;
     }
 
-    public static void main(String[] args) {
-        final int PORT = 6969;
-        scheduler.scheduleAtFixedRate(() -> {
+    public static void main(String[] args){
+        final int PORT=6969;
+        scheduler.scheduleAtFixedRate(()->{
             try {
-                String[] publicAddress = getLocaltonetAddress();
+                String[]publicAddress=getLocaltonetAddress();
 
-                if (publicAddress != null) {
+                if (publicAddress!=null) {
                     String newIp = publicAddress[0];
                     int newPort = Integer.parseInt(publicAddress[1]);
 
@@ -150,7 +148,7 @@ public class MultiThreadedServer {
         if (publicAddress!=null){
             updateBulletinBoard(publicAddress[0], Integer.parseInt(publicAddress[1]));
         }else{
-            System.out.println("[System]: Cannot get Localtonet address. Use localhost");
+            System.out.println(ANSI_BLUE+"[System]: Cannot get Localtonet address. Use localhost"+ANSI_RESET);
             updateBulletinBoard("127.0.0.1", PORT);
         }
 
@@ -220,15 +218,13 @@ public class MultiThreadedServer {
                 new Thread(clientHandler).start();
             }
         } catch (IOException e) {
-            System.err.println("[System]: Server Error: " + e.getMessage());
+            System.out.println("[System]: Server Error: "+ANSI_RED+e.getMessage()+ANSI_RESET);
         }
     }
 
     // Broadcasts a message to all connected clients except the sender
     public static void broadcast(String message, ClientHandler sender) {
-        for (ClientHandler client : clients) {
-            if (client != sender) client.sendMessage(message);
-        }
+        for (ClientHandler client:clients) if (client != sender) client.sendMessage(message);
     }
 
     public static void removeClient(ClientHandler clientHandler) {
@@ -244,10 +240,10 @@ public class MultiThreadedServer {
             }
         }
         if (targetToKick != null) {
-            System.out.println("[System]: \"" + target + "\" has been kicked");
+            System.out.println("[System]: \""+ANSI_YELLOW+target+ANSI_YELLOW+"\" has been kicked");
             targetToKick.forceDisconnect(reason);
         } else {
-            System.out.println("[System]: ID \"" + target + "\" doesn't exist");
+            System.out.println("[System]: ID \""+ANSI_YELLOW+target+ANSI_YELLOW+"\" doesn't exist");
         }
     }
 
@@ -255,13 +251,13 @@ public class MultiThreadedServer {
         int count = 0;
         if(clients.isEmpty()) System.out.println("[System]: There's no client");
         else {
-            System.out.println("=======================");
+            System.out.println(ANSI_GREEN+"======================="+ANSI_RESET);
             for (ClientHandler client : clients) {
                 System.out.println(count+". "+client.getClientName());
                 count++;
             }
             System.out.println("Total: "+count+" clients");
-            System.out.println("=======================");
+            System.out.println(ANSI_GREEN+"======================="+ANSI_RESET);
         }
     }
 
@@ -269,7 +265,7 @@ public class MultiThreadedServer {
         ClientHandler targetToKick = null;
         if(i<clients.size()) targetToKick=clients.get(i);
         if (targetToKick != null) {
-            System.out.println("[System]: \""+targetToKick.getClientName() + "\" has been kicked");
+            System.out.println("[System]: \""+ANSI_YELLOW+targetToKick.getClientName()+ANSI_YELLOW+"\" has been kicked");
             targetToKick.forceDisconnect(reason);
         } else {
             System.out.println("[System]: "+i+". client doesn't exist");
