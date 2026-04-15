@@ -61,12 +61,17 @@ public class NetworkClient {
         try {
             NetworkMessage msg = new NetworkMessage(command, data);
             String json = mapper.writeValueAsString(msg);
+
+            // ĐÃ THÊM: In ra console để theo dõi luồng mạng
+            System.out.println("[Network] Đang gửi đi: " + json);
+
             out.println(json);
+            out.flush(); // LỆNH BẮT BUỘC: Ép đẩy dữ liệu qua mạng ngay lập tức
+
         } catch (Exception e) {
             System.err.println("Lỗi đóng gói JSON: " + e.getMessage());
         }
     }
-
     // Luồng nghe ngóng Server
     private void listenToServer() {
         try {
