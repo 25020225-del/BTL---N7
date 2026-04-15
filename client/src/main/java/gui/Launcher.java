@@ -1,4 +1,4 @@
-package org.example.demo;
+package gui;
 
 import javafx.application.Application;
 

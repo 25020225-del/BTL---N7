@@ -1,6 +1,6 @@
 package client;
-import org.example.demo.Launcher;
-import client.Client;
+import gui.Launcher;
+
 public class ClientCallLauncher implements Runnable{
     public void run(){
         try {

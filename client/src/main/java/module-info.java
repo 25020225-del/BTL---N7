@@ -9,8 +9,9 @@ module org.example.demo {
     requires common;
     requires jdk.compiler;
     requires java.sql;
+    requires org.kordamp.ikonli.javafx;
 
 
-    opens org.example.demo to javafx.fxml;
-    exports org.example.demo;
+    opens gui to javafx.fxml;
+    exports gui;
 }

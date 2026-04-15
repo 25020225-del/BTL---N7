@@ -1,20 +1,13 @@
-package org.example.demo;
+package gui;
 
-import com.sun.tools.javac.Main;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
-import org.w3c.dom.Text;
 
 import java.io.IOException;
+import gui.ClientBidderController;
+import javafx.scene.layout.VBox;
 
 public class MainController {
-
-    @FXML private TextField registerName;
-    @FXML private TextField registerAccountName;
-    @FXML private TextField registerPasswordAccount;
 
     @FXML
     protected void onLoginViewButtonClick() throws IOException {
@@ -29,6 +22,7 @@ public class MainController {
     @FXML
     protected void onMainViewButtonClick() throws IOException {
         MainApplication.setNewScene(MainApplication.rootMainView);
+        ClientBidderController.start();
     }
 
     @FXML

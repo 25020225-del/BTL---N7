@@ -1,20 +1,14 @@
-package org.example.demo;
+package gui;
 
 import javafx.application.Application;
-import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.net.Socket;
-import java.sql.SQLOutput;
 import java.util.Properties;
 
 public class MainApplication extends Application {
