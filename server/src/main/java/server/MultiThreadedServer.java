@@ -31,7 +31,7 @@ public class MultiThreadedServer {
 
     private static final String BIN_ID="69d4960b856a6821890813a2";
     private static final Dotenv dotenv = Dotenv.load();
-    private static final String JSONBIN_KEY = dotenv.get("JSONBIN_API_KEY");
+    private static final String JSONBIN_KEY = Dotenv.load().get("JSONBIN_API_KEY");
     private static final String LOCALTONET_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
     private static final List<ClientHandler> clients = new ArrayList<>();
 
