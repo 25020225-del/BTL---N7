@@ -18,10 +18,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MainApplication extends Application {
-    public static final String ANSI_RESET = "\u001B[0m";
-    public static final String ANSI_GREEN = "\u001B[32m";
-    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
+    public static final String ANSI_RED    = "\u001B[31m";
     public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
 
     public static Stage primalStage;
     public static Parent rootLogin;
@@ -92,7 +93,7 @@ public class MainApplication extends Application {
                                   +ANSI_YELLOW+"\nUse the above for debugging"+ANSI_RESET);
             }
         } catch (Exception e) {
-            System.out.println(ANSI_RED+"[Error]: API Data Error: " + e.getMessage());
+            System.out.println("[Error]: API Data Error: "+ANSI_RED+e.getMessage()+ANSI_RESET);
         }
         return null;
     }
@@ -114,12 +115,12 @@ public class MainApplication extends Application {
         }
         // Localhost for contingency
         else {
-            System.out.println(ANSI_RED+"[Error]"+ANSI_RESET+": Cannot get serveraddress. Switched to localhost (Fallback)");
+            System.out.println(ANSI_BLUE+"[Error]"+": Cannot get serveraddress. Switched to localhost (Fallback)"+ANSI_RESET);
             serverURL = properties.getProperty("fallbackServerURL", "localhost");
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("[System]: Connecting to: " + serverURL + ":" + port);
+        System.out.println("[System]: Connecting to: "+ANSI_YELLOW+serverURL+ANSI_RESET+":"+ANSI_YELLOW+port+ANSI_RESET);
         networkClient = new NetworkClient(serverURL, port);
     }
 

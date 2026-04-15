@@ -128,7 +128,7 @@ public class UserController {
                 String role = rs.getString("role");
                 boolean isGood = rs.getInt("is_good") == 1;
 
-                System.out.println("[System]: " + name + " (" + role + ") logged in successful.");
+                System.out.println("[System]: \""+name+"\" ("+role+") logged in successful.");
 
                 if (role.equalsIgnoreCase("ADMIN")) {
                     return new Admin(id, userName, password, name);

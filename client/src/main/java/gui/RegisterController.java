@@ -38,7 +38,7 @@ public class RegisterController implements Initializable {
 
     @FXML
     protected void onRegisterButtonClick() {
-        System.out.println("[Log] Clicked on register button");
+        System.out.println("[Log]: Clicked on register button");
         String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
@@ -97,7 +97,6 @@ public class RegisterController implements Initializable {
             String command = response.getCommand();
             Object data = response.getData();
 
-            // LOG RA CONSOLE ĐỂ BẮT BỆNH
             System.out.println("=== SERVER RESPONSE ===");
             System.out.println("Command: " + command);
             System.out.println("Data: " + data);
@@ -107,7 +106,6 @@ public class RegisterController implements Initializable {
                     String qrUrl = (String) data;
                     System.out.println("Link QR: " + qrUrl);
 
-                    // NẾU LỖI NÓ SẼ BẮN XUỐNG DƯỚI CATCH NGAY LẬP TỨC
                     Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
 
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -134,7 +132,7 @@ public class RegisterController implements Initializable {
                     showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
                 }
             } catch (Exception e) {
-                System.out.println("[Client]: QR code generation error:");
+                System.out.println("[System]: QR code generation error:");
                 e.printStackTrace();
                 showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đăng ký thành công trên DB nhưng không thể vẽ được mã QR. Vui lòng xem log Console!");
             }
