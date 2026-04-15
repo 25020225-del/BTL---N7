@@ -54,20 +54,10 @@ public class MainApplication extends Application {
         }
     }
 
-    public void openClient() throws IOException{
-        String serverURL = properties.getProperty("serverURL");
-        int port = Integer.parseInt(properties.getProperty("serverPort"));
-        Socket socket = new Socket(serverURL,port);
-        System.out.println(1);
-        OutputStream outputStream = socket.getOutputStream();
-        PrintWriter printWriter = new PrintWriter(outputStream);
-    }
-
     @Override
     public void start(Stage stage) throws IOException {
         init();
         initProperties();
-        openClient();
         primalStage = stage;
         Scene sceneLogin = new Scene(rootLogin);
         stage.setScene(sceneLogin);
