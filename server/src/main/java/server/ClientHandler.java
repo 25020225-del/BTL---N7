@@ -18,7 +18,6 @@ public class ClientHandler implements Runnable {
     private UserController userController;
     private User loggedInUser = null;
 
-    // --- ĐÃ SỬA CHỖ NÀY: Dạy cho Jackson biết cách "bơ" đi những biến thừa ---
     private final ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -93,13 +92,17 @@ public class ClientHandler implements Runnable {
                     regUser.getRole()
             );
 
-            if ("SUCCESS".equals(result)) {
-                sendResponse("REGISTER_SUCCESS", regUser.getName());
+            // --- ĐÃ SỬA: Bắt chuỗi SUCCESS chứa QR Link ---
+            if (result != null && result.startsWith("SUCCESS|")) {
+                // Cắt lấy phần đường link QR nằm ở phía sau dấu |
+                String qrUrl = result.split("\\|")[1];
+
+                // Gửi nguyên cái link QR này về làm data cho Client
+                sendResponse("REGISTER_SUCCESS", qrUrl);
             } else {
                 sendResponse("REGISTER_FAIL", result);
             }
         } catch (IllegalArgumentException e) {
-            // --- ĐÃ THÊM LOG ĐỂ BẮT BỆNH NẾU DỮ LIỆU BỊ SAI ---
             System.err.println("Lỗi Mapping JSON sang User (Đăng ký): " + e.getMessage());
             sendResponse("ERROR", "Dữ liệu đăng ký không hợp lệ!");
         }

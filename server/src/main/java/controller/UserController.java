@@ -15,6 +15,11 @@ import java.sql.SQLException;
 public class UserController {
 
     // ==========================================
+    // KHAI BÁO MÁY PHÁT MÃ 2FA (TOTP)
+    // ==========================================
+    private final service.TOTPService totpService = new service.TOTPService();
+
+    // ==========================================
     // HÀM BẢO MẬT: BĂM MẬT KHẨU BẰNG SHA-256
     // ==========================================
     private String hashPassword(String password) {
@@ -38,7 +43,7 @@ public class UserController {
     }
 
     // ==========================================
-    // 1. TÍNH NĂNG ĐĂNG KÝ (Register with SQLite & SHA-256)
+    // 1. TÍNH NĂNG ĐĂNG KÝ (Đã tích hợp mã hóa và 2FA)
     // ==========================================
     public synchronized String register(String userName, String password, String name, String role) {
 
@@ -51,7 +56,9 @@ public class UserController {
         }
 
         String checkSql = "SELECT 1 FROM users WHERE username = ?";
-        String insertSql = "INSERT INTO users (id, username, password, name, role, is_good) VALUES (?, ?, ?, ?, ?, 0)";
+
+        // ĐÃ SỬA: Bổ sung totp_secret (dấu ? thứ 6) và ép is_totp_enabled = 1
+        String insertSql = "INSERT INTO users (id, username, password, name, role, is_good, totp_secret, is_totp_enabled) VALUES (?, ?, ?, ?, ?, 0, ?, 1)";
 
         try (Connection conn = DatabaseManager.getConnection()) {
 
@@ -66,22 +73,30 @@ public class UserController {
 
             // 2. Tạo ID và Lưu vào Database SQLite
             String newId = "U-" + System.currentTimeMillis();
-
-            // BƯỚC NÂNG CẤP: Băm mật khẩu người dùng nhập vào
             String hashedPassword = hashPassword(password);
+
+            // 3. TẠO CHÌA KHÓA BÍ MẬT 2FA
+            String secretKey = totpService.createSecretKey();
+            // Lấy link QR để gửi về Client
+            String qrUrl = totpService.getQRUrl(userName, secretKey);
 
             try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
                 insertStmt.setString(1, newId);
                 insertStmt.setString(2, userName);
-                insertStmt.setString(3, hashedPassword); // Lưu chuỗi đã băm thay vì mật khẩu gốc
+                insertStmt.setString(3, hashedPassword);
                 insertStmt.setString(4, name);
                 insertStmt.setString(5, role.toUpperCase());
+
+                // LƯU CHÌA KHÓA 2FA VÀO DATABASE
+                insertStmt.setString(6, secretKey);
 
                 insertStmt.executeUpdate(); // Thực thi lưu vào ổ cứng
             }
 
-            System.out.println("System: " + name + " Your account registration was successful. " + role);
-            return "SUCCESS";
+            System.out.println("System: " + name + " Your account registration was successful. 2FA Enabled.");
+
+            // TRẢ VỀ THÀNH CÔNG KÈM THEO LINK QR ĐỂ CLIENT VẼ ẢNH
+            return "SUCCESS|" + qrUrl;
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -90,11 +105,10 @@ public class UserController {
     }
 
     // ==========================================
-    // 2. TÍNH NĂNG ĐĂNG NHẬP (Login with SQLite & SHA-256)
+    // 2. TÍNH NĂNG ĐĂNG NHẬP (Tạm thời giữ nguyên logic cũ)
     // ==========================================
     public User login(String userName, String password) {
 
-        // Tìm người dùng trong DB có khớp tài khoản & mật khẩu không
         String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
@@ -102,28 +116,24 @@ public class UserController {
 
             pstmt.setString(1, userName);
 
-            // BƯỚC NÂNG CẤP: Băm mật khẩu nhập vào để so sánh với chuỗi trong DB
+            // Băm mật khẩu nhập vào để so sánh
             String hashedPassword = hashPassword(password);
             pstmt.setString(2, hashedPassword);
 
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                // Đọc dữ liệu từ ổ cứng lên
                 String id = rs.getString("id");
                 String name = rs.getString("name");
                 String role = rs.getString("role");
-
-                // ĐÃ SỬA: Bỏ dòng đọc rating, chỉ giữ lại is_good
                 boolean isGood = rs.getInt("is_good") == 1;
 
                 System.out.println("System: " + name + " (" + role + ") logged in successful.");
 
-                // Đóng gói thành đối tượng User/Admin để trả về cho hệ thống
                 if (role.equalsIgnoreCase("ADMIN")) {
-                    return new Admin(id, userName, password, name); // Có thể giữ nguyên password truyền vào Admin object
+                    return new Admin(id, userName, password, name);
                 } else {
-                    User user = new User(id, userName, password, name, role); // Có thể giữ nguyên password truyền vào User object
+                    User user = new User(id, userName, password, name, role);
                     user.setGood(isGood);
                     return user;
                 }
@@ -133,7 +143,6 @@ public class UserController {
             e.printStackTrace();
         }
 
-        // Nếu không tìm thấy kết quả hoặc bị lỗi
         System.out.println("System: Login failed for username '" + userName + "'");
         return null;
     }
