@@ -8,7 +8,7 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.demo.RegisterController">
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.RegisterController">
    <children>
       <Label layoutX="487.0" layoutY="71.0" prefHeight="101.0" prefWidth="343.0" text="REGISTER">
          <font>
@@ -55,6 +55,7 @@
       <TextField fx:id="registerAccountName" layoutX="456.0" layoutY="245.0" prefHeight="27.0" prefWidth="379.0" />
       <ComboBox fx:id="registerRole" layoutX="456.0" layoutY="406.0" prefHeight="25.0" prefWidth="150.0" />
       <PasswordField fx:id="registerPasswordAccount" layoutX="456.0" layoutY="296.0" prefHeight="38.0" prefWidth="379.0" />
-      <PasswordField fx:id="registerPasswordAccountChecker" layoutX="456.0" layoutY="350.0" prefHeight="38.0" prefWidth="379.0" />
+
+      <PasswordField fx:id="confirmPasswordAccount" layoutX="456.0" layoutY="350.0" prefHeight="38.0" prefWidth="379.0" />
    </children>
 </AnchorPane>

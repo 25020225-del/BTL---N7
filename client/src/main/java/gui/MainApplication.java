@@ -1,4 +1,4 @@
-package org.example.demo;
+package gui;
 
 import client.NetworkClient;
 import javafx.application.Application;
@@ -27,6 +27,9 @@ public class MainApplication extends Application {
 
     // BIẾN QUẢN LÝ MẠNG DÙNG CHUNG TOÀN APP
     public static NetworkClient networkClient;
+    public static void main(String[] args) {
+        launch(args);
+    }
 
     public static void setNewScene(Parent k) {
         if (primalStage != null && primalStage.getScene() != null) {
