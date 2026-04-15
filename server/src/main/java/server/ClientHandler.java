@@ -13,7 +13,8 @@ public class ClientHandler implements Runnable {
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
-    private String clientName;
+    private volatile String clientName;
+    private int cNC=0;
 
     private UserController userController;
     private User loggedInUser = null;
@@ -94,6 +95,7 @@ public class ClientHandler implements Runnable {
 
                 // Gửi nguyên cái link QR này về làm data cho Client
                 sendResponse("REGISTER_SUCCESS", qrUrl);
+                this.clientName = regUser.getUserName();
             } else {
                 sendResponse("REGISTER_FAIL", result);
             }
@@ -110,7 +112,7 @@ public class ClientHandler implements Runnable {
 
             if (user != null) {
                 this.loggedInUser = user;
-                this.clientName = user.getName();
+                this.clientName = user.getUserName();
 
                 sendResponse("LOGIN_SUCCESS", user);
                 MultiThreadedServer.broadcast("[System]: " + this.clientName + " has joined auction", this);
@@ -153,7 +155,9 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    public String getClientName() { return this.clientName; }
+    public String getClientName(){
+        return this.clientName!=null?this.clientName:"Guest"+String.valueOf(cNC++);
+    }
 
     public void forceDisconnect(String reason) {
         sendResponse("KICKED", reason);

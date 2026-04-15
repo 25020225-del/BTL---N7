@@ -1,7 +1,7 @@
 package server;
 
 import controller.AuctionMonitor;
-import controller.UserController; // THÊM IMPORT NÀY
+import controller.UserController;
 import model.Auction;
 
 import java.io.BufferedReader;
@@ -33,7 +33,11 @@ public class MultiThreadedServer {
     private static final Dotenv dotenv = Dotenv.load();
     private static final String JSONBIN_KEY = dotenv.get("JSONBIN_API_KEY");
     private static final String LOCALTONET_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
-    private static final List<ClientHandler> clients = new ArrayList<>();
+
+    private static final List<ClientHandler> clients = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    private static String lastSyncedIp = "";
+    private static int lastSyncedPort = -1;
 
     // Controller set
     private static final UserController userController = new UserController();
@@ -116,22 +120,29 @@ public class MultiThreadedServer {
 
     public static void main(String[] args) {
         final int PORT = 6969;
-        scheduler.scheduleAtFixedRate(()->{
+        scheduler.scheduleAtFixedRate(() -> {
             try {
-                System.out.println("\n[Auto-Sync]: Checking new address from Localtonet...");
                 String[] publicAddress = getLocaltonetAddress();
-                if(publicAddress!=null){
-                    String newIp=publicAddress[0];
-                    int newPort=Integer.parseInt(publicAddress[1]);
-                    updateBulletinBoard(newIp,newPort);
-                    System.out.println("[Auto-Sync]: Synced onto JSONBin: "+newIp+ ":"+newPort);
-                }else{
-                    System.err.println("[Auto-Sync]: Error: Cannot get info from Localtonet API.");
+
+                if (publicAddress != null) {
+                    String newIp = publicAddress[0];
+                    int newPort = Integer.parseInt(publicAddress[1]);
+
+                    if (!newIp.equals(lastSyncedIp) || newPort != lastSyncedPort) {
+                        System.out.println("\n[Auto-Sync]: Localtonet address change detected. Updating JSONBin");
+                        updateBulletinBoard(newIp, newPort);
+
+                        lastSyncedIp = newIp;
+                        lastSyncedPort = newPort;
+                        System.out.println("[Auto-Sync]: Successfully synced: " + newIp + ":" + newPort);
+                    }
+                } else {
+                    System.out.println("[Auto-Sync]: Error: Cannot call API");
                 }
-            }catch(Exception e){
-                System.err.println("[Auto-Sync]: System error: "+e.getMessage());
+            } catch (Exception e) {
+                System.err.println("[Auto-Sync]: System error: " + e.getMessage());
             }
-        },0,5,TimeUnit.MINUTES);
+        }, 0, 30, TimeUnit.SECONDS);
 
         System.out.println("[System]: Getting address");
         String[] publicAddress = getLocaltonetAddress();
@@ -242,9 +253,15 @@ public class MultiThreadedServer {
 
     public static void getClientList(){
         int count = 0;
-        for (ClientHandler client : clients) {
-            System.out.println(count+". "+client.getClientName());
-            count++;
+        if(clients.isEmpty()) System.out.println("[System]: There's no client");
+        else {
+            System.out.println("=======================");
+            for (ClientHandler client : clients) {
+                System.out.println(count+". "+client.getClientName());
+                count++;
+            }
+            System.out.println("Total: "+count+" clients");
+            System.out.println("=======================");
         }
     }
 

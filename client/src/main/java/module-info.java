@@ -12,6 +12,6 @@ module org.example.demo {
     requires com.google.zxing;
 
 
-    opens org.example.demo to javafx.fxml;
-    exports org.example.demo;
+    opens gui to javafx.fxml;
+    exports gui;
 }

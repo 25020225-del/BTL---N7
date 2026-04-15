@@ -1,9 +1,7 @@
-package org.example.demo;
+package gui;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -36,11 +34,11 @@ public class ClientRegister {
             return;
         }
         if(registerAccountName.getText().trim().isEmpty()){
-            AlertHelper.showErrorAlert("Register Failder","Account name not entered");
+            AlertHelper.showErrorAlert("Register Failed","Account name not entered");
             return;
         }
         if(registerPasswordAccount.getText().trim().isEmpty()){
-            AlertHelper.showErrorAlert("Register Failder","Password not entered");
+            AlertHelper.showErrorAlert("Register Failed","Password not entered");
             return;
         }
         if(!registerPasswordAccount.getText().equals(registerPasswordAccountChecker.getText())) {

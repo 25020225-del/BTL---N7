@@ -1,4 +1,4 @@
-package org.example.demo;
+package gui;
 
 import client.NetworkClient;
 import javafx.fxml.FXML;
@@ -50,7 +50,7 @@ public class LoginController {
     // --- SỰ KIỆN KHI BẤM NÚT "REGISTER" ---
     @FXML
     protected void onRegisterViewButtonClick() {
-        System.out.println("Chuyển sang màn hình Đăng ký...");
+        System.out.println("[Log] Register UI view");
         // Xóa trắng ô nhập liệu trước khi chuyển đi cho gọn gàng
         tenDangNhap.clear();
         matKhauDangNhap.clear();
@@ -67,9 +67,10 @@ public class LoginController {
             // Lấy thông tin User thật từ Server trả về (nếu nhóm bạn cần dùng Tên, Role để hiện lên giao diện)
             // Object userData = response.getData();
 
-            System.out.println("Đăng nhập thành công, chuyển sang màn hình chính!");
+            System.out.println("[System]: Successfully logged in");
 
             // Chuyển sang màn hình MainView
+            System.out.println("[System]: Main UI view");
             MainApplication.setNewScene(MainApplication.rootMainView);
 
         } else if ("LOGIN_FAIL".equals(command)) {
