@@ -6,6 +6,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import org.w3c.dom.Text;
 
 import java.io.IOException;
 
@@ -17,20 +18,12 @@ public class MainController {
 
     @FXML
     protected void onLoginViewButtonClick() throws IOException {
-        MainApplication.setNewScene(MainApplication.rootLogin);
+        ClientLogin.onLoginViewButtonClick();
     }
 
     @FXML
     protected void onRegisterViewButtonClick() throws IOException {
-        TextField registerName = (TextField) MainApplication.rootRegister.lookup("#registerName");
-        TextField registerAccountName = (TextField) MainApplication.rootRegister.lookup("#registerAccountName");
-        PasswordField registerPasswordAccount = (PasswordField) MainApplication.rootRegister.lookup("#registerPasswordAccount");
-        ComboBox<String> registerRole = (ComboBox<String>) MainApplication.rootRegister.lookup("#registerRole");
-        registerName.setText("");
-        registerAccountName.setText("");
-        registerPasswordAccount.setText("");
-        registerRole.setValue(null);
-        MainApplication.setNewScene(MainApplication.rootRegister);
+        ClientRegister.onRegisterViewButtonClick();
     }
 
     @FXML
@@ -40,7 +33,6 @@ public class MainController {
 
     @FXML
     protected void onRegisterButtonClick() throws IOException {
-        FXMLLoader fxmlRegister = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
-        Scene sceneRegister = new Scene(fxmlRegister.load());
+        ClientRegister.onRegisterButtonClick();
     }
 }

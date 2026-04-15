@@ -1,77 +1,76 @@
 package org.example.demo;
 
-import client.NetworkClient; // Import file mạng của bạn
 import javafx.application.Application;
+import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.ComboBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.sql.SQLOutput;
+import java.util.Properties;
 
 public class MainApplication extends Application {
-
-    // Các biến chứa giao diện dùng chung (kỹ thuật Pre-load của bạn)
     public static Stage primalStage;
     public static Parent rootLogin;
     public static Parent rootRegister;
     public static Parent rootMainView;
 
-    // --- Biến chứa kết nối Mạng dùng chung cho toàn App ---
-    public static NetworkClient networkClient;
+    private Properties properties = new Properties();
 
-    // Hàm chuyển màn hình nhanh (gọi từ bất kỳ Controller nào)
-    public static void setNewScene(Parent newRoot) {
-        if (primalStage != null && primalStage.getScene() != null) {
-            primalStage.getScene().setRoot(newRoot);
+    public static void setNewScene(Parent k) throws IOException {
+        primalStage.getScene().setRoot(k);
+    }
+
+    public void init() throws IOException {
+        FXMLLoader fxmlLogin = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
+        FXMLLoader fxmlRegister = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
+        FXMLLoader fxmlMainView = new FXMLLoader(MainApplication.class.getResource("MainView.fxml"));
+
+        rootLogin = fxmlLogin.load();
+        rootRegister = fxmlRegister.load();
+        rootMainView = fxmlMainView.load();
+
+        ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
+
+        if(registerRole!=null){
+            registerRole.getItems().clear();
+            registerRole.getItems().addAll("Bidder","Seller","Admin");
         }
+    }
+
+    public void initProperties() throws IOException {
+        InputStream input = MainApplication.class.getResourceAsStream("config.properties");
+        if (input != null) {
+            System.out.println("Reading properties file...");
+            properties.load(input);
+        }
+    }
+
+    public void openClient() throws IOException{
+        String serverURL = properties.getProperty("serverURL");
+        int port = Integer.parseInt(properties.getProperty("serverPort"));
+        Socket socket = new Socket(serverURL,port);
+        System.out.println(1);
+        OutputStream outputStream = socket.getOutputStream();
+        PrintWriter printWriter = new PrintWriter(outputStream);
     }
 
     @Override
     public void start(Stage stage) throws IOException {
+        init();
+        initProperties();
+        openClient();
         primalStage = stage;
-
-        // 1. KHỞI TẠO MẠNG NGAY KHI VỪA BẬT APP
-        networkClient = new NetworkClient("localhost", 6969);
-
-        // 2. LOAD GIAO DIỆN ĐĂNG NHẬP
-        FXMLLoader fxmlLogin = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
-        rootLogin = fxmlLogin.load();
-
-        // Lấy LoginController ra và truyền mạng vào
-        LoginController loginCtrl = fxmlLogin.getController();
-        if (loginCtrl != null) {
-            loginCtrl.setNetworkClient(networkClient);
-        }
-
-        // 3. LOAD GIAO DIỆN ĐĂNG KÝ
-        FXMLLoader fxmlRegister = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
-        rootRegister = fxmlRegister.load();
-        // Bơm mạng vào cho RegisterController để nó biết đường gửi JSON
-        RegisterController registerCtrl = fxmlRegister.getController();
-        if (registerCtrl != null) {
-            registerCtrl.setNetworkClient(networkClient);
-        }
-
-        // 4. LOAD GIAO DIỆN CHÍNH (MAIN VIEW)
-        FXMLLoader fxmlMainView = new FXMLLoader(MainApplication.class.getResource("MainView.fxml"));
-        rootMainView = fxmlMainView.load();
-        // Tương tự, bơm mạng vào cho MainController sau này
-        // MainController mainCtrl = fxmlMainView.getController();
-        // if (mainCtrl != null) mainCtrl.setNetworkClient(networkClient);
-
-        // ĐÃ XÓA ĐOẠN COMBOBOX (.lookup) VÌ REGISTER_CONTROLLER ĐÃ TỰ LO RỒI
-
-        // 5. HIỂN THỊ MÀN HÌNH ĐẦU TIÊN LÀ LOGIN
-        Scene scene = new Scene(rootLogin);
-        stage.setScene(scene);
-        stage.setTitle("Hệ thống Đấu giá BTL---N7");
+        Scene sceneLogin = new Scene(rootLogin);
+        stage.setScene(sceneLogin);
         stage.show();
-    }
-
-    @Override
-    public void stop() throws Exception {
-        System.out.println("Ứng dụng Client đang tắt...");
-        super.stop();
     }
 }
