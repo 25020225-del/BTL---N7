@@ -38,7 +38,7 @@ public class RegisterController implements Initializable {
 
     @FXML
     protected void onRegisterButtonClick() {
-        System.out.println("[Client] Đã bấm nút Đăng ký!");
+        System.out.println("[Log] Clicked on register button");
         String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
@@ -76,7 +76,7 @@ public class RegisterController implements Initializable {
 
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
-            System.out.println("[Client] Đang gửi cục data lên Server...");
+            System.out.println("[System] Sending data to server");
             networkClient.sendMessage("REGISTER", newUser);
             registerButton.setDisable(true);
         } else {
@@ -86,7 +86,7 @@ public class RegisterController implements Initializable {
 
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("Chuyển sang màn hình Đăng nhập...");
+        System.out.println("[Log] Login UI view");
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
@@ -98,14 +98,14 @@ public class RegisterController implements Initializable {
             Object data = response.getData();
 
             // LOG RA CONSOLE ĐỂ BẮT BỆNH
-            System.out.println("=== NHẬN PHẢN HỒI TỪ SERVER ===");
-            System.out.println("Lệnh (Command): " + command);
-            System.out.println("Dữ liệu (Data): " + data);
+            System.out.println("=== SERVER RESPONSE ===");
+            System.out.println("Command: " + command);
+            System.out.println("Data: " + data);
 
             try {
                 if ("REGISTER_SUCCESS".equals(command)) {
                     String qrUrl = (String) data;
-                    System.out.println("[Client] Link QR nhận được: " + qrUrl);
+                    System.out.println("Link QR: " + qrUrl);
 
                     // NẾU LỖI NÓ SẼ BẮN XUỐNG DƯỚI CATCH NGAY LẬP TỨC
                     Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
@@ -130,12 +130,11 @@ public class RegisterController implements Initializable {
                     MainApplication.setNewScene(MainApplication.rootLogin);
 
                 } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
-                    String errorMsg = data != null ? data.toString() : "Lỗi không xác định";
+                    String errorMsg = data != null ? data.toString() : "Unknown error";
                     showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
                 }
             } catch (Exception e) {
-                // ĐÂY LÀ CHỖ CHÚNG TA BẮT QUẢ TANG LỖI
-                System.err.println("[Client] LỖI NGHIÊM TRỌNG KHI VẼ MÃ QR CỦA JAVAFX:");
+                System.out.println("[Client]: QR code generation error:");
                 e.printStackTrace();
                 showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đăng ký thành công trên DB nhưng không thể vẽ được mã QR. Vui lòng xem log Console!");
             }
