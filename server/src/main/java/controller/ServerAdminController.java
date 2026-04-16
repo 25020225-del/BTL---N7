@@ -1,49 +1,46 @@
 package controller;
 
-// Nằm ở phía Server: package controller;
 import model.Admin;
 import model.Seller;
 import model.Auction;
 
 public class ServerAdminController {
 
-    // Hàm này là hành động "Duyệt sản phẩm"
-    public boolean approveAuction(Admin nguoiThucHien, Auction phienDauGia) {
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_RED    = "\u001B[31m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
 
-        // 1. Kiểm tra xem người yêu cầu có đúng là Admin không?
-        if (nguoiThucHien == null || !nguoiThucHien.getRole().equals("Admin")) {
-            System.out.println("Error: User does not have approval rights!");
+    public boolean approveAuction(Admin admin, Auction auction) {
+        if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+            System.out.println("[Security]: User does not have approval rights");
             return false;
         }
-        phienDauGia.setStatus(Auction.STATUS_OPEN);
-        System.out.println("Success: Admin " + nguoiThucHien.getName() + " has approved the session " + phienDauGia.getId());
 
-        // 4. (Sau này sẽ gọi thêm DAO ở đây để lưu lệnh UPDATE xuống Database)
+        auction.setStatus(Auction.STATUS_OPEN);
+        System.out.println("[System]: Admin \"" + ANSI_YELLOW + admin.getName() + ANSI_RESET + "\" has approved auction \"" + ANSI_YELLOW + auction.getId() + ANSI_RESET + "\"");
 
         return true;
     }
-    // 1. Quyền trao minh chứng "Good Seller"
+
     public void verifySeller(Admin admin, Seller seller) {
-        if (admin.getRole().equals("Admin")) {
+        if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             seller.setGood(true);
-            System.out.println("Admin " + admin.getName() + " đã xác nhận Seller " + seller.getName() + " là người bán uy tín!");
+            System.out.println("[System]: Admin \"" + ANSI_YELLOW + admin.getName() + ANSI_RESET + "\" has verified Seller \"" + ANSI_YELLOW + seller.getName() + ANSI_RESET + "\" as reputable");
         }
     }
 
-    // 2. Quyền bác bỏ đơn duyệt (khi đơn đang ở trạng thái PENDING)
     public void rejectAuctionRequest(Admin admin, Auction auction) {
-        if (admin.getRole().equals("Admin")) {
+        if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             auction.setStatus(Auction.STATUS_CANCELED);
-            System.out.println("The admin has rejected the auction request for the id:" + auction.getId());
+            System.out.println("[System]: Admin \"" + ANSI_YELLOW + admin.getName() + ANSI_RESET + "\" has rejected the auction request for \"" + ANSI_YELLOW + auction.getId() + ANSI_RESET + "\"");
         }
     }
 
-    // 3. Quyền xóa sản phẩm (ngay cả khi đã được duyệt hoặc đang chạy)
     public void forceDeleteAuction(Admin admin, Auction auction) {
-        if (admin.getRole().equals("Admin")) {
+        if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             auction.setStatus(Auction.STATUS_DELETED);
-            // Sau khi xóa, có thể thêm logic gửi thông báo cho Seller/Bidder
-            System.out.println("The admin has permanently deleted the auction: " + auction.getId());
+            System.out.println("[System]: Admin \"" + ANSI_YELLOW + admin.getName() + ANSI_RESET + "\" has permanently deleted auction \"" + ANSI_YELLOW + auction.getId() + ANSI_RESET + "\"");
         }
     }
 }
