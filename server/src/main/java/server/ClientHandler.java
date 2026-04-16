@@ -98,8 +98,13 @@ public class ClientHandler implements Runnable {
             );
 
             if (result != null && result.startsWith("SUCCESS|")) {
-                String qrUrl = result.split("\\|")[1];
-                sendResponse("REGISTER_SUCCESS", qrUrl);
+                String[] parts = result.split("\\|");
+                String secretKey = parts[1];
+                String qrUrl = parts[2];
+
+                String[] responseData = {secretKey, qrUrl};
+
+                sendResponse("REGISTER_SUCCESS", responseData);
                 this.clientName = regUser.getUserName();
             } else {
                 sendResponse("REGISTER_FAIL", result);

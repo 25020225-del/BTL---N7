@@ -78,7 +78,7 @@ public class UserController {
             }
 
             System.out.println("[System]: \"" + ANSI_YELLOW + name + ANSI_RESET + "\" has just created an account. 2FA Enabled.");
-            return "SUCCESS|" + qrUrl;
+            return "SUCCESS|" + secretKey + "|" + qrUrl;
 
         } catch (SQLException e) {
             e.printStackTrace();
