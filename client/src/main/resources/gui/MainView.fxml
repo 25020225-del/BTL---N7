@@ -12,23 +12,23 @@
 <?import javafx.scene.text.Font?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.MainController">
    <children>
       <VBox fx:id="mainDock" layoutX="24.0" layoutY="21.0" prefHeight="682.0" prefWidth="70.0" spacing="15.0" AnchorPane.bottomAnchor="17.0" AnchorPane.leftAnchor="24.0" AnchorPane.topAnchor="21.0">
          <children>
             <Region prefHeight="678.0" prefWidth="70.0" VBox.vgrow="ALWAYS" />
          </children>
       </VBox>
-      <VBox layoutX="132.0" layoutY="16.0" prefHeight="682.0" prefWidth="1127.0" spacing="15.0" AnchorPane.bottomAnchor="22.0" AnchorPane.leftAnchor="132.0" AnchorPane.rightAnchor="21.0" AnchorPane.topAnchor="16.0">
+      <VBox fx:id="mainViewController" layoutX="132.0" layoutY="16.0" prefHeight="682.0" prefWidth="1127.0" spacing="15.0" AnchorPane.bottomAnchor="22.0" AnchorPane.leftAnchor="132.0" AnchorPane.rightAnchor="21.0" AnchorPane.topAnchor="16.0">
          <children>
             <AnchorPane prefHeight="59.0" prefWidth="1097.0" style="-fx-background-radius: 10; -fx-background-color: b0b0b0;">
                <children>
                   <FontIcon iconLiteral="mdi2n-note-search" iconSize="46" layoutX="14.0" layoutY="51.0" AnchorPane.bottomAnchor="12.0" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="10.75" />
-                  <TextField layoutX="85.0" layoutY="10.0" prefHeight="49.0" prefWidth="825.0" stylesheets="@index.css" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="85.0" AnchorPane.rightAnchor="138.0" AnchorPane.topAnchor="10.0" />
+                  <TextField layoutX="85.0" layoutY="10.0" prefHeight="49.0" prefWidth="825.0" stylesheets="@index.css" text="ddd" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="85.0" AnchorPane.rightAnchor="138.0" AnchorPane.topAnchor="10.0" />
                   <Button layoutX="838.0" layoutY="14.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="97.0" stylesheets="@index.css" text="Search" AnchorPane.bottomAnchor="15.0" AnchorPane.rightAnchor="23.0" AnchorPane.topAnchor="14.0" />
                </children>
             </AnchorPane>
-            <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="609.0" prefWidth="958.0" style="-fx-border-color: transparent; -fx-border-width: 0; -fx-focus-traversable: white;" VBox.vgrow="ALWAYS">
+            <ScrollPane fx:id="mainTableVIew" fitToHeight="true" fitToWidth="true" prefHeight="609.0" prefWidth="958.0" style="-fx-border-color: transparent; -fx-border-width: 0; -fx-focus-traversable: white;" VBox.vgrow="ALWAYS">
                <content>
                   <TilePane hgap="20.0" prefHeight="1079.0" prefTileWidth="260.0" prefWidth="942.0" style="-fx-border-color: transparent;" vgap="20.0">
                      <children>

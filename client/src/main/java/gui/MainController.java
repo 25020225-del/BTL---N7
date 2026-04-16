@@ -5,6 +5,7 @@ import javafx.scene.control.*;
 
 import java.io.IOException;
 import gui.ClientBidderController;
+import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 
 public class MainController {
