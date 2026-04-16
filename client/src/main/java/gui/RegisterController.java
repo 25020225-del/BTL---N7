@@ -15,10 +15,15 @@ import java.util.ResourceBundle;
 
 public class RegisterController implements Initializable {
 
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_RED    = "\u001B[31m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
+
     @FXML private TextField registerName;
     @FXML private TextField registerAccountName;
     @FXML private PasswordField registerPasswordAccount;
-    // ĐÃ THÊM: Ô nhập lại mật khẩu (Nhớ đặt fx:id trong Scene Builder là confirmPasswordAccount nhé)
     @FXML private PasswordField confirmPasswordAccount;
     @FXML private ComboBox<String> registerRole;
     @FXML private Button registerButton;
@@ -27,19 +32,17 @@ public class RegisterController implements Initializable {
     private NetworkClient networkClient;
 
     @Override
-    public void initialize(URL location, ResourceBundle resources) {
-        registerRole.getItems().addAll("BIDDER", "SELLER");
+    public void initialize(URL location,ResourceBundle resources) {
+        registerRole.getItems().addAll("BIDDER","SELLER");
         registerRole.getSelectionModel().selectFirst();
     }
 
-    public void setNetworkClient(NetworkClient client) {
-        this.networkClient = client;
-    }
+    public void setNetworkClient(NetworkClient client){networkClient = client;}
 
     @FXML
     protected void onRegisterButtonClick() {
         System.out.println("[Log]: Clicked on register button");
-        String name = registerName.getText().trim();
+        String name     = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
 
@@ -48,7 +51,7 @@ public class RegisterController implements Initializable {
         String role = registerRole.getValue();
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty() || role == null) {
-            showAlert(Alert.AlertType.WARNING, "Thiếu thông tin", "Vui lòng nhập đầy đủ các trường!");
+            showAlert(Alert.AlertType.WARNING,"Thiếu thông tin","Vui lòng nhập đầy đủ các trường!");
             return;
         }
 
@@ -99,12 +102,12 @@ public class RegisterController implements Initializable {
 
             System.out.println("=== SERVER RESPONSE ===");
             System.out.println("Command: " + command);
-            System.out.println("Data: " + data);
+            System.out.println("Data: "    + data);
 
             try {
                 if ("REGISTER_SUCCESS".equals(command)) {
                     String qrUrl = (String) data;
-                    System.out.println("Link QR: " + qrUrl);
+                    System.out.println("Link QR: "+qrUrl);
 
                     Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
 
@@ -127,19 +130,19 @@ public class RegisterController implements Initializable {
 
                     MainApplication.setNewScene(MainApplication.rootLogin);
 
-                } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
+                } else if ("REGISTER_FAIL".equals(command)||"ERROR".equals(command)) {
                     String errorMsg = data != null ? data.toString() : "Unknown error";
-                    showAlert(Alert.AlertType.ERROR, "Failed", errorMsg);
+                    showAlert(Alert.AlertType.ERROR,"Failed",errorMsg);
                 }
             } catch (Exception e) {
                 System.out.println("[System]: QR code generation error:");
                 e.printStackTrace();
-                showAlert(Alert.AlertType.ERROR, "System Error", "Cannot draw QR code");
+                showAlert(Alert.AlertType.ERROR,"System Error","Cannot draw QR code");
             }
         });
     }
 
-    private void showAlert(Alert.AlertType type, String title, String content) {
+    private void showAlert(Alert.AlertType type,String title,String content) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
         alert.setHeaderText(null);
