@@ -141,22 +141,11 @@ public class MainApplication extends Application {
             registerRole.getItems().addAll("Bidder","Seller","Admin");
         }
     }
-
-    public void initProperties() throws IOException {
-        InputStream input = MainApplication.class.getResourceAsStream("config.properties");
-        if (input != null) {
-            System.out.println("Reading properties file...");
-            properties.load(input);
-        }
-        LoginController loginCtrl = fxmlLogin.getController();
-        if (loginCtrl != null) loginCtrl.setNetworkClient(networkClient);
-    }
-
     @Override
     public void start(Stage stage) throws IOException {
         init();
         initProperties();
-        openClient();
+        //openClient();
         init();
 
         primalStage = stage;
