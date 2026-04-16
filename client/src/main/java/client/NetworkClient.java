@@ -12,6 +12,7 @@ import java.net.URI;
 import java.util.function.Consumer;
 
 public class NetworkClient {
+
     public static final String ANSI_RESET  = "\u001B[0m";
     public static final String ANSI_RED    = "\u001B[31m";
     public static final String ANSI_YELLOW = "\u001B[33m";
@@ -22,32 +23,29 @@ public class NetworkClient {
     private PrintWriter out;
     private BufferedReader in;
 
-    // Ignore keys with empty value
-    private ObjectMapper mapper = new ObjectMapper()
+    private final ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    // Hàm callback để gửi kết quả về giao diện
     private Consumer<NetworkMessage> onMessageReceived;
 
     public NetworkClient(String serverAddress, int port) {
         System.out.println("=====================================");
-        System.out.println("[System]: Trying to connect to server");
-        System.out.println("Attempting to connect"+ANSI_YELLOW);
-        for (int i=0;i<5;i++) {
+        System.out.println("[System]: Trying to connect to server...");
+
+        for (int i = 0; i < 5; i++) {
             try {
                 socket = new Socket(serverAddress, port);
-
                 socket.setSoTimeout(3000);
 
                 out = new PrintWriter(socket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-                NetworkMessage pingMsg = new NetworkMessage("PING","Connecting request from client");
+                NetworkMessage pingMsg = new NetworkMessage("PING", "Connecting request from client");
                 out.println(mapper.writeValueAsString(pingMsg));
 
                 String responseLine = in.readLine();
 
-                if (responseLine==null) {
+                if (responseLine == null) {
                     throw new IOException("Server is not on");
                 }
 
@@ -62,13 +60,16 @@ public class NetworkClient {
                 listenerThread.setDaemon(true);
                 listenerThread.start();
 
-                System.out.println(ANSI_GREEN+"[System]: Successfully connected"+ANSI_RESET);
+                System.out.println(ANSI_GREEN + "[System]: Successfully connected" + ANSI_RESET);
                 return;
 
             } catch (IOException e) {
-                System.out.println("Failed at "+(i+1)+". try: " + e.getMessage());
-                try{if(socket!=null) socket.close();}catch(Exception ignored){}
-                if (i<4){
+                System.out.println(ANSI_YELLOW + "[System]: Failed at try " + (i + 1) + " - " + e.getMessage() + ANSI_RESET);
+                try {
+                    if (socket != null) socket.close();
+                } catch (Exception ignored) {}
+
+                if (i < 4) {
                     try {
                         Thread.sleep(2000);
                     } catch (InterruptedException ie) {
@@ -77,22 +78,20 @@ public class NetworkClient {
                 }
             }
         }
-        System.out.println(ANSI_BLUE+"[System]: Failed after 5 tries. Opening offline application"+ANSI_RESET);
+        System.out.println(ANSI_BLUE + "[System]: Failed after 5 tries. Opening offline application" + ANSI_RESET);
     }
 
-    // Checking if connected
-    public boolean isConnected(){return socket!=null&&socket.isConnected()&&out!=null;}
+    public boolean isConnected() {
+        return socket != null && socket.isConnected() && out != null;
+    }
 
-    // Notification for controller
     public void setOnMessageReceived(Consumer<NetworkMessage> callback) {
         this.onMessageReceived = callback;
     }
 
-    // Send data as JSON
     public void sendMessage(String command, Object data) {
-
         if (!isConnected()) {
-            System.out.println("[Error]: Cannot send command: '"+ANSI_YELLOW+command+ANSI_RESET+"' due to not connected");
+            System.out.println("[Error]: Cannot send command: '" + ANSI_YELLOW + command + ANSI_RESET + "' due to not connected");
             return;
         }
 
@@ -101,7 +100,7 @@ public class NetworkClient {
             String json = mapper.writeValueAsString(msg);
             out.println(json);
         } catch (Exception e) {
-            System.out.println("[Error]: JSON package error: "+ANSI_RED+e.getMessage()+ANSI_RESET);
+            System.out.println("[Error]: JSON package error: " + ANSI_RED + e.getMessage() + ANSI_RESET);
         }
     }
 
@@ -117,33 +116,35 @@ public class NetworkClient {
                     try {
                         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                             Desktop.getDesktop().browse(new URI(url));
-                            System.out.println("[System]: Redirecting to: "+ANSI_YELLOW+url+ANSI_RESET);
+                            System.out.println("[System]: Redirecting to: " + ANSI_YELLOW + url + ANSI_RESET);
                         }
                     } catch (Exception e) {
-                        System.out.println("[Error]: Cannot redirect: "+ANSI_RED+e.getMessage()+ANSI_RESET);
+                        System.out.println("[Error]: Cannot redirect: " + ANSI_RED + e.getMessage() + ANSI_RESET);
                     }
                     continue;
                 }
 
                 if ("KICKED".equals(command)) {
-                    System.out.println(ANSI_YELLOW+"[System]: You have been kicked. Reason: "+response.getData()+ANSI_RESET);
+                    System.out.println(ANSI_YELLOW + "[System]: You have been kicked. Reason: " + response.getData() + ANSI_RESET);
                     if (onMessageReceived != null) {
-                        Platform.runLater(()->onMessageReceived.accept(response));
+                        Platform.runLater(() -> onMessageReceived.accept(response));
                     }
-                    // Waiting for pop-up
-                    try {Thread.sleep(1000);} catch (Exception ignored) {}
+                    try {
+                        Thread.sleep(1000);
+                    } catch (Exception ignored) {}
                     System.exit(0);
                 }
 
-                if ("CHAT".equals(command)) System.out.println(response.getData());
+                if ("CHAT".equals(command)) {
+                    System.out.println(response.getData());
+                }
 
-                // Push the command to JavaFX if it's not the above commands
                 if (onMessageReceived != null) {
-                    Platform.runLater(()->onMessageReceived.accept(response));
+                    Platform.runLater(() -> onMessageReceived.accept(response));
                 }
             }
         } catch (IOException e) {
-            System.out.println("[Error]: Lost connection to server: "+ANSI_RED+e.getMessage()+ANSI_RESET);
+            System.out.println("[Error]: Lost connection to server: " + ANSI_RED + e.getMessage() + ANSI_RESET);
         }
     }
 }
