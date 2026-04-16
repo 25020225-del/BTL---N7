@@ -49,7 +49,7 @@ public class UserController {
             return "Error: Invalid role";
         }
 
-        String checkSql = "SELECT 1 FROM users WHERE username = ?";
+        String checkSql  = "SELECT 1 FROM users WHERE username = ?";
         String insertSql = "INSERT INTO users (id, username, password, name, role, is_good, totp_secret, is_totp_enabled) VALUES (?, ?, ?, ?, ?, 0, ?, 1)";
 
         try (Connection conn = DatabaseManager.getConnection()) {
@@ -61,10 +61,10 @@ public class UserController {
                 }
             }
 
-            String newId = "U-" + System.currentTimeMillis();
+            String newId          = "U-" + System.currentTimeMillis();
             String hashedPassword = hashPassword(password);
-            String secretKey = totpService.createSecretKey();
-            String qrUrl = totpService.getQRUrl(userName, secretKey);
+            String secretKey      = totpService.createSecretKey();
+            String qrUrl          = totpService.getQRUrl(userName, secretKey);
 
             try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
                 insertStmt.setString(1, newId);
@@ -99,9 +99,9 @@ public class UserController {
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                String id = rs.getString("id");
-                String name = rs.getString("name");
-                String role = rs.getString("role");
+                String id      = rs.getString("id");
+                String name    = rs.getString("name");
+                String role    = rs.getString("role");
                 boolean isGood = rs.getInt("is_good") == 1;
 
                 System.out.println("[System]: \"" + ANSI_YELLOW + name + ANSI_RESET + "\" (" + ANSI_YELLOW + role + ANSI_RESET + ") has logged in");

@@ -17,6 +17,7 @@ public class ServerSellerController {
     public static final String ANSI_RED    = "\u001B[31m";
     public static final String ANSI_GREEN  = "\u001B[32m";
     public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
 
     public Auction addAuction(User currentUser, Item item, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
         Seller seller = new Seller(currentUser);
@@ -123,4 +124,5 @@ public class ServerSellerController {
         }
         return false;
     }
+
 }

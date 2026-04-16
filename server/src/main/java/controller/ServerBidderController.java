@@ -16,6 +16,7 @@ public class ServerBidderController {
     public static final String ANSI_RED    = "\u001B[31m";
     public static final String ANSI_GREEN  = "\u001B[32m";
     public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
 
     public boolean placeBidOnAuction(User currentUser, Auction auction, double newMaxBid) {
         if (auction.getSeller().getId().equals(currentUser.getId())) {
@@ -27,7 +28,7 @@ public class ServerBidderController {
         boolean isSuccess = auction.placeBid(bidder, newMaxBid);
 
         if (isSuccess) {
-            String insertTransactionSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
+            String insertTransactionSql  = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
             String updateAuctionPriceSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
 
             try (Connection conn = DatabaseManager.getConnection()) {
@@ -95,4 +96,5 @@ public class ServerBidderController {
         }
         return false;
     }
+
 }

@@ -13,9 +13,9 @@ public abstract class Item extends Entity {
 
     public Item(String id, String itemName, String description, double startingPrice) {
         super(id);
-        this.itemName = itemName;
-        this.description = description;
-        this.startingPrice = startingPrice;
+        this.itemName       = itemName;
+        this.description    = description;
+        this.startingPrice  = startingPrice;
         this.approvalStatus = "PENDING";
     }
 
@@ -33,6 +33,9 @@ public abstract class Item extends Entity {
 
     @Override
     public String getInfo() {
-        return "Item: " + itemName + " | Description: " + description + " | Starting Price: VND " + startingPrice;
+        return       "Item: "               + itemName
+                + " | Description: "        + description
+                + " | Starting Price: VND " + startingPrice;
     }
+
 }

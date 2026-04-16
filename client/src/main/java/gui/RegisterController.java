@@ -33,18 +33,16 @@ public class RegisterController implements Initializable {
     private NetworkClient networkClient;
 
     @Override
-    public void initialize(URL location, ResourceBundle resources) {
-        registerRole.getItems().addAll("BIDDER", "SELLER");
+    public void initialize(URL location,ResourceBundle resources) {
+        registerRole.getItems().addAll("BIDDER","SELLER");
         registerRole.getSelectionModel().selectFirst();
     }
 
-    public void setNetworkClient(NetworkClient client) {
-        this.networkClient = client;
-    }
+    public void setNetworkClient(NetworkClient client){networkClient = client;}
 
     @FXML
     protected void onRegisterButtonClick() {
-        System.out.println("[System]: Clicked on register button");
+        System.out.println("[Log]: Clicked on register button");
         String name     = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
@@ -110,7 +108,6 @@ public class RegisterController implements Initializable {
                     @SuppressWarnings("unchecked")
                     List<String> dataList = (List<String>) data;
 
-
                     String secretKey = dataList.get(0);
                     String qrUrl = dataList.get(1);
 
@@ -135,7 +132,6 @@ public class RegisterController implements Initializable {
 
                     alert.showAndWait();
 
-                    // Dọn form
                     registerName.clear();
                     registerAccountName.clear();
                     registerPasswordAccount.clear();
@@ -143,7 +139,7 @@ public class RegisterController implements Initializable {
 
                     MainApplication.setNewScene(MainApplication.rootLogin);
 
-                } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
+                } else if ("REGISTER_FAIL".equals(command)||"ERROR".equals(command)) {
                     String errorMsg = data != null ? data.toString() : "Unknown error";
                     showAlert(Alert.AlertType.ERROR, "Registration Failed", errorMsg);
                 }
@@ -155,7 +151,7 @@ public class RegisterController implements Initializable {
         });
     }
 
-    private void showAlert(Alert.AlertType type, String title, String content) {
+    private void showAlert(Alert.AlertType type,String title,String content) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
         alert.setHeaderText(null);

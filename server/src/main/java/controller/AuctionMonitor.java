@@ -16,9 +16,7 @@ public class AuctionMonitor {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
 
-    public AuctionMonitor(List<Auction> allAuctions) {
-        this.allAuctions = allAuctions;
-    }
+    public AuctionMonitor(List<Auction> allAuctions) {this.allAuctions = allAuctions;}
 
     public void startMonitoring() {
         System.out.println(ANSI_GREEN + "[Monitor]: The automatic auction monitoring system has been launched" + ANSI_RESET);
@@ -40,4 +38,5 @@ public class AuctionMonitor {
         scheduler.shutdown();
         System.out.println(ANSI_YELLOW + "[Monitor]: The auction monitoring system has been turned off" + ANSI_RESET);
     }
+
 }
