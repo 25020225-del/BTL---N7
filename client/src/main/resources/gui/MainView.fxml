@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.TilePane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.shape.Rectangle?>
-<?import javafx.scene.text.Font?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.MainController">
@@ -24,37 +21,13 @@
             <AnchorPane prefHeight="59.0" prefWidth="1097.0" style="-fx-background-radius: 10; -fx-background-color: b0b0b0;">
                <children>
                   <FontIcon iconLiteral="mdi2n-note-search" iconSize="46" layoutX="14.0" layoutY="51.0" AnchorPane.bottomAnchor="12.0" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="10.75" />
-                  <TextField layoutX="85.0" layoutY="10.0" prefHeight="49.0" prefWidth="825.0" stylesheets="@index.css" text="ddd" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="85.0" AnchorPane.rightAnchor="138.0" AnchorPane.topAnchor="10.0" />
-                  <Button layoutX="838.0" layoutY="14.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="97.0" stylesheets="@index.css" text="Search" AnchorPane.bottomAnchor="15.0" AnchorPane.rightAnchor="23.0" AnchorPane.topAnchor="14.0" />
+                  <TextField fx:id="searchField" layoutX="85.0" layoutY="10.0" prefHeight="49.0" prefWidth="825.0" stylesheets="@index.css" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="85.0" AnchorPane.rightAnchor="138.0" AnchorPane.topAnchor="10.0" />
+                  <Button fx:id="searchButton" layoutX="838.0" layoutY="14.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="97.0" stylesheets="@index.css" text="Search" AnchorPane.bottomAnchor="15.0" AnchorPane.rightAnchor="23.0" AnchorPane.topAnchor="14.0" />
                </children>
             </AnchorPane>
             <ScrollPane fx:id="mainTableVIew" fitToHeight="true" fitToWidth="true" prefHeight="609.0" prefWidth="958.0" style="-fx-border-color: transparent; -fx-border-width: 0; -fx-focus-traversable: white;" VBox.vgrow="ALWAYS">
                <content>
-                  <TilePane hgap="20.0" prefHeight="1079.0" prefTileWidth="260.0" prefWidth="942.0" style="-fx-border-color: transparent;" vgap="20.0">
-                     <children>
-                        <AnchorPane layoutX="11.0" layoutY="11.0" prefHeight="367.0" prefWidth="260.0" style="-fx-border-color: #c2c2c2; -fx-border-style: solid; -fx-border-width: 2; -fx-border-radius: 15;">
-                           <children>
-                              <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#9f9f9f" height="171.0" layoutX="14.0" layoutY="16.0" stroke="BLACK" strokeType="INSIDE" width="227.0" />
-                              <Label layoutX="19.0" layoutY="205.0" prefHeight="38.0" prefWidth="223.0" text="Sp2">
-                                 <font>
-                                    <Font size="25.0" />
-                                 </font>
-                              </Label>
-                              <Label layoutX="19.0" layoutY="236.0" prefHeight="38.0" prefWidth="223.0" text="2 cents">
-                                 <font>
-                                    <Font size="18.0" />
-                                 </font>
-                              </Label>
-                              <Label layoutX="19.0" layoutY="267.0" prefHeight="38.0" prefWidth="223.0" text="2 days left">
-                                 <font>
-                                    <Font size="18.0" />
-                                 </font>
-                              </Label>
-                              <Button layoutX="36.0" layoutY="317.0" mnemonicParsing="false" prefHeight="27.0" prefWidth="193.0" text="ADD TO CARD" />
-                           </children>
-                        </AnchorPane>
-                     </children>
-                  </TilePane>
+                  <TilePane hgap="20.0" prefHeight="1079.0" prefTileWidth="260.0" prefWidth="942.0" style="-fx-border-color: transparent;" vgap="20.0" />
                </content>
             </ScrollPane>
          </children>
