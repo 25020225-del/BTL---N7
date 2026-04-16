@@ -34,12 +34,12 @@ public class MainApplication extends Application {
     // Network manager instance
     public static NetworkClient networkClient;
 
-    public static void main(String[] args){
-        System.out.println(ANSI_GREEN+"=================================");
-        System.out.println("|                               |");
-        System.out.println("|       CLIENT LOG TABLE        |");
-        System.out.println("|                               |");
-        System.out.println("================================="+ANSI_RESET);
+    public static void main(String[] args) {
+        System.out.println(ANSI_GREEN+"================================="           );
+        System.out.println(           "|                               |"           );
+        System.out.println(           "|       CLIENT LOG TABLE        |"           );
+        System.out.println(           "|                               |"           );
+        System.out.println(           "================================="+ANSI_RESET);
         launch(args);
     }
 
@@ -67,18 +67,16 @@ public class MainApplication extends Application {
             conn.setRequestProperty("X-Bin-Meta", "false");
 
             conn.setRequestProperty("Cache-Control", "no-cache");
-            conn.setRequestProperty("Pragma", "no-cache");
+            conn.setRequestProperty("Pragma"       , "no-cache");
 
             BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
             StringBuilder content = new StringBuilder();
             String inputLine;
-            while ((inputLine = in.readLine()) != null) {
-                content.append(inputLine);
-            }
+            while ((inputLine = in.readLine()) != null) content.append(inputLine);
             in.close();
 
             String jsonResponse = content.toString().trim();
-            String ip = "";
+            String ip   = "";
             String port = "";
 
             Matcher ipMatcher = Pattern.compile("\"ip\"\\s*:\\s*\"([^\"]+)\"").matcher(jsonResponse);
@@ -100,7 +98,7 @@ public class MainApplication extends Application {
 
     //Creating connection to server
     public void openClient() {
-        String binID = properties.getProperty("binID", "69d4960b856a6821890813a2");
+        String binID = properties.getProperty("binID","69d4960b856a6821890813a2");
         System.out.println("[System]: Getting server address");
 
         String[] serverInfo = getServerAddress(binID);
@@ -125,23 +123,19 @@ public class MainApplication extends Application {
     }
 
     public void init() throws IOException {
-        FXMLLoader fxmlLogin = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
+        FXMLLoader fxmlLogin    = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
         FXMLLoader fxmlRegister = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
         FXMLLoader fxmlMainView = new FXMLLoader(MainApplication.class.getResource("MainView.fxml"));
 
-        rootLogin = fxmlLogin.load();
+        rootLogin    = fxmlLogin.load();
         rootRegister = fxmlRegister.load();
         rootMainView = fxmlMainView.load();
 
         RegisterController registerCtrl = fxmlRegister.getController();
-        if (registerCtrl != null) {
-            registerCtrl.setNetworkClient(networkClient);
-        }
+        if (registerCtrl != null) registerCtrl.setNetworkClient(networkClient);
 
         LoginController loginCtrl = fxmlLogin.getController();
-        if (loginCtrl != null) {
-            loginCtrl.setNetworkClient(networkClient);
-        }
+        if (loginCtrl != null) loginCtrl.setNetworkClient(networkClient);
     }
 
     @Override
