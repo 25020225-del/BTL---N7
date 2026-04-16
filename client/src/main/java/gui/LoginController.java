@@ -11,8 +11,8 @@ import network.NetworkMessage;
 
 public class LoginController {
 
-    @FXML private TextField tenDangNhap;
-    @FXML private PasswordField matKhauDangNhap;
+    @FXML private TextField loginAccountName;
+    @FXML private PasswordField loginPasswordAccount;
 
     private NetworkClient networkClient;
 
@@ -22,8 +22,8 @@ public class LoginController {
 
     @FXML
     protected void onMainViewButtonClick() {
-        String username = tenDangNhap.getText().trim();
-        String password = matKhauDangNhap.getText().trim();
+        String username = loginAccountName.getText().trim();
+        String password = loginPasswordAccount.getText().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
             AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Information", "Please enter your Username and Password!");
@@ -35,16 +35,15 @@ public class LoginController {
             User loginAttempt = new User("", username, password, "", "");
             networkClient.sendMessage("LOGIN", loginAttempt);
         } else {
-            // Thay thế bằng AlertHelper và dịch sang tiếng Anh
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server!");
         }
     }
 
     @FXML
     protected void onRegisterViewButtonClick() {
-        System.out.println("[System]: Register UI view");
-        tenDangNhap.clear();
-        matKhauDangNhap.clear();
+        System.out.println("[Log]: Register UI view");
+        loginAccountName.clear();
+        loginPasswordAccount.clear();
         MainApplication.setNewScene(MainApplication.rootRegister);
     }
 
@@ -55,15 +54,14 @@ public class LoginController {
             if ("LOGIN_SUCCESS".equals(command)) {
                 System.out.println("[System]: Successfully logged in");
 
-                tenDangNhap.clear();
-                matKhauDangNhap.clear();
+                loginAccountName.clear();
+                loginPasswordAccount.clear();
 
-                System.out.println("[System]: Main UI view");
+                System.out.println("[Log]: Main UI view");
                 MainApplication.setNewScene(MainApplication.rootMainView);
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
                 String errorMsg = response.getData() != null ? response.getData().toString() : "Username or password is incorrect!";
-                // Thay thế bằng AlertHelper
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "Login Failed", errorMsg);
             }
         });

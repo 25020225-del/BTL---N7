@@ -44,7 +44,7 @@ public class RegisterController implements Initializable {
 
     @FXML
     protected void onRegisterButtonClick() {
-        System.out.println("[System]: Clicked on register button");
+        System.out.println("[Log]: Clicked on register button");
         String name     = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
@@ -91,7 +91,7 @@ public class RegisterController implements Initializable {
 
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("[System]: Login UI view");
+        System.out.println("[Log]: Login UI view");
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
@@ -113,9 +113,6 @@ public class RegisterController implements Initializable {
 
                     String secretKey = dataList.get(0);
                     String qrUrl     = dataList.get(1);
-
-                    System.out.println("[System]: Secret Key: " + secretKey);
-                    System.out.println("[System]: Link QR: "    + qrUrl);
 
                     Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
 
@@ -147,7 +144,7 @@ public class RegisterController implements Initializable {
                     AlertHelper.showAlert(Alert.AlertType.ERROR, "Registration Failed", errorMsg);
                 }
             } catch (Exception e) {
-                System.out.println(ANSI_RED + "[Error]: QR code generation error:" + ANSI_RESET);
+                System.out.println("[Error]: QR code generation error: " + ANSI_RED + e.getMessage() + ANSI_RESET);
                 e.printStackTrace();
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "System Error", "Cannot process the 2FA setup data");
             }
