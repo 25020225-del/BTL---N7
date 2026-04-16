@@ -25,11 +25,8 @@
             <Font size="30.0" />
          </font>
       </Label>
-
-      <TextField fx:id="tenDangNhap" layoutX="547.0" layoutY="320.0" prefHeight="38.0" prefWidth="277.0" />
-
-      <PasswordField fx:id="matKhauDangNhap" layoutX="547.0" layoutY="386.0" prefHeight="38.0" prefWidth="277.0" />
-
+      <TextField fx:id="loginAccountName" layoutX="547.0" layoutY="320.0" prefHeight="38.0" prefWidth="277.0" />
+      <PasswordField fx:id="loginPasswordAccount" layoutX="547.0" layoutY="386.0" prefHeight="38.0" prefWidth="277.0" />
       <Button layoutX="623.0" layoutY="454.0" mnemonicParsing="false" onAction="#onMainViewButtonClick" prefHeight="42.0" prefWidth="199.0" text="Login">
          <font>
             <Font size="27.0" />
