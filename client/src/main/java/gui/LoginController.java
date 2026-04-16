@@ -26,7 +26,7 @@ public class LoginController {
         String password = matKhauDangNhap.getText().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Thiếu thông tin", "Vui lòng nhập Tài khoản và Mật khẩu!");
+            AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Information", "Please enter your Username and Password!");
             return;
         }
 
@@ -35,13 +35,14 @@ public class LoginController {
             User loginAttempt = new User("", username, password, "", "");
             networkClient.sendMessage("LOGIN", loginAttempt);
         } else {
-            showAlert(Alert.AlertType.ERROR, "Lỗi mạng", "Chưa kết nối được với Server!");
+            // Thay thế bằng AlertHelper và dịch sang tiếng Anh
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server!");
         }
     }
 
     @FXML
     protected void onRegisterViewButtonClick() {
-        System.out.println("[Log]: Register UI view");
+        System.out.println("[System]: Register UI view");
         tenDangNhap.clear();
         matKhauDangNhap.clear();
         MainApplication.setNewScene(MainApplication.rootRegister);
@@ -62,16 +63,9 @@ public class LoginController {
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
                 String errorMsg = response.getData() != null ? response.getData().toString() : "Username or password is incorrect!";
-                showAlert(Alert.AlertType.ERROR, "Login Failed", errorMsg);
+                // Thay thế bằng AlertHelper
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Login Failed", errorMsg);
             }
         });
-    }
-
-    private void showAlert(Alert.AlertType type, String title, String content) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        alert.showAndWait();
     }
 }
