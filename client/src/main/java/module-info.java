@@ -10,6 +10,7 @@ module org.example.demo {
     requires jdk.compiler;
     requires java.sql;
     requires org.kordamp.ikonli.javafx;
+    requires com.google.zxing;
 
 
     opens gui to javafx.fxml;

@@ -1,5 +1,6 @@
 package gui;
 
+import client.NetworkClient;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -7,11 +8,23 @@ import javafx.scene.Scene;
 import javafx.scene.control.ComboBox;
 import javafx.stage.Stage;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MainApplication extends Application {
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
+    public static final String ANSI_RED    = "\u001B[31m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
+
     public static Stage primalStage;
     public static Parent rootLogin;
     public static Parent rootRegister;
@@ -19,8 +32,95 @@ public class MainApplication extends Application {
 
     private Properties properties = new Properties();
 
-    public static void setNewScene(Parent k) throws IOException {
-        primalStage.getScene().setRoot(k);
+    // Network manager instance
+    public static NetworkClient networkClient;
+
+    public static void main(String[] args) {
+        System.out.println(ANSI_GREEN+"================================="           );
+        System.out.println(           "|                               |"           );
+        System.out.println(           "|       CLIENT LOG TABLE        |"           );
+        System.out.println(           "|                               |"           );
+        System.out.println(           "================================="+ANSI_RESET);
+        launch(args);
+    }
+
+    public static void setNewScene(Parent k) {
+        if (primalStage != null && primalStage.getScene() != null) {
+            primalStage.getScene().setRoot(k);
+        }
+    }
+
+    public void initProperties() throws IOException {
+        InputStream input = MainApplication.class.getResourceAsStream("config.properties");
+        if (input != null) {
+            System.out.println("[System]: Reading config");
+            properties.load(input);
+        } else {
+            System.out.println(ANSI_RED+"[Error]"+ANSI_RESET+": Cannot find config.properties");
+        }
+    }
+
+    private String[] getServerAddress(String binId) {
+        try {
+            URL url = new URL("https://api.jsonbin.io/v3/b/"+binId);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("X-Bin-Meta", "false");
+
+            conn.setRequestProperty("Cache-Control", "no-cache");
+            conn.setRequestProperty("Pragma"       , "no-cache");
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder content = new StringBuilder();
+            String inputLine;
+            while ((inputLine = in.readLine()) != null) content.append(inputLine);
+            in.close();
+
+            String jsonResponse = content.toString().trim();
+            String ip   = "";
+            String port = "";
+
+            Matcher ipMatcher = Pattern.compile("\"ip\"\\s*:\\s*\"([^\"]+)\"").matcher(jsonResponse);
+            if (ipMatcher.find()) ip = ipMatcher.group(1);
+
+            Matcher portMatcher = Pattern.compile("\"port\"\\s*:\\s*(\\d+)").matcher(jsonResponse);
+            if (portMatcher.find()) port = portMatcher.group(1);
+
+            if (!ip.isEmpty() && !port.isEmpty()) return new String[]{ip, port};
+            else {
+                System.out.println(ANSI_RED+"[Error]"+ANSI_RESET+": JSONBin Error: " + jsonResponse
+                                  +ANSI_YELLOW+"\nUse the above for debugging"+ANSI_RESET);
+            }
+        } catch (Exception e) {
+            System.out.println("[Error]: API Data Error: "+ANSI_RED+e.getMessage()+ANSI_RESET);
+        }
+        return null;
+    }
+
+    //Creating connection to server
+    public void openClient() {
+        String binID = properties.getProperty("binID","69d4960b856a6821890813a2");
+        System.out.println("[System]: Getting server address");
+
+        String[] serverInfo = getServerAddress(binID);
+        String serverURL;
+        int port;
+
+        // Getting address from JSONBin
+        if (serverInfo != null && serverInfo.length == 2) {
+            serverURL = serverInfo[0];
+            port = Integer.parseInt(serverInfo[1]);
+            System.out.println(ANSI_GREEN+"[System]: Successfuly got server address"+ANSI_RESET);
+        }
+        // Localhost for contingency
+        else {
+            System.out.println(ANSI_BLUE+"[Error]"+": Cannot get serveraddress. Switched to localhost (Fallback)"+ANSI_RESET);
+            serverURL = properties.getProperty("fallbackServerURL", "localhost");
+            port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
+        }
+
+        System.out.println("[System]: Connecting to: "+ANSI_YELLOW+serverURL+":"+port+ANSI_RESET);
+        networkClient = new NetworkClient(serverURL,port);
     }
 
     public void init() throws IOException {
@@ -33,6 +133,8 @@ public class MainApplication extends Application {
         rootMainView = fxmlMainView.load();
 
         ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
+        RegisterController registerCtrl = fxmlRegister.getController();
+        if (registerCtrl != null) registerCtrl.setNetworkClient(networkClient);
 
         if(registerRole!=null){
             registerRole.getItems().clear();
@@ -46,12 +148,17 @@ public class MainApplication extends Application {
             System.out.println("Reading properties file...");
             properties.load(input);
         }
+        LoginController loginCtrl = fxmlLogin.getController();
+        if (loginCtrl != null) loginCtrl.setNetworkClient(networkClient);
     }
 
     @Override
     public void start(Stage stage) throws IOException {
         init();
         initProperties();
+        openClient();
+        init();
+
         primalStage = stage;
         Scene sceneLogin = new Scene(rootLogin);
         stage.setScene(sceneLogin);

@@ -7,7 +7,8 @@ public class Vehicle extends Item {
     }
 
     @Override
-    public String getInfo() {
-        return "[Vehicle] " + this.itemName + " | Start Price: VND" + this.startingPrice;
+    public String getInfo(){
+        return    "[Vehicle] "          + this.itemName
+                + " | Start Price: VND" + this.startingPrice;
     }
 }
