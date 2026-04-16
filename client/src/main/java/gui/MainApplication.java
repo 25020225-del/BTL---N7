@@ -5,6 +5,7 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.ComboBox;
 import javafx.stage.Stage;
 
 import java.io.BufferedReader;
@@ -123,25 +124,28 @@ public class MainApplication extends Application {
     }
 
     public void init() throws IOException {
-        FXMLLoader fxmlLogin    = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
+        FXMLLoader fxmlLogin = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
         FXMLLoader fxmlRegister = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
         FXMLLoader fxmlMainView = new FXMLLoader(MainApplication.class.getResource("MainView.fxml"));
 
-        rootLogin    = fxmlLogin.load();
+        rootLogin = fxmlLogin.load();
         rootRegister = fxmlRegister.load();
         rootMainView = fxmlMainView.load();
 
+        ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
         RegisterController registerCtrl = fxmlRegister.getController();
         if (registerCtrl != null) registerCtrl.setNetworkClient(networkClient);
 
-        LoginController loginCtrl = fxmlLogin.getController();
-        if (loginCtrl != null) loginCtrl.setNetworkClient(networkClient);
+        if(registerRole!=null){
+            registerRole.getItems().clear();
+            registerRole.getItems().addAll("Bidder","Seller","Admin");
+        }
     }
-
     @Override
     public void start(Stage stage) throws IOException {
+        init();
         initProperties();
-        openClient();
+        //openClient();
         init();
 
         primalStage = stage;

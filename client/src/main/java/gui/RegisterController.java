@@ -48,6 +48,7 @@ public class RegisterController implements Initializable {
         String password = registerPasswordAccount.getText().trim();
 
         String confirmPass = (confirmPasswordAccount != null) ? confirmPasswordAccount.getText().trim() : "";
+
         String role = registerRole.getValue();
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty() || role == null) {
@@ -109,10 +110,10 @@ public class RegisterController implements Initializable {
                     List<String> dataList = (List<String>) data;
 
                     String secretKey = dataList.get(0);
-                    String qrUrl = dataList.get(1);
+                    String qrUrl     = dataList.get(1);
 
                     System.out.println("[System]: Secret Key: " + secretKey);
-                    System.out.println("[System]: Link QR: " + qrUrl);
+                    System.out.println("[System]: Link QR: "    + qrUrl);
 
                     Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
 

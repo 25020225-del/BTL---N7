@@ -9,6 +9,7 @@ module org.example.demo {
     requires common;
     requires jdk.compiler;
     requires java.sql;
+    requires org.kordamp.ikonli.javafx;
     requires com.google.zxing;
 
 
