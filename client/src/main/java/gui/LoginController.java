@@ -66,8 +66,7 @@ public class LoginController {
                 MainApplication.setNewScene(MainApplication.rootMainView);
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
-                // Sẽ hiện Pop-up đỏ nếu nhập sai pass
-                String errorMsg = response.getData() != null ? response.getData().toString() : "Đăng nhập thất bại!";
+                String errorMsg = response.getData() != null ? response.getData().toString() : "LOGIN FAILED";
                 showAlert(Alert.AlertType.ERROR, "Từ chối truy cập", errorMsg);
             }
         });
