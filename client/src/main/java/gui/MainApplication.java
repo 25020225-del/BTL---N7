@@ -120,8 +120,8 @@ public class MainApplication extends Application {
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("[System]: Connecting to: "+ANSI_YELLOW+serverURL+ANSI_RESET+":"+ANSI_YELLOW+port+ANSI_RESET);
-        networkClient = new NetworkClient(serverURL, port);
+        System.out.println("[System]: Connecting to: "+ANSI_YELLOW+serverURL+":"+port+ANSI_RESET);
+        networkClient = new NetworkClient(serverURL,port);
     }
 
     public void init() throws IOException {

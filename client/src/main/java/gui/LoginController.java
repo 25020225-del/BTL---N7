@@ -74,7 +74,7 @@ public class LoginController {
             MainApplication.setNewScene(MainApplication.rootMainView);
 
         } else if ("LOGIN_FAIL".equals(command)) {
-            showAlert(Alert.AlertType.ERROR, "Đăng nhập thất bại", response.getData().toString());
+            showAlert(Alert.AlertType.ERROR, "Login Failed", response.getData().toString());
         }
     }
 

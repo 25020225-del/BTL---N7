@@ -1,7 +1,7 @@
 package network;
 
 public class NetworkMessage {
-    private String command; // Tên lệnh: "REGISTER", "LOGIN", "PLACE_BID"...
+    private String command;
     private Object data;
     public NetworkMessage() {
     }

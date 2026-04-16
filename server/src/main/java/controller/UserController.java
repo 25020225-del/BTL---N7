@@ -14,20 +14,20 @@ import java.sql.SQLException;
 
 public class UserController {
 
-    // ==========================================
-    // KHAI BÁO MÁY PHÁT MÃ 2FA (TOTP)
-    // ==========================================
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_RED    = "\u001B[31m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
+
     private final service.TOTPService totpService = new service.TOTPService();
 
-    // ==========================================
-    // HÀM BẢO MẬT: BĂM MẬT KHẨU BẰNG SHA-256
-    // ==========================================
     private String hashPassword(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] encodedHash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
 
-            // Chuyển mảng byte thành chuỗi Hexadecimal (hệ cơ số 16) để lưu vào DB
+            // Convert byte to Hexadecimal to save in DB
             StringBuilder hexString = new StringBuilder(2 * encodedHash.length);
             for (byte b : encodedHash) {
                 String hex = Integer.toHexString(0xff & b);
@@ -38,46 +38,41 @@ public class UserController {
             }
             return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Hệ thống thiếu thuật toán mã hóa SHA-256!", e);
+            throw new RuntimeException("There's no SHA-256 algorithm", e);
         }
     }
 
-    // ==========================================
-    // 1. TÍNH NĂNG ĐĂNG KÝ (Đã tích hợp mã hóa và 2FA)
-    // ==========================================
     public synchronized String register(String userName, String password, String name, String role) {
 
-        // Kiểm tra vai trò hợp lệ ngay từ đầu
         if (role.equalsIgnoreCase("ADMIN")) {
-            return "Error: You are not allowed to register an Admin account yourself!";
+            return "Error: You are not allowed to register an Admin account yourself";
         }
         if (!role.equalsIgnoreCase("BIDDER") && !role.equalsIgnoreCase("SELLER") && !role.equalsIgnoreCase("USER")) {
-            return "Error: Invalid role!";
+            return "Error: Invalid role";
         }
 
         String checkSql = "SELECT 1 FROM users WHERE username = ?";
 
-        // ĐÃ SỬA: Bổ sung totp_secret (dấu ? thứ 6) và ép is_totp_enabled = 1
         String insertSql = "INSERT INTO users (id, username, password, name, role, is_good, totp_secret, is_totp_enabled) VALUES (?, ?, ?, ?, ?, 0, ?, 1)";
 
         try (Connection conn = DatabaseManager.getConnection()) {
 
-            // 1. Kiểm tra trùng lặp Username
+            // Check if username has existed
             try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
                 checkStmt.setString(1, userName);
                 ResultSet rs = checkStmt.executeQuery();
                 if (rs.next()) {
-                    return "Error: Username '" + userName + "' already exists";
+                    return "Error: Username \""+ANSI_YELLOW+userName+ANSI_RESET+"\" already exists";
                 }
             }
 
-            // 2. Tạo ID và Lưu vào Database SQLite
+            // Create ID and save into DB
             String newId = "U-" + System.currentTimeMillis();
             String hashedPassword = hashPassword(password);
 
-            // 3. TẠO CHÌA KHÓA BÍ MẬT 2FA
+            // Create 2FA key
             String secretKey = totpService.createSecretKey();
-            // Lấy link QR để gửi về Client
+            // get QR link and send to Client
             String qrUrl = totpService.getQRUrl(userName, secretKey);
 
             try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
@@ -87,26 +82,22 @@ public class UserController {
                 insertStmt.setString(4, name);
                 insertStmt.setString(5, role.toUpperCase());
 
-                // LƯU CHÌA KHÓA 2FA VÀO DATABASE
+                // Save 2FA into DB
                 insertStmt.setString(6, secretKey);
 
-                insertStmt.executeUpdate(); // Thực thi lưu vào ổ cứng
+                insertStmt.executeUpdate(); // Save into Disk
             }
 
-            System.out.println("[System]: "+name+" has just created an account. 2FA Enabled.");
+            System.out.println("[System]: \""+ANSI_YELLOW+name+ANSI_RESET+"\" has just created an account. 2FA Enabled.");
 
-            // TRẢ VỀ THÀNH CÔNG KÈM THEO LINK QR ĐỂ CLIENT VẼ ẢNH
             return "SUCCESS|" + qrUrl;
 
         } catch (SQLException e) {
             e.printStackTrace();
-            return "[Error]: Database Error: " + e.getMessage();
+            return "[Error]: Database Error: "+ANSI_RED+e.getMessage()+ANSI_RESET;
         }
     }
 
-    // ==========================================
-    // 2. TÍNH NĂNG ĐĂNG NHẬP (Tạm thời giữ nguyên logic cũ)
-    // ==========================================
     public User login(String userName, String password) {
 
         String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
@@ -116,7 +107,6 @@ public class UserController {
 
             pstmt.setString(1, userName);
 
-            // Băm mật khẩu nhập vào để so sánh
             String hashedPassword = hashPassword(password);
             pstmt.setString(2, hashedPassword);
 
@@ -128,7 +118,7 @@ public class UserController {
                 String role = rs.getString("role");
                 boolean isGood = rs.getInt("is_good") == 1;
 
-                System.out.println("[System]: \""+name+"\" ("+role+") logged in successful.");
+                System.out.println("[System]: \""+ANSI_YELLOW+name+ANSI_RESET+"\" ("+ANSI_YELLOW+role+ANSI_RESET+") has logged in");
 
                 if (role.equalsIgnoreCase("ADMIN")) {
                     return new Admin(id, userName, password, name);
@@ -139,11 +129,11 @@ public class UserController {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("[Error]: Database error during login: " + e.getMessage());
+            System.out.println("[Error]: Database error during login: "+ANSI_RED+e.getMessage()+ANSI_RESET);
             e.printStackTrace();
         }
 
-        System.out.println("[System]: Login failed for username '" + userName + "'");
+        System.out.println("[System]: Login failed for \""+ANSI_YELLOW+userName+ANSI_RESET+"\"");
         return null;
     }
 }
