@@ -6,13 +6,19 @@ import java.util.List;
 
 public class Auction extends Entity {
 
-    public static final String STATUS_PENDING = "PENDING_APPROVAL"; // Chờ duyệt (Giữ lại để Admin làm việc)
-    public static final String STATUS_OPEN = "OPEN";               // Đã duyệt, chờ đến giờ bắt đầu
-    public static final String STATUS_RUNNING = "RUNNING";         // Đang diễn ra
-    public static final String STATUS_FINISHED = "FINISHED";       // Đã kết thúc (Thay cho chữ CLOSED cũ)
-    public static final String STATUS_PAID = "PAID";               // Người thắng đã thanh toán
-    public static final String STATUS_CANCELED = "CANCELED";       // Bị hủy (Do vi phạm hoặc không ai mua)
-    public static final String STATUS_DELETED = "DELETED";         // Admin xóa
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_RED    = "\u001B[31m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
+
+    public static final String STATUS_PENDING = "PENDING_APPROVAL";
+    public static final String STATUS_OPEN = "OPEN";
+    public static final String STATUS_RUNNING = "RUNNING";
+    public static final String STATUS_FINISHED = "FINISHED";
+    public static final String STATUS_PAID = "PAID";
+    public static final String STATUS_CANCELED = "CANCELED";
+    public static final String STATUS_DELETED = "DELETED";
 
     private Item item;
     private Seller seller;
@@ -30,7 +36,7 @@ public class Auction extends Entity {
 
     public Auction() {
         super();
-        this.activeAutoBids = new ArrayList<>(); // Khởi tạo túi rỗng
+        this.activeAutoBids = new ArrayList<>();
     }
 
     public Auction(String id, Item item, Seller seller, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
@@ -45,15 +51,13 @@ public class Auction extends Entity {
         this.bidHistory = new ArrayList<>();
         this.activeAutoBids = new ArrayList<>();
 
-        // Đã xóa dòng this.status = "OPEN" thừa thãi ở đây
         if (seller.isGood()) {
-            this.status = STATUS_OPEN; // Theo đúng yêu cầu: Mở đầu bằng OPEN
+            this.status = STATUS_OPEN;
         } else {
             this.status = STATUS_PENDING;
         }
     }
 
-    // --- GETTER VÀ SETTER ---
     public Item getItem() { return item; }
     public void setItem(Item item) { this.item = item; }
 
@@ -84,31 +88,25 @@ public class Auction extends Entity {
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
 
-    // --- HÀM NGHIỆP VỤ ---
     public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
-
-        // 1. Kiểm tra xem phiên đấu giá có bị Admin xóa không
         if (status.equals(STATUS_DELETED)) {
-            System.out.println("Error: The auction session has been deleted by Admin!");
+            System.out.println(ANSI_RED + "[Error]: The auction session has been deleted by Admin" + ANSI_RESET);
             return false;
         }
 
-        // 2. Gộp kiểm tra trạng thái RUNNING và thời gian kết thúc
         if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
-            System.out.println("Cannot place a bid: The auction is not running or has already ended!");
+            System.out.println(ANSI_RED + "[Error]: Cannot place a bid. The auction is not running or has already ended" + ANSI_RESET);
             return false;
         }
 
-        // 3. Kiểm tra tính hợp lệ cơ bản của số tiền
         if (newMaxBid < 0) {
-            System.out.println("Invalid Bid");
+            System.out.println(ANSI_RED + "[Error]: Invalid Bid" + ANSI_RESET);
             return false;
         }
 
-        // 4. Logic Proxy Bidding (eBay style)
         double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
-            System.out.println("Bid must be greater than or equal to VND " + minRequiredBid);
+            System.out.println(ANSI_RED + "[Error]: Bid must be greater than or equal to VND " + minRequiredBid + ANSI_RESET);
             return false;
         }
 
@@ -129,7 +127,6 @@ public class Auction extends Entity {
                 }
                 highestMaxBid = newMaxBid;
                 winningBidder = bidder;
-
             } else {
                 currentPrice = newMaxBid + bidIncrement;
                 if (currentPrice > highestMaxBid) {
@@ -138,98 +135,75 @@ public class Auction extends Entity {
             }
         }
 
-        // 5. Ghi nhận lịch sử
         BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
         bidHistory.add(transaction);
 
-        // 6. Anti-sniping
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             endTime = endTime.plusMinutes(2);
-            System.out.println("Time increased 2 minutes!");
+            System.out.println(ANSI_YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + ANSI_RESET);
         }
 
         return true;
     }
 
     public synchronized void closeAuctionIfTimeIsUp() {
-        // Nếu phiên đang chạy và thời gian hiện tại đã vượt quá thời gian kết thúc
         if (this.status.equals(STATUS_RUNNING) && LocalDateTime.now().isAfter(this.endTime)) {
-
             if (this.winningBidder != null) {
-                // Kịch bản 1: Có người thắng cuộc
-                this.status = STATUS_FINISHED; // Chuyển sang FINISHED
-                System.out.println("Auction session " + this.id + " has ended");
-                System.out.println("Winner: " + winningBidder.getUserName() + " at VND price " + currentPrice);
+                this.status = STATUS_FINISHED;
+                System.out.println(ANSI_GREEN + "[System]: Auction session \"" + this.id + "\" has ended" + ANSI_RESET);
+                System.out.println(ANSI_GREEN + "[System]: Winner: \"" + winningBidder.getUserName() + "\" at VND " + currentPrice + ANSI_RESET);
             } else {
-                // Kịch bản 2: Ế, không có ai đặt giá
-                this.status = STATUS_CANCELED; // Chuyển sang CANCELED
-                System.out.println("Auction session " + this.id + " but there were no bidders (Cancelled).");
+                this.status = STATUS_CANCELED;
+                System.out.println(ANSI_YELLOW + "[System]: Auction session \"" + this.id + "\" was cancelled due to no bidders" + ANSI_RESET);
             }
         }
     }
-    // ==========================================
-    // TÍNH NĂNG AUTO-BIDDING (Yêu cầu 3.2.1)
-    // ==========================================
 
-    // 1. Client gọi hàm này để đăng ký Auto-Bid
     public synchronized boolean registerAutoBid(Bidder bidder, double maxBid, double userIncrement) {
         if (!status.equals(STATUS_RUNNING)) {
-            System.out.println("Lỗi: Phiên đấu giá không trong trạng thái mở!");
+            System.out.println(ANSI_RED + "[Error]: Auction is not in RUNNING status" + ANSI_RESET);
             return false;
         }
 
         if (maxBid <= currentPrice) {
-            System.out.println("Lỗi: Giá tối đa (maxBid) phải lớn hơn giá hiện tại!");
+            System.out.println(ANSI_RED + "[Error]: Maximum bid must be greater than current price" + ANSI_RESET);
             return false;
         }
 
-        // Tạo bot và nhét vào danh sách
         AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
         activeAutoBids.add(newAutoBid);
 
-        // Sắp xếp lại danh sách ưu tiên người đăng ký trước (Giải quyết gạch đầu dòng thứ 3 của đề)
         activeAutoBids.sort((b1, b2) -> b1.getTimeRegistered().compareTo(b2.getTimeRegistered()));
 
-        System.out.println(bidder.getUserName() + " đã đăng ký Auto-Bid thành công (Max: " + maxBid + ")");
+        System.out.println(ANSI_BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + ANSI_RESET);
 
-        // Ngay khi có Auto-Bid mới, kích hoạt chiến trường để các bot tự đấu với nhau
         resolveAutoBids();
 
         return true;
     }
 
-    // 2. Thuật toán cho các bot tự "đấm" nhau
     private synchronized void resolveAutoBids() {
         boolean isPriceChanged;
 
-        // Vòng lặp do-while này sẽ chạy liên tục cho đến khi không còn bot nào
-        // có khả năng trả giá cao hơn người đang dẫn đầu.
         do {
             isPriceChanged = false;
 
             for (AutoBid bot : activeAutoBids) {
-                // Nếu bot này đại diện cho người đang dẫn đầu thì bỏ qua
                 if (winningBidder != null && bot.getBidder().getId().equals(winningBidder.getId())) {
                     continue;
                 }
 
-                // Tính toán giá cần thiết để giành Top 1 (dùng bước giá riêng của bot đó)
                 double requiredPrice = (winningBidder == null) ? item.getStartingPrice() : currentPrice + bot.getIncrement();
 
-                // Nếu giá cần thiết vẫn nằm trong khả năng chịu đựng của bot (<= maxBid)
                 if (requiredPrice <= bot.getMaxBid()) {
-
                     currentPrice = requiredPrice;
                     winningBidder = bot.getBidder();
 
-                    // Ghi vào lịch sử
                     BidTransaction txn = new BidTransaction("AUTO-" + System.currentTimeMillis(), winningBidder, currentPrice);
                     bidHistory.add(txn);
 
-                    System.out.println("[Auto-Bid] " + winningBidder.getUserName() + " tự động nâng giá lên: " + currentPrice);
+                    System.out.println(ANSI_BLUE + "[Auto-Bid]: \"" + winningBidder.getUserName() + "\" automatically raised the bid to: " + currentPrice + ANSI_RESET);
 
-                    // Đánh dấu là có sự thay đổi giá, phá vỡ vòng for hiện tại
-                    // để bắt đầu xét lại từ đầu (đảm bảo luật ưu tiên người đăng ký trước)
                     isPriceChanged = true;
                     break;
                 }
@@ -239,11 +213,11 @@ public class Auction extends Entity {
 
     @Override
     public String getInfo() {
-        return "=== THÔNG TIN PHIÊN ĐẤU GIÁ ===\n" +
-                "ID Phiên: " + this.id + "\n" +
-                "Sản phẩm: " + (item != null ? item.getItemName() : "N/A") + "\n" +
-                "Giá hiện tại: VND " + this.currentPrice + "\n" +
-                "Người dẫn đầu: " + (winningBidder != null ? winningBidder.getUserName() : "Chưa có ai") + "\n" +
-                "Trạng thái: " + this.status;
+        return "=== AUCTION INFORMATION ===\n" +
+                "Auction ID: " + this.id + "\n" +
+                "Item: " + (item != null ? item.getItemName() : "N/A") + "\n" +
+                "Current Price: VND " + this.currentPrice + "\n" +
+                "Leading Bidder: " + (winningBidder != null ? winningBidder.getUserName() : "None") + "\n" +
+                "Status: " + this.status;
     }
 }

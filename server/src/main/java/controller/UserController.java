@@ -27,7 +27,6 @@ public class UserController {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] encodedHash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
 
-            // Convert byte to Hexadecimal to save in DB
             StringBuilder hexString = new StringBuilder(2 * encodedHash.length);
             for (byte b : encodedHash) {
                 String hex = Integer.toHexString(0xff & b);
@@ -43,7 +42,6 @@ public class UserController {
     }
 
     public synchronized String register(String userName, String password, String name, String role) {
-
         if (role.equalsIgnoreCase("ADMIN")) {
             return "Error: You are not allowed to register an Admin account yourself";
         }
@@ -52,27 +50,20 @@ public class UserController {
         }
 
         String checkSql = "SELECT 1 FROM users WHERE username = ?";
-
         String insertSql = "INSERT INTO users (id, username, password, name, role, is_good, totp_secret, is_totp_enabled) VALUES (?, ?, ?, ?, ?, 0, ?, 1)";
 
         try (Connection conn = DatabaseManager.getConnection()) {
-
-            // Check if username has existed
             try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
                 checkStmt.setString(1, userName);
                 ResultSet rs = checkStmt.executeQuery();
                 if (rs.next()) {
-                    return "Error: Username \""+ANSI_YELLOW+userName+ANSI_RESET+"\" already exists";
+                    return "Error: Username \"" + ANSI_YELLOW + userName + ANSI_RESET + "\" already exists";
                 }
             }
 
-            // Create ID and save into DB
             String newId = "U-" + System.currentTimeMillis();
             String hashedPassword = hashPassword(password);
-
-            // Create 2FA key
             String secretKey = totpService.createSecretKey();
-            // get QR link and send to Client
             String qrUrl = totpService.getQRUrl(userName, secretKey);
 
             try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
@@ -81,32 +72,27 @@ public class UserController {
                 insertStmt.setString(3, hashedPassword);
                 insertStmt.setString(4, name);
                 insertStmt.setString(5, role.toUpperCase());
-
-                // Save 2FA into DB
                 insertStmt.setString(6, secretKey);
 
-                insertStmt.executeUpdate(); // Save into Disk
+                insertStmt.executeUpdate();
             }
 
-            System.out.println("[System]: \""+ANSI_YELLOW+name+ANSI_RESET+"\" has just created an account. 2FA Enabled.");
-
+            System.out.println("[System]: \"" + ANSI_YELLOW + name + ANSI_RESET + "\" has just created an account. 2FA Enabled.");
             return "SUCCESS|" + qrUrl;
 
         } catch (SQLException e) {
             e.printStackTrace();
-            return "[Error]: Database Error: "+ANSI_RED+e.getMessage()+ANSI_RESET;
+            return "[Error]: Database Error: " + ANSI_RED + e.getMessage() + ANSI_RESET;
         }
     }
 
     public User login(String userName, String password) {
-
         String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, userName);
-
             String hashedPassword = hashPassword(password);
             pstmt.setString(2, hashedPassword);
 
@@ -118,7 +104,7 @@ public class UserController {
                 String role = rs.getString("role");
                 boolean isGood = rs.getInt("is_good") == 1;
 
-                System.out.println("[System]: \""+ANSI_YELLOW+name+ANSI_RESET+"\" ("+ANSI_YELLOW+role+ANSI_RESET+") has logged in");
+                System.out.println("[System]: \"" + ANSI_YELLOW + name + ANSI_RESET + "\" (" + ANSI_YELLOW + role + ANSI_RESET + ") has logged in");
 
                 if (role.equalsIgnoreCase("ADMIN")) {
                     return new Admin(id, userName, password, name);
@@ -129,11 +115,11 @@ public class UserController {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("[Error]: Database error during login: "+ANSI_RED+e.getMessage()+ANSI_RESET);
+            System.out.println("[Error]: Database error during login: " + ANSI_RED + e.getMessage() + ANSI_RESET);
             e.printStackTrace();
         }
 
-        System.out.println("[System]: Login failed for \""+ANSI_YELLOW+userName+ANSI_RESET+"\"");
+        System.out.println("[System]: Login failed for \"" + ANSI_YELLOW + userName + ANSI_RESET + "\"");
         return null;
     }
 }

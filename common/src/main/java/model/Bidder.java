@@ -6,10 +6,7 @@ public class Bidder extends User {
         super();
     }
 
-    // Tiến hóa từ User thành Bidder
     public Bidder(User baseUser) {
         super(baseUser.getId(), baseUser.getUserName(), baseUser.getUserPass(), baseUser.getName(), "BIDDER");
     }
 }
-
-        // Dù Bidder không xài tới, nhưng copy sang cho +
