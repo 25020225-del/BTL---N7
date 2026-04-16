@@ -12,13 +12,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class UserController {
+import static utils.ConsoleColors.*;
 
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE   = "\u001B[34m";
+public class UserController {
 
     private final service.TOTPService totpService = new service.TOTPService();
 
@@ -37,6 +33,7 @@ public class UserController {
             }
             return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
+            System.out.println("[Error]: Hashing algorithm not found: " + RED + e.getMessage() + RESET);
             throw new RuntimeException("There's no SHA-256 algorithm", e);
         }
     }
@@ -57,7 +54,8 @@ public class UserController {
                 checkStmt.setString(1, userName);
                 ResultSet rs = checkStmt.executeQuery();
                 if (rs.next()) {
-                    return "Error: Username \"" + ANSI_YELLOW + userName + ANSI_RESET + "\" already exists";
+                    System.out.println("[System]: Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
+                    return "Error: Username \"" + userName + "\" already exists";
                 }
             }
 
@@ -77,12 +75,13 @@ public class UserController {
                 insertStmt.executeUpdate();
             }
 
-            System.out.println("[System]: \"" + ANSI_YELLOW + userName + ANSI_RESET + "\" has just created an account. 2FA Enabled.");
+            System.out.println("[System]: \"" + YELLOW + userName + RESET + "\" has just created an account. 2FA Enabled.");
             return "SUCCESS|" + secretKey + "|" + qrUrl;
 
         } catch (SQLException e) {
+            System.out.println("[Error]: Database Error during registration: " + RED + e.getMessage() + RESET);
             e.printStackTrace();
-            return "[Error]: Database Error: " + ANSI_RED + e.getMessage() + ANSI_RESET;
+            return "Error: Database connection failed. Please try again later.";
         }
     }
 
@@ -104,7 +103,7 @@ public class UserController {
                 String role    = rs.getString("role");
                 boolean isGood = rs.getInt("is_good") == 1;
 
-                System.out.println("[System]: \"" + ANSI_YELLOW + name + ANSI_RESET + "\" (" + ANSI_YELLOW + role + ANSI_RESET + ") has logged in");
+                System.out.println("[System]: \"" + YELLOW + name + RESET + "\" (" + YELLOW + role + RESET + ") has logged in");
 
                 if (role.equalsIgnoreCase("ADMIN")) {
                     return new Admin(id, userName, password, name);
@@ -115,11 +114,11 @@ public class UserController {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("[Error]: Database error during login: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println("[Error]: Database error during login: " + RED + e.getMessage() + RESET);
             e.printStackTrace();
         }
 
-        System.out.println("[System]: Login failed for \"" + ANSI_YELLOW + userName + ANSI_RESET + "\"");
+        System.out.println("[System]: Login failed for \"" + YELLOW + userName + RESET + "\"");
         return null;
     }
 }

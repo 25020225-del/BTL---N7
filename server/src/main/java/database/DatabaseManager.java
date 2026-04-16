@@ -5,13 +5,9 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class DatabaseManager {
+import static utils.ConsoleColors.*;
 
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE   = "\u001B[34m";
+public class DatabaseManager {
 
     private static final String DB_URL = "jdbc:sqlite:auction_system.db";
 
@@ -40,7 +36,7 @@ public class DatabaseManager {
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
-                System.out.println(ANSI_GREEN + "[Database]: Successfully upgraded user table" + ANSI_RESET);
+                System.out.println(GREEN + "[Database]: Successfully upgraded user table" + RESET);
             } catch (SQLException ignored) {
             }
 
@@ -87,10 +83,10 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            System.out.println(ANSI_GREEN + "[Database]: Successfully initialized" + ANSI_RESET);
+            System.out.println(GREEN + "[Database]: Successfully initialized" + RESET);
 
         } catch (SQLException e) {
-            System.out.println("[Database]: Initialization error: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println("[Error]: Database initialization error: " + RED + e.getMessage() + RESET);
         }
     }
 }

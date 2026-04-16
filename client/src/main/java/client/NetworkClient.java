@@ -11,13 +11,9 @@ import java.net.Socket;
 import java.net.URI;
 import java.util.function.Consumer;
 
-public class NetworkClient {
+import static utils.ConsoleColors.*;
 
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE   = "\u001B[34m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
+public class NetworkClient {
 
     private Socket socket;
     private PrintWriter out;
@@ -60,11 +56,11 @@ public class NetworkClient {
                 listenerThread.setDaemon(true);
                 listenerThread.start();
 
-                System.out.println(ANSI_GREEN + "[System]: Successfully connected" + ANSI_RESET);
+                System.out.println(GREEN + "[System]: Successfully connected" + RESET);
                 return;
 
             } catch (IOException e) {
-                System.out.println(ANSI_YELLOW + "[System]: Failed at try " + (i + 1) + " - " + e.getMessage() + ANSI_RESET);
+                System.out.println(YELLOW + "[System]: Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
                 try {
                     if (socket != null) socket.close();
                 } catch (Exception ignored) {}
@@ -78,7 +74,7 @@ public class NetworkClient {
                 }
             }
         }
-        System.out.println(ANSI_BLUE + "[System]: Failed after 5 tries. Opening offline application" + ANSI_RESET);
+        System.out.println(BLUE + "[System]: Failed after 5 tries. Opening offline application" + RESET);
     }
 
     public boolean isConnected() {
@@ -91,7 +87,7 @@ public class NetworkClient {
 
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
-            System.out.println("[Error]: Cannot send command: '" + ANSI_YELLOW + command + ANSI_RESET + "' due to not connected");
+            System.out.println("[Error]: Cannot send command: '" + YELLOW + command + RESET + "' due to not connected");
             return;
         }
 
@@ -100,7 +96,7 @@ public class NetworkClient {
             String json = mapper.writeValueAsString(msg);
             out.println(json);
         } catch (Exception e) {
-            System.out.println("[Error]: JSON package error: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println("[Error]: JSON package error: " + RED + e.getMessage() + RESET);
         }
     }
 
@@ -116,16 +112,16 @@ public class NetworkClient {
                     try {
                         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                             Desktop.getDesktop().browse(new URI(url));
-                            System.out.println("[System]: Redirecting to: " + ANSI_YELLOW + url + ANSI_RESET);
+                            System.out.println("[System]: Redirecting to: " + YELLOW + url + RESET);
                         }
                     } catch (Exception e) {
-                        System.out.println("[Error]: Cannot redirect: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+                        System.out.println("[Error]: Cannot redirect: " + RED + e.getMessage() + RESET);
                     }
                     continue;
                 }
 
                 if ("KICKED".equals(command)) {
-                    System.out.println(ANSI_YELLOW + "[System]: You have been kicked. Reason: " + response.getData() + ANSI_RESET);
+                    System.out.println(YELLOW + "[System]: You have been kicked. Reason: " + response.getData() + RESET);
                     if (onMessageReceived != null) {
                         Platform.runLater(() -> onMessageReceived.accept(response));
                     }
@@ -144,7 +140,7 @@ public class NetworkClient {
                 }
             }
         } catch (IOException e) {
-            System.out.println("[Error]: Lost connection to server: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println("[Error]: Lost connection to server: " + RED + e.getMessage() + RESET);
         }
     }
 }

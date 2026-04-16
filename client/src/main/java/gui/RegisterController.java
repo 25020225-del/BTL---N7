@@ -14,13 +14,9 @@ import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 
-public class RegisterController implements Initializable {
+import static utils.ConsoleColors.*;
 
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE   = "\u001B[34m";
+public class RegisterController implements Initializable {
 
     @FXML private TextField registerName;
     @FXML private TextField registerAccountName;
@@ -44,13 +40,12 @@ public class RegisterController implements Initializable {
 
     @FXML
     protected void onRegisterButtonClick() {
-        System.out.println("[Log]: Clicked on register button");
+        System.out.println("[Log]: Registration process started");
+
         String name     = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
-
         String confirmPass = (confirmPasswordAccount != null) ? confirmPasswordAccount.getText().trim() : "";
-
         String role = registerRole.getValue();
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty() || role == null) {
@@ -64,7 +59,6 @@ public class RegisterController implements Initializable {
         }
 
         String passwordRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{6,20}$";
-
         if (!password.matches(passwordRegex)) {
             String errorMsg = "Password is too weak!\n"
                     + "- 6 to 20 characters.\n"
@@ -81,10 +75,12 @@ public class RegisterController implements Initializable {
 
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
-            System.out.println("[System]: Sending data to server...");
+            System.out.println("[System]: Sending registration data to server...");
             networkClient.sendMessage("REGISTER", newUser);
+
             registerButton.setDisable(true);
         } else {
+            System.out.println("[Error]: " + RED + "NetworkClient not initialized" + RESET);
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server!");
         }
     }
@@ -102,15 +98,16 @@ public class RegisterController implements Initializable {
             String command = response.getCommand();
             Object data = response.getData();
 
-            System.out.println("=== SERVER RESPONSE ===");
-            System.out.println("Command: " + command);
-            System.out.println("Data: "    + data);
+            System.out.println(BLUE + "=== SERVER RESPONSE ===" + RESET);
+            System.out.println("Command: " + YELLOW + command + RESET);
+            System.out.println("Data: " + data);
 
             try {
                 if ("REGISTER_SUCCESS".equals(command)) {
+                    System.out.println("[System]: " + GREEN + "Registration successful. Initializing 2FA..." + RESET);
+
                     @SuppressWarnings("unchecked")
                     List<String> dataList = (List<String>) data;
-
                     String secretKey = dataList.get(0);
                     String qrUrl     = dataList.get(1);
 
@@ -122,8 +119,8 @@ public class RegisterController implements Initializable {
 
                     String instructions = "Scan the following QR code to enable 2FA.\n\n"
                             + "Or enter this setup key manually:\n"
-                            + secretKey;
-                    alert.setContentText(instructions);
+                            + YELLOW + secretKey + RESET;
+                    alert.setContentText("Please secure your 2FA setup before proceeding.");
 
                     if (qrImage != null) {
                         ImageView imageView = new ImageView(qrImage);
@@ -132,22 +129,26 @@ public class RegisterController implements Initializable {
 
                     alert.showAndWait();
 
-                    registerName.clear();
-                    registerAccountName.clear();
-                    registerPasswordAccount.clear();
-                    if (confirmPasswordAccount != null) confirmPasswordAccount.clear();
-
+                    clearFields();
                     MainApplication.setNewScene(MainApplication.rootLogin);
 
                 } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
-                    String errorMsg = data != null ? data.toString() : "Unknown error";
+                    String errorMsg = data != null ? data.toString() : "Unknown error from server";
+                    System.out.println("[System]: " + RED + "Registration failed: " + errorMsg + RESET);
                     AlertHelper.showAlert(Alert.AlertType.ERROR, "Registration Failed", errorMsg);
                 }
             } catch (Exception e) {
-                System.out.println("[Error]: QR code generation error: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+                System.out.println("[Error]: QR code generation error: " + RED + e.getMessage() + RESET);
                 e.printStackTrace();
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "System Error", "Cannot process the 2FA setup data");
             }
         });
+    }
+
+    private void clearFields() {
+        registerName.clear();
+        registerAccountName.clear();
+        registerPasswordAccount.clear();
+        if (confirmPasswordAccount != null) confirmPasswordAccount.clear();
     }
 }

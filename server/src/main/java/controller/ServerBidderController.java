@@ -10,17 +10,13 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
-public class ServerBidderController {
+import static utils.ConsoleColors.*;
 
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE   = "\u001B[34m";
+public class ServerBidderController {
 
     public boolean placeBidOnAuction(User currentUser, Auction auction, double newMaxBid) {
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[Security]: You cannot bid on your own auction");
+            System.out.println("[Security]: " + RED + "You cannot bid on your own auction" + RESET);
             return false;
         }
 
@@ -32,6 +28,7 @@ public class ServerBidderController {
             String updateAuctionPriceSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
 
             try (Connection conn = DatabaseManager.getConnection()) {
+
                 conn.setAutoCommit(false);
 
                 try {
@@ -51,14 +48,15 @@ public class ServerBidderController {
                     }
 
                     conn.commit();
-                    System.out.println("[System]: Bid recorded for \"" + ANSI_YELLOW + currentUser.getName() + ANSI_RESET + "\" on auction \"" + ANSI_YELLOW + auction.getId() + ANSI_RESET + "\"");
+                    System.out.println("[System]: Bid recorded for \"" + YELLOW + currentUser.getName() + RESET + "\" on auction \"" + YELLOW + auction.getId() + RESET + "\"");
                     return true;
 
                 } catch (SQLException e) {
                     conn.rollback();
-                    System.err.println("[Error]: Database Transaction Error: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+                    System.out.println("[Error]: Database Transaction Error: " + RED + e.getMessage() + RESET);
                 }
             } catch (SQLException e) {
+                System.out.println("[Error]: Database Connection Error: " + RED + e.getMessage() + RESET);
                 e.printStackTrace();
             }
         }
@@ -67,7 +65,7 @@ public class ServerBidderController {
 
     public boolean setupAutoBid(User currentUser, Auction auction, double maxBid, double increment) {
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[Security]: You cannot set auto-bid on your own auction");
+            System.out.println("[Security]: " + RED + "You cannot set auto-bid on your own auction" + RESET);
             return false;
         }
 
@@ -87,11 +85,11 @@ public class ServerBidderController {
                 pstmt.setDouble(5, increment);
 
                 pstmt.executeUpdate();
-                System.out.println("[System]: Auto-Bid configuration saved for \"" + ANSI_YELLOW + currentUser.getName() + ANSI_RESET + "\"");
+                System.out.println("[System]: Auto-Bid configuration saved for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                 return true;
 
             } catch (SQLException e) {
-                System.err.println("[Error]: Database Error saving AutoBid: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+                System.out.println("[Error]: Database Error saving AutoBid: " + RED + e.getMessage() + RESET);
             }
         }
         return false;

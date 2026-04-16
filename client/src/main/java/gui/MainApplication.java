@@ -18,12 +18,9 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static utils.ConsoleColors.*;
+
 public class MainApplication extends Application {
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE   = "\u001B[34m";
 
     public static Stage primalStage;
     public static Parent rootLogin;
@@ -32,15 +29,15 @@ public class MainApplication extends Application {
 
     private Properties properties = new Properties();
 
-    // Network manager instance
     public static NetworkClient networkClient;
 
     public static void main(String[] args) {
-        System.out.println(ANSI_GREEN+"================================="           );
-        System.out.println(           "|                               |"           );
-        System.out.println(           "|       CLIENT LOG TABLE        |"           );
-        System.out.println(           "|                               |"           );
-        System.out.println(           "================================="+ANSI_RESET);
+
+        System.out.println(GREEN + "=================================");
+        System.out.println("|                               |");
+        System.out.println("|       CLIENT LOG TABLE        |");
+        System.out.println("|                               |");
+        System.out.println("=================================" + RESET);
         launch(args);
     }
 
@@ -53,22 +50,21 @@ public class MainApplication extends Application {
     public void initProperties() throws IOException {
         InputStream input = MainApplication.class.getResourceAsStream("config.properties");
         if (input != null) {
-            System.out.println("[System]: Reading config");
+            System.out.println("[System]: " + GREEN + "Reading configuration file..." + RESET);
             properties.load(input);
         } else {
-            System.out.println(ANSI_RED+"[Error]"+ANSI_RESET+": Cannot find config.properties");
+            System.out.println("[Error]: " + RED + "Cannot find config.properties" + RESET);
         }
     }
 
     private String[] getServerAddress(String binId) {
         try {
-            URL url = new URL("https://api.jsonbin.io/v3/b/"+binId);
+            URL url = new URL("https://api.jsonbin.io/v3/b/" + binId);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("X-Bin-Meta", "false");
-
             conn.setRequestProperty("Cache-Control", "no-cache");
-            conn.setRequestProperty("Pragma"       , "no-cache");
+            conn.setRequestProperty("Pragma", "no-cache");
 
             BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
             StringBuilder content = new StringBuilder();
@@ -77,7 +73,7 @@ public class MainApplication extends Application {
             in.close();
 
             String jsonResponse = content.toString().trim();
-            String ip   = "";
+            String ip = "";
             String port = "";
 
             Matcher ipMatcher = Pattern.compile("\"ip\"\\s*:\\s*\"([^\"]+)\"").matcher(jsonResponse);
@@ -86,44 +82,42 @@ public class MainApplication extends Application {
             Matcher portMatcher = Pattern.compile("\"port\"\\s*:\\s*(\\d+)").matcher(jsonResponse);
             if (portMatcher.find()) port = portMatcher.group(1);
 
-            if (!ip.isEmpty() && !port.isEmpty()) return new String[]{ip, port};
-            else {
-                System.out.println(ANSI_RED+"[Error]"+ANSI_RESET+": JSONBin Error: " + jsonResponse
-                                  +ANSI_YELLOW+"\nUse the above for debugging"+ANSI_RESET);
+            if (!ip.isEmpty() && !port.isEmpty()) {
+                return new String[]{ip, port};
+            } else {
+                System.out.println("[Error]: " + RED + "JSONBin format error: " + jsonResponse + RESET);
+                System.out.println(YELLOW + "Hint: Check your JSONBin data structure." + RESET);
             }
         } catch (Exception e) {
-            System.out.println("[Error]: API Data Error: "+ANSI_RED+e.getMessage()+ANSI_RESET);
+            System.out.println("[Error]: API Data Retrieval failed: " + RED + e.getMessage() + RESET);
         }
         return null;
     }
 
-    //Creating connection to server
     public void openClient() {
-        String binID = properties.getProperty("binID","69d4960b856a6821890813a2");
-        System.out.println("[System]: Getting server address");
+        String binID = properties.getProperty("binID", "69d4960b856a6821890813a2");
+        System.out.println("[System]: Fetching server address from remote storage...");
 
         String[] serverInfo = getServerAddress(binID);
         String serverURL;
         int port;
 
-        // Getting address from JSONBin
         if (serverInfo != null && serverInfo.length == 2) {
             serverURL = serverInfo[0];
             port = Integer.parseInt(serverInfo[1]);
-            System.out.println(ANSI_GREEN+"[System]: Successfuly got server address"+ANSI_RESET);
-        }
-        // Localhost for contingency
-        else {
-            System.out.println(ANSI_BLUE+"[Error]"+": Cannot get serveraddress. Switched to localhost (Fallback)"+ANSI_RESET);
+            System.out.println("[System]: " + GREEN + "Successfully retrieved server address" + RESET);
+        } else {
+            System.out.println("[System]: " + BLUE + "Could not get remote address. Switching to Localhost (Fallback)" + RESET);
             serverURL = properties.getProperty("fallbackServerURL", "localhost");
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("[System]: Connecting to: "+ANSI_YELLOW+serverURL+":"+port+ANSI_RESET);
-        networkClient = new NetworkClient(serverURL,port);
+        System.out.println("[System]: Connecting to: " + YELLOW + serverURL + ":" + port + RESET);
+        networkClient = new NetworkClient(serverURL, port);
     }
 
     public void init() throws IOException {
+
         FXMLLoader fxmlLogin = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
         FXMLLoader fxmlRegister = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
         FXMLLoader fxmlMainView = new FXMLLoader(MainApplication.class.getResource("MainView.fxml"));
@@ -132,25 +126,32 @@ public class MainApplication extends Application {
         rootRegister = fxmlRegister.load();
         rootMainView = fxmlMainView.load();
 
-        ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
         RegisterController registerCtrl = fxmlRegister.getController();
-        if (registerCtrl != null) registerCtrl.setNetworkClient(networkClient);
+        if (registerCtrl != null) {
+            registerCtrl.setNetworkClient(networkClient);
+        }
 
-        if(registerRole!=null){
+        ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
+        if (registerRole != null) {
             registerRole.getItems().clear();
-            registerRole.getItems().addAll("Bidder","Seller","Admin");
+            registerRole.getItems().addAll("Bidder", "Seller", "Admin");
+            registerRole.getSelectionModel().selectFirst();
         }
     }
+
     @Override
     public void start(Stage stage) throws IOException {
-        init();
+
         initProperties();
-        //openClient();
+        openClient();
         init();
 
         primalStage = stage;
         Scene sceneLogin = new Scene(rootLogin);
+        stage.setTitle("N7 Auction System - Client");
         stage.setScene(sceneLogin);
         stage.show();
+
+        System.out.println("[Log]: " + GREEN + "Application started successfully" + RESET);
     }
 }
