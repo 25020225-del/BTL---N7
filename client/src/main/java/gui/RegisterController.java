@@ -105,11 +105,9 @@ public class RegisterController implements Initializable {
 
             try {
                 if ("REGISTER_SUCCESS".equals(command)) {
-                    // Ép kiểu dữ liệu trả về thành List
                     @SuppressWarnings("unchecked")
                     List<String> dataList = (List<String>) data;
 
-                    // Trích xuất mã Secret Key và Link QR
                     String secretKey = dataList.get(0);
                     String qrUrl = dataList.get(1);
 
@@ -122,7 +120,6 @@ public class RegisterController implements Initializable {
                     alert.setTitle("Successfully Registered");
                     alert.setHeaderText("Enable 2FA through Google Authenticator");
 
-                    // Hiển thị cả thông báo quét mã VÀ cung cấp mã số thủ công
                     String instructions = "Scan the following QR code to enable 2FA.\n\n"
                             + "Or enter this setup key manually:\n"
                             + secretKey;
@@ -135,7 +132,6 @@ public class RegisterController implements Initializable {
 
                     alert.showAndWait();
 
-                    // Dọn form
                     registerName.clear();
                     registerAccountName.clear();
                     registerPasswordAccount.clear();
