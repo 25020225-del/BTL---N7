@@ -204,8 +204,11 @@ public class MultiThreadedServer {
                         continue;
                     }
                     if (serverMessage.startsWith("/msg ")) {
-                        String[]data=serverMessage.substring(5).split(" ");
-                        privateMsg(data[0],data[1]);
+                        try {
+                            int s = serverMessage.indexOf("\"");
+                            int e = serverMessage.lastIndexOf("\"");
+                            privateMsg(serverMessage.substring(5, s), serverMessage.substring(s + 1, e));
+                        }catch(StringIndexOutOfBoundsException e){System.out.println("[System]: Invalid command format");}
                         continue;
                     }
                     broadcast("[Admin]: "+serverMessage, null);

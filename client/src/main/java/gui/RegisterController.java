@@ -109,9 +109,9 @@ public class RegisterController implements Initializable {
                     Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
 
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("Đăng ký thành công - QUAN TRỌNG");
-                    alert.setHeaderText("Bắt buộc: Cài đặt Bảo mật 2 lớp (2FA)");
-                    alert.setContentText("Hãy mở App Authenticator trên điện thoại và QUÉT MÃ QR NÀY NGAY BÂY GIỜ.");
+                    alert.setTitle("Successfully Registered");
+                    alert.setHeaderText("[Test]: Enable 2FA through Google Authenticator");
+                    alert.setContentText("Scan the following QR code to enable");
 
                     if (qrImage != null) {
                         ImageView imageView = new ImageView(qrImage);
@@ -129,12 +129,12 @@ public class RegisterController implements Initializable {
 
                 } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
                     String errorMsg = data != null ? data.toString() : "Unknown error";
-                    showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
+                    showAlert(Alert.AlertType.ERROR, "Failed", errorMsg);
                 }
             } catch (Exception e) {
                 System.out.println("[System]: QR code generation error:");
                 e.printStackTrace();
-                showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đăng ký thành công trên DB nhưng không thể vẽ được mã QR. Vui lòng xem log Console!");
+                showAlert(Alert.AlertType.ERROR, "System Error", "Cannot draw QR code");
             }
         });
     }
