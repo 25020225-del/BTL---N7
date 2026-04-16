@@ -11,6 +11,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
 import java.net.URL;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class RegisterController implements Initializable {
@@ -46,32 +47,30 @@ public class RegisterController implements Initializable {
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
 
-        // Tránh lỗi NullPointerException nếu chưa map confirmPasswordAccount
         String confirmPass = (confirmPasswordAccount != null) ? confirmPasswordAccount.getText().trim() : "";
         String role = registerRole.getValue();
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty() || role == null) {
-            showAlert(Alert.AlertType.WARNING,"Thiếu thông tin","Vui lòng nhập đầy đủ các trường!");
+            showAlert(Alert.AlertType.WARNING, "Missing Information", "Please fill in all fields!");
             return;
         }
 
-        // ĐÃ THÊM: Kiểm tra 2 mật khẩu có khớp nhau không
         if (confirmPasswordAccount != null && !password.equals(confirmPass)) {
-            showAlert(Alert.AlertType.WARNING, "Lỗi mật khẩu", "Mật khẩu xác nhận không khớp!");
+            showAlert(Alert.AlertType.WARNING, "Password Error", "Passwords do not match!");
             return;
         }
 
         String passwordRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{6,20}$";
 
         if (!password.matches(passwordRegex)) {
-            String errorMsg = "Mật khẩu quá yếu!\n"
-                    + "- Dài từ 6-20 ký tự.\n"
-                    + "- Chứa ít nhất 1 chữ in hoa (A-Z).\n"
-                    + "- Chứa ít nhất 1 chữ in thường (a-z).\n"
-                    + "- Chứa ít nhất 1 chữ số (0-9).\n"
-                    + "- Chứa ít nhất 1 ký tự đặc biệt (@, $, !, %, *, ?, &).";
+            String errorMsg = "Password is too weak!\n"
+                    + "- 6 to 20 characters.\n"
+                    + "- At least 1 uppercase letter (A-Z).\n"
+                    + "- At least 1 lowercase letter (a-z).\n"
+                    + "- At least 1 number (0-9).\n"
+                    + "- At least 1 special character (@, $, !, %, *, ?, &).";
 
-            showAlert(Alert.AlertType.WARNING, "Mật khẩu không hợp lệ", errorMsg);
+            showAlert(Alert.AlertType.WARNING, "Invalid Password", errorMsg);
             return;
         }
 
@@ -79,17 +78,17 @@ public class RegisterController implements Initializable {
 
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
-            System.out.println("[System] Sending data to server");
+            System.out.println("[System]: Sending data to server...");
             networkClient.sendMessage("REGISTER", newUser);
             registerButton.setDisable(true);
         } else {
-            showAlert(Alert.AlertType.ERROR, "Lỗi mạng", "Chưa kết nối được với Server!");
+            showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server!");
         }
     }
 
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("[Log]: Login UI view");
+        System.out.println("[System]: Login UI view");
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
@@ -106,15 +105,28 @@ public class RegisterController implements Initializable {
 
             try {
                 if ("REGISTER_SUCCESS".equals(command)) {
-                    String qrUrl = (String) data;
-                    System.out.println("Link QR: "+qrUrl);
+                    // Ép kiểu dữ liệu trả về thành List
+                    @SuppressWarnings("unchecked")
+                    List<String> dataList = (List<String>) data;
+
+                    // Trích xuất mã Secret Key và Link QR
+                    String secretKey = dataList.get(0);
+                    String qrUrl = dataList.get(1);
+
+                    System.out.println("[System]: Secret Key: " + secretKey);
+                    System.out.println("[System]: Link QR: " + qrUrl);
 
                     Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
 
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Successfully Registered");
-                    alert.setHeaderText("[Test]: Enable 2FA through Google Authenticator");
-                    alert.setContentText("Scan the following QR code to enable");
+                    alert.setHeaderText("Enable 2FA through Google Authenticator");
+
+                    // Hiển thị cả thông báo quét mã VÀ cung cấp mã số thủ công
+                    String instructions = "Scan the following QR code to enable 2FA.\n\n"
+                            + "Or enter this setup key manually:\n"
+                            + secretKey;
+                    alert.setContentText(instructions);
 
                     if (qrImage != null) {
                         ImageView imageView = new ImageView(qrImage);
@@ -123,6 +135,7 @@ public class RegisterController implements Initializable {
 
                     alert.showAndWait();
 
+                    // Dọn form
                     registerName.clear();
                     registerAccountName.clear();
                     registerPasswordAccount.clear();
@@ -132,12 +145,12 @@ public class RegisterController implements Initializable {
 
                 } else if ("REGISTER_FAIL".equals(command)||"ERROR".equals(command)) {
                     String errorMsg = data != null ? data.toString() : "Unknown error";
-                    showAlert(Alert.AlertType.ERROR,"Failed",errorMsg);
+                    showAlert(Alert.AlertType.ERROR, "Registration Failed", errorMsg);
                 }
             } catch (Exception e) {
-                System.out.println("[System]: QR code generation error:");
+                System.out.println(ANSI_RED + "[Error]: QR code generation error:" + ANSI_RESET);
                 e.printStackTrace();
-                showAlert(Alert.AlertType.ERROR,"System Error","Cannot draw QR code");
+                showAlert(Alert.AlertType.ERROR, "System Error", "Cannot process the 2FA setup data");
             }
         });
     }

@@ -8,42 +8,35 @@ import java.util.concurrent.TimeUnit;
 
 public class AuctionMonitor {
 
-    // Tạo ra 1 luồng (thread) chạy ngầm chuyên trách
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_RED    = "\u001B[31m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
 
-    // Nơi chứa danh sách tất cả các phiên đấu giá đang có trên Server
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
 
-    public AuctionMonitor(List<Auction> allAuctions) {
-        this.allAuctions = allAuctions;
-    }
+    public AuctionMonitor(List<Auction> allAuctions) {this.allAuctions = allAuctions;}
 
-    // Hàm kích hoạt hệ thống giám sát
     public void startMonitoring() {
-        System.out.println("[Monitor]: The automatic auction monitoring system has been launched.");
+        System.out.println(ANSI_GREEN + "[Monitor]: The automatic auction monitoring system has been launched" + ANSI_RESET);
 
-        // Cấu hình: Bắt đầu ngay lập tức (delay = 0), lặp lại sau mỗi 10 giây
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                // Đi tuần tra toàn bộ danh sách phiên đấu giá
                 for (Auction auction : allAuctions) {
-
-                    // Để tối ưu hiệu năng: Chỉ kiểm tra những phiên đang ở trạng thái RUNNING
                     if (auction.getStatus().equals(Auction.STATUS_RUNNING)) {
-                        // Gọi hàm chốt sổ bạn vừa viết ở Bước trước
                         auction.closeAuctionIfTimeIsUp();
                     }
                 }
             } catch (Exception e) {
-                // Bắt lỗi (Exception) để đảm bảo luồng ngầm không bị sập nếu có 1 phiên đấu giá bị lỗi dữ liệu
-                System.out.println("Error during the bidding scan process: " + e.getMessage());
+                System.err.println("[Error]: Error during the bidding scan process: " + ANSI_RED + e.getMessage() + ANSI_RESET);
             }
         }, 0, 10, TimeUnit.SECONDS);
     }
 
-    // Hàm tắt hệ thống (dùng khi tắt Server)
     public void stopMonitoring() {
         scheduler.shutdown();
-        System.out.println("[Monitor]: The auction monitoring system has been turned off.");
+        System.out.println(ANSI_YELLOW + "[Monitor]: The auction monitoring system has been turned off" + ANSI_RESET);
     }
+
 }
