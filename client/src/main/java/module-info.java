@@ -12,7 +12,6 @@ module org.example.demo {
     requires org.kordamp.ikonli.javafx;
     requires com.google.zxing;
 
-
     opens gui to javafx.fxml;
     exports gui;
 }

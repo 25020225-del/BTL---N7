@@ -14,13 +14,8 @@ import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 
-public class RegisterController implements Initializable {
+public class RegisterController implements Initializable,TakeNote {
 
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE   = "\u001B[34m";
 
     @FXML private TextField registerName;
     @FXML private TextField registerAccountName;
@@ -34,6 +29,10 @@ public class RegisterController implements Initializable {
 
     @Override
     public void initialize(URL location,ResourceBundle resources) {
+        registerName.setText("");
+        registerAccountName.setText("");
+        registerPasswordAccount.setText("");
+        confirmPasswordAccount.setText("");
         registerRole.getItems().addAll("BIDDER","SELLER");
         registerRole.getSelectionModel().selectFirst();
     }
@@ -52,12 +51,12 @@ public class RegisterController implements Initializable {
         String role = registerRole.getValue();
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty() || role == null) {
-            showAlert(Alert.AlertType.WARNING, "Missing Information", "Please fill in all fields!");
+            AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Information", "Please fill in all fields!");
             return;
         }
 
         if (confirmPasswordAccount != null && !password.equals(confirmPass)) {
-            showAlert(Alert.AlertType.WARNING, "Password Error", "Passwords do not match!");
+            AlertHelper.showAlert(Alert.AlertType.WARNING, "Password Error", "Passwords do not match!");
             return;
         }
 
@@ -71,7 +70,7 @@ public class RegisterController implements Initializable {
                     + "- At least 1 number (0-9).\n"
                     + "- At least 1 special character (@, $, !, %, *, ?, &).";
 
-            showAlert(Alert.AlertType.WARNING, "Invalid Password", errorMsg);
+            AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Password", errorMsg);
             return;
         }
 
@@ -83,7 +82,7 @@ public class RegisterController implements Initializable {
             networkClient.sendMessage("REGISTER", newUser);
             registerButton.setDisable(true);
         } else {
-            showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server!");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server!");
         }
     }
 
@@ -142,21 +141,13 @@ public class RegisterController implements Initializable {
 
                 } else if ("REGISTER_FAIL".equals(command)||"ERROR".equals(command)) {
                     String errorMsg = data != null ? data.toString() : "Unknown error";
-                    showAlert(Alert.AlertType.ERROR, "Registration Failed", errorMsg);
+                    AlertHelper.showAlert(Alert.AlertType.ERROR, "Registration Failed", errorMsg);
                 }
             } catch (Exception e) {
                 System.out.println(ANSI_RED + "[Error]: QR code generation error:" + ANSI_RESET);
                 e.printStackTrace();
-                showAlert(Alert.AlertType.ERROR, "System Error", "Cannot process the 2FA setup data");
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "System Error", "Cannot process the 2FA setup data");
             }
         });
-    }
-
-    private void showAlert(Alert.AlertType type,String title,String content) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        alert.showAndWait();
     }
 }

@@ -10,4 +10,11 @@ public class AlertHelper {
         alert.setContentText(message);
         alert.showAndWait();
     }
+    protected static void showAlert(Alert.AlertType type, String title, String content) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
 }
