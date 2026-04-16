@@ -77,7 +77,7 @@ public class UserController {
                 insertStmt.executeUpdate();
             }
 
-            System.out.println("[System]: \"" + ANSI_YELLOW + name + ANSI_RESET + "\" has just created an account. 2FA Enabled.");
+            System.out.println("[System]: \"" + ANSI_YELLOW + userName + ANSI_RESET + "\" has just created an account. 2FA Enabled.");
             return "SUCCESS|" + secretKey + "|" + qrUrl;
 
         } catch (SQLException e) {
