@@ -1,7 +1,7 @@
 package gui;
 
 import client.NetworkClient;
-import javafx.application.Platform; // ĐÃ THÊM: Bắt buộc phải có để cập nhật giao diện
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
@@ -11,7 +11,6 @@ import network.NetworkMessage;
 
 public class LoginController {
 
-    // Khớp chính xác với fx:id trong file Login.fxml
     @FXML private TextField tenDangNhap;
     @FXML private PasswordField matKhauDangNhap;
 
@@ -53,7 +52,7 @@ public class LoginController {
 
     // --- KỊCH BẢN XỬ LÝ KHI SERVER TRẢ KẾT QUẢ VỀ ---
     private void handleServerResponse(NetworkMessage response) {
-        // ĐÃ THÊM: Ép toàn bộ các lệnh cập nhật UI chạy trên luồng chính của JavaFX
+
         Platform.runLater(() -> {
             String command = response.getCommand();
 
