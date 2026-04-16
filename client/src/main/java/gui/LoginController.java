@@ -1,7 +1,6 @@
 package gui;
 
 import client.NetworkClient;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
@@ -11,6 +10,7 @@ import network.NetworkMessage;
 
 public class LoginController {
 
+    // Khớp chính xác với fx:id trong file Login.fxml
     @FXML private TextField tenDangNhap;
     @FXML private PasswordField matKhauDangNhap;
 
@@ -33,8 +33,14 @@ public class LoginController {
         }
 
         if (networkClient != null) {
+            // MẸO QUAN TRỌNG: Gắn lại "tai nghe" cho LoginController ngay trước khi gửi.
+            // Để đảm bảo khi Server trả lời, kết quả sẽ chạy vào file này chứ không chạy nhầm sang file Đăng ký.
             networkClient.setOnMessageReceived(this::handleServerResponse);
+
+            // Tạo đối tượng User ảo (chỉ cần username và password) để gửi qua Jackson
             User loginAttempt = new User("", username, password, "", "");
+
+            // Gửi lệnh lên Server
             networkClient.sendMessage("LOGIN", loginAttempt);
         } else {
             showAlert(Alert.AlertType.ERROR, "Lỗi mạng", "Chưa kết nối được với Server!");
@@ -44,32 +50,32 @@ public class LoginController {
     // --- SỰ KIỆN KHI BẤM NÚT "REGISTER" ---
     @FXML
     protected void onRegisterViewButtonClick() {
-        System.out.println("[Log] Register UI view");
+        System.out.println("[Log]: Register UI view");
+        // Xóa trắng ô nhập liệu trước khi chuyển đi cho gọn gàng
         tenDangNhap.clear();
         matKhauDangNhap.clear();
+
+        // Chuyển Scene
         MainApplication.setNewScene(MainApplication.rootRegister);
     }
 
     // --- KỊCH BẢN XỬ LÝ KHI SERVER TRẢ KẾT QUẢ VỀ ---
     private void handleServerResponse(NetworkMessage response) {
+        String command = response.getCommand();
 
-        Platform.runLater(() -> {
-            String command = response.getCommand();
+        if ("LOGIN_SUCCESS".equals(command)) {
+            // Lấy thông tin User thật từ Server trả về (nếu nhóm bạn cần dùng Tên, Role để hiện lên giao diện)
+            // Object userData = response.getData();
 
-            if ("LOGIN_SUCCESS".equals(command)) {
-                System.out.println("[System]: Successfully logged in");
+            System.out.println("[System]: Successfully logged in");
 
-                // Dọn dẹp form trước khi sang trang mới
-                tenDangNhap.clear();
-                matKhauDangNhap.clear();
+            // Chuyển sang màn hình MainView
+            System.out.println("[System]: Main UI view");
+            MainApplication.setNewScene(MainApplication.rootMainView);
 
-                MainApplication.setNewScene(MainApplication.rootMainView);
-
-            } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
-                String errorMsg = response.getData() != null ? response.getData().toString() : "LOGIN FAILED";
-                showAlert(Alert.AlertType.ERROR, "Từ chối truy cập", errorMsg);
-            }
-        });
+        } else if ("LOGIN_FAIL".equals(command)) {
+            showAlert(Alert.AlertType.ERROR, "Login Failed", response.getData().toString());
+        }
     }
 
     // --- HÀM TIỆN ÍCH HIỂN THỊ THÔNG BÁO ---

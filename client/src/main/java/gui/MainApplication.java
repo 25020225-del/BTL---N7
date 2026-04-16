@@ -18,8 +18,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MainApplication extends Application {
-    public static final String ANSI_RESET = "\u001B[0m";
-    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
+    public static final String ANSI_RED    = "\u001B[31m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
 
     public static Stage primalStage;
     public static Parent rootLogin;
@@ -52,7 +55,7 @@ public class MainApplication extends Application {
             System.out.println("[System]: Reading config");
             properties.load(input);
         } else {
-            System.out.println("[Error]: Cannot find config.properties");
+            System.out.println(ANSI_RED+"[Error]"+ANSI_RESET+": Cannot find config.properties");
         }
     }
 
@@ -86,11 +89,11 @@ public class MainApplication extends Application {
 
             if (!ip.isEmpty() && !port.isEmpty()) return new String[]{ip, port};
             else {
-                System.out.println("[Error]: JSONBin Error: " + jsonResponse
-                                  +"\nUse the above for debugging");
+                System.out.println(ANSI_RED+"[Error]"+ANSI_RESET+": JSONBin Error: " + jsonResponse
+                                  +ANSI_YELLOW+"\nUse the above for debugging"+ANSI_RESET);
             }
         } catch (Exception e) {
-            System.out.println("[Error]: API Data Error: " + e.getMessage());
+            System.out.println("[Error]: API Data Error: "+ANSI_RED+e.getMessage()+ANSI_RESET);
         }
         return null;
     }
@@ -108,17 +111,17 @@ public class MainApplication extends Application {
         if (serverInfo != null && serverInfo.length == 2) {
             serverURL = serverInfo[0];
             port = Integer.parseInt(serverInfo[1]);
-            System.out.println("[System]: Successfuly got server address");
+            System.out.println(ANSI_GREEN+"[System]: Successfuly got server address"+ANSI_RESET);
         }
         // Localhost for contingency
         else {
-            System.out.println("[Error]: Cannot get serveraddress. Switched to localhost (Fallback)");
+            System.out.println(ANSI_BLUE+"[Error]"+": Cannot get serveraddress. Switched to localhost (Fallback)"+ANSI_RESET);
             serverURL = properties.getProperty("fallbackServerURL", "localhost");
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("[System]: Connecting to: " + serverURL + ":" + port);
-        networkClient = new NetworkClient(serverURL, port);
+        System.out.println("[System]: Connecting to: "+ANSI_YELLOW+serverURL+":"+port+ANSI_RESET);
+        networkClient = new NetworkClient(serverURL,port);
     }
 
     public void init() throws IOException {

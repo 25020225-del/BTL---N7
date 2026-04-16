@@ -30,7 +30,7 @@ public class ClientRegister {
         PasswordField registerPasswordAccountChecker = (PasswordField) MainApplication.rootRegister.lookup("#registerPasswordAccountChecker");
         ComboBox<String> registerRole = (ComboBox<String>) MainApplication.rootRegister.lookup("#registerRole");
         if(registerName.getText().trim().isEmpty()){
-            AlertHelper.showErrorAlert("Register Failder","Name not entered");
+            AlertHelper.showErrorAlert("Register Failed","Name not entered");
             return;
         }
         if(registerAccountName.getText().trim().isEmpty()){
@@ -50,7 +50,7 @@ public class ClientRegister {
             return;
         }
 
-        User user = new User("sexgay", registerAccountName.getText(), registerPasswordAccount.getText(), registerName.getText(), registerRole.getValue());
+        User user = new User("test", registerAccountName.getText(), registerPasswordAccount.getText(), registerName.getText(), registerRole.getValue());
         ObjectMapper mapper = new ObjectMapper();
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
         String json = mapper.writeValueAsString(user);

@@ -10,45 +10,58 @@ import java.io.*;
 import java.net.Socket;
 
 public class ClientHandler implements Runnable {
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_RED    = "\u001B[31m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
+
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
-    private volatile String clientName;
     private int cNC=0;
+    private volatile String clientName="Guest"+String.valueOf(cNC++);
 
     private UserController userController;
-    private User loggedInUser = null;
 
     private final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
 
-    public ClientHandler(Socket socket, UserController userController) {
+    public ClientHandler(Socket socket,UserController userController){
         this.socket = socket;
         this.userController = userController;
 
         try {
-            this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            this.out = new PrintWriter(socket.getOutputStream(), true);
+            this.in  = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            this.out = new PrintWriter(socket.getOutputStream(),true);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void run() {
-        try {
-            System.out.println("[System]: A client has connected");
-
+    public void run(){
+        try{
             String jsonMessage;
-            while ((jsonMessage = in.readLine()) != null) {
+            while((jsonMessage=in.readLine())!=null){
 
-                System.out.println("[System]: Getting JSON from Client: " + jsonMessage);
+                System.out.println("[System]: Getting JSON from Client: "+ANSI_YELLOW+jsonMessage+ANSI_RESET);
 
                 try {
-                    NetworkMessage message = mapper.readValue(jsonMessage, NetworkMessage.class);
+                    NetworkMessage message = mapper.readValue(jsonMessage,NetworkMessage.class);
                     String command = message.getCommand();
 
+                    if(command==null){
+                        System.out.println("[System]: \""+ANSI_YELLOW+clientName+ANSI_RESET+"\" tried to send a null command");
+                        sendResponse("ERROR","Command cannot be null");
+                        continue;
+                    }
+
                     switch (command) {
+                        case "PING":
+                            sendResponse("PONG", "Request accepted");
+                            break;
+
                         case "REGISTER":
                             handleRegister(message.getData());
                             break;
@@ -63,20 +76,16 @@ public class ClientHandler implements Runnable {
                             break;
                     }
                 } catch (Exception e) {
-                    System.err.println("[Error]: Invalid JSON format: " + e.getMessage());
+                    System.err.println("[Error]: Invalid JSON format: "+ANSI_RED+e.getMessage()+ANSI_RESET);
                     sendResponse("ERROR", "Invalid JSON format");
                 }
             }
         } catch (IOException e) {
-            System.out.println("[System]: Lost connection with " + (clientName != null ? clientName : "unknown Client"));
+            System.out.println("[System]: Lost connection with "+(clientName!=null?clientName: "unknown Client"));
         } finally {
             closeConnection();
         }
     }
-
-    // ==========================================
-    // XỬ LÝ LỆNH ĐĂNG KÝ VÀ ĐĂNG NHẬP
-    // ==========================================
 
     private void handleRegister(Object data) {
         try {
@@ -88,20 +97,18 @@ public class ClientHandler implements Runnable {
                     regUser.getRole()
             );
 
-            // --- ĐÃ SỬA: Bắt chuỗi SUCCESS chứa QR Link ---
             if (result != null && result.startsWith("SUCCESS|")) {
-                // Cắt lấy phần đường link QR nằm ở phía sau dấu |
+
                 String qrUrl = result.split("\\|")[1];
 
-                // Gửi nguyên cái link QR này về làm data cho Client
-                sendResponse("REGISTER_SUCCESS", qrUrl);
+                sendResponse("REGISTER_SUCCESS",qrUrl);
                 this.clientName = regUser.getUserName();
             } else {
-                sendResponse("REGISTER_FAIL", result);
+                sendResponse("REGISTER_FAIL",result);
             }
         } catch (IllegalArgumentException e) {
             System.err.println("[Error]: Mapping JSON to User (Register): " + e.getMessage());
-            sendResponse("ERROR", "Invalid register data");
+            sendResponse("ERROR","Invalid register data");
         }
     }
 
@@ -111,23 +118,16 @@ public class ClientHandler implements Runnable {
             User user = userController.login(loginAttempt.getUserName(), loginAttempt.getUserPass());
 
             if (user != null) {
-                this.loggedInUser = user;
-                this.clientName = user.getUserName();
-
-                sendResponse("LOGIN_SUCCESS", user);
-                MultiThreadedServer.broadcast("[System]: " + this.clientName + " has joined auction", this);
+                clientName = user.getUserName();
+                sendResponse("LOGIN_SUCCESS",user);
             } else {
                 sendResponse("LOGIN_FAIL", "Wrong username or password");
             }
         } catch (IllegalArgumentException e) {
-            System.err.println("[Error]: Mapping JSON to User (Login): " + e.getMessage());
+            System.err.println("[Error]: Mapping JSON to User (Login): "+ANSI_RED+e.getMessage()+ANSI_RESET);
             sendResponse("ERROR", "Invalid login data");
         }
     }
-
-    // ==========================================
-    // CÁC HÀM TIỆN ÍCH GỬI DỮ LIỆU
-    // ==========================================
 
     public void sendResponse(String command, Object data) {
         try {
@@ -135,40 +135,32 @@ public class ClientHandler implements Runnable {
             String jsonOutput = mapper.writeValueAsString(responseMsg);
             out.println(jsonOutput);
         } catch (Exception e) {
-            System.err.println("[Error]: JSON serialization: " + e.getMessage());
+            System.err.println("[Error]: JSON serialization: "+ANSI_RED+e.getMessage()+ANSI_RESET);
         }
     }
 
-    public void sendMessage(String message) {
-        sendResponse("CHAT", message);
-    }
+    public void sendMessage(String message){sendResponse("CHAT",message);}
 
     private void closeConnection() {
         MultiThreadedServer.removeClient(this);
-        if (clientName != null) {
-            MultiThreadedServer.broadcast("[System]: " + clientName + " has stopped connecting", this);
-        }
+        System.out.println("[System]: \""+ANSI_YELLOW+clientName+ANSI_RESET+"\" has stopped connecting");
         try {
-            if (socket != null && !socket.isClosed()) socket.close();
+            if(socket!=null&&!socket.isClosed()) socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public String getClientName(){
-        return this.clientName!=null?this.clientName:"Guest"+String.valueOf(cNC++);
-    }
+    public String getClientName(){return clientName;}
 
     public void forceDisconnect(String reason) {
-        sendResponse("KICKED", reason);
+        sendResponse("KICKED",reason);
         try {
-            if (socket != null && !socket.isClosed()) socket.close();
+            if(socket!=null&&!socket.isClosed()) socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void redirectToWebsite(String url) {
-        sendResponse("REDIRECT", url);
-    }
+    public void redirectToWebsite(String url){sendResponse("REDIRECT", url);}
 }

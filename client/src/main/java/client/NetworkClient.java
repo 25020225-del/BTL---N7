@@ -1,4 +1,4 @@
-package client; // Giữ nguyên package của bạn
+package client;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,15 +12,17 @@ import java.net.URI;
 import java.util.function.Consumer;
 
 public class NetworkClient {
-    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_RESET  = "\u001B[0m";
+    public static final String ANSI_RED    = "\u001B[31m";
     public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_BLUE   = "\u001B[34m";
+    public static final String ANSI_GREEN  = "\u001B[32m";
 
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
 
-    // 1. BẢN VÁ JACKSON: Dạy Jackson lờ đi các biến thừa (như info, command)
+    // Ignore keys with empty value
     private ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -28,32 +30,47 @@ public class NetworkClient {
     private Consumer<NetworkMessage> onMessageReceived;
 
     public NetworkClient(String serverAddress, int port) {
-        int maxRetries = 5;
-        int tries = 0;
-        int retryDelayMs = 2000;
         System.out.println("=====================================");
         System.out.println("[System]: Trying to connect to server");
         System.out.println("Attempting to connect"+ANSI_YELLOW);
-        for (int i = 0; i < maxRetries; i++) {
+        for (int i=0;i<5;i++) {
             try {
                 socket = new Socket(serverAddress, port);
 
+                socket.setSoTimeout(3000);
+
                 out = new PrintWriter(socket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+                NetworkMessage pingMsg = new NetworkMessage("PING","Connecting request from client");
+                out.println(mapper.writeValueAsString(pingMsg));
+
+                String responseLine = in.readLine();
+
+                if (responseLine==null) {
+                    throw new IOException("Server is not on");
+                }
+
+                NetworkMessage response = mapper.readValue(responseLine, NetworkMessage.class);
+                if (!"PONG".equals(response.getCommand())) {
+                    throw new IOException("Invalid format from server");
+                }
+
+                socket.setSoTimeout(0);
 
                 Thread listenerThread = new Thread(this::listenToServer);
                 listenerThread.setDaemon(true);
                 listenerThread.start();
 
-                System.out.println(ANSI_RESET+"[System]: Successfully connected");
+                System.out.println(ANSI_GREEN+"[System]: Successfully connected"+ANSI_RESET);
                 return;
 
             } catch (IOException e) {
                 System.out.println("Failed at "+(i+1)+". try: " + e.getMessage());
-                tries++;
-                if (i<maxRetries-1){
+                try{if(socket!=null) socket.close();}catch(Exception ignored){}
+                if (i<4){
                     try {
-                        Thread.sleep(retryDelayMs);
+                        Thread.sleep(2000);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                     }
@@ -63,39 +80,31 @@ public class NetworkClient {
         System.out.println(ANSI_BLUE+"[System]: Failed after 5 tries. Opening offline application"+ANSI_RESET);
     }
 
-    // 2. ÁO GIÁP: Kiểm tra xem ống nước đã được nối chưa
-    public boolean isConnected() {
-        return socket != null && socket.isConnected() && out != null;
-    }
+    // Checking if connected
+    public boolean isConnected(){return socket!=null&&socket.isConnected()&&out!=null;}
 
-    // Giao diện (Controller) sẽ dùng hàm này để đăng ký nhận thông báo
+    // Notification for controller
     public void setOnMessageReceived(Consumer<NetworkMessage> callback) {
         this.onMessageReceived = callback;
     }
 
-    // Gửi dữ liệu đi dưới dạng JSON
+    // Send data as JSON
     public void sendMessage(String command, Object data) {
-        // Chặn lỗi null ngay từ đầu nếu rớt mạng
+
         if (!isConnected()) {
-            System.out.println("[Error]: Cannot send command: '" + command + "' due to not connected");
+            System.out.println("[Error]: Cannot send command: '"+ANSI_YELLOW+command+ANSI_RESET+"' due to not connected");
             return;
         }
 
         try {
             NetworkMessage msg = new NetworkMessage(command, data);
             String json = mapper.writeValueAsString(msg);
-
-            // ĐÃ THÊM: In ra console để theo dõi luồng mạng
-            System.out.println("[Network] Đang gửi đi: " + json);
-
             out.println(json);
-            out.flush(); // LỆNH BẮT BUỘC: Ép đẩy dữ liệu qua mạng ngay lập tức
-
         } catch (Exception e) {
-            System.out.println("[Error]: JSON package error: " + e.getMessage());
+            System.out.println("[Error]: JSON package error: "+ANSI_RED+e.getMessage()+ANSI_RESET);
         }
     }
-    // Luồng nghe ngóng Server
+
     private void listenToServer() {
         try {
             String jsonMessage;
@@ -103,40 +112,38 @@ public class NetworkClient {
                 NetworkMessage response = mapper.readValue(jsonMessage, NetworkMessage.class);
                 String command = response.getCommand();
 
-                // 3. TÍNH NĂNG REDIRECT (MỞ TRÌNH DUYỆT WEB)
                 if ("REDIRECT".equals(command)) {
                     String url = (String) response.getData();
                     try {
                         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                             Desktop.getDesktop().browse(new URI(url));
-                            System.out.println("[System]: Redirecting to: " + url);
+                            System.out.println("[System]: Redirecting to: "+ANSI_YELLOW+url+ANSI_RESET);
                         }
                     } catch (Exception e) {
-                        System.out.println("[Error]: Cannot redirect: " + e.getMessage());
+                        System.out.println("[Error]: Cannot redirect: "+ANSI_RED+e.getMessage()+ANSI_RESET);
                     }
-                    continue; // Xử lý xong lệnh này thì bỏ qua các dòng dưới, quay lại vòng lặp
+                    continue;
                 }
 
-                // 4. TÍNH NĂNG KICKED (BỊ ADMIN ĐUỔI)
                 if ("KICKED".equals(command)) {
-                    System.out.println("[System]: You have been kicked. Reason: " + response.getData());
-                    // Vẫn đẩy về giao diện để hiện Pop-up cảnh báo (nếu có làm)
+                    System.out.println(ANSI_YELLOW+"[System]: You have been kicked. Reason: "+response.getData()+ANSI_RESET);
                     if (onMessageReceived != null) {
-                        Platform.runLater(() -> onMessageReceived.accept(response));
+                        Platform.runLater(()->onMessageReceived.accept(response));
                     }
-                    // Đợi 1 giây cho Pop-up kịp hiện rồi tắt app
-                    try { Thread.sleep(1000); } catch (Exception ignored) {}
+                    // Waiting for pop-up
+                    try {Thread.sleep(1000);} catch (Exception ignored) {}
                     System.exit(0);
                 }
 
-                // NẾU LÀ CÁC KẾT QUẢ BÌNH THƯỜNG KHÁC (LOGIN_SUCCESS, REGISTER_SUCCESS...)
-                // -> Đẩy về luồng Giao diện (JavaFX Thread) để xử lý Form
+                if ("CHAT".equals(command)) System.out.println(response.getData());
+
+                // Push the command to JavaFX if it's not the above commands
                 if (onMessageReceived != null) {
-                    Platform.runLater(() -> onMessageReceived.accept(response));
+                    Platform.runLater(()->onMessageReceived.accept(response));
                 }
             }
         } catch (IOException e) {
-            System.out.println("[Error]: Lost connection to server: " + e.getMessage());
+            System.out.println("[Error]: Lost connection to server: "+ANSI_RED+e.getMessage()+ANSI_RESET);
         }
     }
 }
