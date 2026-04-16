@@ -10,6 +10,7 @@ import model.User;
 import network.NetworkMessage;
 
 import static utils.ConsoleColors.*;
+import java.io.IOException;
 
 public class LoginController {
 
