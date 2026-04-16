@@ -12,13 +12,13 @@ public class Auction extends Entity {
     public static final String ANSI_YELLOW = "\u001B[33m";
     public static final String ANSI_BLUE   = "\u001B[34m";
 
-    public static final String STATUS_PENDING = "PENDING_APPROVAL";
-    public static final String STATUS_OPEN = "OPEN";
-    public static final String STATUS_RUNNING = "RUNNING";
+    public static final String STATUS_PENDING  = "PENDING_APPROVAL";
+    public static final String STATUS_OPEN     = "OPEN";
+    public static final String STATUS_RUNNING  = "RUNNING";
     public static final String STATUS_FINISHED = "FINISHED";
-    public static final String STATUS_PAID = "PAID";
+    public static final String STATUS_PAID     = "PAID";
     public static final String STATUS_CANCELED = "CANCELED";
-    public static final String STATUS_DELETED = "DELETED";
+    public static final String STATUS_DELETED  = "DELETED";
 
     private Item item;
     private Seller seller;
@@ -196,7 +196,8 @@ public class Auction extends Entity {
                 double requiredPrice = (winningBidder == null) ? item.getStartingPrice() : currentPrice + bot.getIncrement();
 
                 if (requiredPrice <= bot.getMaxBid()) {
-                    currentPrice = requiredPrice;
+
+                    currentPrice  = requiredPrice;
                     winningBidder = bot.getBidder();
 
                     BidTransaction txn = new BidTransaction("AUTO-" + System.currentTimeMillis(), winningBidder, currentPrice);
@@ -220,4 +221,5 @@ public class Auction extends Entity {
                 "Leading Bidder: " + (winningBidder != null ? winningBidder.getUserName() : "None") + "\n" +
                 "Status: " + this.status;
     }
+
 }

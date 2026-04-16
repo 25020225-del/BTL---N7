@@ -9,14 +9,12 @@ public class AutoBid {
     private double increment;
     private LocalDateTime timeRegistered;
 
-    public AutoBid() {
-        super();
-    }
+    public AutoBid() {super();}
 
     public AutoBid(Bidder bidder, double maxBid, double increment) {
-        this.bidder = bidder;
-        this.maxBid = maxBid;
-        this.increment = increment;
+        this.bidder         = bidder;
+        this.maxBid         = maxBid;
+        this.increment      = increment;
         this.timeRegistered = LocalDateTime.now();
     }
 
@@ -31,4 +29,5 @@ public class AutoBid {
 
     public LocalDateTime getTimeRegistered() { return timeRegistered; }
     public void setTimeRegistered(LocalDateTime timeRegistered) { this.timeRegistered = timeRegistered; }
+
 }

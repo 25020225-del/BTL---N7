@@ -14,7 +14,7 @@ public class BidTransaction extends Entity {
 
     public BidTransaction(String id, Bidder bidder, double bidAmount) {
         super(id);
-        this.bidder = bidder;
+        this.bidder    = bidder;
         this.bidAmount = bidAmount;
         this.timestamp = LocalDateTime.now();
     }
@@ -33,4 +33,5 @@ public class BidTransaction extends Entity {
         String name = (bidder != null) ? bidder.getUserName() : "Unknown";
         return "[Transaction]: Bidder \"" + name + "\" placed VND " + bidAmount + " at " + timestamp;
     }
+
 }

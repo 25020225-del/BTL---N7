@@ -8,6 +8,8 @@ public class Artifact extends Item {
 
     @Override
     public String getInfo() {
-        return "[Artifact] " + this.itemName + " | Start Price: VND" + this.startingPrice ;
+        return    "[Artifact]: "        + this.itemName
+                + " | Start Price: VND" + this.startingPrice;
     }
+
 }

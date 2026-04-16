@@ -43,4 +43,5 @@ public class ServerAdminController {
             System.out.println("[System]: Admin \"" + ANSI_YELLOW + admin.getName() + ANSI_RESET + "\" has permanently deleted auction \"" + ANSI_YELLOW + auction.getId() + ANSI_RESET + "\"");
         }
     }
+
 }
