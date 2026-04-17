@@ -131,6 +131,9 @@ public class MainApplication extends Application {
             registerCtrl.setNetworkClient(networkClient);
         }
 
+        LoginController loginCtrl = fxmlLogin.getController();
+        if (loginCtrl != null) loginCtrl.setNetworkClient(networkClient);
+        
         ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
         if (registerRole != null) {
             registerRole.getItems().clear();
