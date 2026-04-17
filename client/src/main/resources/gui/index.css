@@ -131,3 +131,150 @@
      -fx-border-width: 1.5;
      -fx-border-color: #2196f3;
  }
+ /* --- PHONG CÁCH ANTIVIRUS DARK & RED --- */
+
+ .auth-root {
+     -fx-background-color: #0d0d0d; /* Đen sâu */
+ }
+
+ /* Card chứa form */
+ .auth-card {
+     -fx-background-color: #1a1a1a;
+     -fx-background-radius: 15;
+     -fx-effect: dropshadow(three-pass-box, rgba(255, 0, 0, 0.1), 20, 0, 0, 0);
+     -fx-border-color: #333333;
+     -fx-border-radius: 15;
+     -fx-border-width: 1;
+ }
+
+ /* Tiêu đề LOGIN/REGISTER */
+ .auth-title {
+     -fx-fill: linear-gradient(to bottom, #ffffff, #888888);
+     -fx-font-family: "Segoe UI Semibold";
+     -fx-effect: dropshadow(one-pass-box, #ff4d4d, 2, 0, 0, 0);
+ }
+
+ /* Label cho Input */
+ .auth-label {
+     -fx-text-fill: #aaaaaa;
+     -fx-font-family: "Segoe UI";
+     -fx-font-weight: bold;
+ }
+
+ /* Input Fields (Ghi đè style cũ cho vùng Auth) */
+ .auth-input {
+     -fx-background-color: #252525;
+     -fx-text-fill: white;
+     -fx-border-color: #333333;
+     -fx-border-radius: 5;
+     -fx-background-radius: 5;
+     -fx-prompt-text-fill: #555555;
+ }
+
+ .auth-input:focused {
+     -fx-border-color: #ff4d4d; /* Đỏ rực khi click vào */
+     -fx-effect: dropshadow(three-pass-box, rgba(255, 77, 77, 0.3), 10, 0, 0, 0);
+ }
+
+ /* Nút bấm chính (Đỏ) */
+ .auth-btn-primary {
+     -fx-background-color: linear-gradient(to bottom, #ff4d4d, #b30000);
+     -fx-text-fill: white;
+     -fx-font-weight: bold;
+     -fx-background-radius: 5;
+     -fx-cursor: hand;
+     -fx-padding: 10 30;
+ }
+
+ .auth-btn-primary:hover {
+     -fx-background-color: linear-gradient(to bottom, #ff6666, #cc0000);
+     -fx-scale-x: 1.02;
+     -fx-scale-y: 1.02;
+ }
+
+ /* Nút bấm phụ / Link */
+ .auth-link {
+     -fx-text-fill: #ff4d4d;
+     -fx-underline: false;
+ }
+
+ .auth-link:hover {
+     -fx-text-fill: #ff8888;
+ }
+
+ /* FontIcon color */
+ .auth-icon {
+     -fx-icon-color: #ff4d4d;
+ }
+ /* --- DASHBOARD MAIN VIEW STYLE --- */
+
+ .main-view-root {
+     -fx-background-color: #050505; /* Đen sâu hơn login */
+ }
+
+ /* Thanh Sidebar bên trái (mainDock) */
+ .side-bar-dock {
+     -fx-background-color: #0d0d0d;
+     -fx-border-color: transparent #1a1a1a transparent transparent;
+     -fx-border-width: 1;
+     -fx-padding: 20 10;
+ }
+
+ /* Thanh tìm kiếm phía trên */
+ .top-search-bar {
+     -fx-background-color: #121212;
+     -fx-background-radius: 12;
+     -fx-border-color: #222222;
+     -fx-border-radius: 12;
+     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 10, 0, 0, 0);
+ }
+
+ .search-input-main {
+     -fx-background-color: transparent;
+     -fx-text-fill: white;
+     -fx-prompt-text-fill: #444444;
+     -fx-font-size: 16px;
+ }
+
+ /* Nút Search */
+ .btn-search-red {
+     -fx-background-color: #b30000;
+     -fx-text-fill: white;
+     -fx-background-radius: 8;
+     -fx-font-weight: bold;
+ }
+
+ .btn-search-red:hover {
+     -fx-background-color: #ff0000;
+     -fx-effect: dropshadow(three-pass-box, rgba(255, 0, 0, 0.4), 10, 0, 0, 0);
+ }
+
+ /* Khu vực nội dung chính (ScrollPane) */
+ .main-scroll-pane {
+     -fx-background: transparent;
+     -fx-background-color: transparent;
+     -fx-border-color: transparent;
+ }
+
+ .main-scroll-pane .viewport {
+     -fx-background-color: transparent;
+ }
+
+ /* Tùy chỉnh thanh cuộn (Scrollbar) cho hiện đại */
+ .main-scroll-pane .scroll-bar:vertical {
+     -fx-background-color: #0d0d0d;
+ }
+ .main-scroll-pane .scroll-bar:vertical .thumb {
+     -fx-background-color: #333333;
+     -fx-background-radius: 5;
+ }
+ .main-scroll-pane .scroll-bar:vertical .thumb:hover {
+     -fx-background-color: #ff4d4d;
+ }
+
+ /* TilePane chứa các item */
+ .main-tile-pane {
+     -fx-hgap: 20;
+     -fx-vgap: 20;
+     -fx-padding: 20;
+ }
