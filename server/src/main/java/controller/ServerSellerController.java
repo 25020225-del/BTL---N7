@@ -11,13 +11,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
-public class ServerSellerController {
+import static utils.ConsoleColors.*;
 
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE   = "\u001B[34m";
+public class ServerSellerController {
 
     public Auction addAuction(User currentUser, Item item, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
         Seller seller = new Seller(currentUser);
@@ -42,10 +38,10 @@ public class ServerSellerController {
             pstmt.setString(10, seller.getId());
 
             pstmt.executeUpdate();
-            System.out.println("[System]: Seller \"" + ANSI_YELLOW + seller.getName() + ANSI_RESET + "\" created auction: " + item.getItemName());
+            System.out.println("[System]: Seller \"" + YELLOW + seller.getName() + RESET + "\" created auction: " + GREEN + item.getItemName() + RESET);
 
         } catch (SQLException e) {
-            System.err.println("[Error]: Database error during addAuction: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println("[Error]: Database error during addAuction: " + RED + e.getMessage() + RESET);
             return null;
         }
 
@@ -54,14 +50,14 @@ public class ServerSellerController {
 
     public boolean editAuction(User currentUser, Auction auction, String newName, String newDesc, double newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime) {
         if (!auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[Security]: You are not the owner of this auction");
+            System.out.println("[Security]: " + RED + "You are not the owner of this auction" + RESET);
             return false;
         }
 
         if (auction.getStatus().equals(Auction.STATUS_RUNNING) ||
                 auction.getStatus().equals(Auction.STATUS_FINISHED) ||
                 auction.getStatus().equals(Auction.STATUS_DELETED)) {
-            System.out.println("[Error]: Cannot edit information while the auction is ongoing, finished, or deleted");
+            System.out.println("[Error]: " + RED + "Cannot edit information while the auction is ongoing, finished, or deleted" + RESET);
             return false;
         }
 
@@ -90,18 +86,18 @@ public class ServerSellerController {
                 auction.setEndTime(newEndTime);
                 auction.setStatus(newStatus);
 
-                System.out.println("[System]: Auction \"" + ANSI_YELLOW + auction.getId() + ANSI_RESET + "\" updated successfully");
+                System.out.println("[System]: Auction \"" + YELLOW + auction.getId() + RESET + "\" updated successfully");
                 return true;
             }
         } catch (SQLException e) {
-            System.err.println("[Error]: Database error during editAuction: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println("[Error]: Database error during editAuction: " + RED + e.getMessage() + RESET);
         }
         return false;
     }
 
     public boolean deleteAuction(User currentUser, Auction auction) {
         if (!auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[Security]: You do not have permission to delete this product");
+            System.out.println("[Security]: " + RED + "You do not have permission to delete this product" + RESET);
             return false;
         }
 
@@ -116,11 +112,11 @@ public class ServerSellerController {
             int rowsAffected = pstmt.executeUpdate();
             if (rowsAffected > 0) {
                 auction.setStatus(Auction.STATUS_DELETED);
-                System.out.println("[System]: Auction \"" + ANSI_YELLOW + auction.getId() + ANSI_RESET + "\" has been deleted by " + currentUser.getName());
+                System.out.println("[System]: Auction \"" + YELLOW + auction.getId() + RESET + "\" has been deleted by " + YELLOW + currentUser.getName() + RESET);
                 return true;
             }
         } catch (SQLException e) {
-            System.err.println("[Error]: Database error during deleteAuction: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println("[Error]: Database error during deleteAuction: " + RED + e.getMessage() + RESET);
         }
         return false;
     }

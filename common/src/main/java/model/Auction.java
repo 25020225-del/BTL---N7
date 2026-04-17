@@ -4,13 +4,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Auction extends Entity {
+import static utils.ConsoleColors.*;
 
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE   = "\u001B[34m";
+public class Auction extends Entity {
 
     public static final String STATUS_PENDING  = "PENDING_APPROVAL";
     public static final String STATUS_OPEN     = "OPEN";
@@ -90,23 +86,23 @@ public class Auction extends Entity {
 
     public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
-            System.out.println(ANSI_RED + "[Error]: The auction session has been deleted by Admin" + ANSI_RESET);
+            System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
             return false;
         }
 
         if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
-            System.out.println(ANSI_RED + "[Error]: Cannot place a bid. The auction is not running or has already ended" + ANSI_RESET);
+            System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
             return false;
         }
 
         if (newMaxBid < 0) {
-            System.out.println(ANSI_RED + "[Error]: Invalid Bid" + ANSI_RESET);
+            System.out.println("[Error]: " + RED + "Invalid Bid" + RESET);
             return false;
         }
 
         double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
-            System.out.println(ANSI_RED + "[Error]: Bid must be greater than or equal to VND " + minRequiredBid + ANSI_RESET);
+            System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
             return false;
         }
 
@@ -140,7 +136,7 @@ public class Auction extends Entity {
 
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             endTime = endTime.plusMinutes(2);
-            System.out.println(ANSI_YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + ANSI_RESET);
+            System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + RESET);
         }
 
         return true;
@@ -150,23 +146,23 @@ public class Auction extends Entity {
         if (this.status.equals(STATUS_RUNNING) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
                 this.status = STATUS_FINISHED;
-                System.out.println(ANSI_GREEN + "[System]: Auction session \"" + this.id + "\" has ended" + ANSI_RESET);
-                System.out.println(ANSI_GREEN + "[System]: Winner: \"" + winningBidder.getUserName() + "\" at VND " + currentPrice + ANSI_RESET);
+                System.out.println(GREEN + "[System]: Auction session \"" + this.id + "\" has ended" + RESET);
+                System.out.println(GREEN + "[System]: Winner: \"" + winningBidder.getUserName() + "\" at VND " + currentPrice + RESET);
             } else {
                 this.status = STATUS_CANCELED;
-                System.out.println(ANSI_YELLOW + "[System]: Auction session \"" + this.id + "\" was cancelled due to no bidders" + ANSI_RESET);
+                System.out.println(YELLOW + "[System]: Auction session \"" + this.id + "\" was cancelled due to no bidders" + RESET);
             }
         }
     }
 
     public synchronized boolean registerAutoBid(Bidder bidder, double maxBid, double userIncrement) {
         if (!status.equals(STATUS_RUNNING)) {
-            System.out.println(ANSI_RED + "[Error]: Auction is not in RUNNING status" + ANSI_RESET);
+            System.out.println("[Error]: " + RED + "Auction is not in RUNNING status" + RESET);
             return false;
         }
 
         if (maxBid <= currentPrice) {
-            System.out.println(ANSI_RED + "[Error]: Maximum bid must be greater than current price" + ANSI_RESET);
+            System.out.println("[Error]: " + RED + "Maximum bid must be greater than current price" + RESET);
             return false;
         }
 
@@ -175,7 +171,7 @@ public class Auction extends Entity {
 
         activeAutoBids.sort((b1, b2) -> b1.getTimeRegistered().compareTo(b2.getTimeRegistered()));
 
-        System.out.println(ANSI_BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + ANSI_RESET);
+        System.out.println(BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + RESET);
 
         resolveAutoBids();
 
@@ -203,7 +199,7 @@ public class Auction extends Entity {
                     BidTransaction txn = new BidTransaction("AUTO-" + System.currentTimeMillis(), winningBidder, currentPrice);
                     bidHistory.add(txn);
 
-                    System.out.println(ANSI_BLUE + "[Auto-Bid]: \"" + winningBidder.getUserName() + "\" automatically raised the bid to: " + currentPrice + ANSI_RESET);
+                    System.out.println(BLUE + "[Auto-Bid]: \"" + winningBidder.getUserName() + "\" automatically raised the bid to: " + currentPrice + RESET);
 
                     isPriceChanged = true;
                     break;

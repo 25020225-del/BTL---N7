@@ -20,50 +20,57 @@ import model.User;
 import java.io.File;
 import java.io.IOException;
 
+import static utils.ConsoleColors.*;
 
 public class ClientBidderController {
-    static TilePane table = null;
 
+    private static TilePane itemTable = null;
 
     public static void start() throws IOException {
+        System.out.println("[Log]: Initializing Bidder View Components...");
+
         VBox mainDock = (VBox) MainApplication.rootMainView.lookup("#mainDock");
         VBox mainViewController = (VBox) MainApplication.rootMainView.lookup("#mainViewController");
 
-        VBox product = (VBox) WidgetFactory.createMinimalItem("Butter","30$","12 days");
-
-
         for (Node node : mainViewController.getChildren()) {
             if (node instanceof ScrollPane) {
-                ScrollPane sp = (ScrollPane) node;
-                if (sp.getContent() instanceof TilePane) {
-                    table = (TilePane) sp.getContent();
+                ScrollPane scrollPane = (ScrollPane) node;
+                if (scrollPane.getContent() instanceof TilePane) {
+                    itemTable = (TilePane) scrollPane.getContent();
                 }
             }
         }
 
-        AnchorPane find = (AnchorPane) mainViewController.getChildren().get(0);
+        if (itemTable == null) {
+            System.out.println("[Error]: " + RED + "Could not find Item Table (TilePane) in UI" + RESET);
+            return;
+        }
 
+        AnchorPane searchBarContainer = (AnchorPane) mainViewController.getChildren().get(0);
         TextField searchField = (TextField) MainApplication.rootMainView.lookup("#searchField");
 
-        Button findItem = (Button) WidgetFactory.createButton("mdi2f-file-find-outline","","Find");
-        Button searchButton = (Button) MainApplication.rootMainView.lookup("#searchButton");
+        Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "", "Find");
+        Button executeSearchButton = (Button) MainApplication.rootMainView.lookup("#searchButton");
 
-        findItem.setOnAction(event -> {
-            AnimateEffect.fadeNode(find,!find.isVisible());
-        });
-        searchButton.setOnAction(event -> {
-            String search = searchField.getText();
-            AnimateEffect.showOrHideItem(table,search);
+        toggleSearchButton.setOnAction(event -> {
+            AnimateEffect.fadeNode(searchBarContainer, !searchBarContainer.isVisible());
         });
 
-        mainDock.getChildren().addFirst(findItem);
+        executeSearchButton.setOnAction(event -> {
+            String keyword = searchField.getText();
+            System.out.println("[Log]: Searching for: " + YELLOW + keyword + RESET);
+            AnimateEffect.showOrHideItem(itemTable, keyword);
+        });
 
-        table.getChildren().add(WidgetFactory.createMinimalItem("Máy xay sinh tố mèo","30000","3"));
-        table.getChildren().add(WidgetFactory.createMinimalItem("Đùi gà tẩm bột chiên xù","40000","3"));
-        table.getChildren().add(WidgetFactory.createMinimalItem("Máy bay đồ chơi mini","1200000","3"));
-        table.getChildren().add(WidgetFactory.createMinimalItem("Thịt cừu nướng","127000","4"));
-        table.getChildren().add(WidgetFactory.createMinimalItem("Mỡ lợn","80000","3"));
-        table.getChildren().add(WidgetFactory.createMinimalItem("Đầu cá","35000","2"));
-        System.out.println(table);
+        mainDock.getChildren().addFirst(toggleSearchButton);
+
+        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Máy xay sinh tố mèo","30000","3"));
+        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Đùi gà tẩm bột chiên xù","40000","3"));
+        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Máy bay đồ chơi mini","1200000","3"));
+        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Thịt cừu nướng","127000","4"));
+        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Mỡ lợn","80000","3"));
+        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Đầu cá","35000","2"));
+
+        System.out.println(GREEN + "[System]: Bidder Controller started successfully. Table updated." + RESET);
     }
 }

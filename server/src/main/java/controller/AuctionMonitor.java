@@ -6,20 +6,19 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class AuctionMonitor {
+import static utils.ConsoleColors.*;
 
-    public static final String ANSI_RESET  = "\u001B[0m";
-    public static final String ANSI_RED    = "\u001B[31m";
-    public static final String ANSI_GREEN  = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
+public class AuctionMonitor {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
 
-    public AuctionMonitor(List<Auction> allAuctions) {this.allAuctions = allAuctions;}
+    public AuctionMonitor(List<Auction> allAuctions) {
+        this.allAuctions = allAuctions;
+    }
 
     public void startMonitoring() {
-        System.out.println(ANSI_GREEN + "[Monitor]: The automatic auction monitoring system has been launched" + ANSI_RESET);
+        System.out.println(GREEN + "[Monitor]: The automatic auction monitoring system has been launched" + RESET);
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
@@ -29,14 +28,15 @@ public class AuctionMonitor {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("[Error]: Error during the bidding scan process: " + ANSI_RED + e.getMessage() + ANSI_RESET);
+                System.out.println("[Error]: Error during the bidding scan process: " + RED + e.getMessage() + RESET);
+                e.printStackTrace();
             }
         }, 0, 10, TimeUnit.SECONDS);
     }
 
     public void stopMonitoring() {
         scheduler.shutdown();
-        System.out.println(ANSI_YELLOW + "[Monitor]: The auction monitoring system has been turned off" + ANSI_RESET);
+        System.out.println(YELLOW + "[Monitor]: The auction monitoring system has been turned off" + RESET);
     }
 
 }

@@ -9,6 +9,7 @@ import javafx.scene.control.TextField;
 import model.User;
 import network.NetworkMessage;
 
+import static utils.ConsoleColors.*;
 import java.io.IOException;
 
 public class LoginController {
@@ -23,13 +24,12 @@ public class LoginController {
     }
 
     @FXML
-    protected void onMainViewButtonClick() throws IOException {
-        MainController.start();
+    protected void onMainViewButtonClick() {
         String username = loginAccountName.getText().trim();
         String password = loginPasswordAccount.getText().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
-            AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing information", "Please username and password!");
+            AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Information", "Please enter your Username and Password!");
             return;
         }
 
@@ -38,7 +38,8 @@ public class LoginController {
             User loginAttempt = new User("", username, password, "", "");
             networkClient.sendMessage("LOGIN", loginAttempt);
         } else {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Network error", "Cannot connect to server!");
+            System.out.println("[Error]: " + RED + "Cannot connect to the server!" + RESET);
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server!");
         }
     }
 
@@ -55,16 +56,19 @@ public class LoginController {
             String command = response.getCommand();
 
             if ("LOGIN_SUCCESS".equals(command)) {
-                System.out.println("[System]: Successfully logged in");
+                System.out.println("[System]: " + GREEN + "Successfully logged in" + RESET);
 
                 loginAccountName.clear();
                 loginPasswordAccount.clear();
 
-                System.out.println("[System]: Main UI view");
+                System.out.println("[Log]: Main UI view");
                 MainApplication.setNewScene(MainApplication.rootMainView);
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
                 String errorMsg = response.getData() != null ? response.getData().toString() : "Username or password is incorrect!";
+
+                System.out.println("[System]: " + RED + "Login failed: " + errorMsg + RESET);
+
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "Login Failed", errorMsg);
             }
         });
