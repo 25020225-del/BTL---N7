@@ -1,133 +1,84 @@
+/* Tổng thể: Xám đậm, font hệ thống */
+.root {
+    -fx-font-family: "Segoe UI", Arial;
+    -fx-background-color: #1e1e1e;
+}
+
+/* Nền các màn hình chính */
+.auth-root, .main-view-root {
+    -fx-background-color: #1e1e1e;
+}
+
+/* Khung nội dung: Bo góc, viền mỏng, bóng đổ nhẹ */
+.auth-card {
+    -fx-background-color: #252525;
+    -fx-background-radius: 10;
+    -fx-border-color: #333333;
+    -fx-border-width: 0.5;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 15, 0, 0, 0);
+}
+
+/* Tiêu đề: Cỡ 32, font mỏng, màu trắng */
+.auth-title {
+    -fx-fill: #ffffff;
+    -fx-font-size: 32px;
+    -fx-font-weight: 100;
+}
+
+/* Ô nhập liệu: Nền tối, chữ trắng, gạch chân mỏng */
+.text-field, .password-field {
+    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #ffffff;
+    -fx-prompt-text-fill: #666666;
+    -fx-border-color: #404040;
+    -fx-border-width: 0 0 1 0;
+    -fx-background-radius: 0;
+}
+
+/* Khi click vào ô nhập: Hiện viền đỏ */
+.text-field:focused, .password-field:focused {
+    -fx-background-color: #333333;
+    -fx-border-color: #e74c3c;
+}
+
+/* Nút bấm chính: Đỏ hiện đại, bo góc 4px */
 .button {
-    -fx-background-color: #3498db;
+    -fx-background-color: #e74c3c;
     -fx-text-fill: white;
-    -fx-font-size: 14px;
-    -fx-padding: 10px 20px;
-    -fx-background-radius: 5px;
+    -fx-background-radius: 4;
     -fx-cursor: hand;
-    -fx-transition: 0.3s; /* Lưu ý: JavaFX không hỗ trợ transition như Web,
-                             hiệu ứng sẽ thay đổi lập tức hoặc dùng code Java để hỗ trợ */
+    -fx-font-weight: bold;
 }
 
-/* Khi di chuột qua (Hover) */
 .button:hover {
-    -fx-background-color: #2980b9;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 0);
+    -fx-background-color: #ff5c4c;
 }
-.button:pressed {
-     -fx-background-color: #1f6391;
-     -fx-scale-x: 0.95; /* Thu nhỏ nhẹ theo chiều ngang */
-     -fx-scale-y: 0.95; /* Thu nhỏ nhẹ theo chiều dọc */
-     -fx-effect: innershadow(three-pass-box, rgba(0,0,0,0.7), 5, 0, 0, 0);
- }
 
- .text-field {
-     -fx-background-color: #ffffff;
-     -fx-background-radius: 5px;
-     -fx-border-color: #dcdde1; /* Màu viền xám nhạt */
-     -fx-border-radius: 5px;
-     -fx-border-width: 1px;
-     -fx-padding: 8px 12px;
-     -fx-font-size: 14px;
-     -fx-text-fill: #2f3640; /* Màu chữ chính */
-     -fx-prompt-text-fill: #7f8c8d; /* Màu chữ gợi ý (Placeholder) */
- }
+/* Link chuyển cảnh: Chữ đỏ, nền trong suốt */
+.auth-link {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e74c3c;
+}
 
- /* Khi di chuột qua (Hover) */
- .text-field:hover {
-     -fx-border-color: #3498db; /* Viền chuyển sang màu xanh dương */
- }
+/* Sidebar: Đen nhám, viền phải mỏng */
+#mainDock {
+    -fx-background-color: #151515;
+    -fx-border-color: transparent #252525 transparent transparent;
+}
 
- /* Khi đang nhấn vào để nhập liệu (Focused) */
- .text-field:focused {
-     -fx-background-color: #ffffff;
-     -fx-border-color: #2980b9;
-     /* Tạo hiệu ứng phát sáng xanh nhẹ quanh viền */
-     -fx-effect: dropshadow(three-pass-box, rgba(52, 152, 219, 0.3), 10, 0, 0, 0);
- }
+/* Thanh tìm kiếm: Bo tròn sâu, màu tối */
+.top-search-bar {
+    -fx-background-color: #252525;
+    -fx-background-radius: 20;
+    -fx-padding: 10;
+}
 
- /* Trạng thái khi TextField bị vô hiệu hóa (Disabled) */
- .text-field:disabled {
-     -fx-opacity: 0.5;
-     -fx-background-color: #f5f6fa;
-     -fx-cursor: default;
- }
-
- /* Tổng thể SplitPane */
- .split-pane {
-     -fx-background-color: transparent;
-     -fx-border-color: #dcdde1;
-     -fx-border-width: 1px;
- }
-
- /* Thanh chia (Divider) */
- .split-pane *.split-pane-divider {
-     -fx-background-color: #f1f2f6; /* Màu nền thanh chia */
-     -fx-padding: 0 1px; /* Làm cho thanh chia mỏng lại */
- }
-
- /* Hiệu ứng khi di chuột vào thanh chia */
- .split-pane *.split-pane-divider:hover {
-     -fx-background-color: #3498db; /* Đổi sang màu xanh khi hover */
- }
-
- /* Ẩn bớt các chi tiết thừa của các vùng con (Panes) */
- .split-pane *.content {
-     -fx-background-color: -fx-control-inner-background;
- }
-
- /* Thêm một "nút cầm" nhỏ ở giữa thanh chia để người dùng dễ nhận biết */
- .split-pane *.split-pane-divider {
-    -fx-border-color: transparent #ced4da transparent #ced4da;
-    -fx-border-width: 0 1 0 1;
- }
- .split-pane *.split-pane-divider {
-     -fx-cursor: h-resize; /* Biểu tượng mũi tên hai đầu nằm ngang */
- }
-
-
- .choice-box {
-     -fx-background-color: white;
-     -fx-border-color: #dcdcdc;
-     -fx-border-radius: 5px;
-     -fx-background-radius: 5px;
-     -fx-padding: 5px;
-     -fx-font-size: 14px;
-     -fx-cursor: hand;
-     -fx-transition: all 0.3s;
- }
-
- /* Giao diện Light Mode thanh lịch cho ComboBox */
- .combo-box {
-     -fx-background-color: #ffffff;
-     -fx-background-radius: 8;
-     -fx-border-color: #e0e0e0; /* Viền xám nhạt */
-     -fx-border-radius: 8;
-     -fx-padding: 5 10 5 10;
-     -fx-text-fill: #333333;
-     -fx-font-size: 14px;
-     -fx-cursor: hand;
-     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
- }
-
- /* Hiệu ứng khi rê chuột vào */
- .combo-box:hover {
-     -fx-border-color: #2196f3; /* Xanh dương nhẹ */
-     -fx-background-color: #fafafa;
- }
-
- /* Phần danh sách sổ xuống */
- .combo-box .list-view {
-     -fx-background-color: white;
-     -fx-background-radius: 8;
-     -fx-border-color: #e0e0e0;
-     -fx-border-radius: 8;
-     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);
- }
-
- /* Xóa viền focus mặc định */
- .combo-box:focused {
-     -fx-background-insets: 0;
-     -fx-border-width: 1.5;
-     -fx-border-color: #2196f3;
- }
+/* ComboBox: Màu tối đồng bộ */
+.combo-box {
+    -fx-background-color: #2d2d2d;
+    -fx-border-color: #404040;
+}
+.combo-box .list-cell {
+    -fx-text-fill: white;
+    -fx-background-color: #2d2d2d;
+}
