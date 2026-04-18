@@ -82,3 +82,37 @@
     -fx-text-fill: white;
     -fx-background-color: #2d2d2d;
 }
+.scroll-pane {
+    -fx-background-color: #1a1a1a; /* Màu đen xám nhẹ cho dễ nhìn */
+    -fx-background: #1a1a1a;       /* Bắt buộc phải có dòng này để đổi nền nội dung */
+    -fx-border-color: #333333;    /* Viền nhẹ xung quanh */
+    -fx-padding: 0;
+}
+
+/* 2. Phần chứa nội dung bên trong (Viewport) */
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+/* 3. Tùy chỉnh thanh cuộn (Scroll Bar) cho tiệp màu */
+.scroll-pane .scroll-bar:vertical,
+.scroll-pane .scroll-bar:horizontal {
+    -fx-background-color: #2b2b2b; /* Nền của thanh ray */
+}
+
+/* Cục kéo (Thumb) */
+.scroll-pane .scroll-bar .thumb {
+    -fx-background-color: #4f4f4f;
+    -fx-background-radius: 5;
+}
+
+.scroll-pane .scroll-bar .thumb:hover {
+    -fx-background-color: #666666; /* Sáng lên khi di chuột vào */
+}
+
+/* Ẩn các nút mũi tên ở hai đầu (cho app nhìn ngầu hơn) */
+.scroll-pane .scroll-bar .increment-button,
+.scroll-pane .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-shape: "";
+}

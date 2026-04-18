@@ -12,6 +12,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 import model.Bidder;
@@ -46,12 +47,15 @@ public class ClientBidderController {
             return;
         }
 
-        AnchorPane searchBarContainer = (AnchorPane) mainViewController.getChildren().get(0);
+        HBox searchBarContainer = (HBox) mainViewController.getChildren().get(0);
         TextField searchField = (TextField) MainApplication.rootMainView.lookup("#searchField");
 
         Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "", "Find");
         Button executeSearchButton = (Button) MainApplication.rootMainView.lookup("#searchButton");
 
+        searchField.setOnAction(event -> {
+            executeSearchButton.getOnAction().handle(null);
+        });
         toggleSearchButton.setOnAction(event -> {
             AnimateEffect.fadeNode(searchBarContainer, !searchBarContainer.isVisible());
         });
