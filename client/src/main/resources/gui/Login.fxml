@@ -1,40 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.PasswordField?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720.0" prefWidth="1280.0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.LoginController">
+<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.LoginController">
    <children>
-      <Label layoutX="474.0" layoutY="66.0" prefHeight="163.0" prefWidth="366.0" text="LOGIN" textAlignment="CENTER">
-         <font>
-            <Font size="96.0" />
-         </font>
-      </Label>
-      <Label layoutX="266.0" layoutY="313.0" text="Username">
-         <font>
-            <Font size="28.0" />
-         </font>
-      </Label>
-      <Label layoutX="266.0" layoutY="374.0" prefHeight="42.0" prefWidth="153.0" text="Password">
-         <font>
-            <Font size="30.0" />
-         </font>
-      </Label>
-      <TextField fx:id="loginAccountName" layoutX="547.0" layoutY="320.0" prefHeight="38.0" prefWidth="277.0" />
-      <PasswordField fx:id="loginPasswordAccount" layoutX="547.0" layoutY="386.0" prefHeight="38.0" prefWidth="277.0" />
-      <Button layoutX="623.0" layoutY="454.0" mnemonicParsing="false" onAction="#onMainViewButtonClick" prefHeight="42.0" prefWidth="199.0" text="Login">
-         <font>
-            <Font size="27.0" />
-         </font>
-      </Button>
-      <FontIcon iconLiteral="mdi2a-account" iconSize="40" layoutX="499.0" layoutY="352.0" />
-      <FontIcon iconLiteral="mdi2a-account-key" iconSize="40" layoutX="492.0" layoutY="422.0" />
-      <Label layoutX="601.0" layoutY="563.0" text="No account? Press" />
-      <Button layoutX="732.0" layoutY="552.0" mnemonicParsing="false" onAction="#onRegisterViewButtonClick" text="register" />
+      <VBox alignment="CENTER" fillWidth="false" maxWidth="400.0" prefWidth="400.0" spacing="25.0" styleClass="auth-card">
+         <children>
+            <Text styleClass="auth-title" text="Member Login" />
+
+            <VBox spacing="15.0" prefWidth="320.0">
+               <children>
+                  <TextField fx:id="loginAccountName" prefHeight="40.0" promptText="Username" styleClass="auth-input" />
+                  <PasswordField fx:id="loginPasswordAccount" prefHeight="40.0" promptText="Password" styleClass="auth-input" />
+               </children>
+            </VBox>
+
+            <Button fx:id="loginButton" mnemonicParsing="false" onAction="#onMainViewButtonClick" prefHeight="40.0" prefWidth="320.0" styleClass="auth-btn-primary" text="SIGN IN" />
+
+            <Button mnemonicParsing="false" onAction="#onRegisterViewButtonClick" styleClass="auth-link" style="-fx-background-color: transparent;" text="Don't have an account? Register" />
+         </children>
+         <padding>
+            <javafx.geometry.Insets top="40" bottom="40" left="30" right="30"/>
+         </padding>
+      </VBox>
    </children>
-</AnchorPane>
+</StackPane>

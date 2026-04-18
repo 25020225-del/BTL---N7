@@ -137,7 +137,7 @@ public class MainApplication extends Application {
         ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
         if (registerRole != null) {
             registerRole.getItems().clear();
-            registerRole.getItems().addAll("Bidder", "Seller", "Admin");
+            registerRole.getItems().addAll("Bidder", "Seller");
             registerRole.getSelectionModel().selectFirst();
         }
     }
