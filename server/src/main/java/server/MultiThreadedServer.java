@@ -17,10 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,6 +33,7 @@ public class MultiThreadedServer {
     private static final String LOCALTONET_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
 
     private static final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
+    private static final ExecutorService broadcastPool = Executors.newFixedThreadPool(20);
 
     private static String lastSyncedIp = "";
     private static int lastSyncedPort = -1;
@@ -46,7 +44,7 @@ public class MultiThreadedServer {
 
     public static void updateBulletinBoard(String currentIp, int currentPort) {
         try {
-            String urlString = "https://api.jsonbin.io/v3/b/" + BIN_ID.trim();
+            String urlString = "https://api.jsonbin.io/v3/b/" + BIN_ID;
             URL url = new URL(urlString);
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -155,6 +153,8 @@ public class MultiThreadedServer {
             broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly" + RESET, null);
             System.out.println(YELLOW + "[System]: Server has been shutdown" + RESET);
             monitor.stopMonitoring();
+            scheduler.shutdown();
+            broadcastPool.shutdown();
         }));
 
         Thread serverChatThread = new Thread(() -> {
@@ -227,7 +227,17 @@ public class MultiThreadedServer {
 
     public static void broadcast(String message, ClientHandler sender) {
         for (ClientHandler client : clients) {
-            if (client != sender) client.sendMessage(message);
+            if (client != sender){
+                broadcastPool.submit(() -> {
+                    try {
+                        client.sendMessage(message);
+                    } catch (Exception e) {
+                        System.out.println("[Error]: Error when trying to broadcast to \"" +
+                                YELLOW + client.getClientName() + RESET + "\": " +
+                                RED+ e.getMessage() + RESET);
+                    }
+                });
+            }
         }
     }
 
