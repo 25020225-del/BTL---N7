@@ -8,8 +8,8 @@ public class Art extends Item {
 
     @Override
     public String getInfo() {
-        return    "[Art]: "             + this.itemName
-                + " | Start Price: VND" + this.startingPrice;
+        return    "[Art]: "             + this.getItemName()
+                + " | Start Price: VND" + this.getStartingPrice();
     }
 
 }

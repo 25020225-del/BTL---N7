@@ -3,12 +3,9 @@ package client;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import network.NetworkMessage;
-import javafx.application.Platform;
 
-import java.awt.Desktop;
 import java.io.*;
 import java.net.Socket;
-import java.net.URI;
 import java.util.function.Consumer;
 
 import static utils.ConsoleColors.*;
@@ -23,6 +20,7 @@ public class NetworkClient {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private Consumer<NetworkMessage> onMessageReceived;
+    private final ResponseDispatcher dispatcher = new ResponseDispatcher();
 
     public NetworkClient(String serverAddress, int port) {
         System.out.println("=====================================");
@@ -85,6 +83,10 @@ public class NetworkClient {
         this.onMessageReceived = callback;
     }
 
+    public Consumer<NetworkMessage> getOnMessageReceived() {
+        return this.onMessageReceived;
+    }
+
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
             System.out.println("[Error]: Cannot send command: '" + YELLOW + command + RESET + "' due to not connected");
@@ -105,39 +107,8 @@ public class NetworkClient {
             String jsonMessage;
             while ((jsonMessage = in.readLine()) != null) {
                 NetworkMessage response = mapper.readValue(jsonMessage, NetworkMessage.class);
-                String command = response.getCommand();
 
-                if ("REDIRECT".equals(command)) {
-                    String url = (String) response.getData();
-                    try {
-                        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                            Desktop.getDesktop().browse(new URI(url));
-                            System.out.println("[System]: Redirecting to: " + YELLOW + url + RESET);
-                        }
-                    } catch (Exception e) {
-                        System.out.println("[Error]: Cannot redirect: " + RED + e.getMessage() + RESET);
-                    }
-                    continue;
-                }
-
-                if ("KICKED".equals(command)) {
-                    System.out.println(YELLOW + "[System]: You have been kicked. Reason: " + response.getData() + RESET);
-                    if (onMessageReceived != null) {
-                        Platform.runLater(() -> onMessageReceived.accept(response));
-                    }
-                    try {
-                        Thread.sleep(1000);
-                    } catch (Exception ignored) {}
-                    System.exit(0);
-                }
-
-                if ("CHAT".equals(command)) {
-                    System.out.println(response.getData());
-                }
-
-                if (onMessageReceived != null) {
-                    Platform.runLater(() -> onMessageReceived.accept(response));
-                }
+                dispatcher.dispatch(response, this);
             }
         } catch (IOException e) {
             System.out.println("[Error]: Lost connection to server: " + RED + e.getMessage() + RESET);

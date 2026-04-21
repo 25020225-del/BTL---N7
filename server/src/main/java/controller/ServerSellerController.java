@@ -15,11 +15,10 @@ import static utils.ConsoleColors.*;
 
 public class ServerSellerController {
 
-    public Auction addAuction(User currentUser, Item item, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
+    public Auction addAuction(User currentUser, Item item, double bidIncrement, int durationMinutes) {
         Seller seller = new Seller(currentUser);
-        String auctionId = "AUC-" + System.currentTimeMillis();
 
-        Auction newAuction = new Auction(auctionId, item, seller, bidIncrement, startTime, endTime);
+        Auction newAuction = Auction.createNewAuction(item, seller, bidIncrement, durationMinutes);
 
         String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -32,16 +31,16 @@ public class ServerSellerController {
             pstmt.setDouble(4, item.getStartingPrice());
             pstmt.setDouble(5, newAuction.getCurrentPrice());
             pstmt.setDouble(6, bidIncrement);
-            pstmt.setString(7, startTime.toString());
-            pstmt.setString(8, endTime.toString());
+            pstmt.setString(7, newAuction.getStartTime().toString());
+            pstmt.setString(8, newAuction.getEndTime().toString());
             pstmt.setString(9, newAuction.getStatus());
             pstmt.setString(10, seller.getId());
 
             pstmt.executeUpdate();
-            System.out.println("[System]: Seller \"" + YELLOW + seller.getName() + RESET + "\" created auction: " + GREEN + item.getItemName() + RESET);
+            System.out.println("[System]: Seller \"" + YELLOW + seller.getName() + RESET + "\" created auction: " + item.getItemName());
 
         } catch (SQLException e) {
-            System.out.println("[Error]: Database error during addAuction: " + RED + e.getMessage() + RESET);
+            System.out.println("[Error]: Database error during addAuction: " + utils.ConsoleColors.RED + e.getMessage() + utils.ConsoleColors.RESET);
             return null;
         }
 
