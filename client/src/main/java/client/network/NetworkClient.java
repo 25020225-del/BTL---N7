@@ -1,5 +1,6 @@
-package client;
+package client.network;
 
+import client.handler.ResponseDispatcher;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import network.NetworkMessage;
