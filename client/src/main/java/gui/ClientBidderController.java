@@ -98,6 +98,6 @@ public class ClientBidderController {
         itemTable.getChildren().add(WidgetFactory.createMinimalItem("Mỡ lợn","80000","3"));
         itemTable.getChildren().add(WidgetFactory.createMinimalItem("Đầu cá","35000","2"));
 
-        System.out.println(GREEN + "[System]: Bidder Controller started successfully. Table updated." + RESET);
+        System.out.println("[System]:" + GREEN + " Bidder Controller started successfully. Table updated." + RESET);
     }
 }
