@@ -178,15 +178,34 @@ public class ClientHandler implements Runnable {
             java.util.Map<String, String> map = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
 
             String itemName = map.get("itemName");
-            String price = map.get("startingPrice");
+            String description = map.get("description");
+            double startingPrice = Double.parseDouble(map.get("startingPrice"));
+            double bidIncrement = Double.parseDouble(map.get("bidIncrement"));
+            int durationMinutes = Integer.parseInt(map.get("durationMinutes"));
 
-            System.out.println("\n[System]: Seller \"" + YELLOW + this.clientName + RESET + "\" has created an auction");
-            System.out.println("[System]: Item: " + YELLOW + itemName + RESET + " - Staring price: " + YELLOW + price + " VND" + RESET);
+            model.Item item = new model.Art("ITM-" + System.currentTimeMillis(), itemName, description, startingPrice);
 
-            String alertMsg = "[System]: Seller \"" + YELLOW + this.clientName +RESET + "\" has created an auction of \"" + YELLOW + itemName +RESET + "\" with the price of " + price + " VND";
-            MultiThreadedServer.broadcast("CLI_BROADCAST", alertMsg, this);
+            model.User currentSeller = new model.User("U-" + this.clientName, this.clientName, "", this.clientName, "SELLER");
+            currentSeller.setGood(true);
 
-            sendResponse("CREATE_SUCCESS", "Successfully created auction");
+            controller.ServerSellerController sellerCtrl = new controller.ServerSellerController();
+            model.Auction newAuction = sellerCtrl.addAuction(currentSeller, item, bidIncrement, durationMinutes);
+
+            if (newAuction != null) {
+                newAuction.setStatus(model.Auction.STATUS_RUNNING);
+
+                MultiThreadedServer.auctionList.add(newAuction);
+
+                System.out.println("[System]: Seller \"" + YELLOW + this.clientName + RESET + "\" has created an auction");
+                System.out.println("[System]: Item: " + YELLOW + itemName + RESET + " - Starting Price: " + YELLOW + startingPrice + " VND" + RESET);
+
+                String alertMsg = "[System]: Seller \"" + this.clientName + "\" has created an auction of \"" + YELLOW + itemName + RESET + "\" with the price of " + YELLOW + startingPrice +RESET + " VND";
+                MultiThreadedServer.broadcast("CLI_BROADCAST", alertMsg, this);
+
+                sendResponse("CREATE_SUCCESS", "Successfully created auction");
+            } else {
+                sendResponse("ERROR", "Database Error when creating auction");
+            }
 
         } catch (Exception e) {
             System.out.println("[Error]: " + "Error when trying CREATE_AUCTION: " + RED + e.getMessage() + RESET);
