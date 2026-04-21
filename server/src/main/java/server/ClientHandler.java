@@ -66,6 +66,10 @@ public class ClientHandler implements Runnable {
                             handleLogin(message.getData());
                             break;
 
+                        case "CREATE_AUCTION":
+                            handleCreateAuction(message.getData());
+                            break;
+
                         default:
                             System.out.println("[Error]: Unrecognized command: " + RED + command + RESET);
                             sendResponse("ERROR", "Unrecognized command");
@@ -167,5 +171,26 @@ public class ClientHandler implements Runnable {
 
     public void redirectToWebsite(String url) {
         sendResponse("REDIRECT", url);
+    }
+
+    private void handleCreateAuction(Object data) {
+        try {
+            java.util.Map<String, String> map = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
+
+            String itemName = map.get("itemName");
+            String price = map.get("startingPrice");
+
+            System.out.println("\n[System]: Seller \"" + YELLOW + this.clientName + RESET + "\" has created an auction");
+            System.out.println("[System]: Item: " + YELLOW + itemName + RESET + " - Staring price: " + YELLOW + price + " VND" + RESET);
+
+            String alertMsg = "[System]: Seller \"" + YELLOW + this.clientName +RESET + "\" has created an auction of \"" + YELLOW + itemName +RESET + "\" with the price of " + price + " VND";
+            MultiThreadedServer.broadcast("CLI_BROADCAST", alertMsg, this);
+
+            sendResponse("CREATE_SUCCESS", "Successfully created auction");
+
+        } catch (Exception e) {
+            System.out.println("[Error]: " + "Error when trying CREATE_AUCTION: " + RED + e.getMessage() + RESET);
+            sendResponse("ERROR", "Auction creation data is invalid");
+        }
     }
 }

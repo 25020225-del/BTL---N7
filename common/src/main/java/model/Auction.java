@@ -54,6 +54,24 @@ public class Auction extends Entity {
         }
     }
 
+    public static Auction createNewAuction(Item item, Seller seller, double bidIncrement, int durationMinutes) {
+
+        String newId = "AUC-" + System.currentTimeMillis();
+
+        LocalDateTime start = LocalDateTime.now();
+        LocalDateTime end = start.plusMinutes(durationMinutes);
+
+        Auction newAuction = new Auction(newId, item, seller, bidIncrement, start, end);
+
+        if (seller.isGood()) {
+            newAuction.setStatus(STATUS_OPEN);
+        } else {
+            newAuction.setStatus(STATUS_PENDING);
+        }
+
+        return newAuction;
+    }
+
     public Item getItem() { return item; }
     public void setItem(Item item) { this.item = item; }
 
