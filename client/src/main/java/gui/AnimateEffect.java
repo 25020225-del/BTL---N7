@@ -74,16 +74,7 @@ public class AnimateEffect {
                 VBox vBoxItem = (VBox) s;
                 boolean found = false;
 
-                for (Node n : vBoxItem.getChildren()) {
-                    if (n instanceof Label) {
-                        Label label = (Label) n;
-
-                        if (label.getText().toLowerCase().contains(searchKeyword)) {
-                            found = true;
-                            break;
-                        }
-                    }
-                }
+                found = Search.searchText(item, s);
 
                 vBoxItem.setManaged(found);
                 vBoxItem.setVisible(found);
