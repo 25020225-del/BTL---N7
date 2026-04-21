@@ -40,7 +40,7 @@ public class ServerDiscovery {
                 return new String[]{ip, port};
             }
         } catch (Exception e) {
-            System.out.println("[Error]: API Data Retrieval failed: " + RED + e.getMessage() + RESET);
+            System.out.println("[Error]:" + RED + " API Data Retrieval failed: " + e.getMessage() + RESET);
         }
         return null;
     }

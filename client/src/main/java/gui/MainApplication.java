@@ -26,10 +26,10 @@ public class MainApplication extends Application {
 
     public static void main(String[] args) {
         System.out.println(GREEN + "=================================");
-        System.out.println("|                               |");
-        System.out.println("|       CLIENT LOG TABLE        |");
-        System.out.println("|                               |");
-        System.out.println("=================================" + RESET);
+        System.out.println(        "|                               |");
+        System.out.println(        "|       CLIENT LOG TABLE        |");
+        System.out.println(        "|                               |");
+        System.out.println(        "=================================" + RESET);
         launch(args);
     }
 
@@ -42,7 +42,7 @@ public class MainApplication extends Application {
     public void initProperties() throws IOException {
         InputStream input = MainApplication.class.getResourceAsStream("config.properties");
         if (input != null) {
-            System.out.println("[System]: " + GREEN + "Reading configuration file..." + RESET);
+            System.out.println("[System]: Reading configuration file...");
             properties.load(input);
         } else {
             System.out.println("[Error]: " + RED + "Cannot find config.properties" + RESET);
