@@ -35,6 +35,7 @@ public class ServerAdminController {
     }
 
     public void forceDeleteAuction(Admin admin, Auction auction) {
+
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             auction.setStatus(Auction.STATUS_DELETED);
             System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has permanently deleted auction \"" + YELLOW + auction.getId() + RESET + "\"");

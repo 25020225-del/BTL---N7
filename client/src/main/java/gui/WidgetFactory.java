@@ -57,7 +57,7 @@ public final class WidgetFactory {
                 name,
                 price,
                 date,
-                createButton("mdi2c-cart-plus", "ADD TO CART", "Bid on this item")
+                createButton("mdi2c-cart-plus", "AUCTION", "Bid on this item")
         );
 
         return minimalItem;
