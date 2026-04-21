@@ -241,6 +241,20 @@ public class MultiThreadedServer {
         }
     }
 
+    public static void broadcast(String command, Object data, ClientHandler sender) {
+        for (ClientHandler client : clients) {
+            if (client != sender) {
+                broadcastPool.submit(() -> {
+                    try {
+                        client.sendResponse(command, data);
+                    } catch (Exception e) {
+                        System.out.println("[Error]: Broadcasting error to \"" + YELLOW + client.getClientName() + RESET + "\"");
+                    }
+                });
+            }
+        }
+    }
+
     public static void privateMsg(String receiver, String message) {
         receiver = receiver.trim();
         for (ClientHandler client : clients) {
