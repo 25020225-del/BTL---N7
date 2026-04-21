@@ -1,5 +1,6 @@
-package client;
+package client.handler;
 
+import client.network.NetworkClient;
 import network.NetworkMessage;
 
 public interface ResponseHandler {
