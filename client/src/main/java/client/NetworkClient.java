@@ -131,6 +131,20 @@ public class NetworkClient {
                     System.exit(0);
                 }
 
+                if ("CLI_BROADCAST".equals(command)) {
+                    System.out.println(YELLOW + response.getData().toString() + RESET);
+                    continue;
+                }
+
+                if ("CREATE_SUCCESS".equals(command)) {
+                    System.out.println("[System]: " + GREEN + response.getData() + RESET);
+
+                    javafx.application.Platform.runLater(() -> {
+                        gui.AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.INFORMATION, "Success", response.getData().toString());
+                    });
+                    continue;
+                }
+
                 if ("CHAT".equals(command)) {
                     System.out.println(response.getData());
                 }
