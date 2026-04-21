@@ -1,8 +1,8 @@
 package model;
 
 public abstract class Entity {
+    private String id;
 
-    protected String id;
     public Entity() {}
 
     public Entity(String id) {this.id = id;}
@@ -11,5 +11,4 @@ public abstract class Entity {
     public void setId(String id) {this.id = id;}
 
     public abstract String getInfo();
-
 }

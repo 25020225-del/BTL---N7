@@ -1,118 +1,154 @@
-/* Tổng thể: Xám đậm, font hệ thống */
+/* Tổng thể: Trắng, font hệ thống */
 .root {
     -fx-font-family: "Segoe UI", Arial;
-    -fx-background-color: #1e1e1e;
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #2d3436;
 }
 
-/* Nền các màn hình chính */
+/* Nền màn hình: Xanh dương cực nhạt (Alice Blue) */
 .auth-root, .main-view-root {
-    -fx-background-color: #1e1e1e;
+    -fx-background-color: #f0f7ff;
 }
 
-/* Khung nội dung: Bo góc, viền mỏng, bóng đổ nhẹ */
+/* Khung nội dung: Bo góc, đổ bóng xanh dương nhạt */
 .auth-card {
-    -fx-background-color: #252525;
-    -fx-background-radius: 10;
-    -fx-border-color: #333333;
-    -fx-border-width: 0.5;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 15, 0, 0, 0);
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 12;
+    -fx-border-color: #d1e2f2;
+    -fx-border-width: 1;
+    /* Đổ bóng tông xanh dương để đồng bộ */
+    -fx-effect: dropshadow(three-pass-box, rgba(41, 128, 185, 0.08), 20, 0, 0, 8);
 }
 
-/* Tiêu đề: Cỡ 32, font mỏng, màu trắng */
+/* Tiêu đề: Xanh dương đậm (Royal Blue) */
 .auth-title {
-    -fx-fill: #ffffff;
+    -fx-fill: #2980b9;
     -fx-font-size: 32px;
-    -fx-font-weight: 100;
-}
-
-/* Ô nhập liệu: Nền tối, chữ trắng, gạch chân mỏng */
-.text-field, .password-field {
-    -fx-background-color: #2d2d2d;
-    -fx-text-fill: #ffffff;
-    -fx-prompt-text-fill: #666666;
-    -fx-border-color: #404040;
-    -fx-border-width: 0 0 1 0;
-    -fx-background-radius: 0;
-}
-
-/* Khi click vào ô nhập: Hiện viền đỏ */
-.text-field:focused, .password-field:focused {
-    -fx-background-color: #333333;
-    -fx-border-color: #e74c3c;
-}
-
-/* Nút bấm chính: Đỏ hiện đại, bo góc 4px */
-.button {
-    -fx-background-color: #e74c3c;
-    -fx-text-fill: white;
-    -fx-background-radius: 4;
-    -fx-cursor: hand;
     -fx-font-weight: bold;
 }
 
-.button:hover {
-    -fx-background-color: #ff5c4c;
+/* Ô nhập liệu: Viền xanh dương nhạt */
+.text-field, .password-field {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #2d3436;
+    -fx-prompt-text-fill: #a2b4bc;
+    -fx-border-color: #d1e2f2;
+    -fx-border-width: 0 0 2 0;
+    -fx-background-radius: 0;
 }
 
-/* Link chuyển cảnh: Chữ đỏ, nền trong suốt */
+/* Khi click vào ô nhập: Hiện viền xanh dương sáng */
+.text-field:focused, .password-field:focused {
+    -fx-background-color: #f7fbff;
+    -fx-border-color: #3498db;
+}
+
+/* Nút bấm chính: Màu xanh dương nhạt (Soft/Sky Blue) */
+.button {
+    -fx-max-width: infinity;
+    -fx-background-color: #a2d2ff; /* Màu xanh nhạt bạn yêu cầu */
+    -fx-text-fill: #2c3e50; /* Chữ đậm hơn tí cho dễ đọc trên nền nhạt */
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+    -fx-padding: 8 8 8 8;
+}
+
+.button:hover {
+    -fx-background-color: #85c1f5; /* Đậm hơn một chút khi hover */
+}
+
+/* Link chuyển cảnh */
 .auth-link {
     -fx-background-color: transparent;
-    -fx-text-fill: #e74c3c;
+    -fx-text-fill: #2980b9;
+    -fx-font-weight: bold;
 }
 
-/* Sidebar: Đen nhám, viền phải mỏng */
+/* Sidebar: Xanh dương xám nhạt */
 #mainDock {
-    -fx-background-color: #151515;
-    -fx-border-color: transparent #252525 transparent transparent;
+    -fx-background-radius: 30;
+    -fx-background-color: #ebf2f8;
+    -fx-border-color: transparent #d6e4f0 transparent transparent;
 }
 
-/* Thanh tìm kiếm: Bo tròn sâu, màu tối */
+/* Thanh tìm kiếm */
 .top-search-bar {
-    -fx-background-color: #252525;
-    -fx-background-radius: 20;
-    -fx-padding: 10;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d1e2f2;
+    -fx-background-radius: 25;
+    -fx-border-radius: 25;
+    -fx-padding: 8 15 8 15;
 }
 
-/* ComboBox: Màu tối đồng bộ */
+/* ComboBox */
 .combo-box {
-    -fx-background-color: #2d2d2d;
-    -fx-border-color: #404040;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d1e2f2;
+    -fx-background-radius: 4;
 }
 .combo-box .list-cell {
-    -fx-text-fill: white;
-    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #2d3436;
+    -fx-background-color: #ffffff;
 }
+
+/* ScrollPane Trắng Xanh Dương */
 .scroll-pane {
-    -fx-background-color: #1a1a1a; /* Màu đen xám nhẹ cho dễ nhìn */
-    -fx-background: #1a1a1a;       /* Bắt buộc phải có dòng này để đổi nền nội dung */
-    -fx-border-color: #333333;    /* Viền nhẹ xung quanh */
-    -fx-padding: 0;
+    -fx-background-color: #ffffff;
+    -fx-background: #ffffff;
+    -fx-border-color: #d6e4f0;
 }
 
-/* 2. Phần chứa nội dung bên trong (Viewport) */
-.scroll-pane .viewport {
-    -fx-background-color: transparent;
-}
-
-/* 3. Tùy chỉnh thanh cuộn (Scroll Bar) cho tiệp màu */
-.scroll-pane .scroll-bar:vertical,
-.scroll-pane .scroll-bar:horizontal {
-    -fx-background-color: #2b2b2b; /* Nền của thanh ray */
-}
-
-/* Cục kéo (Thumb) */
+/* Thanh cuộn (Scroll Bar) */
 .scroll-pane .scroll-bar .thumb {
-    -fx-background-color: #4f4f4f;
-    -fx-background-radius: 5;
+    -fx-background-color: #adcde7; /* Xanh dương nhạt */
+    -fx-background-radius: 10;
 }
 
 .scroll-pane .scroll-bar .thumb:hover {
-    -fx-background-color: #666666; /* Sáng lên khi di chuột vào */
+    -fx-background-color: #85b3d9;
 }
 
-/* Ẩn các nút mũi tên ở hai đầu (cho app nhìn ngầu hơn) */
-.scroll-pane .scroll-bar .increment-button,
-.scroll-pane .scroll-bar .decrement-button {
-    -fx-background-color: transparent;
-    -fx-shape: "";
+/* --- ICON SECTION --- */
+
+/* Màu mặc định cho tất cả icon: Xanh dương */
+.ikonli-font-icon {
+    -fx-icon-color: #2980b9;
+    -fx-icon-size: 35px;
+}
+
+/* Icon trên nút bấm (Vì nền nút nhạt nên icon để màu xanh đậm sẽ đẹp hơn) */
+.button .ikonli-font-icon {
+    -fx-icon-color: #2c3e50;
+}
+
+/* Icon khi hover */
+.menu-item:hover .ikonli-font-icon {
+    -fx-icon-color: #3498db;
+}
+
+.special-button {
+    -fx-background-radius: 30;
+    -fx-padding: 10 10 10 10; /* Tăng lề trái cho icon */
+    -fx-alignment: CENTER_LEFT;
+    -fx-background-color: #d1e9ff; /* Màu nhạt riêng cho nút đặc biệt */
+    -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.6), 10, 0, 4, 4),
+                    dropshadow(three-pass-box, rgba(255, 255, 255, 0.9), 10, 0, -4, -4);
+}
+
+.special-button:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.8), 15, 0, 6, 6),
+                dropshadow(three-pass-box, rgba(255, 255, 255, 1.0), 15, 0, -6, -6);
+}
+
+/* Hiệu ứng khi nhấn: Nút lún xuống (Inset shadow giả lập) */
+.special-button:pressed {
+    -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.4), 5, 0, 1, 1),
+                dropshadow(three-pass-box, rgba(255, 255, 255, 0.6), 5, 0, -1, -1);
+    -fx-translate-y: 1; /* Di chuyển nhẹ để tạo cảm giác lún */
+}
+
+.special-button .ikonli-font-icon {
+    -fx-icon-size: 25px;
+    -fx-icon-color: #2980b9;
 }

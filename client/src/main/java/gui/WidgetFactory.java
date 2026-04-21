@@ -2,6 +2,7 @@ package gui;
 
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.VBox;
@@ -26,7 +27,6 @@ public final class WidgetFactory {
 
         Button button = new Button();
         button.setGraphic(fontIcon);
-        button.setGraphicTextGap(8);
         button.setText(text);
         button.setTooltip(new Tooltip(tooltip));
 
@@ -57,7 +57,7 @@ public final class WidgetFactory {
                 name,
                 price,
                 date,
-                createButton("mdi2c-cart-plus", "ADD TO CART", "Bid on this item")
+                createButton("mdi2c-cart-plus", "AUCTION", "Bid on this item")
         );
 
         return minimalItem;

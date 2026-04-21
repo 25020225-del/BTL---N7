@@ -74,6 +74,7 @@ public class ServerAdminController {
     }
 
     public void forceDeleteAuction(Admin admin, Auction auction) {
+
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             String sql = "UPDATE auctions SET status = ? WHERE id = ?";
             try (Connection conn = DatabaseManager.getConnection();

@@ -54,25 +54,51 @@ public class Auction extends Entity {
         }
     }
 
-    // Các hàm Getter / Setter giữ nguyên
+    public static Auction createNewAuction(Item item, Seller seller, double bidIncrement, int durationMinutes) {
+
+        String newId = "AUC-" + System.currentTimeMillis();
+
+        LocalDateTime start = LocalDateTime.now();
+        LocalDateTime end = start.plusMinutes(durationMinutes);
+
+        Auction newAuction = new Auction(newId, item, seller, bidIncrement, start, end);
+
+        if (seller.isGood()) {
+            newAuction.setStatus(STATUS_OPEN);
+        } else {
+            newAuction.setStatus(STATUS_PENDING);
+        }
+
+        return newAuction;
+    }
+
     public Item getItem() { return item; }
     public void setItem(Item item) { this.item = item; }
+
     public Seller getSeller() { return seller; }
     public void setSeller(Seller seller) { this.seller = seller; }
+
     public double getCurrentPrice() { return currentPrice; }
     public void setCurrentPrice(double currentPrice) { this.currentPrice = currentPrice; }
+
     public double getHighestMaxBid() { return highestMaxBid; }
     public void setHighestMaxBid(double highestMaxBid) { this.highestMaxBid = highestMaxBid; }
+
     public double getBidIncrement() { return bidIncrement; }
     public void setBidIncrement(double bidIncrement) { this.bidIncrement = bidIncrement; }
+
     public Bidder getWinningBidder() { return winningBidder; }
     public void setWinningBidder(Bidder winningBidder) { this.winningBidder = winningBidder; }
+
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
     public LocalDateTime getEndTime() { return endTime; }
     public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
+
     public List<BidTransaction> getBidHistory() { return bidHistory; }
     public void setBidHistory(List<BidTransaction> bidHistory) { this.bidHistory = bidHistory; }
+
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
 
@@ -94,6 +120,7 @@ public class Auction extends Entity {
             currentPrice = item.getStartingPrice();
             highestMaxBid = newMaxBid;
             winningBidder = bidder;
+
         } else if (bidder.getId().equals(winningBidder.getId())) {
             if (newMaxBid > highestMaxBid) highestMaxBid = newMaxBid;
         } else {
@@ -183,6 +210,7 @@ public class Auction extends Entity {
                     generatedTxns.add(txn);
 
                     System.out.println(BLUE + "[Auto-Bid]: \"" + winningBidder.getUserName() + "\" automatically raised the bid to: " + currentPrice + RESET);
+
                     isPriceChanged = true;
                     break;
                 }
@@ -193,10 +221,11 @@ public class Auction extends Entity {
     @Override
     public String getInfo() {
         return "=== AUCTION INFORMATION ===\n" +
-                "Auction ID: " + this.id + "\n" +
+                "Auction ID: " + this.getId() + "\n" +
                 "Item: " + (item != null ? item.getItemName() : "N/A") + "\n" +
                 "Current Price: VND " + this.currentPrice + "\n" +
                 "Leading Bidder: " + (winningBidder != null ? winningBidder.getUserName() : "None") + "\n" +
                 "Status: " + this.status;
     }
+
 }

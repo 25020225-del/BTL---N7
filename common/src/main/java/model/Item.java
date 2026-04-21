@@ -1,10 +1,9 @@
 package model;
 
 public abstract class Item extends Entity {
-
-    protected String itemName;
-    protected String description;
-    protected double startingPrice;
+    private String itemName;
+    private String description;
+    private double startingPrice;
     private String approvalStatus;
 
     public Item() {
@@ -33,9 +32,9 @@ public abstract class Item extends Entity {
 
     @Override
     public String getInfo() {
-        return       "Item: "               + itemName
+        return       "Item ID: "            + this.getId()
+                + " | Name: "               + this.getItemName()
                 + " | Description: "        + description
                 + " | Starting Price: VND " + startingPrice;
     }
-
 }
