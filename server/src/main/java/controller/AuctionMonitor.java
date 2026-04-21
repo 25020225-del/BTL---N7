@@ -1,6 +1,7 @@
 package controller;
 
 import model.Auction;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -22,9 +23,16 @@ public class AuctionMonitor {
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                for (Auction auction : allAuctions) {
-                    if (auction.getStatus().equals(Auction.STATUS_RUNNING)) {
-                        auction.closeAuctionIfTimeIsUp();
+                List<Auction> safeSnapshot;
+                synchronized (allAuctions) {
+                    safeSnapshot = new ArrayList<>(allAuctions);
+                }
+
+                for (Auction auction : safeSnapshot) {
+                    synchronized (auction) {
+                        if (auction.getStatus().equals(Auction.STATUS_RUNNING)) {
+                            auction.closeAuctionIfTimeIsUp();
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -38,5 +46,4 @@ public class AuctionMonitor {
         scheduler.shutdown();
         System.out.println(YELLOW + "[Monitor]: The auction monitoring system has been turned off" + RESET);
     }
-
 }
