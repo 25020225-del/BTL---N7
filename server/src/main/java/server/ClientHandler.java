@@ -194,7 +194,7 @@ public class ClientHandler implements Runnable {
             if (newAuction != null) {
                 newAuction.setStatus(model.Auction.STATUS_RUNNING);
 
-                MultiThreadedServer.auctionList.add(newAuction);
+                MultiThreadedServer.addAuctionToMonitor(newAuction);
 
                 System.out.println("[System]: Seller \"" + YELLOW + this.clientName + RESET + "\" has created an auction");
                 System.out.println("[System]: Item: " + YELLOW + itemName + RESET + " - Starting Price: " + YELLOW + startingPrice + " VND" + RESET);

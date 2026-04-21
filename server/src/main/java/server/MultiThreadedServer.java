@@ -40,7 +40,11 @@ public class MultiThreadedServer {
 
     private static final UserController userController = new UserController();
 
-    public static final List<Auction> auctionList = new ArrayList<>();
+    private static List<Auction> auctionList = new ArrayList<>();
+
+    public static synchronized void addAuctionToMonitor(Auction auction) {
+        auctionList.add(auction);
+    }
 
     public static void updateBulletinBoard(String currentIp, int currentPort) {
         try {
