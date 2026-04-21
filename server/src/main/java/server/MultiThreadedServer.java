@@ -3,7 +3,8 @@ package server;
 import controller.AuctionMonitor;
 import controller.UserController;
 import io.github.cdimascio.dotenv.Dotenv;
-import model.Auction;
+import server.ServerExtension.AuctionManager;
+import server.ServerExtension.ClientManager;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -14,10 +15,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,19 +33,10 @@ public class MultiThreadedServer {
     private static final String JSONBIN_KEY = dotenv.get("JSONBIN_API_KEY");
     private static final String LOCALTONET_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
 
-    private static final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
-    private static final ExecutorService broadcastPool = Executors.newFixedThreadPool(20);
-
     private static String lastSyncedIp = "";
     private static int lastSyncedPort = -1;
 
     private static final UserController userController = new UserController();
-
-    private static List<Auction> auctionList = new ArrayList<>();
-
-    public static synchronized void addAuctionToMonitor(Auction auction) {
-        auctionList.add(auction);
-    }
 
     public static void updateBulletinBoard(String currentIp, int currentPort) {
         try {
@@ -69,7 +61,6 @@ public class MultiThreadedServer {
                 System.out.println("[JSONBin]: New IP - Port synced: " + YELLOW + currentIp + ":" + currentPort + RESET);
             } else {
                 System.err.println("[JSONBin]: Error: " + RED + responseCode + RESET + " at URL: " + YELLOW + urlString + RESET);
-
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
                     System.err.println("Error details: " + br.readLine());
                 }
@@ -117,7 +108,6 @@ public class MultiThreadedServer {
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 String[] publicAddress = getLocaltonetAddress();
-
                 if (publicAddress != null) {
                     String newIp = publicAddress[0];
                     int newPort = Integer.parseInt(publicAddress[1]);
@@ -125,7 +115,6 @@ public class MultiThreadedServer {
                     if (!newIp.equals(lastSyncedIp) || newPort != lastSyncedPort) {
                         System.out.println(YELLOW + "\n[Auto-Sync]: Localtonet address change detected. Updating JSONBin..." + RESET);
                         updateBulletinBoard(newIp, newPort);
-
                         lastSyncedIp = newIp;
                         lastSyncedPort = newPort;
                         System.out.println(GREEN + "[Auto-Sync]: Successfully synced: " + YELLOW + newIp + ":" + newPort + RESET);
@@ -150,15 +139,15 @@ public class MultiThreadedServer {
 
         database.DatabaseManager.initializeDatabase();
 
-        AuctionMonitor monitor = new AuctionMonitor(auctionList);
+        AuctionMonitor monitor = new AuctionMonitor(AuctionManager.getAuctionList());
         monitor.startMonitoring();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly" + RESET, null);
+            ClientManager.broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly" + RESET, null);
             System.out.println(YELLOW + "[System]: Server has been shutdown" + RESET);
             monitor.stopMonitoring();
             scheduler.shutdown();
-            broadcastPool.shutdown();
+            ClientManager.shutdown();
         }));
 
         Thread serverChatThread = new Thread(() -> {
@@ -170,11 +159,11 @@ public class MultiThreadedServer {
                         String target = serverMessage.substring(6);
                         System.out.print("Reason: ");
                         String reason = scanner.nextLine();
-                        kickTarget(target, reason);
+                        ClientManager.kickTarget(target, reason);
                         continue;
                     }
                     if (serverMessage.startsWith("/clist")) {
-                        getClientList();
+                        ClientManager.getClientList();
                         continue;
                     }
                     if (serverMessage.startsWith("/kickn ")) {
@@ -182,7 +171,7 @@ public class MultiThreadedServer {
                             String index = serverMessage.substring(7);
                             System.out.print("Reason: ");
                             String reason = scanner.nextLine();
-                            kickTargetByNumber(Integer.parseInt(index), reason);
+                            ClientManager.kickTargetByNumber(Integer.parseInt(index), reason);
                         } catch (NumberFormatException e) {
                             System.out.println("[System]: Error: " + RED + "Index of /kickn command must be an integer" + RESET);
                         }
@@ -190,10 +179,10 @@ public class MultiThreadedServer {
                     }
                     if (serverMessage.startsWith("/redirect ")) {
                         String[] data = serverMessage.substring(10).split(" ");
-                        for (ClientHandler client : clients) {
-                            if (client.getClientName().equals(data[0])) {
-                                client.redirectToWebsite(data[1]);
-                            }
+                        if (data.length == 2) {
+                            ClientManager.redirectClient(data[0], data[1]);
+                        } else {
+                            System.out.println("[System]: Invalid format. Use /redirect <username> <url>");
                         }
                         continue;
                     }
@@ -201,13 +190,13 @@ public class MultiThreadedServer {
                         try {
                             int s = serverMessage.indexOf("\"");
                             int e = serverMessage.lastIndexOf("\"");
-                            privateMsg(serverMessage.substring(5, s), serverMessage.substring(s + 1, e));
+                            ClientManager.privateMsg(serverMessage.substring(5, s), serverMessage.substring(s + 1, e));
                         } catch (StringIndexOutOfBoundsException e) {
                             System.out.println("[System]: Invalid command format");
                         }
                         continue;
                     }
-                    broadcast("[Admin]: " + serverMessage, null);
+                    ClientManager.broadcast("[Admin]: " + serverMessage, null);
                 }
             }
         });
@@ -221,101 +210,11 @@ public class MultiThreadedServer {
 
                 ClientHandler clientHandler = new ClientHandler(socket, userController);
 
-                clients.add(clientHandler);
+                ClientManager.addClient(clientHandler);
                 new Thread(clientHandler).start();
             }
         } catch (IOException e) {
             System.out.println("[System]: Server Error: " + RED + e.getMessage() + RESET);
-        }
-    }
-
-    public static void broadcast(String message, ClientHandler sender) {
-        for (ClientHandler client : clients) {
-            if (client != sender){
-                broadcastPool.submit(() -> {
-                    try {
-                        client.sendMessage(message);
-                    } catch (Exception e) {
-                        System.out.println("[Error]: Error when trying to broadcast to \"" +
-                                YELLOW + client.getClientName() + RESET + "\": " +
-                                RED+ e.getMessage() + RESET);
-                    }
-                });
-            }
-        }
-    }
-
-    public static void broadcast(String command, Object data, ClientHandler sender) {
-        for (ClientHandler client : clients) {
-            if (client != sender) {
-                broadcastPool.submit(() -> {
-                    try {
-                        client.sendResponse(command, data);
-                    } catch (Exception e) {
-                        System.out.println("[Error]: Broadcasting error to \"" + YELLOW + client.getClientName() + RESET + "\"");
-                    }
-                });
-            }
-        }
-    }
-
-    public static void privateMsg(String receiver, String message) {
-        receiver = receiver.trim();
-        for (ClientHandler client : clients) {
-            if (client.getClientName() != null && client.getClientName().equals(receiver)) {
-                client.sendMessage("[Admin]" + BLUE + " (private)" + RESET + ": " + message);
-                return;
-            }
-        }
-        System.out.println("[System]: User \"" + receiver + "\" doesn't exist");
-    }
-
-    public static void removeClient(ClientHandler clientHandler) {
-        clients.remove(clientHandler);
-    }
-
-    public static void kickTarget(String target, String reason) {
-        ClientHandler targetToKick = null;
-        for (ClientHandler client : clients) {
-            if (client.getClientName() != null && client.getClientName().equalsIgnoreCase(target)) {
-                targetToKick = client;
-                break;
-            }
-        }
-        if (targetToKick != null) {
-            System.out.println("[System]: \"" + YELLOW + target + RESET + "\" has been kicked");
-            targetToKick.forceDisconnect(reason);
-        } else {
-            System.out.println("[System]: User \"" + YELLOW + target + RESET + "\" doesn't exist");
-        }
-    }
-
-    public static void getClientList() {
-        int count = 0;
-        if (clients.isEmpty()) {
-            System.out.println("[System]: There are no clients connected");
-        } else {
-            System.out.println(GREEN + "=======================" + RESET);
-            for (ClientHandler client : clients) {
-                System.out.println(count + ". " + client.getClientName());
-                count++;
-            }
-            System.out.println("Total: " + count + " clients");
-            System.out.println(GREEN + "=======================" + RESET);
-        }
-    }
-
-    public static void kickTargetByNumber(int i, String reason) {
-        ClientHandler targetToKick = null;
-        if (i >= 0 && i < clients.size()) {
-            targetToKick = clients.get(i);
-        }
-
-        if (targetToKick != null) {
-            System.out.println("[System]: \"" + YELLOW + targetToKick.getClientName() + RESET + "\" has been kicked");
-            targetToKick.forceDisconnect(reason);
-        } else {
-            System.out.println("[System]: Client index " + i + " doesn't exist");
         }
     }
 }
