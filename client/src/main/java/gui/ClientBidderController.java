@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.animation.*;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
-import javafx.scene.control.ScrollBar;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.TilePane;
@@ -50,11 +47,29 @@ public class ClientBidderController {
         HBox searchBarContainer = (HBox) mainViewController.getChildren().get(0);
         TextField searchField = (TextField) MainApplication.rootMainView.lookup("#searchField");
 
-        Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "", "Find");
-        Button executeSearchButton = (Button) MainApplication.rootMainView.lookup("#searchButton");
+        Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
+        toggleList.setUserData(true);
+        Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "search", "Search");
+        Button account = (Button) WidgetFactory.createButton("mdi2a-account","Account","Account");
 
+
+        Button executeSearchButton = (Button) MainApplication.rootMainView.lookup("#searchButton");
         searchField.setOnAction(event -> {
             executeSearchButton.getOnAction().handle(null);
+        });
+        toggleList.setOnAction(event -> {
+            for(Node k : mainDock.getChildren()) {
+                if (k instanceof Button) {
+                    Button b = (Button) k;
+                    if ((boolean)  toggleList.getUserData()) {
+                        b.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+                    }
+                    else {
+                        b.setContentDisplay(ContentDisplay.LEFT);
+                    }
+                }
+            }
+            toggleList.setUserData(!((boolean) toggleList.getUserData()));
         });
         toggleSearchButton.setOnAction(event -> {
             AnimateEffect.fadeNode(searchBarContainer, !searchBarContainer.isVisible());
@@ -67,6 +82,14 @@ public class ClientBidderController {
         });
 
         mainDock.getChildren().addFirst(toggleSearchButton);
+        mainDock.getChildren().addFirst(toggleList);
+        mainDock.getChildren().add(account);
+
+        for(Node k : mainDock.getChildren()){
+            if(k instanceof Button){
+                k.getStyleClass().add("special-button");
+            }
+        }
 
         itemTable.getChildren().add(WidgetFactory.createMinimalItem("Máy xay sinh tố mèo","30000","3"));
         itemTable.getChildren().add(WidgetFactory.createMinimalItem("Đùi gà tẩm bột chiên xù","40000","3"));
