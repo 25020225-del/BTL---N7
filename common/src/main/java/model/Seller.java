@@ -16,5 +16,4 @@ public class Seller extends User {
         String tag = this.isGood() ? "[TRUSTED] " : "";
         return tag + super.getInfo();
     }
-
 }
