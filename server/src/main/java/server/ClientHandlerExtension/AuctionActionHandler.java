@@ -1,5 +1,6 @@
 package server.ClientHandlerExtension;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import network.NetworkMessage;
 import server.ClientHandler;
@@ -9,7 +10,7 @@ import server.ServerExtension.ClientManager;
 import static utils.ConsoleColors.*;
 
 public class AuctionActionHandler implements CommandHandler {
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
