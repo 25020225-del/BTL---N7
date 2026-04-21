@@ -2,10 +2,10 @@ package model;
 
 public class User extends Entity {
 
-    protected String userName;
-    protected String userPass;
-    protected String name;
-    protected String role;
+    private String userName;
+    private String userPass;
+    private String name;
+    private String role;
     private boolean isGood;
 
     public User() {
@@ -44,7 +44,7 @@ public class User extends Entity {
 
     @Override
     public String getInfo() {
-        return       "ID: "       + this.id
+        return       "ID: "       + this.getId()
                 + " | Username: " + this.userName
                 + " | Name: "     + this.name
                 + " | Role: "     + this.role;

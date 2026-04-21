@@ -8,8 +8,8 @@ public class Admin extends User {
 
     @Override
     public String getInfo() {
-        return    "[Admin] ID: " + this.id
-                + " | Name: " + this.name + " (System Administrator)";
+        return    "[Admin] ID: " + this.getId()
+                + " | Name: " + this.getName() + " (System Administrator)";
     }
 
 }

@@ -164,11 +164,11 @@ public class Auction extends Entity {
         if (this.status.equals(STATUS_RUNNING) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
                 this.status = STATUS_FINISHED;
-                System.out.println(GREEN + "[System]: Auction session \"" + this.id + "\" has ended" + RESET);
+                System.out.println(GREEN + "[System]: Auction session \"" + this.getId() + "\" has ended" + RESET);
                 System.out.println(GREEN + "[System]: Winner: \"" + winningBidder.getUserName() + "\" at VND " + currentPrice + RESET);
             } else {
                 this.status = STATUS_CANCELED;
-                System.out.println(YELLOW + "[System]: Auction session \"" + this.id + "\" was cancelled due to no bidders" + RESET);
+                System.out.println(YELLOW + "[System]: Auction session \"" + this.getId() + "\" was cancelled due to no bidders" + RESET);
             }
         }
     }
@@ -229,7 +229,7 @@ public class Auction extends Entity {
     @Override
     public String getInfo() {
         return "=== AUCTION INFORMATION ===\n" +
-                "Auction ID: " + this.id + "\n" +
+                "Auction ID: " + this.getId() + "\n" +
                 "Item: " + (item != null ? item.getItemName() : "N/A") + "\n" +
                 "Current Price: VND " + this.currentPrice + "\n" +
                 "Leading Bidder: " + (winningBidder != null ? winningBidder.getUserName() : "None") + "\n" +
