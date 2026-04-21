@@ -146,7 +146,7 @@ public class MainApplication extends Application {
     public void start(Stage stage) throws IOException {
 
         initProperties();
-        openClient();
+        //openClient();
         init();
 
         primalStage = stage;
