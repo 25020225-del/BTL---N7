@@ -1,6 +1,6 @@
 package gui;
 
-import client.NetworkClient;
+import client.network.NetworkClient;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -42,8 +42,8 @@ public class LoginController {
             User loginAttempt = new User("", username, password, "", "");
             networkClient.sendMessage("LOGIN", loginAttempt);
         } else {
-            System.out.println("[Error]: " + RED + "Cannot connect to the server!" + RESET);
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server!");
+            System.out.println("[Error]: " + RED + "Cannot connect to the server" + RESET);
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server");
         }
     }
 
