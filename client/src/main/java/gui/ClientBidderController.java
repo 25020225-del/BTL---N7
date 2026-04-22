@@ -1,43 +1,55 @@
 package gui;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import javafx.animation.*;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
-import javafx.scene.shape.Rectangle;
-import javafx.util.Duration;
-import model.Bidder;
-import model.User;
 
-import java.io.File;
 import java.io.IOException;
 
 import static utils.ConsoleColors.*;
 
 public class ClientBidderController {
 
-    private VBox mainDock = (VBox) MainApplication.rootMainView.lookup("#mainDock");
-    private VBox mainViewController = (VBox) MainApplication.rootMainView.lookup("#mainViewController");
-    private HBox searchBarContainer = (HBox) mainViewController.getChildren().get(0);
+    private Parent mainView = null;
 
-    private TilePane itemTable = null;
+    @FXML private VBox mainDock;
+    @FXML private VBox mainViewController;
+    @FXML private HBox searchBarContainer;
+
+    @FXML private TilePane mainTilePane;
+
     private Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "search", "Search");
     private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Account","Account");
     private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
-    private Button executeSearchButton = (Button) MainApplication.rootMainView.lookup("#searchButton");
-    private TextField searchField = (TextField) MainApplication.rootMainView.lookup("#searchField");
 
-    protected void setMainDock() {
+    @FXML private Button searchButton;
+    @FXML private TextField searchField;
+
+    public ClientBidderController() throws IOException {
+        FXMLLoader fxmlMainView = new FXMLLoader(ClientBidderController.class.getResource("MainView.fxml"));
+        fxmlMainView.setController(this);
+        mainView = fxmlMainView.load();
+        MainApplication.setNewScene(mainView);
+    }
+
+    private void setMainDock() {
+        mainDock.getChildren().add(account);
+        mainDock.getChildren().addFirst(toggleSearchButton);
+        mainDock.getChildren().addFirst(toggleList);
+        for(Node k : mainDock.getChildren()){
+            if(k instanceof Button){
+                k.getStyleClass().add("special-button");
+            }
+        }
+
         toggleList.setUserData(true);
-
         searchField.setOnAction(event -> {
-            executeSearchButton.getOnAction().handle(null);
+            searchButton.getOnAction().handle(null);
         });
         toggleList.setOnAction(event -> {
             for(Node k : mainDock.getChildren()) {
@@ -56,44 +68,27 @@ public class ClientBidderController {
         toggleSearchButton.setOnAction(event -> {
             AnimateEffect.fadeNode(searchBarContainer, !searchBarContainer.isVisible());
         });
-        executeSearchButton.setOnAction(event -> {
+        searchButton.setOnAction(event -> {
             String keyword = searchField.getText();
             System.out.println("[Log]: Searching for: " + YELLOW + keyword + RESET);
-            AnimateEffect.showOrHideItem(itemTable, keyword);
+            AnimateEffect.showOrHideItem(mainTilePane, keyword);
         });
-        mainDock.getChildren().addFirst(toggleSearchButton);
-        mainDock.getChildren().addFirst(toggleList);
-        mainDock.getChildren().add(account);
-        for(Node k : mainDock.getChildren()){
-            if(k instanceof Button){
-                k.getStyleClass().add("special-button");
-            }
-        }
     }
-    protected void setMainViewController() {
-        for (Node node : mainViewController.getChildren()) {
-            if (node instanceof ScrollPane) {
-                ScrollPane scrollPane = (ScrollPane) node;
-                if (scrollPane.getContent() instanceof TilePane) {
-                    itemTable = (TilePane) scrollPane.getContent();
-                }
-            }
-        }
-        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Máy xay sinh tố mèo","30000","3"));
-        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Đùi gà tẩm bột chiên xù","40000","3"));
-        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Máy bay đồ chơi mini","1200000","3"));
-        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Thịt cừu nướng","127000","4"));
-        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Mỡ lợn","80000","3"));
-        itemTable.getChildren().add(WidgetFactory.createMinimalItem("Đầu cá","35000","2"));
+    private void setMainViewController() {
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy xay sinh tố mèo","30000","3"));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đùi gà tẩm bột chiên xù","40000","3"));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy bay đồ chơi mini","1200000","3"));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Thịt cừu nướng","127000","4"));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Mỡ lợn","80000","3"));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đầu cá","35000","2"));
     }
 
     public void start() throws IOException {
-        System.out.println("[Log]: Initializing Bidder View Components...");
-
         setMainDock();
         setMainViewController();
+        System.out.println("[Log]: Initializing Bidder View Components...");
 
-        if (itemTable == null) {
+        if (mainTilePane == null) {
             System.out.println("[Error]: " + RED + "Could not find Item Table (TilePane) in UI" + RESET);
             return;
         }

@@ -4,9 +4,16 @@ import java.io.IOException;
 
 public class MainController
 {
-    public static void start() throws IOException {
-        MainApplication.setNewScene(MainApplication.rootMainView);
+    private static void startBidder() throws IOException{
         ClientBidderController clientBidderController = new ClientBidderController();
         clientBidderController.start();
+    }
+    private static void startSeller() throws IOException{
+        ClientSellerController clientSellerController = new ClientSellerController();
+        clientSellerController.start();
+    }
+    public static void start() throws IOException {
+        //startBidder();
+        startSeller();
     }
 }

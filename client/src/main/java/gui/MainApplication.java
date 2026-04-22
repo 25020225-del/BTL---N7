@@ -1,6 +1,6 @@
 package gui;
 
-import client.NetworkClient;
+import client.network.NetworkClient;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -120,11 +120,9 @@ public class MainApplication extends Application {
 
         FXMLLoader fxmlLogin = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
         FXMLLoader fxmlRegister = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
-        FXMLLoader fxmlMainView = new FXMLLoader(MainApplication.class.getResource("MainView.fxml"));
 
         rootLogin = fxmlLogin.load();
         rootRegister = fxmlRegister.load();
-        rootMainView = fxmlMainView.load();
 
         RegisterController registerCtrl = fxmlRegister.getController();
         if (registerCtrl != null) {
