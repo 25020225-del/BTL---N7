@@ -2,6 +2,7 @@ package gui;
 
 import java.util.HashMap;
 import java.util.Map;
+import client.network.NetworkClient;
 
 public class ClientSellerController {
     public void createAuction() {

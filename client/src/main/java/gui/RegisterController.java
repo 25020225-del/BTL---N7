@@ -1,6 +1,6 @@
 package gui;
 
-import client.NetworkClient;
+import client.network.NetworkClient;
 import model.User;
 import network.NetworkMessage;
 import javafx.application.Platform;

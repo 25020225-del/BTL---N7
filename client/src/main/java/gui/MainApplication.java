@@ -34,10 +34,10 @@ public class MainApplication extends Application {
     public static void main(String[] args) {
 
         System.out.println(GREEN + "=================================");
-        System.out.println("|                               |");
-        System.out.println("|       CLIENT LOG TABLE        |");
-        System.out.println("|                               |");
-        System.out.println("=================================" + RESET);
+        System.out.println(        "|                               |");
+        System.out.println(        "|       CLIENT LOG TABLE        |");
+        System.out.println(        "|                               |");
+        System.out.println(        "=================================" + RESET);
         launch(args);
     }
 
@@ -50,7 +50,7 @@ public class MainApplication extends Application {
     public void initProperties() throws IOException {
         InputStream input = MainApplication.class.getResourceAsStream("config.properties");
         if (input != null) {
-            System.out.println("[System]: " + GREEN + "Reading configuration file..." + RESET);
+            System.out.println("[System]: Reading configuration file...");
             properties.load(input);
         } else {
             System.out.println("[Error]: " + RED + "Cannot find config.properties" + RESET);
@@ -133,7 +133,7 @@ public class MainApplication extends Application {
 
         LoginController loginCtrl = fxmlLogin.getController();
         if (loginCtrl != null) loginCtrl.setNetworkClient(networkClient);
-        
+
         ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
         if (registerRole != null) {
             registerRole.getItems().clear();
@@ -144,7 +144,7 @@ public class MainApplication extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-
+        // 1. Khởi tạo cấu hình
         initProperties();
         //openClient();
         init();

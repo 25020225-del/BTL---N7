@@ -1,5 +1,6 @@
 package server.ClientHandlerExtension;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.User;
 import network.NetworkMessage;
@@ -8,7 +9,7 @@ import server.ClientHandler;
 import static utils.ConsoleColors.*;
 
 public class AuthHandler implements CommandHandler {
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {

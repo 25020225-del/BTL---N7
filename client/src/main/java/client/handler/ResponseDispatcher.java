@@ -1,5 +1,6 @@
-package client;
+package client.handler;
 
+import client.network.NetworkClient;
 import network.NetworkMessage;
 import javafx.application.Platform;
 import java.util.HashMap;
@@ -33,7 +34,7 @@ public class ResponseDispatcher {
             try {
                 handler.handle(message, client);
             } catch (Exception e) {
-                System.out.println("[Error]: Client Dispatcher error for " + command + ": " + RED + e.getMessage() + RESET);
+                System.out.println("[Error]: Client Dispatcher error for \"" + YELLOW + command + RESET + "\": " + RED + e.getMessage() + RESET);
             }
         } else {
             if (client.getOnMessageReceived() != null) {

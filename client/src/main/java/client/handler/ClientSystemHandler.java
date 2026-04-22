@@ -1,5 +1,6 @@
-package client;
+package client.handler;
 
+import client.network.NetworkClient;
 import network.NetworkMessage;
 import javafx.application.Platform;
 
@@ -21,7 +22,7 @@ public class ClientSystemHandler implements ResponseHandler {
             }
         }
         else if ("KICKED".equals(command)) {
-            System.out.println(YELLOW + "[System]: You have been kicked. Reason: " + message.getData() + RESET);
+            System.out.println("[System]:" + YELLOW + " You have been kicked. Reason: " + message.getData() + RESET);
 
             if (client.getOnMessageReceived() != null) {
                 Platform.runLater(() -> client.getOnMessageReceived().accept(message));
