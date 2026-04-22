@@ -24,6 +24,7 @@ public class ClientBidderController {
 
     private VBox mainDock = (VBox) MainApplication.rootMainView.lookup("#mainDock");
     private VBox mainViewController = (VBox) MainApplication.rootMainView.lookup("#mainViewController");
+    private HBox searchBarContainer = (HBox) mainViewController.getChildren().get(0);
 
     private TilePane itemTable = null;
     private Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "search", "Search");
@@ -31,7 +32,6 @@ public class ClientBidderController {
     private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
     private Button executeSearchButton = (Button) MainApplication.rootMainView.lookup("#searchButton");
     private TextField searchField = (TextField) MainApplication.rootMainView.lookup("#searchField");
-    private HBox searchBarContainer = (HBox) mainViewController.getChildren().get(0);
 
     protected void setMainDock() {
         toggleList.setUserData(true);
