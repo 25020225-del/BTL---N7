@@ -137,15 +137,12 @@ public class Auction extends Entity {
 
         List<BidTransaction> generatedTxns = new ArrayList<>();
 
-        // 1. Ghi nhận giao dịch của người thật
         BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
         bidHistory.add(transaction);
         generatedTxns.add(transaction);
 
-        // 2. Kích hoạt AutoBids nhảy vào đấu lại (Thu thập luôn giao dịch của bot)
         resolveAutoBids(generatedTxns);
 
-        // 3. Chống bắn tỉa
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             endTime = endTime.plusMinutes(2);
             System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + RESET);
@@ -158,11 +155,11 @@ public class Auction extends Entity {
         if (this.status.equals(STATUS_RUNNING) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
                 this.status = STATUS_FINISHED;
-                System.out.println(GREEN + "[System]: Auction session \"" + this.id + "\" has ended. Winner: " + winningBidder.getUserName() + RESET);
+                System.out.println(GREEN + "[System]: Auction session \"" + this.getId() + "\" has ended. Winner: " + winningBidder.getUserName() + RESET);
                 return STATUS_FINISHED;
             } else {
                 this.status = STATUS_CANCELED;
-                System.out.println(YELLOW + "[System]: Auction session \"" + this.id + "\" was cancelled due to no bidders" + RESET);
+                System.out.println(YELLOW + "[System]: Auction session \"" + this.getId() + "\" was cancelled due to no bidders" + RESET);
                 return STATUS_CANCELED;
             }
         }
