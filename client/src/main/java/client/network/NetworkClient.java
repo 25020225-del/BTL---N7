@@ -1,5 +1,6 @@
-package client;
+package client.network;
 
+import client.handler.ResponseDispatcher;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import network.NetworkMessage;
@@ -23,7 +24,7 @@ public class NetworkClient {
     private final ResponseDispatcher dispatcher = new ResponseDispatcher();
 
     public NetworkClient(String serverAddress, int port) {
-        System.out.println("=====================================");
+        System.out.println("===========================================");
         System.out.println("[System]: Trying to connect to server...");
 
         for (int i = 0; i < 5; i++) {
@@ -54,11 +55,11 @@ public class NetworkClient {
                 listenerThread.setDaemon(true);
                 listenerThread.start();
 
-                System.out.println(GREEN + "[System]: Successfully connected" + RESET);
+                System.out.println("[System]:" + GREEN + "Successfully connected" + RESET);
                 return;
 
             } catch (IOException e) {
-                System.out.println(YELLOW + "[System]: Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
+                System.out.println("[System]:" + YELLOW + " Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
                 try {
                     if (socket != null) socket.close();
                 } catch (Exception ignored) {}
@@ -72,7 +73,7 @@ public class NetworkClient {
                 }
             }
         }
-        System.out.println(BLUE + "[System]: Failed after 5 tries. Opening offline application" + RESET);
+        System.out.println("[System]:" + BLUE + " Failed after 5 tries. Opening offline application" + RESET);
     }
 
     public boolean isConnected() {
@@ -89,7 +90,7 @@ public class NetworkClient {
 
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
-            System.out.println("[Error]: Cannot send command: '" + YELLOW + command + RESET + "' due to not connected");
+            System.out.println("[Error]: Cannot send command: \"" + YELLOW + command + RESET + "\" due to" + RED + " not being connected" + RESET);
             return;
         }
 
@@ -98,7 +99,7 @@ public class NetworkClient {
             String json = mapper.writeValueAsString(msg);
             out.println(json);
         } catch (Exception e) {
-            System.out.println("[Error]: JSON package error: " + RED + e.getMessage() + RESET);
+            System.out.println("[Error]:" + RED + " JSON package error: " + e.getMessage() + RESET);
         }
     }
 
@@ -111,7 +112,7 @@ public class NetworkClient {
                 dispatcher.dispatch(response, this);
             }
         } catch (IOException e) {
-            System.out.println("[Error]: Lost connection to server: " + RED + e.getMessage() + RESET);
+            System.out.println("[Error]:" + RED + " Lost connection to server: " + e.getMessage() + RESET);
         }
     }
 }

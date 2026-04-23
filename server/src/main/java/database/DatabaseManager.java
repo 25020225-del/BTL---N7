@@ -83,7 +83,7 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            System.out.println(GREEN + "[Database]: Successfully initialized" + RESET);
+            System.out.println("[Database]:" + GREEN + " Successfully initialized" + RESET);
 
         } catch (SQLException e) {
             System.out.println("[Error]: Database initialization error: " + RED + e.getMessage() + RESET);

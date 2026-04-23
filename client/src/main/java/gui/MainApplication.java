@@ -1,6 +1,6 @@
 package gui;
 
-import client.NetworkClient;
+import client.network.NetworkClient;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -34,10 +34,10 @@ public class MainApplication extends Application {
     public static void main(String[] args) {
 
         System.out.println(GREEN + "=================================");
-        System.out.println("|                               |");
-        System.out.println("|       CLIENT LOG TABLE        |");
-        System.out.println("|                               |");
-        System.out.println("=================================" + RESET);
+        System.out.println(        "|                               |");
+        System.out.println(        "|       CLIENT LOG TABLE        |");
+        System.out.println(        "|                               |");
+        System.out.println(        "=================================" + RESET);
         launch(args);
     }
 
@@ -50,7 +50,7 @@ public class MainApplication extends Application {
     public void initProperties() throws IOException {
         InputStream input = MainApplication.class.getResourceAsStream("config.properties");
         if (input != null) {
-            System.out.println("[System]: " + GREEN + "Reading configuration file..." + RESET);
+            System.out.println("[System]: Reading configuration file...");
             properties.load(input);
         } else {
             System.out.println("[Error]: " + RED + "Cannot find config.properties" + RESET);
@@ -120,11 +120,9 @@ public class MainApplication extends Application {
 
         FXMLLoader fxmlLogin = new FXMLLoader(MainApplication.class.getResource("Login.fxml"));
         FXMLLoader fxmlRegister = new FXMLLoader(MainApplication.class.getResource("Register.fxml"));
-        FXMLLoader fxmlMainView = new FXMLLoader(MainApplication.class.getResource("MainView.fxml"));
 
         rootLogin = fxmlLogin.load();
         rootRegister = fxmlRegister.load();
-        rootMainView = fxmlMainView.load();
 
         RegisterController registerCtrl = fxmlRegister.getController();
         if (registerCtrl != null) {
@@ -133,7 +131,7 @@ public class MainApplication extends Application {
 
         LoginController loginCtrl = fxmlLogin.getController();
         if (loginCtrl != null) loginCtrl.setNetworkClient(networkClient);
-        
+
         ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
         if (registerRole != null) {
             registerRole.getItems().clear();
@@ -144,7 +142,7 @@ public class MainApplication extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-
+        // 1. Khởi tạo cấu hình
         initProperties();
         openClient();
         init();

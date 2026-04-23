@@ -24,7 +24,7 @@ public class AuctionMonitor {
     }
 
     public void startMonitoring() {
-        System.out.println(GREEN + "[Monitor]: The automatic auction monitoring system has been launched" + RESET);
+        System.out.println("[Monitor]:" + GREEN + " The automatic auction monitoring system has been launched" + RESET);
 
         scheduler.scheduleAtFixedRate(() -> {
             try {

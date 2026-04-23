@@ -13,7 +13,6 @@ public class Launcher{
 
         System.setProperty("glass.win.uiScale",getWindowsScale()+"");
         System.setProperty("glass.gtk.uiScale",getWindowsScale()+"");
-
         MainApplication.main(args);
     }
 }
