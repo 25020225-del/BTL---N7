@@ -144,7 +144,7 @@ public class MainApplication extends Application {
     public void start(Stage stage) throws IOException {
         // 1. Khởi tạo cấu hình
         initProperties();
-        //openClient();
+        openClient();
         init();
 
         primalStage = stage;

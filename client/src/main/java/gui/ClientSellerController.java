@@ -22,7 +22,7 @@ public class ClientSellerController {
 
     @FXML private TilePane mainTilePane;
 
-    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Account","Account");
+    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Hello Seller","Account");
     private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
     private Button createTransaction =  (Button) WidgetFactory.createButton("mdi2a-archive-plus-outline","Create Transaction","Create Transaction");
 

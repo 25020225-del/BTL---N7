@@ -12,8 +12,13 @@ public class MainController
         ClientSellerController clientSellerController = new ClientSellerController();
         clientSellerController.start();
     }
+    private static void startAdmin() throws IOException{
+        ClientAdminController clientAdminController = new ClientAdminController();
+        clientAdminController.start();
+    }
     public static void start() throws IOException {
         //startBidder();
         startSeller();
+        //startAdmin();
     }
 }

@@ -24,7 +24,7 @@ public class ClientBidderController {
     @FXML private TilePane mainTilePane;
 
     private Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "search", "Search");
-    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Account","Account");
+    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Hello Bidder","Account");
     private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
 
     @FXML private Button searchButton;
