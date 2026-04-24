@@ -6,6 +6,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import model.Admin;
 import model.User;
 import network.NetworkMessage;
 
@@ -25,10 +26,11 @@ public class LoginController {
 
     @FXML
     protected void onMainViewButtonClick() {
-        try{
-            MainController.start();
-        }
-        catch (IOException e){}
+//        try{
+//
+//            MainController.start();
+//        }
+//        catch (IOException e){}
         String username = loginAccountName.getText().trim();
         String password = loginPasswordAccount.getText().trim();
 
@@ -37,10 +39,20 @@ public class LoginController {
             return;
         }
 
+        setNetworkClient(MainApplication.networkClient);
+
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
-            User loginAttempt = new User("", username, password, "", "");
+            User loginAttempt = new Admin("", username, password, "");
             networkClient.sendMessage("LOGIN", loginAttempt);
+            Platform.runLater(() -> {
+                try {
+                    MainController.start(loginAttempt);
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
         } else {
             System.out.println("[Error]: " + RED + "Cannot connect to the server" + RESET);
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server");

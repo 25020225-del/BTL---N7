@@ -1,5 +1,10 @@
 package gui;
 
+import model.Admin;
+import model.Bidder;
+import model.Seller;
+import model.User;
+
 import java.io.IOException;
 
 public class MainController
@@ -16,9 +21,17 @@ public class MainController
         ClientAdminController clientAdminController = new ClientAdminController();
         clientAdminController.start();
     }
-    public static void start() throws IOException {
+    public static void start(User user) throws IOException {
+        if(user instanceof Admin){
+            startAdmin();
+        }
+        else if(user instanceof Bidder){
+            startBidder();
+        } else if (user instanceof Seller) {
+            startSeller();
+        }
         //startBidder();
-        startSeller();
+        //startSeller();
         //startAdmin();
     }
 }

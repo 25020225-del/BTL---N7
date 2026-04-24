@@ -46,7 +46,8 @@ public class ServerDiscovery {
     }
 
     public static NetworkClient establishConnection(Properties properties) {
-        String binID = properties.getProperty("binID", "69d4960b856a6821890813a2");
+        String binID = properties.getProperty("binID");
+        System.out.println("[INFO]: Establishing connection to " + binID + "...");
         System.out.println("[System]: Fetching server address from remote storage...");
 
         String[] serverInfo = getServerAddress(binID);
