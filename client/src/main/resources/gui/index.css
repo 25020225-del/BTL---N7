@@ -152,3 +152,59 @@
     -fx-icon-size: 25px;
     -fx-icon-color: #2980b9;
 }
+.date-picker {
+    -fx-background-color: transparent;
+    -fx-border-color: #dcdcdc;
+    -fx-border-radius: 5;
+    -fx-padding: 1;
+}
+
+/* 2. Thay đổi màu icon lịch */
+.date-picker .arrow-button {
+    -fx-background-color: #2196F3; /* Màu xanh chủ đạo */
+    -fx-background-radius: 5;
+}
+
+.date-picker .arrow-button .arrow {
+    -fx-background-color: white; /* Màu mũi tên bên trong icon */
+}
+
+/* 3. Tùy chỉnh bảng lịch (Popup) */
+.date-picker-popup {
+    -fx-background-color: white;
+    -fx-border-color: #2196F3;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);
+}
+
+/* 4. Đổi màu tiêu đề tháng/năm */
+.date-picker-popup .month-year-pane {
+    -fx-background-color: #2196F3;
+}
+
+.date-picker-popup .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* 5. Đổi màu các ngày trong tháng */
+.date-picker-popup .day-cell {
+    -fx-padding: 5;
+}
+
+/* Ngày đang chọn */
+.date-picker-popup .day-cell:selected {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: white;
+}
+
+/* Khi di chuột qua các ngày */
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: #e3f2fd;
+    -fx-text-fill: #2196F3;
+}
+
+/* Ngày hôm nay */
+.date-picker-popup .today {
+    -fx-border-color: #2196F3;
+    -fx-border-width: 1;
+}
