@@ -7,6 +7,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import model.Admin;
+import model.Bidder;
 import model.User;
 import network.NetworkMessage;
 
@@ -26,11 +27,11 @@ public class LoginController {
 
     @FXML
     protected void onMainViewButtonClick() {
-//        try{
-//
-//            MainController.start();
-//        }
-//        catch (IOException e){}
+        try{
+
+            MainController.start(new Bidder());
+        }
+        catch (IOException e){}
         String username = loginAccountName.getText().trim();
         String password = loginPasswordAccount.getText().trim();
 
@@ -43,8 +44,8 @@ public class LoginController {
 
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
-            User loginAttempt = new Admin("", username, password, "");
-            networkClient.sendMessage("LOGIN", loginAttempt);
+            User loginAttempt = new User("", username, password, "");
+            networkClient.sendMessage("LOGIN", new Bidder(loginAttempt));
             Platform.runLater(() -> {
                 try {
                     MainController.start(loginAttempt);
