@@ -36,6 +36,9 @@ public class MainApplication extends Application {
     }
 
     public static void setNewScene(Parent k) {
+        if(k==null){
+            System.out.println("parent is null");
+        }
         if (primalStage != null && primalStage.getScene() != null) {
             primalStage.getScene().setRoot(k);
         }
