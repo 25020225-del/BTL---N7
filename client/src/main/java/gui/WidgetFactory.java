@@ -33,12 +33,12 @@ public final class WidgetFactory {
         return button;
     }
 
-    public static VBox createMinimalItem(String nameString, String priceString, String dateString) {
+    public static VBox createMinimalItem(String nameString, String priceString, long dateString) {
         Label name = new Label(nameString);
         Label price = new Label(priceString + " VND");
-        Label date = new Label(dateString + " Days Left");
+        CountdownClock date = new CountdownClock();
+        date.start(dateString);
 
-        // Styling the product card container
         VBox minimalItem = new VBox();
         minimalItem.setStyle(
                 "-fx-background-radius: 10; " +
