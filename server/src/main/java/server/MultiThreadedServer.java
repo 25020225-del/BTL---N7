@@ -86,6 +86,14 @@ public class MultiThreadedServer {
 
             String jsonResponse = content.toString();
 
+            Matcher tunnelStatus = Pattern.compile("\"status\":(\\d+)").matcher(jsonResponse);
+            if (tunnelStatus.find()) {
+                int status = Integer.parseInt(tunnelStatus.group(1));
+                if (status == 0) {
+                    return null;
+                }
+            }
+
             String ip = "";
             String port = "";
 
