@@ -79,7 +79,7 @@ public class MainApplication extends Application {
     public void start(Stage stage) throws IOException {
         // 1. Khởi tạo cấu hình
         initProperties();
-        ServerDiscovery.establishConnection(properties);
+        networkClient = ServerDiscovery.establishConnection(properties);
         init();
 
         primalStage = stage;

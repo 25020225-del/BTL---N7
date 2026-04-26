@@ -64,6 +64,24 @@ public class ServerDiscovery {
         }
 
         System.out.println("[System]: Connecting to: " + YELLOW + serverURL + ":" + port + RESET);
-        return new NetworkClient(serverURL, port);
+        NetworkClient client = new NetworkClient(serverURL, port);
+
+        if (!client.isConnected() && !serverURL.equals("localhost") && !serverURL.equals("127.0.0.1")) {
+            System.out.println("\n[System]:" + YELLOW + " Online server is unreachable. Automatically falling back to localhost..." + RESET);
+
+            String fallbackURL = properties.getProperty("fallbackServerURL", "localhost");
+            int fallbackPort = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
+
+            System.out.println("[System]: Connecting to fallback: " + YELLOW + fallbackURL + ":" + fallbackPort + RESET);
+
+            client = new NetworkClient(fallbackURL, fallbackPort);
+        }
+
+        if (!client.isConnected()) {
+            System.out.println("\n[System]: " + RED + "All connection attempts failed." + RESET);
+            System.out.println("[System]: " + BLUE + "Opening offline application..." + RESET);
+        }
+
+        return client;
     }
 }
