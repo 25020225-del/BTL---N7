@@ -138,3 +138,24 @@
     -fx-background-radius: 10;
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
 }
+/* Nút Bán hàng
+.button-sell {
+    -fx-background-color: transparent;
+    -fx-border-color: #3665f3;
+    -fx-border-radius: 20;
+    -fx-text-fill: #3665f3;
+    -fx-font-weight: bold;
+    -fx-padding: 5 20;
+}
+
+.button-sell:hover {
+    -fx-background-color: #f0f5ff;
+}
+
+/* Form nhập liệu */
+.form-container {
+    -fx-background-color: white;
+    -fx-padding: 30;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);
+}
