@@ -89,3 +89,52 @@
 .menu-item:focused {
     -fx-background-color: #f4f4f4; /* Màu khi rê chuột qua dòng đó */
 }
+/* --- ADMIN DASHBOARD STYLES --- */
+
+/* Style cho TableView kiểu sạch sẽ */
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: #e5e5e5;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #f7f7f7; /* Nền xám nhạt cho tiêu đề bảng */
+    -fx-background-radius: 8 8 0 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-size: 40;
+}
+
+.table-view .table-row-cell:odd {
+    -fx-background-color: #fafafa;
+}
+
+.table-view .table-row-cell:hover {
+    -fx-background-color: #f0f5ff; /* Màu xanh cực nhạt khi di chuột qua dòng */
+}
+
+/* Nút xóa/chặn (Danger Action) */
+.button-danger {
+    -fx-background-color: white;
+    -fx-text-fill: #dd1e31;
+    -fx-border-color: #dd1e31;
+    -fx-border-radius: 20;
+    -fx-background-radius: 20;
+}
+
+.button-danger:hover {
+    -fx-background-color: #dd1e31;
+    -fx-text-fill: white;
+}
+
+/* Sidebar hoặc Thẻ thống kê nhanh */
+.stat-card {
+    -fx-background-color: white;
+    -fx-padding: 15;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
+}
