@@ -8,7 +8,6 @@ import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 
 public class ItemDetailController {
-    // 1. Khai báo các thành phần UI (Giữ nguyên các biến cũ của bạn)
     @FXML private ImageView imgLarge;
     @FXML private Label lblDetailTitle;
     @FXML private Label lblDetailPrice;
