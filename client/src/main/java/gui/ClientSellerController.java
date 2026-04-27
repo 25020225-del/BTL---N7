@@ -28,6 +28,7 @@ import javafx.stage.Stage;
 import model.Auction;
 import model.Item;
 import model.Seller;
+import model.User;
 
 import javax.security.sasl.AuthenticationException;
 
@@ -37,8 +38,8 @@ public class ClientSellerController {
 
     private Parent mainView;
     private Parent sellerCreateAuction;
-
-    Seller seller = new Seller();
+    private User currentUser;
+    private Seller seller;
 
     @FXML private VBox mainDock;
     @FXML private VBox mainViewController;
@@ -61,7 +62,7 @@ public class ClientSellerController {
 
 
 
-    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Hello Seller","Account");
+    private Button account;
     private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
     private Button createTransaction =  (Button) WidgetFactory.createButton("mdi2a-archive-plus-outline","Create Transaction","Create Transaction");
 
@@ -71,7 +72,10 @@ public class ClientSellerController {
         return loader.load();
     }
 
-    public ClientSellerController() throws IOException {
+    public ClientSellerController(User user) throws IOException {
+        this.currentUser = user;
+        this.seller = (Seller) user;
+        this.account = (Button) WidgetFactory.createButton("mdi2a-account", "Hello, " + user.getName(), "Account");
         mainView = loadFx("MainView.fxml");
         sellerCreateAuction = loadFx("SellerCreateAuction.fxml");
         MainApplication.setNewScene(mainView);
@@ -149,22 +153,37 @@ public class ClientSellerController {
         });
         createAuction.setOnAction(event -> {
             try {
+                // get data from UI
                 String itemName = sellerCreateAuction_itemName.getText();
-                String descripsion = sellerCreateAuction_descripsion.getText();
+                String description = sellerCreateAuction_descripsion.getText();
                 double startPrice = Double.parseDouble(sellerCreateAuction_startPrice.getText());
-                Item item = new Item(UUID.randomUUID().toString(),itemName,descripsion,startPrice);
-                int startHour = Integer.parseInt(sellerCreateAuction_startHour.getText());
-                int  endHour = Integer.parseInt(sellerCreateAuction_endHour.getText());
-                int startMinute = Integer.parseInt(sellerCreateAuction_startMinute.getText());
-                int endMinute = Integer.parseInt(sellerCreateAuction_endMinute.getText());
-                LocalDateTime startTime = sellerCreateAuction_startDate.getValue().atTime(startHour,startMinute,0);
-                LocalDateTime endTime = sellerCreateAuction_endDate.getValue().atTime(endHour,endMinute,0);
-                Auction auction = new Auction(UUID.randomUUID().toString(),item,seller,50,startTime,endTime);
-                String data = mapper.writeValueAsString(auction);
-                System.out.println(data);
+
+                // Temp simulating bidIncrement and durationMinutes (MUST be changed later)
+                double bidIncrement = startPrice * 0.1;
+                int durationMinutes = 60;
+
+                // Data package
+                Map<String, String> auctionData = new HashMap<>();
+                auctionData.put("itemName", itemName);
+                auctionData.put("description", description);
+                auctionData.put("startingPrice", String.valueOf(startPrice));
+                auctionData.put("bidIncrement", String.valueOf(bidIncrement));
+                auctionData.put("durationMinutes", String.valueOf(durationMinutes));
+
+                System.out.println("[Log]: Sending creating auction request for " + itemName + "...");
+
+                // send cmd to server
+                MainApplication.networkClient.sendMessage("CREATE_AUCTION", auctionData);
+
+                // delete form after successfully sending
+                sellerCreateAuction_itemName.clear();
+                sellerCreateAuction_startPrice.clear();
+                sellerCreateAuction_descripsion.clear();
+
+            } catch (NumberFormatException e) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Price or time is invalid");
             } catch (Exception e) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR,"Error","Lỗi nhập liệu");
-                //throw  new RuntimeException(e);
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Input error: " + e.getMessage());
             }
         });
     }
@@ -175,17 +194,5 @@ public class ClientSellerController {
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
         setMainDock();
         setMainViewController();
-    }
-
-    public void createAuction() {
-        Map<String, String> auctionData = new HashMap<>();
-        auctionData.put("itemName", "Lông dái Ronaldo");
-        auctionData.put("description", "Còn thơm mùi nước đái");
-        auctionData.put("startingPrice", "2500000000");
-        auctionData.put("bidIncrement", "5000000");
-        auctionData.put("durationMinutes", "69");
-
-        System.out.println("[Log]: Sending creating auction request...");
-        MainApplication.networkClient.sendMessage("CREATE_AUCTION", auctionData);
     }
 }
