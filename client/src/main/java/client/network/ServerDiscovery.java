@@ -47,7 +47,6 @@ public class ServerDiscovery {
 
     public static NetworkClient establishConnection(Properties properties) {
         String binID = properties.getProperty("binID");
-        System.out.println("[INFO]: Establishing connection to " + binID + "...");
         System.out.println("[System]: Fetching server address from remote storage...");
 
         String[] serverInfo = getServerAddress(binID);
@@ -68,7 +67,7 @@ public class ServerDiscovery {
         NetworkClient client = new NetworkClient(serverURL, port);
 
         if (!client.isConnected() && !serverURL.equals("localhost") && !serverURL.equals("127.0.0.1")) {
-            System.out.println("\n[System]:" + YELLOW + " Online server is unreachable. Automatically falling back to localhost..." + RESET);
+            System.out.println("\n[System]:" + BLUE + " Online server is unreachable. Automatically falling back to localhost..." + RESET);
 
             String fallbackURL = properties.getProperty("fallbackServerURL", "localhost");
             int fallbackPort = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));

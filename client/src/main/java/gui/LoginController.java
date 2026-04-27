@@ -1,18 +1,17 @@
 package gui;
 
 import client.network.NetworkClient;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import model.Admin;
-import model.Bidder;
 import model.User;
 import network.NetworkMessage;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 
 import static utils.ConsoleColors.*;
-import java.io.IOException;
 
 public class LoginController {
 
@@ -20,6 +19,8 @@ public class LoginController {
     @FXML private PasswordField loginPasswordAccount;
 
     private NetworkClient networkClient;
+    private final ObjectMapper mapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public void setNetworkClient(NetworkClient client) {
         this.networkClient = client;
@@ -45,7 +46,7 @@ public class LoginController {
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
             User loginAttempt = new User("", username, password, "");
-            networkClient.sendMessage("LOGIN", new Bidder(loginAttempt));
+            networkClient.sendMessage("LOGIN", loginAttempt);
             //System.out.println("[Log]: Login successful!");
             /*Platform.runLater(() -> {
                 try {
@@ -76,15 +77,18 @@ public class LoginController {
 
             if ("LOGIN_SUCCESS".equals(command)) {
 
-                loginAccountName.clear();
-                loginPasswordAccount.clear();
-
-                System.out.println("[Log]: Main UI view");
                 try {
-                    MainController.start(new Admin(new User("", loginAccountName.getText(), loginPasswordAccount.getText(), "gay")));
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
+                    // Decipher user from server
+                    User loggedInUser = mapper.convertValue(response.getData(), User.class);
+
+                    System.out.println("[Log]: " + GREEN + loggedInUser.getName() + " successfully logged in" + RESET);
+
+                    loginAccountName.clear();
+                    loginPasswordAccount.clear();
+
+                    MainController.start(loggedInUser);
+                } catch (Exception e) {
+                    System.out.println("[Error]: Login error: " + RED + e.getMessage() + RESET);
                 }
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {

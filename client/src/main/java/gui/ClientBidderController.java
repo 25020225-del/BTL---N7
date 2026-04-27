@@ -8,6 +8,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
+import model.User;
 
 import java.io.IOException;
 
@@ -16,6 +17,7 @@ import static utils.ConsoleColors.*;
 public class ClientBidderController {
 
     private Parent mainView = null;
+    private User currentUser;
 
     @FXML private VBox mainDock;
     @FXML private VBox mainViewController;
@@ -24,13 +26,15 @@ public class ClientBidderController {
     @FXML private TilePane mainTilePane;
 
     private Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "search", "Search");
-    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Hello Bidder","Account");
+    private Button account;
     private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
 
     @FXML private Button searchButton;
     @FXML private TextField searchField;
 
-    public ClientBidderController() throws IOException {
+    public ClientBidderController(User user) throws IOException {
+        this.currentUser = user;
+        this.account = (Button) WidgetFactory.createButton("mdi2a-account","Hello, " + user.getName(),"Account");
         FXMLLoader fxmlMainView = new FXMLLoader(ClientBidderController.class.getResource("MainView.fxml"));
         fxmlMainView.setController(this);
         mainView = fxmlMainView.load();

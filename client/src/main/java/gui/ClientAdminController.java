@@ -8,12 +8,14 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
+import model.User;
 
 import java.io.IOException;
 
 public class ClientAdminController {
 
     private Parent mainView;
+    private User currentAdmin;
 
     @FXML
     private VBox mainDock;
@@ -21,12 +23,14 @@ public class ClientAdminController {
 
     @FXML private TilePane mainTilePane;
 
-    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Hello Admin","Account");
+    private Button account;
     private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
     private Button accountList =  (Button) WidgetFactory.createButton("mdi2a-account-box-multiple-outline","Account","Account");
     private Button itemList = (Button) WidgetFactory.createButton("mdi2a-archive-settings-outline","Item","Item");
 
-    public ClientAdminController() throws IOException {
+    public ClientAdminController(User user) throws IOException {
+        this.currentAdmin = user;
+        this.account = (Button) WidgetFactory.createButton("mdi2a-account", "Admin: " + user.getName(), "Account");
         FXMLLoader loader = new FXMLLoader();
         loader.setLocation(getClass().getResource("/gui/MainView.fxml"));
         loader.setController(this);
