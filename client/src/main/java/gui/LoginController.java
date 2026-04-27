@@ -26,12 +26,12 @@ public class LoginController {
     }
 
     @FXML
-    protected void onMainViewButtonClick() {/*
+    protected void onMainViewButtonClick() {
         try{
 
             MainController.start(new Bidder());
         }
-        catch (IOException e){}*/
+        catch (IOException e){}
         String username = loginAccountName.getText().trim();
         String password = loginPasswordAccount.getText().trim();
 

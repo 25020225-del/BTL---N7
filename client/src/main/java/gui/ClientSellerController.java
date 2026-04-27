@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import gui.widget.IconButton;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
@@ -59,11 +60,9 @@ public class ClientSellerController {
     @FXML private TextField sellerCreateAuction_endHour;
     @FXML private TextField sellerCreateAuction_endMinute;
 
-
-
-    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Hello Seller","Account");
-    private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
-    private Button createTransaction =  (Button) WidgetFactory.createButton("mdi2a-archive-plus-outline","Create Transaction","Create Transaction");
+    private IconButton account = new IconButton("mdi2a-account", "Hello Seller", "Account", "special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private IconButton createTransaction = new IconButton("mdi2a-archive-plus-outline", "Create Transaction", "Create Transaction", "special-button");
 
     private Parent loadFx(String location) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(location));
@@ -107,11 +106,6 @@ public class ClientSellerController {
         mainDock.getChildren().add(account);
         mainDock.getChildren().addFirst(createTransaction);
         mainDock.getChildren().addFirst(toggleList);
-        for(Node k : mainDock.getChildren()){
-            if(k instanceof Button){
-                k.getStyleClass().add("special-button");
-            }
-        }
 
         toggleList.setUserData(true);
         toggleList.setOnAction(event -> {
