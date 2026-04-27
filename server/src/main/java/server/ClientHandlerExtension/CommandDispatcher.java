@@ -23,6 +23,10 @@ public class CommandDispatcher {
         AuctionActionHandler auctionHandler = new AuctionActionHandler();
         handlers.put("CREATE_AUCTION", auctionHandler);
 
+        PaymentHandler paymentHandler = new PaymentHandler();
+        handlers.put("CREATE_DEPOSIT", paymentHandler);
+        handlers.put("CONFIRM_DEPOSIT", paymentHandler);
+
         handlers.put("PING", (message, client) -> client.sendResponse("PONG", "Request accepted"));
     }
 

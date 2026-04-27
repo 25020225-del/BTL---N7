@@ -38,7 +38,8 @@ public class AutoBidEngine {
 
                     // if max bid can afford
                     if (requiredBid <= bot.getMaxBid()) {
-                        System.out.println(BLUE + "[Auto-Bid Engine]: Bot của \"" + bot.getBidder().getUserName() + "\" đang tham chiến!" + RESET);
+                        System.out.println("[Auto-Bid Engine]: Bot of \""
+                                + YELLOW + bot.getBidder().getUserName() + RESET + "\" is trying to auto-bid");
 
                         // Call bid function with transaction & refund Database (isBot = true)
                         boolean success = bidderCtrl.placeBidOnAuction(bot.getBidder(), auction, bot.getMaxBid(), true);
@@ -48,7 +49,9 @@ public class AutoBidEngine {
                             break;
                         } else {
                             // Remove if failed
-                            System.out.println("[Auto-Bid Engine]: Bot of \"" + YELLOW + bot.getBidder().getUserName() + RESET + "\" does not have enough money. Automatically remove bot");
+                            System.out.println("[Auto-Bid Engine]: Bot of \""
+                                    + YELLOW + bot.getBidder().getUserName() + RESET + "\" does not have enough money. " +
+                                    "Automatically remove bot");
                             auction.getActiveAutoBids().remove(bot);
                         }
                     }

@@ -24,6 +24,10 @@ public class ResponseDispatcher {
         handlers.put("CLI_BROADCAST", auctionHandler);
         handlers.put("CREATE_SUCCESS", auctionHandler);
         handlers.put("CHAT", auctionHandler);
+
+        ClientPaymentHandler paymentHandler = new ClientPaymentHandler();
+        handlers.put("PAYMENT_REDIRECT", paymentHandler);
+        handlers.put("DEPOSIT_SUCCESS", paymentHandler);
     }
 
     public void dispatch(NetworkMessage message, NetworkClient client) {
