@@ -48,7 +48,7 @@ public class AutoBidEngine {
                             break;
                         } else {
                             // Remove if failed
-                            System.out.println(YELLOW + "[Auto-Bid Engine]: Bot của \"" + bot.getBidder().getUserName() + "\" bị thiếu tiền trong ví. Tự động hủy Bot." + RESET);
+                            System.out.println("[Auto-Bid Engine]: Bot of \"" + YELLOW + bot.getBidder().getUserName() + RESET + "\" does not have enough money. Automatically remove bot");
                             auction.getActiveAutoBids().remove(bot);
                         }
                     }

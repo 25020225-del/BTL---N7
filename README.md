@@ -7,7 +7,7 @@ Thành viên nhóm:
   - Khúc Ngọc Minh.(25020264): Thiết kế.
 + Server:
   - Cao Dương Lễ.(25020232): Database + Logic.
-  - Nguyễn Quang Mạnh. (25020256): Mạng.
+  - Nguyễn Quang Mạnh. (25020256): Mạng + Logic.
 ---
 SƠ ĐỒ UML
 
