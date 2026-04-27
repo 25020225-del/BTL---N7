@@ -1,6 +1,6 @@
 package model;
 
-public abstract class Item extends Entity {
+public class Item extends Entity {
     private String itemName;
     private String description;
     private double startingPrice;

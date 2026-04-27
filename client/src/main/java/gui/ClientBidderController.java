@@ -75,12 +75,13 @@ public class ClientBidderController {
         });
     }
     private void setMainViewController() {
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy xay sinh tố mèo","30000","3"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đùi gà tẩm bột chiên xù","40000","3"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy bay đồ chơi mini","1200000","3"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Thịt cừu nướng","127000","4"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Mỡ lợn","80000","3"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đầu cá","35000","2"));
+        final long TWO_MINUTES = 2 * 60 * 1000;
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy xay sinh tố mèo","30000",System.currentTimeMillis() + TWO_MINUTES));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đùi gà tẩm bột chiên xù","40000",System.currentTimeMillis() + TWO_MINUTES));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy bay đồ chơi mini","1200000",System.currentTimeMillis() + TWO_MINUTES));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Thịt cừu nướng","127000",System.currentTimeMillis() + TWO_MINUTES));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Mỡ lợn","80000",System.currentTimeMillis() + TWO_MINUTES));
+        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đầu cá","35000",System.currentTimeMillis() + TWO_MINUTES));
     }
 
     public void start() throws IOException {
