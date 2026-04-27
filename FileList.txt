@@ -4,6 +4,7 @@ Project/
 	auction_system.db
 	pom.xml
 	client/
+	    dependency-reduced-pom.xml
 		mvnw
 		mvnw.cmd
 		pom.xml
@@ -11,29 +12,48 @@ Project/
 			java/
 				module-info.java
 				client/
-					NetworkClient.java
+					handler/
+					    ClientAuctionHandler.java
+					    ClientPaymentHandler.java
+					    ClientSystemHandler.java
+					    ResponseDispatcher.java
+					    ResponseHandler.java
+					network/
+					    NetworkClient.java
+					    ServerDiscovery.java
 				gui/
 					AlertHelper.java
 					AnimateEffect.java
 					ClientAdminController.java
 					ClientBidderController.java
 					ClientSellerController.java
+					CountdownClock.java
+					ItemDetailController.java
 					Launcher.java
 					LoginController.java
 					MainApplication.java
 					MainController.java
 					QRCodeHelper.java
 					RegisterController.java
+					Search.java
 					WidgetFactory.java
 			resources/gui/
+			    AdminView.fxml
+			    Bidder.fxml
 				config.properties
+				DualRoleView.fxml
 				index.css
 				Login.fxml
 				MainView.fxml
+				Productdetail.fxml
+				ProductItem.fxml
 				Register.fxml
+				SellerCreateAuction.fxml
+				SellingRequest.fxml
+				Stylist.fxml
 				images/
 					logo.png
-					online-shop-svgrepo-com.svg
+					logo2.png
 	common/
 		pom.xml
 		src/main/java/
@@ -51,6 +71,8 @@ Project/
 				Seller.java
 				User.java
 				Vehicle.java
+				Wallet.java
+				WalletTransaction.java
 			network/
 				NetworkMessage.java
 			utils/
@@ -69,6 +91,17 @@ Project/
 			server/
 				ClientHandler.java
 				MultiThreadedServer.java
+				ClientHandlerExtension/
+				    AuctionActionHandler.java
+				    AuthHandler.java
+				    CommandDispatcher.java
+				    CommandHandler.java
+				    PaymentHandler.java
+				ServerExtension
+				    AuctionManager.java
+				    ClientManager.java
 			service/
+			    AutoBidEngine.java
+			    PayPalService.java
 				TOTPService.java
 		
