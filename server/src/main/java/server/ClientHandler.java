@@ -9,6 +9,11 @@ import server.ClientHandlerExtension.*;
 
 import java.io.*;
 import java.net.Socket;
+import java.security.KeyPair;
+import java.util.Base64;
+import javax.crypto.SecretKey;
+
+import utils.CryptoUtil;
 
 import static utils.ConsoleColors.*;
 
@@ -22,10 +27,13 @@ public class ClientHandler implements Runnable {
     private model.User user;
 
     private UserController userController;
-    private static final CommandDispatcher dispatcher = new CommandDispatcher(); // Gọi Tổng đài viên
+    private static final CommandDispatcher dispatcher = new CommandDispatcher();
 
     private final ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    private SecretKey sharedAesKey;
+    private KeyPair rsaKeyPair;
 
     public ClientHandler(Socket socket, UserController userController) {
         this.socket = socket;
@@ -42,11 +50,28 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            String jsonMessage;
-            while ((jsonMessage = in.readLine()) != null) {
-                System.out.println("[System]: Getting JSON from Client: " + YELLOW + jsonMessage + RESET);
+            // ---HANDSHAKE---
+            // 1. Generate an RSA key pair and send the public key to the client
+            rsaKeyPair = CryptoUtil.generateRSAKeyPair();
+            String publicKeyBase64 = Base64.getEncoder().encodeToString(rsaKeyPair.getPublic().getEncoded());
+            out.println(publicKeyBase64);
+
+            // 2. Wait for the client to send back the encrypted AES key
+            String encryptedAesKey = in.readLine();
+            if (encryptedAesKey == null) return;
+            sharedAesKey = CryptoUtil.decryptAESKeyWithRSA(encryptedAesKey, rsaKeyPair.getPrivate());
+            System.out.println("[Security]: Handshake success with \"" + YELLOW + clientName + RESET + "\". AES Channel established.");
+            // ---END HANDSHAKE---
+
+            String encryptedJsonMessage;
+            while ((encryptedJsonMessage = in.readLine()) != null) {
+                System.out.println("[System]: Getting encrypted JSON from Client: " + YELLOW + encryptedJsonMessage + RESET);
 
                 try {
+                    // Decrypting by AES
+                    String jsonMessage = CryptoUtil.decryptAES(encryptedJsonMessage, sharedAesKey);
+                    System.out.println("[System]: Decrypted JSON from Client: " + YELLOW + jsonMessage + RESET);
+
                     NetworkMessage message = mapper.readValue(jsonMessage, NetworkMessage.class);
 
                     if (message.getCommand() == null) {
@@ -73,7 +98,8 @@ public class ClientHandler implements Runnable {
         try {
             NetworkMessage responseMsg = new NetworkMessage(command, data);
             String jsonOutput = mapper.writeValueAsString(responseMsg);
-            out.println(jsonOutput);
+            String encryptedPayload = CryptoUtil.encryptAES(jsonOutput, sharedAesKey);
+            out.println(encryptedPayload);
         } catch (Exception e) {
             System.out.println("[Error]: JSON serialization: " + RED + e.getMessage() + RESET);
         }

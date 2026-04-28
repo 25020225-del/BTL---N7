@@ -62,9 +62,7 @@ public class ClientBidderController {
         //test deposit
         testDepositButton.setOnAction(event -> {
             double testAmount = 50000;
-            System.out.println("[Log]: Sending deposit request of " + testAmount + " VND to Server...");
-
-            MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", testAmount);
+            requestDeposit(testAmount);
         });
 
         toggleList.setUserData(true);
@@ -113,7 +111,7 @@ public class ClientBidderController {
             return;
         }
 
-        System.out.println("[Log]: Sending a deposit request " + amount + " VND...");
+        System.out.println("[Log]: Sending a deposit request of " + amount + " VND...");
 
         MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
