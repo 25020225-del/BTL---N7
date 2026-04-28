@@ -9,7 +9,7 @@ import static utils.ConsoleColors.*;
 
 public class DatabaseManager {
 
-    private static final String DB_URL = "jdbc:sqlite:auction_system.db";
+    private static final String DB_URL = "jdbc:sqlite:auction_system.db?journal_mode=WAL";
 
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL);
@@ -32,6 +32,23 @@ public class DatabaseManager {
                     "is_totp_enabled INTEGER DEFAULT 0" +
                     ");";
             stmt.execute(createUsersTable);
+
+            String createWalletsTable = "CREATE TABLE IF NOT EXISTS wallets (" +
+                    "user_id TEXT PRIMARY KEY, " +
+                    "balance REAL DEFAULT 0.0, " +
+                    "FOREIGN KEY (user_id) REFERENCES users(id)" +
+                    ");";
+            stmt.execute(createWalletsTable);
+
+            String createWalletTxnTable = "CREATE TABLE IF NOT EXISTS wallet_transactions (" +
+                    "id TEXT PRIMARY KEY, " +
+                    "user_id TEXT NOT NULL, " +
+                    "amount REAL NOT NULL, " +
+                    "description TEXT, " +
+                    "created_at TEXT NOT NULL, " +
+                    "FOREIGN KEY (user_id) REFERENCES users(id)" +
+                    ");";
+            stmt.execute(createWalletTxnTable);
 
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");

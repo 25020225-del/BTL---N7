@@ -1,4 +1,4 @@
-package gui;
+package gui.process;
 import javafx.scene.control.Alert;
 
 public class AlertHelper {

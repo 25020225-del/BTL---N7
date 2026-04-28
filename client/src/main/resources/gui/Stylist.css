@@ -1,0 +1,161 @@
+/* Tổng thể nền ứng dụng */
+.root {
+    -fx-background-color: #f7f7f7;
+    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+/* Kiểu dáng cho từng ô sản phẩm (Product Card) */
+.product-card {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #e5e5e5;
+    -fx-border-width: 1;
+    /* Đổ bóng nhẹ cho chuyên nghiệp */
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);
+}
+
+/* Hiệu ứng khi di chuột qua ô sản phẩm */
+.product-card:hover {
+    -fx-border-color: #3665f3;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.2), 15, 0, 0, 5);
+}
+
+/* Nút bấm kiểu eBay (Xanh dương) */
+.button-ebay {
+    -fx-background-color: #3665f3;
+    -fx-text-fill: white;
+    -fx-background-radius: 20;
+    -fx-font-weight: bold;
+    -fx-padding: 8 20;
+}
+
+.button-ebay:hover {
+    -fx-background-color: #2b50c7;
+}
+
+/* Ô tìm kiếm */
+.search-field {
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: #333333;
+    -fx-background-color: white;
+    -fx-padding: 5 15;
+}
+
+.search-field:focused {
+    -fx-border-color: #3665f3;
+    -fx-border-width: 2;
+}
+
+/* Giá tiền */
+.price-text {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #111820;
+}
+
+/* Đồng hồ đếm ngược */
+.timer-text {
+    -fx-text-fill: #dd1e31;
+    -fx-font-weight: bold;
+}
+/* Trang trí hộp menu nhỏ */
+/* Thu nhỏ tổng thể cái hộp */
+.context-menu {
+    -fx-background-color: white;
+    -fx-padding: 2; /* Giảm khoảng cách từ viền hộp đến nội dung */
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-border-color: #dcdcdc;
+    -fx-border-width: 0.5; /* Viền mỏng thôi cho tinh tế */
+}
+
+/* Thu nhỏ từng dòng (Logout, Profile) */
+.menu-item {
+    -fx-padding: 4 10 4 10; /* Trên - Phải - Dưới - Trái. Giảm số 4 xuống nếu muốn mỏng hơn nữa */
+}
+
+/* Thu nhỏ chữ trong menu */
+.menu-item .label {
+    -fx-font-size: 12px; /* Chỉnh chữ nhỏ lại một chút */
+    -fx-text-fill: #333333;
+}
+.menu-item .label {
+    -fx-text-fill: #333;
+}
+
+.menu-item:focused {
+    -fx-background-color: #f4f4f4; /* Màu khi rê chuột qua dòng đó */
+}
+/* --- ADMIN DASHBOARD STYLES --- */
+
+/* Style cho TableView kiểu sạch sẽ */
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: #e5e5e5;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #f7f7f7; /* Nền xám nhạt cho tiêu đề bảng */
+    -fx-background-radius: 8 8 0 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-size: 40;
+}
+
+.table-view .table-row-cell:odd {
+    -fx-background-color: #fafafa;
+}
+
+.table-view .table-row-cell:hover {
+    -fx-background-color: #f0f5ff; /* Màu xanh cực nhạt khi di chuột qua dòng */
+}
+
+/* Nút xóa/chặn (Danger Action) */
+.button-danger {
+    -fx-background-color: white;
+    -fx-text-fill: #dd1e31;
+    -fx-border-color: #dd1e31;
+    -fx-border-radius: 20;
+    -fx-background-radius: 20;
+}
+
+.button-danger:hover {
+    -fx-background-color: #dd1e31;
+    -fx-text-fill: white;
+}
+
+/* Sidebar hoặc Thẻ thống kê nhanh */
+.stat-card {
+    -fx-background-color: white;
+    -fx-padding: 15;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
+}
+/* Nút Bán hàng
+.button-sell {
+    -fx-background-color: transparent;
+    -fx-border-color: #3665f3;
+    -fx-border-radius: 20;
+    -fx-text-fill: #3665f3;
+    -fx-font-weight: bold;
+    -fx-padding: 5 20;
+}
+
+.button-sell:hover {
+    -fx-background-color: #f0f5ff;
+}
+
+/* Form nhập liệu */
+.form-container {
+    -fx-background-color: white;
+    -fx-padding: 30;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);
+}

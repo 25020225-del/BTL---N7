@@ -1,5 +1,6 @@
 package gui;
 
+import gui.widget.IconButton;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -8,12 +9,14 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
+import model.User;
 
 import java.io.IOException;
 
 public class ClientAdminController {
 
     private Parent mainView;
+    private User currentAdmin;
 
     @FXML
     private VBox mainDock;
@@ -21,12 +24,14 @@ public class ClientAdminController {
 
     @FXML private TilePane mainTilePane;
 
-    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Hello Admin","Account");
-    private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
-    private Button accountList =  (Button) WidgetFactory.createButton("mdi2a-archive-plus-outline","Account","Account");
-    private Button itemList = (Button) WidgetFactory.createButton("mdi2m-menu","Item","Item");
+    private IconButton account = new IconButton("mdi2a-account", "Hello Admin", "Account", "special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private IconButton accountList = new IconButton("mdi2a-account-box-multiple-outline", "Account", "Account", "special-button");
+    private IconButton itemList = new IconButton("mdi2a-archive-settings-outline", "Item", "Item", "special-button");
 
-    public ClientAdminController() throws IOException {
+    public ClientAdminController(User user) throws IOException {
+        this.currentAdmin = user;
+        this.account = new IconButton("mdi2a-account", "Admin: " + user.getName(), "Account");
         FXMLLoader loader = new FXMLLoader();
         loader.setLocation(getClass().getResource("/gui/MainView.fxml"));
         loader.setController(this);
@@ -35,15 +40,10 @@ public class ClientAdminController {
     }
 
     private void setMainDock() {
-        mainDock.getChildren().clear();
         mainDock.getChildren().add(account);
+        mainDock.getChildren().addFirst(itemList);
         mainDock.getChildren().addFirst(accountList);
         mainDock.getChildren().addFirst(toggleList);
-        for(Node k : mainDock.getChildren()){
-            if(k instanceof Button){
-                k.getStyleClass().add("special-button");
-            }
-        }
 
         toggleList.setUserData(true);
         toggleList.setOnAction(event -> {

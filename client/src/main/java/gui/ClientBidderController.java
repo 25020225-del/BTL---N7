@@ -1,5 +1,9 @@
 package gui;
 
+import gui.process.AnimateEffect;
+import gui.process.AlertHelper;
+import gui.widget.IconButton;
+import gui.widget.MinimalItem;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -8,6 +12,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
+import model.User;
 
 import java.io.IOException;
 
@@ -16,6 +21,7 @@ import static utils.ConsoleColors.*;
 public class ClientBidderController {
 
     private Parent mainView = null;
+    private User currentUser;
 
     @FXML private VBox mainDock;
     @FXML private VBox mainViewController;
@@ -23,14 +29,18 @@ public class ClientBidderController {
 
     @FXML private TilePane mainTilePane;
 
-    private Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "search", "Search");
-    private Button account = (Button) WidgetFactory.createButton("mdi2a-account","Hello Bidder","Account");
-    private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
+    private IconButton toggleSearchButton = new IconButton("mdi2f-file-find-outline", "search", "Search","special-button");
+    private IconButton account = new IconButton("mdi2a-account", "Hello Bidder", "Account","special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List","special-button");
 
     @FXML private Button searchButton;
     @FXML private TextField searchField;
+    // TODO: Make a deposit UI
+    private Button testDepositButton = new IconButton("mdi2c-cash-plus", "Deposit 50,000 (Test)", "Test PayPal");
 
-    public ClientBidderController() throws IOException {
+    public ClientBidderController(User user) throws IOException {
+        this.currentUser = user;
+        this.account = new IconButton("mdi2a-account","Hello, " + user.getName(),"Account");
         FXMLLoader fxmlMainView = new FXMLLoader(ClientBidderController.class.getResource("MainView.fxml"));
         fxmlMainView.setController(this);
         mainView = fxmlMainView.load();
@@ -41,11 +51,21 @@ public class ClientBidderController {
         mainDock.getChildren().add(account);
         mainDock.getChildren().addFirst(toggleSearchButton);
         mainDock.getChildren().addFirst(toggleList);
+        //test deposit
+        mainDock.getChildren().add(testDepositButton);
+
         for(Node k : mainDock.getChildren()){
             if(k instanceof Button){
                 k.getStyleClass().add("special-button");
             }
         }
+        //test deposit
+        testDepositButton.setOnAction(event -> {
+            double testAmount = 50000;
+            System.out.println("[Log]: Sending deposit request of " + testAmount + " VND to Server...");
+
+            MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", testAmount);
+        });
 
         toggleList.setUserData(true);
         searchField.setOnAction(event -> {
@@ -75,12 +95,27 @@ public class ClientBidderController {
         });
     }
     private void setMainViewController() {
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy xay sinh tố mèo","30000","3"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đùi gà tẩm bột chiên xù","40000","3"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy bay đồ chơi mini","1200000","3"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Thịt cừu nướng","127000","4"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Mỡ lợn","80000","3"));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đầu cá","35000","2"));
+        final long TWO_MINUTES = 2 * 60 * 1000;
+        long endTime = System.currentTimeMillis() + TWO_MINUTES;
+        mainTilePane.getChildren().addAll(
+                new MinimalItem("Máy xay sinh tố mèo", "30000", endTime),
+                new MinimalItem("Đùi gà tẩm bột chiên xù", "40000", endTime),
+                new MinimalItem("Máy bay đồ chơi mini", "1200000", endTime),
+                new MinimalItem("Thịt cừu nướng", "127000", endTime),
+                new MinimalItem("Mỡ lợn", "80000", endTime),
+                new MinimalItem("Đầu cá", "35000", endTime),
+                new MinimalItem("Dương vật ngựa","366769", endTime)
+        );
+    }
+    public void requestDeposit(double amount) {
+        if (amount <= 0) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
+            return;
+        }
+
+        System.out.println("[Log]: Sending a deposit request " + amount + " VND...");
+
+        MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
 
     public void start() throws IOException {
@@ -92,6 +127,6 @@ public class ClientBidderController {
             System.out.println("[Error]: " + RED + "Could not find Item Table (TilePane) in UI" + RESET);
             return;
         }
-        System.out.println(GREEN + "[System]: Bidder Controller started successfully. Table updated." + RESET);
+        System.out.println("[System]: " + GREEN + "Bidder Controller started successfully. Table updated" + RESET);
     }
 }

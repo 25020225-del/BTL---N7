@@ -102,17 +102,28 @@ public class Auction extends Entity {
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
 
-    public synchronized List<BidTransaction> placeBid(Bidder bidder, double newMaxBid) {
-        if (status.equals(STATUS_DELETED) || !status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
-            System.out.println("[Error]: " + RED + "Cannot place a bid right now." + RESET);
-            return null;
+    public List<AutoBid> getActiveAutoBids() {return activeAutoBids;}
+
+    public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
+        if (status.equals(STATUS_DELETED)) {
+            System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
+            return false;
         }
-        if (newMaxBid < 0) return null;
+
+        if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
+            System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+            return false;
+        }
+
+        if (newMaxBid < 0) {
+            System.out.println("[Error]: " + RED + "Invalid Bid" + RESET);
+            return false;
+        }
 
         double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
             System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
-            return null;
+            return false;
         }
 
         if (winningBidder == null) {
@@ -121,95 +132,68 @@ public class Auction extends Entity {
             winningBidder = bidder;
 
         } else if (bidder.getId().equals(winningBidder.getId())) {
-            if (newMaxBid > highestMaxBid) highestMaxBid = newMaxBid;
+            if (newMaxBid > highestMaxBid) {
+                highestMaxBid = newMaxBid;
+            }
         } else {
             if (newMaxBid > highestMaxBid) {
                 currentPrice = highestMaxBid + bidIncrement;
-                if (currentPrice > newMaxBid) currentPrice = newMaxBid;
+                if (currentPrice > newMaxBid) {
+                    currentPrice = newMaxBid;
+                }
                 highestMaxBid = newMaxBid;
                 winningBidder = bidder;
             } else {
                 currentPrice = newMaxBid + bidIncrement;
-                if (currentPrice > highestMaxBid) currentPrice = highestMaxBid;
+                if (currentPrice > highestMaxBid) {
+                    currentPrice = highestMaxBid;
+                }
             }
         }
 
-        List<BidTransaction> generatedTxns = new ArrayList<>();
-
         BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
         bidHistory.add(transaction);
-        generatedTxns.add(transaction);
-
-        resolveAutoBids(generatedTxns);
 
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             endTime = endTime.plusMinutes(2);
             System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + RESET);
         }
 
-        return generatedTxns;
+        return true;
     }
 
-    public synchronized String closeAuctionIfTimeIsUp() {
+    public synchronized void closeAuctionIfTimeIsUp() {
         if (this.status.equals(STATUS_RUNNING) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
                 this.status = STATUS_FINISHED;
-                System.out.println(GREEN + "[System]: Auction session \"" + this.getId() + "\" has ended. Winner: " + winningBidder.getUserName() + RESET);
-                return STATUS_FINISHED;
+                System.out.println(GREEN + "[System]: Auction session \"" + this.getId() + "\" has ended" + RESET);
+                System.out.println(GREEN + "[System]: Winner: \"" + winningBidder.getUserName() + "\" at VND " + currentPrice + RESET);
             } else {
                 this.status = STATUS_CANCELED;
                 System.out.println(YELLOW + "[System]: Auction session \"" + this.getId() + "\" was cancelled due to no bidders" + RESET);
-                return STATUS_CANCELED;
             }
         }
-        return null;
     }
 
-    public synchronized List<BidTransaction> registerAutoBid(Bidder bidder, double maxBid, double userIncrement) {
-        if (!status.equals(STATUS_RUNNING) || maxBid <= currentPrice) {
-            System.out.println("[Error]: " + RED + "Invalid AutoBid configuration" + RESET);
-            return null;
+    public synchronized boolean registerAutoBid(Bidder bidder, double maxBid, double userIncrement) {
+        if (!status.equals(STATUS_RUNNING)) {
+            System.out.println("[Error]: " + RED + "Auction is not in RUNNING status" + RESET);
+            return false;
+        }
+
+        if (maxBid <= currentPrice) {
+            System.out.println("[Error]: " + RED + "Maximum bid must be greater than current price" + RESET);
+            return false;
         }
 
         AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
         activeAutoBids.add(newAutoBid);
+
         activeAutoBids.sort((b1, b2) -> b1.getTimeRegistered().compareTo(b2.getTimeRegistered()));
 
         System.out.println(BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + RESET);
 
-        List<BidTransaction> generatedTxns = new ArrayList<>();
-        resolveAutoBids(generatedTxns);
-        return generatedTxns;
-    }
-
-    private synchronized void resolveAutoBids(List<BidTransaction> generatedTxns) {
-        boolean isPriceChanged;
-        do {
-            isPriceChanged = false;
-            for (AutoBid bot : activeAutoBids) {
-                if (winningBidder != null && bot.getBidder().getId().equals(winningBidder.getId())) {
-                    continue;
-                }
-
-                double requiredPrice = (winningBidder == null) ? item.getStartingPrice() : currentPrice + bot.getIncrement();
-
-                if (requiredPrice <= bot.getMaxBid()) {
-                    currentPrice  = requiredPrice;
-                    winningBidder = bot.getBidder();
-
-                    try { Thread.sleep(1); } catch (Exception ignored) {}
-
-                    BidTransaction txn = new BidTransaction("AUTO-" + System.currentTimeMillis(), winningBidder, currentPrice);
-                    bidHistory.add(txn);
-                    generatedTxns.add(txn);
-
-                    System.out.println(BLUE + "[Auto-Bid]: \"" + winningBidder.getUserName() + "\" automatically raised the bid to: " + currentPrice + RESET);
-
-                    isPriceChanged = true;
-                    break;
-                }
-            }
-        } while (isPriceChanged);
+        return true;
     }
 
     @Override

@@ -36,6 +36,9 @@ public class MainApplication extends Application {
     }
 
     public static void setNewScene(Parent k) {
+        if(k==null){
+            System.out.println("parent is null");
+        }
         if (primalStage != null && primalStage.getScene() != null) {
             primalStage.getScene().setRoot(k);
         }
@@ -79,7 +82,7 @@ public class MainApplication extends Application {
     public void start(Stage stage) throws IOException {
         // 1. Khởi tạo cấu hình
         initProperties();
-        ServerDiscovery.establishConnection(properties);
+        networkClient = ServerDiscovery.establishConnection(properties);
         init();
 
         primalStage = stage;

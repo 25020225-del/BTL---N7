@@ -28,8 +28,8 @@ public class MultiThreadedServer {
 
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-    private static final String BIN_ID = "69d4960b856a6821890813a2";
     private static final Dotenv dotenv = Dotenv.load();
+    private static final String BIN_ID = dotenv.get("BIN_ID");
     private static final String JSONBIN_KEY = dotenv.get("JSONBIN_API_KEY");
     private static final String LOCALTONET_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
 
@@ -44,12 +44,15 @@ public class MultiThreadedServer {
             URL url = new URL(urlString);
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestProperty("X-Bin-Versioning", "false");
+
             conn.setRequestMethod("PUT");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("X-Master-Key", JSONBIN_KEY);
             conn.setDoOutput(true);
 
             String jsonInputString = "{\"ip\": \"" + currentIp + "\", \"port\": " + currentPort + "}";
+            System.out.println("[Debug] JSON to JSONBin: " + jsonInputString);
 
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
@@ -85,6 +88,14 @@ public class MultiThreadedServer {
             in.close();
 
             String jsonResponse = content.toString();
+
+            Matcher tunnelStatus = Pattern.compile("\"status\":(\\d+)").matcher(jsonResponse);
+            if (tunnelStatus.find()) {
+                int status = Integer.parseInt(tunnelStatus.group(1));
+                if (status == 0) {
+                    return null;
+                }
+            }
 
             String ip = "";
             String port = "";
@@ -201,7 +212,6 @@ public class MultiThreadedServer {
             }
         });
         serverChatThread.start();
-
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("[System]: Server is running on port " + YELLOW + PORT + RESET);
             while (true) {

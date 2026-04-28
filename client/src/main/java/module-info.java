@@ -11,7 +11,13 @@ module org.example.demo {
     requires java.sql;
     requires org.kordamp.ikonli.javafx;
     requires com.google.zxing;
+    requires com.fasterxml.jackson.datatype.jsr310;
+    requires java.security.sasl;
 
     opens gui to javafx.fxml;
     exports gui;
+    exports gui.widget;
+    opens gui.widget to javafx.fxml;
+    exports gui.process;
+    opens gui.process to javafx.fxml;
 }

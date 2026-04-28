@@ -1,16 +1,21 @@
 package gui;
 
 import client.network.NetworkClient;
+import gui.process.AlertHelper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import model.Bidder;
 import model.User;
 import network.NetworkMessage;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+
+import java.io.IOException;
 
 import static utils.ConsoleColors.*;
-import java.io.IOException;
 
 public class LoginController {
 
@@ -18,6 +23,8 @@ public class LoginController {
     @FXML private PasswordField loginPasswordAccount;
 
     private NetworkClient networkClient;
+    private final ObjectMapper mapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public void setNetworkClient(NetworkClient client) {
         this.networkClient = client;
@@ -26,7 +33,7 @@ public class LoginController {
     @FXML
     protected void onMainViewButtonClick() {
         try{
-            MainController.start();
+            MainController.start(new Bidder());
         }
         catch (IOException e){}
         String username = loginAccountName.getText().trim();
@@ -37,10 +44,21 @@ public class LoginController {
             return;
         }
 
+        setNetworkClient(MainApplication.networkClient);
+
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
-            User loginAttempt = new User("", username, password, "", "");
+            User loginAttempt = new User("", username, password, "");
             networkClient.sendMessage("LOGIN", loginAttempt);
+            //System.out.println("[Log]: Login successful!");
+            /*Platform.runLater(() -> {
+                try {
+                    MainController.start(loginAttempt);
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });*/
         } else {
             System.out.println("[Error]: " + RED + "Cannot connect to the server" + RESET);
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server");
@@ -58,15 +76,29 @@ public class LoginController {
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             String command = response.getCommand();
+            System.out.println("[Log]: Server Response: " + command);
 
             if ("LOGIN_SUCCESS".equals(command)) {
-                System.out.println("[System]: " + GREEN + "Successfully logged in" + RESET);
 
-                loginAccountName.clear();
-                loginPasswordAccount.clear();
+                try {
+                    // Decipher user from server
+                    User loggedInUser = mapper.convertValue(response.getData(), User.class);
 
-                System.out.println("[Log]: Main UI view");
-                MainApplication.setNewScene(MainApplication.rootMainView);
+                    System.out.println("[Log]: " + GREEN + loggedInUser.getName() + " successfully logged in" + RESET);
+
+                    loginAccountName.clear();
+                    loginPasswordAccount.clear();
+                    Platform.runLater(() -> {
+                        try {
+                            MainController.start(loggedInUser);
+                        }
+                        catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+                } catch (Exception e) {
+                    System.out.println("[Error]: Login error: " + RED + e.getMessage() + RESET);
+                }
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
                 String errorMsg = response.getData() != null ? response.getData().toString() : "Username or password is incorrect!";
