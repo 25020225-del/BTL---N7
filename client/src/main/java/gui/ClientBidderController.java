@@ -1,5 +1,8 @@
 package gui;
 
+import gui.process.AnimateEffect;
+import gui.widget.IconButton;
+import gui.widget.MinimalItem;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -25,14 +28,14 @@ public class ClientBidderController {
 
     @FXML private TilePane mainTilePane;
 
-    private Button toggleSearchButton = (Button) WidgetFactory.createButton("mdi2f-file-find-outline", "search", "Search");
-    private Button account;
-    private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
+    private IconButton toggleSearchButton = new IconButton("mdi2f-file-find-outline", "search", "Search","special-button");
+    private IconButton account = new IconButton("mdi2a-account", "Hello Bidder", "Account","special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List","special-button");
 
     @FXML private Button searchButton;
     @FXML private TextField searchField;
     // TODO: Make a deposit UI
-    private Button testDepositButton = (Button) WidgetFactory.createButton("mdi2c-cash-plus", "Deposit 50,000 (Test)", "Test PayPal");
+    private Button testDepositButton = new IconButton("mdi2c-cash-plus", "Deposit 50,000 (Test)", "Test PayPal");
 
     public ClientBidderController(User user) throws IOException {
         this.currentUser = user;
@@ -92,15 +95,17 @@ public class ClientBidderController {
     }
     private void setMainViewController() {
         final long TWO_MINUTES = 2 * 60 * 1000;
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy xay sinh tố mèo","30000",System.currentTimeMillis() + TWO_MINUTES));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đùi gà tẩm bột chiên xù","40000",System.currentTimeMillis() + TWO_MINUTES));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Máy bay đồ chơi mini","1200000",System.currentTimeMillis() + TWO_MINUTES));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Thịt cừu nướng","127000",System.currentTimeMillis() + TWO_MINUTES));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Mỡ lợn","80000",System.currentTimeMillis() + TWO_MINUTES));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Đầu cá","35000",System.currentTimeMillis() + TWO_MINUTES));
-        mainTilePane.getChildren().add(WidgetFactory.createMinimalItem("Dương vật ngựa","366769",System.currentTimeMillis() + TWO_MINUTES));
+        long endTime = System.currentTimeMillis() + TWO_MINUTES;
+        mainTilePane.getChildren().addAll(
+                new MinimalItem("Máy xay sinh tố mèo", "30000", endTime),
+                new MinimalItem("Đùi gà tẩm bột chiên xù", "40000", endTime),
+                new MinimalItem("Máy bay đồ chơi mini", "1200000", endTime),
+                new MinimalItem("Thịt cừu nướng", "127000", endTime),
+                new MinimalItem("Mỡ lợn", "80000", endTime),
+                new MinimalItem("Đầu cá", "35000", endTime),
+                new MinimalItem("Dương vật ngựa","366769", endTime)
+        );
     }
-
     public void requestDeposit(double amount) {
         if (amount <= 0) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0");

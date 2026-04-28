@@ -1,4 +1,4 @@
-package gui;
+package gui.process;
 
 import javafx.scene.Node;
 import javafx.scene.Parent;

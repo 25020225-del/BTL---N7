@@ -3,7 +3,7 @@ package client.handler;
 import client.network.NetworkClient;
 import network.NetworkMessage;
 import javafx.application.Platform;
-import gui.AlertHelper;
+import gui.process.AlertHelper;
 import javafx.scene.control.Alert.AlertType;
 
 import static utils.ConsoleColors.*;

@@ -1,5 +1,6 @@
 package gui;
 
+import gui.widget.IconButton;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -23,10 +24,10 @@ public class ClientAdminController {
 
     @FXML private TilePane mainTilePane;
 
-    private Button account;
-    private Button toggleList = (Button) WidgetFactory.createButton("mdi2m-menu","List","List");
-    private Button accountList =  (Button) WidgetFactory.createButton("mdi2a-account-box-multiple-outline","Account","Account");
-    private Button itemList = (Button) WidgetFactory.createButton("mdi2a-archive-settings-outline","Item","Item");
+    private IconButton account = new IconButton("mdi2a-account", "Hello Admin", "Account", "special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private IconButton accountList = new IconButton("mdi2a-account-box-multiple-outline", "Account", "Account", "special-button");
+    private IconButton itemList = new IconButton("mdi2a-archive-settings-outline", "Item", "Item", "special-button");
 
     public ClientAdminController(User user) throws IOException {
         this.currentAdmin = user;
@@ -43,11 +44,6 @@ public class ClientAdminController {
         mainDock.getChildren().addFirst(itemList);
         mainDock.getChildren().addFirst(accountList);
         mainDock.getChildren().addFirst(toggleList);
-        for(Node k : mainDock.getChildren()){
-            if(k instanceof Button){
-                k.getStyleClass().add("special-button");
-            }
-        }
 
         toggleList.setUserData(true);
         toggleList.setOnAction(event -> {
