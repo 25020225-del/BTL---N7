@@ -6,7 +6,7 @@ public class Admin extends User {
         super(id, userName, userPass, name, "Admin");
     }
     public Admin(User admin) {
-        super();
+        super(admin.getId(), admin.getUserName(), admin.getUserPass(), admin.getName(), "Admin");
     }
 
 
