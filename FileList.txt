@@ -81,6 +81,7 @@ Project/
 				NetworkMessage.java
 			utils/
 				ConsoleColors.java
+				CryptoUtil.java
 	server/
 		pom.xml
 		src/main/java/
