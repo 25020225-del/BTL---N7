@@ -27,6 +27,9 @@ public class CommandDispatcher {
         handlers.put("CREATE_DEPOSIT", paymentHandler);
         handlers.put("CONFIRM_DEPOSIT", paymentHandler);
 
+        FetchAuctionsHandler fetchHandler = new FetchAuctionsHandler();
+        handlers.put("FETCH_AUCTIONS", fetchHandler);
+
         handlers.put("PING", (message, client) -> client.sendResponse("PONG", "Request accepted"));
     }
 

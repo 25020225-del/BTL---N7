@@ -85,6 +85,7 @@ public class UserController {
                     insertWalletStmt.setString(1, newId);
                     insertWalletStmt.executeUpdate();
                 }
+                conn.commit();
 
                 System.out.println("[System]: \"" + YELLOW + userName + RESET + "\" has just created an account. 2FA Enabled.");
                 return "SUCCESS|" + secretKey + "|" + qrUrl;

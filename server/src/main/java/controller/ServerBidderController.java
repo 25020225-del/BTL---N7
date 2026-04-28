@@ -12,6 +12,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 import static utils.ConsoleColors.*;
@@ -153,8 +155,18 @@ public class ServerBidderController {
             boolean finalResult = TransactionManager.submitTask(bidTask).get();
 
             // 4. If successful and this is a real user, enable the Engine for the response bot
-            if (finalResult && !isBot) {
-                AutoBidEngine.triggerBotScan(auction);
+            if (finalResult) {
+                // Create a data package contain new auction info
+                Map<String, Object> updateData = new HashMap<>();
+                updateData.put("auctionId", auction.getId());
+                updateData.put("newPrice", auction.getCurrentPrice());
+                updateData.put("winnerName", bidder.getUserName());
+
+                server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
+
+                if (!isBot) {
+                    AutoBidEngine.triggerBotScan(auction);
+                }
             }
             return finalResult;
 

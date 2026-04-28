@@ -54,6 +54,7 @@ public class AuctionActionHandler implements CommandHandler {
                 ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
 
                 client.sendResponse("CREATE_SUCCESS", "Successfully created auction.");
+                ClientManager.broadcast("NEW_AUCTION_ADDED", newAuction, null);
             } else {
                 client.sendResponse("ERROR", "Cannot create auction due to database error.");
             }
