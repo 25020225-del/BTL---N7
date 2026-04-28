@@ -70,7 +70,7 @@ public class ClientSellerController {
     public ClientSellerController(User user) throws IOException {
         this.currentUser = user;
         this.seller = (Seller) user;
-        this.account = (Button) WidgetFactory.createButton("mdi2a-account", "Hello, " + user.getName(), "Account");
+        this.account = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account");
         mainView = loadFx("MainView.fxml");
         sellerCreateAuction = loadFx("SellerCreateAuction.fxml");
         MainApplication.setNewScene(mainView);

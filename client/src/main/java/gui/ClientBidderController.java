@@ -1,6 +1,7 @@
 package gui;
 
 import gui.process.AnimateEffect;
+import gui.process.AlertHelper;
 import gui.widget.IconButton;
 import gui.widget.MinimalItem;
 import javafx.fxml.FXML;
@@ -39,7 +40,7 @@ public class ClientBidderController {
 
     public ClientBidderController(User user) throws IOException {
         this.currentUser = user;
-        this.account = (Button) WidgetFactory.createButton("mdi2a-account","Hello, " + user.getName(),"Account");
+        this.account = new IconButton("mdi2a-account","Hello, " + user.getName(),"Account");
         FXMLLoader fxmlMainView = new FXMLLoader(ClientBidderController.class.getResource("MainView.fxml"));
         fxmlMainView.setController(this);
         mainView = fxmlMainView.load();

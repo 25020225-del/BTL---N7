@@ -31,7 +31,7 @@ public class ClientAdminController {
 
     public ClientAdminController(User user) throws IOException {
         this.currentAdmin = user;
-        this.account = (Button) WidgetFactory.createButton("mdi2a-account", "Admin: " + user.getName(), "Account");
+        this.account = new IconButton("mdi2a-account", "Admin: " + user.getName(), "Account");
         FXMLLoader loader = new FXMLLoader();
         loader.setLocation(getClass().getResource("/gui/MainView.fxml"));
         loader.setController(this);
