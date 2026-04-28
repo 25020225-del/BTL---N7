@@ -61,6 +61,8 @@ public class ClientSellerController {
     private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
     private IconButton createTransaction = new IconButton("mdi2a-archive-plus-outline", "Create Transaction", "Create Transaction", "special-button");
 
+    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug", "Create Auction (Test)", "Test Create", "special-button");
+
     private Parent loadFx(String location) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(location));
         loader.setController(this);
@@ -69,7 +71,7 @@ public class ClientSellerController {
 
     public ClientSellerController(User user) throws IOException {
         this.currentUser = user;
-        this.seller = (Seller) user;
+        this.seller = new Seller(user);
         this.account = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account");
         mainView = loadFx("MainView.fxml");
         sellerCreateAuction = loadFx("SellerCreateAuction.fxml");
@@ -105,6 +107,7 @@ public class ClientSellerController {
     private void setMainDock() {
         mainDock.getChildren().add(account);
         mainDock.getChildren().addFirst(createTransaction);
+        mainDock.getChildren().addFirst(testCreateAuctionBtn); //test
         mainDock.getChildren().addFirst(toggleList);
 
         toggleList.setUserData(true);
@@ -122,6 +125,23 @@ public class ClientSellerController {
             }
             toggleList.setUserData(!((boolean) toggleList.getUserData()));
         });
+
+        testCreateAuctionBtn.setOnAction(event -> {
+            java.util.Map<String, String> dummyData = new java.util.HashMap<>();
+
+            String testItemName = "CẶC" + (System.currentTimeMillis() % 10000);
+
+            dummyData.put("itemName", testItemName);
+            dummyData.put("description", "ĐỊT MẸ MÀY");
+            dummyData.put("startingPrice", "50000");
+            dummyData.put("bidIncrement", "5000");
+            dummyData.put("durationMinutes", "60");
+
+            System.out.println("[Debug]: Send CREATE_AUCTION for " + testItemName);
+
+            MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
+        });
+
         createTransaction.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(sellerCreateAuction);

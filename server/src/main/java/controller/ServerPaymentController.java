@@ -1,63 +1,68 @@
 package controller;
 
 import database.DatabaseManager;
+import database.TransactionManager;
 import model.User;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.concurrent.Callable;
 
 import static utils.ConsoleColors.*;
 
 public class ServerPaymentController {
 
-    private static final java.util.concurrent.ConcurrentHashMap<String, Object> userLocks = new java.util.concurrent.ConcurrentHashMap<>();
-
-    private Object getLockForUser(String userId) {
-        return userLocks.computeIfAbsent(userId, k -> new Object());
-    }
-
     public boolean processDepositSuccess(User user, double amountVND, String payPalOrderId) {
-        Object lock = getLockForUser(user.getId());
-
-        synchronized (lock) {
+        // Wrap deposit logic into a Task to add to the queue
+        Callable<Boolean> depositTask = () -> {
             String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
             String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
 
             try (Connection conn = DatabaseManager.getConnection()) {
-                conn.setAutoCommit(false);
+                conn.setAutoCommit(false); // Start Transaction
 
                 try {
                     String now = LocalDateTime.now().toString();
 
+                    // 1. Update balance
                     try (PreparedStatement ps = conn.prepareStatement(updateWalletSql)) {
                         ps.setDouble(1, amountVND);
                         ps.setString(2, user.getId());
                         ps.executeUpdate();
                     }
 
+                    // 2. Save deposit history into database
                     try (PreparedStatement ps = conn.prepareStatement(insertTxnSql)) {
                         ps.setString(1, "DEP-" + System.currentTimeMillis());
                         ps.setString(2, user.getId());
                         ps.setDouble(3, amountVND);
-                        ps.setString(4, "Deposit via PayPal (Transaction code: " + payPalOrderId + ")");
+                        ps.setString(4, "Deposit via PayPal (Order ID: " + payPalOrderId + ")");
                         ps.setString(5, now);
                         ps.executeUpdate();
                     }
 
                     conn.commit();
-                    System.out.println("[System]: \"" + YELLOW + user.getName() + RESET + "\" successfully deposited "
-                            + amountVND + " VND");
+                    System.out.println("[System]: \"" + YELLOW + user.getName() + RESET + "\" has deposited " + GREEN + amountVND + RESET + " VND");
                     return true;
 
                 } catch (SQLException e) {
                     conn.rollback();
-                    System.out.println("[Error]: Database update failed: " + RED + e.getMessage() + RESET);
+                    System.out.println("[Database]: Deposit update error: " + RED + e.getMessage() + RESET);
+                    return false;
                 }
             } catch (SQLException e) {
-                System.out.println("[Error]: Database connection lost: " + RED + e.getMessage() + RESET);
+                System.out.println("[Database]: Lost connection to database: " + RED + e.getMessage() + RESET);
+                return false;
             }
+        };
+
+        // Add to queue and wait for result
+        try {
+            return TransactionManager.submitTask(depositTask).get();
+        } catch (Exception e) {
+            System.out.println("[System]: Cannot process deposit order: " + e.getMessage());
+            return false;
         }
-        return false;
     }
 }

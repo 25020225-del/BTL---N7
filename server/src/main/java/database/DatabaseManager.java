@@ -1,5 +1,7 @@
 package database;
 
+import org.mindrot.jbcrypt.BCrypt;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -53,12 +55,13 @@ public class DatabaseManager {
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
-                System.out.println(GREEN + "[Database]: Successfully upgraded user table" + RESET);
+                System.out.println("[Database]: " + GREEN + "Successfully upgraded user table" + RESET);
             } catch (SQLException ignored) {
             }
 
+            String adminPass = BCrypt.hashpw("123456", BCrypt.gensalt(12));
             String insertAdmin = "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good, is_totp_enabled) " +
-                    "VALUES ('A001', 'admin', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 'Super Admin', 'ADMIN', 1, 0);";
+                    "VALUES ('A001', 'admin', '" + adminPass + "', 'Super Admin', 'ADMIN', 1, 0);";
             stmt.execute(insertAdmin);
 
             String createAuctionsTable = "CREATE TABLE IF NOT EXISTS auctions (" +

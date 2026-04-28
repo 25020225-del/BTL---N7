@@ -1,9 +1,9 @@
 package gui;
 
+import client.handler.ResponseDispatcher;
 import gui.process.AnimateEffect;
 import gui.process.AlertHelper;
 import gui.widget.IconButton;
-import gui.widget.MinimalItem;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -13,6 +13,8 @@ import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
 import model.User;
+import network.NetworkMessage;
+import gui.widget.MinimalItem;
 
 import java.io.IOException;
 
@@ -62,9 +64,7 @@ public class ClientBidderController {
         //test deposit
         testDepositButton.setOnAction(event -> {
             double testAmount = 50000;
-            System.out.println("[Log]: Sending deposit request of " + testAmount + " VND to Server...");
-
-            MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", testAmount);
+            requestDeposit(testAmount);
         });
 
         toggleList.setUserData(true);
@@ -94,39 +94,68 @@ public class ClientBidderController {
             AnimateEffect.showOrHideItem(mainTilePane, keyword);
         });
     }
+
     private void setMainViewController() {
-        final long TWO_MINUTES = 2 * 60 * 1000;
-        long endTime = System.currentTimeMillis() + TWO_MINUTES;
-        mainTilePane.getChildren().addAll(
-                new MinimalItem("Máy xay sinh tố mèo", "30000", endTime),
-                new MinimalItem("Đùi gà tẩm bột chiên xù", "40000", endTime),
-                new MinimalItem("Máy bay đồ chơi mini", "1200000", endTime),
-                new MinimalItem("Thịt cừu nướng", "127000", endTime),
-                new MinimalItem("Mỡ lợn", "80000", endTime),
-                new MinimalItem("Đầu cá", "35000", endTime),
-                new MinimalItem("Dương vật ngựa","366769", endTime)
-        );
+        mainTilePane.getChildren().clear();
     }
+
     public void requestDeposit(double amount) {
         if (amount <= 0) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
             return;
         }
 
-        System.out.println("[Log]: Sending a deposit request " + amount + " VND...");
+        System.out.println("[Log]: Sending a deposit request of " + amount + " VND...");
 
         MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
+    }
+
+    // Handle server sent data
+    private void handleServerResponse(NetworkMessage response) {
+        javafx.application.Platform.runLater(() -> {
+            if ("FETCH_AUCTIONS_SUCCESS".equals(response.getCommand())) {
+                try {
+                    // Safe casting from Jackson List <Map>
+                    @SuppressWarnings("unchecked")
+                    java.util.List<java.util.Map<String, Object>> auctions =
+                            (java.util.List<java.util.Map<String, Object>>) response.getData();
+
+                    mainTilePane.getChildren().clear();
+
+                    // Browse through each product and design the UI
+                    for (java.util.Map<String, Object> data : auctions) {
+                        String name = (String) data.get("itemName");
+                        // Price format
+                        String price = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
+                        long endTime = ((Number) data.get("endTime")).longValue();
+
+                        // Call the MinimalItem widget
+                        MinimalItem item = new gui.widget.MinimalItem(name, price, endTime);
+                        mainTilePane.getChildren().add(item);
+                    }
+                } catch (Exception e) {
+                    System.out.println("[Error]: UI Render error: " + e.getMessage());
+                }
+            }
+            // IF NECESSARY: Route other commands back to the ResponseDispatcher to preserve system functionality
+            else {
+                new ResponseDispatcher().dispatch(response, MainApplication.networkClient);
+            }
+        });
     }
 
     public void start() throws IOException {
         setMainDock();
         setMainViewController();
+        MainApplication.networkClient.setOnMessageReceived(this::handleServerResponse);
+
         System.out.println("[Log]: Initializing Bidder View Components...");
 
         if (mainTilePane == null) {
             System.out.println("[Error]: " + RED + "Could not find Item Table (TilePane) in UI" + RESET);
             return;
         }
+        MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
         System.out.println("[System]: " + GREEN + "Bidder Controller started successfully. Table updated" + RESET);
     }
 }

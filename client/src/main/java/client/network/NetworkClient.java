@@ -8,7 +8,13 @@ import network.NetworkMessage;
 import java.io.*;
 import java.net.Socket;
 import java.util.function.Consumer;
+import java.util.Base64;
+import javax.crypto.SecretKey;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
 
+import utils.CryptoUtil;
 import static utils.ConsoleColors.*;
 
 public class NetworkClient {
@@ -23,6 +29,8 @@ public class NetworkClient {
     private Consumer<NetworkMessage> onMessageReceived;
     private final ResponseDispatcher dispatcher = new ResponseDispatcher();
 
+    private SecretKey myAesKey;
+
     public NetworkClient(String serverAddress, int port) {
         System.out.println("===========================================");
         System.out.println("[System]: Trying to connect to server...");
@@ -35,16 +43,30 @@ public class NetworkClient {
                 out = new PrintWriter(socket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
+                // --- HANDSHAKE ---
+                // 1. Retrieve RSA public key from server
+                String publicKeyBase64 = in.readLine();
+                if (publicKeyBase64 == null) throw new IOException("Server is not responding to handshake");
+
+                PublicKey serverPublicKey = CryptoUtil.getPublicKeyFromBase64(publicKeyBase64);
+
+                // 2. Generate the AES key, encrypt it using RSA, and send it back to the server
+                myAesKey = CryptoUtil.generateAESKey();
+                String encryptedAesKey = CryptoUtil.encryptAESKeyWithRSA(myAesKey, serverPublicKey);
+                out.println(encryptedAesKey);
+                // --- END HANDSHAKE ---
+
+                // AES connection test (replacing old PING command)
                 NetworkMessage pingMsg = new NetworkMessage("PING", "Connecting request from client");
-                out.println(mapper.writeValueAsString(pingMsg));
+                String pingJson = mapper.writeValueAsString(pingMsg);
+                out.println(CryptoUtil.encryptAES(pingJson, myAesKey)); // PING Encoding
 
                 String responseLine = in.readLine();
+                if (responseLine == null) throw new IOException("Server is not on");
 
-                if (responseLine == null) {
-                    throw new IOException("Server is not on");
-                }
-
-                NetworkMessage response = mapper.readValue(responseLine, NetworkMessage.class);
+                // Decoding PONG
+                String decryptedPong = CryptoUtil.decryptAES(responseLine, myAesKey);
+                NetworkMessage response = mapper.readValue(decryptedPong, NetworkMessage.class);
                 if (!"PONG".equals(response.getCommand())) {
                     throw new IOException("Invalid format from server");
                 }
@@ -97,7 +119,8 @@ public class NetworkClient {
         try {
             NetworkMessage msg = new NetworkMessage(command, data);
             String json = mapper.writeValueAsString(msg);
-            out.println(json);
+            String encryptedPayload = CryptoUtil.encryptAES(json, myAesKey);
+            out.println(encryptedPayload);
         } catch (Exception e) {
             System.out.println("[Error]:" + RED + " JSON package error: " + e.getMessage() + RESET);
         }
@@ -105,14 +128,15 @@ public class NetworkClient {
 
     private void listenToServer() {
         try {
-            String jsonMessage;
-            while ((jsonMessage = in.readLine()) != null) {
+            String encryptedMessage;
+            while ((encryptedMessage = in.readLine()) != null) {
+                String jsonMessage = CryptoUtil.decryptAES(encryptedMessage, myAesKey);
                 NetworkMessage response = mapper.readValue(jsonMessage, NetworkMessage.class);
 
                 dispatcher.dispatch(response, this);
             }
-        } catch (IOException e) {
-            System.out.println("[Error]:" + RED + " Lost connection to server: " + e.getMessage() + RESET);
+        } catch (Exception e) {
+            System.out.println("[Error]: Lost connection or Decryption failed: " + RED + e.getMessage() + RESET);
         }
     }
 }

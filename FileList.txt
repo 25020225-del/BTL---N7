@@ -22,21 +22,25 @@ Project/
 					    NetworkClient.java
 					    ServerDiscovery.java
 				gui/
-					AlertHelper.java
-					AnimateEffect.java
+				    BidderController
 					ClientAdminController.java
 					ClientBidderController.java
 					ClientSellerController.java
-					CountdownClock.java
 					ItemDetailController.java
 					Launcher.java
 					LoginController.java
 					MainApplication.java
 					MainController.java
-					QRCodeHelper.java
 					RegisterController.java
-					Search.java
-					WidgetFactory.java
+					process/
+					    AlertHelper.java
+					    AnimateEffect.java
+					    QRCodeHelper.java
+					    Search.java
+					widget/
+					    CountdownClock.java
+					    IconButton.java
+					    MinimalItem.java
 			resources/gui/
 			    AdminView.fxml
 			    Bidder.fxml
@@ -77,6 +81,7 @@ Project/
 				NetworkMessage.java
 			utils/
 				ConsoleColors.java
+				CryptoUtil.java
 	server/
 		pom.xml
 		src/main/java/
@@ -84,10 +89,12 @@ Project/
 				AuctionMonitor.java
 				ServerAdminController.java
 				ServerBidderController.java
+				ServerPaymentController.java
 				ServerSellerController.java
 				UserController.java
 			database/
 				DatabaseManager.java
+				TransactionManager.java
 			server/
 				ClientHandler.java
 				MultiThreadedServer.java

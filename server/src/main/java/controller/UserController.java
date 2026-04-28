@@ -3,6 +3,7 @@ package controller;
 import database.DatabaseManager;
 import model.Admin;
 import model.User;
+import org.mindrot.jbcrypt.BCrypt;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -59,13 +60,13 @@ public class UserController {
                     checkStmt.setString(1, userName);
                     ResultSet rs = checkStmt.executeQuery();
                     if (rs.next()) {
-                        System.out.println("[System]: Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
-                        return "[Error]: Username \"" + userName + "\" already exists";
+                        System.out.println("[System](UserController): Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
+                        return "[Error]: Username \"" + userName + "\" already exists.";
                     }
                 }
 
                 String newId = "U-" + System.currentTimeMillis();
-                String hashedPassword = hashPassword(password);
+                String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
                 String secretKey = totpService.createSecretKey();
                 String qrUrl = totpService.getQRUrl(userName, secretKey);
 
@@ -84,6 +85,7 @@ public class UserController {
                     insertWalletStmt.setString(1, newId);
                     insertWalletStmt.executeUpdate();
                 }
+                conn.commit();
 
                 System.out.println("[System]: \"" + YELLOW + userName + RESET + "\" has just created an account. 2FA Enabled.");
                 return "SUCCESS|" + secretKey + "|" + qrUrl;
@@ -93,44 +95,44 @@ public class UserController {
             }
 
         } catch (SQLException e) {
-            System.out.println("[Error]: Database Error during registration: " + RED + e.getMessage() + RESET);
+            System.out.println("[Database](UserController): Database error during registration: " + RED + e.getMessage() + RESET);
             return "[Error]: Database connection failed. Please try again later.";
         }
     }
 
     public User login(String userName, String password) {
-        String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+        String sql = "SELECT * FROM users WHERE username = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, userName);
-            String hashedPassword = hashPassword(password);
-            pstmt.setString(2, hashedPassword);
-
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                String id      = rs.getString("id");
-                String name    = rs.getString("name");
-                String role    = rs.getString("role");
-                boolean isGood = rs.getInt("is_good") == 1;
+                String dbHash = rs.getString("password");
+                if (BCrypt.checkpw(password, dbHash)) {
+                    String id      = rs.getString("id");
+                    String name    = rs.getString("name");
+                    String role    = rs.getString("role");
+                    boolean isGood = rs.getInt("is_good") == 1;
 
-                System.out.println("[System]: \"" + YELLOW + name + RESET + "\" (" + YELLOW + role + RESET + ") has logged in");
+                    System.out.println("[System]: \"" + YELLOW + name + RESET + "\" (" + YELLOW + role + RESET + ") has logged in.");
 
-                if (role.equalsIgnoreCase("ADMIN")) {
-                    return new Admin(id, userName, password, name);
-                } else {
-                    User user = new User(id, userName, password, name, role);
-                    user.setGood(isGood);
-                    return user;
+                    if (role.equalsIgnoreCase("ADMIN")) {
+                        return new Admin(id, userName, password, name);
+                    } else {
+                        User user = new User(id, userName, password, name, role);
+                        user.setGood(isGood);
+                        return user;
+                    }
                 }
             }
         } catch (SQLException e) {
-            System.out.println("[Error]: Database error during login: " + RED + e.getMessage() + RESET);
+            System.out.println("[Database](UserController): Database error during login: " + RED + e.getMessage() + RESET);
         }
 
-        System.out.println("[System]: Login failed for \"" + YELLOW + userName + RESET + "\"");
+        System.out.println("[System](UserController): Login failed for \"" + YELLOW + userName + RESET + "\"");
         return null;
     }
 }
