@@ -2,10 +2,15 @@ package gui;
 
 import client.network.*;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -80,17 +85,45 @@ public class MainApplication extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        // 1. Khởi tạo cấu hình
-        initProperties();
-        networkClient = ServerDiscovery.establishConnection(properties);
-        init();
-
         primalStage = stage;
-        Scene sceneLogin = new Scene(rootLogin);
-        stage.setTitle("N7 Auction System - Client");
-        stage.setScene(sceneLogin);
+        initProperties();
+
+        // 1. TẠO MÀN HÌNH LOADING NGAY LẬP TỨC
+        VBox loadingLayout = new VBox(20);
+        loadingLayout.setAlignment(Pos.CENTER);
+        ProgressIndicator spinner = new ProgressIndicator(); // Vòng xoay loading
+        Label statusLabel = new Label("Đang kết nối đến máy chủ...");
+        statusLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
+        loadingLayout.getChildren().addAll(spinner, statusLabel);
+
+        Scene loadingScene = new Scene(loadingLayout, 800, 600); // Kích thước tạm bằng màn hình Login
+        stage.setTitle("N7 Auction System - Connecting...");
+        stage.setScene(loadingScene);
         stage.show();
 
-        System.out.println("[Log]: " + GREEN + "Application started successfully" + RESET);
+        new Thread(() -> {
+            networkClient = ServerDiscovery.establishConnection(properties);
+
+            Platform.runLater(() -> {
+                try {
+                    // Khởi tạo các Controller và truyền networkClient vào
+                    init();
+
+                    // Chuyển sang màn hình Login
+                    Scene sceneLogin = new Scene(rootLogin);
+                    stage.setTitle("N7 Auction System - Client");
+                    stage.setScene(sceneLogin);
+
+                    System.out.println("[Log]: " + GREEN + "Application started successfully" + RESET);
+
+                    if (!networkClient.isConnected()) {
+                        gui.process.AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.WARNING,
+                                "Cảnh báo mạng", "Không thể kết nối máy chủ. Đang chạy ở chế độ ngoại tuyến (Offline).");
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }).start();
     }
 }
