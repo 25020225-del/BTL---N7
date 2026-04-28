@@ -23,7 +23,6 @@ public class ServerBidderController {
         }
 
         Bidder bidder = new Bidder(currentUser);
-        // Nhận về danh sách TẤT CẢ các giao dịch (của người và của bot tự vệ)
         List<BidTransaction> newTxns = auction.placeBid(bidder, newMaxBid);
 
         if (newTxns != null && !newTxns.isEmpty()) {
@@ -33,7 +32,6 @@ public class ServerBidderController {
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
-                    // 1. Lưu HÀNG LOẠT (Batch) tất cả các transaction
                     try (PreparedStatement pstmt1 = conn.prepareStatement(insertTransactionSql)) {
                         for (BidTransaction txn : newTxns) {
                             pstmt1.setString(1, txn.getId());
@@ -41,12 +39,11 @@ public class ServerBidderController {
                             pstmt1.setString(3, txn.getBidder().getId());
                             pstmt1.setDouble(4, txn.getBidAmount());
                             pstmt1.setString(5, LocalDateTime.now().toString());
-                            pstmt1.addBatch(); // Xếp vào hàng đợi
+                            pstmt1.addBatch();
                         }
-                        pstmt1.executeBatch(); // Thực thi đồng loạt
+                        pstmt1.executeBatch();
                     }
 
-                    // 2. Cập nhật giá và thời gian (chống bắn tỉa)
                     try (PreparedStatement pstmt2 = conn.prepareStatement(updateAuctionPriceSql)) {
                         pstmt2.setDouble(1, auction.getCurrentPrice());
                         pstmt2.setString(2, auction.getEndTime().toString());
@@ -86,7 +83,6 @@ public class ServerBidderController {
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
-                    // 1. Lưu cấu hình Bot
                     try (PreparedStatement pstmt = conn.prepareStatement(sqlAuto)) {
                         pstmt.setString(1, "AB-" + System.currentTimeMillis());
                         pstmt.setString(2, auction.getId());
@@ -96,7 +92,6 @@ public class ServerBidderController {
                         pstmt.executeUpdate();
                     }
 
-                    // 2. Nếu Bot vừa bật mà nhảy vào đấu giá luôn, lưu lịch sử của nó
                     if (!newTxns.isEmpty()) {
                         try (PreparedStatement pstmt1 = conn.prepareStatement(insertTransactionSql)) {
                             for (BidTransaction txn : newTxns) {

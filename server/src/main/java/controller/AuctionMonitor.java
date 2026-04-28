@@ -28,20 +28,16 @@ public class AuctionMonitor {
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                // 1. Snapshot an toàn
                 List<Auction> safeSnapshot;
                 synchronized (allAuctions) {
                     safeSnapshot = new ArrayList<>(allAuctions);
                 }
 
-                // 2. Duyệt snapshot
                 for (Auction auction : safeSnapshot) {
                     synchronized (auction) {
                         if (auction.getStatus().equals(Auction.STATUS_RUNNING)) {
-                            // Nhận về trạng thái mới (FINISHED hoặc CANCELED)
                             String newStatus = auction.closeAuctionIfTimeIsUp();
 
-                            // 3. Nếu thực sự có thay đổi, lưu ngay xuống Database
                             if (newStatus != null) {
                                 String sql = "UPDATE auctions SET status = ? WHERE id = ?";
                                 try (Connection conn = DatabaseManager.getConnection();

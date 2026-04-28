@@ -102,11 +102,10 @@ public class Auction extends Entity {
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
 
-    // THAY ĐỔI: Trả về danh sách các giao dịch (Transactions) được tạo ra
     public synchronized List<BidTransaction> placeBid(Bidder bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED) || !status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
             System.out.println("[Error]: " + RED + "Cannot place a bid right now." + RESET);
-            return null; // Trả về null thay vì false
+            return null;
         }
         if (newMaxBid < 0) return null;
 
@@ -166,7 +165,6 @@ public class Auction extends Entity {
         return null;
     }
 
-    // THAY ĐỔI: Trả về danh sách giao dịch
     public synchronized List<BidTransaction> registerAutoBid(Bidder bidder, double maxBid, double userIncrement) {
         if (!status.equals(STATUS_RUNNING) || maxBid <= currentPrice) {
             System.out.println("[Error]: " + RED + "Invalid AutoBid configuration" + RESET);
@@ -199,7 +197,6 @@ public class Auction extends Entity {
                     currentPrice  = requiredPrice;
                     winningBidder = bot.getBidder();
 
-                    // Sleep siêu nhỏ để tránh ID trùng lặp 100% trong DB
                     try { Thread.sleep(1); } catch (Exception ignored) {}
 
                     BidTransaction txn = new BidTransaction("AUTO-" + System.currentTimeMillis(), winningBidder, currentPrice);
