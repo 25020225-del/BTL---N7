@@ -40,48 +40,61 @@ public class UserController {
 
     public synchronized String register(String userName, String password, String name, String role) {
         if (role.equalsIgnoreCase("ADMIN")) {
-            return "Error: You are not allowed to register an Admin account yourself";
+            return "[Error]: You are not allowed to register an Admin account yourself";
         }
         if (!role.equalsIgnoreCase("BIDDER") && !role.equalsIgnoreCase("SELLER") && !role.equalsIgnoreCase("USER")) {
-            return "Error: Invalid role";
+            return "[Error]: Invalid role";
         }
 
         String checkSql  = "SELECT 1 FROM users WHERE username = ?";
         String insertSql = "INSERT INTO users (id, username, password, name, role, is_good, totp_secret, is_totp_enabled) VALUES (?, ?, ?, ?, ?, 0, ?, 1)";
+        String insertWalletSql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
 
         try (Connection conn = DatabaseManager.getConnection()) {
-            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-                checkStmt.setString(1, userName);
-                ResultSet rs = checkStmt.executeQuery();
-                if (rs.next()) {
-                    System.out.println("[System]: Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
-                    return "Error: Username \"" + userName + "\" already exists";
+            // turn off auto commit to make sure both user and wallet are created at the same time
+            conn.setAutoCommit(false);
+
+            try {
+                try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                    checkStmt.setString(1, userName);
+                    ResultSet rs = checkStmt.executeQuery();
+                    if (rs.next()) {
+                        System.out.println("[System]: Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
+                        return "[Error]: Username \"" + userName + "\" already exists";
+                    }
                 }
+
+                String newId = "U-" + System.currentTimeMillis();
+                String hashedPassword = hashPassword(password);
+                String secretKey = totpService.createSecretKey();
+                String qrUrl = totpService.getQRUrl(userName, secretKey);
+
+                try (PreparedStatement insertUserStmt = conn.prepareStatement(insertSql)) {
+                    insertUserStmt.setString(1, newId);
+                    insertUserStmt.setString(2, userName);
+                    insertUserStmt.setString(3, hashedPassword);
+                    insertUserStmt.setString(4, name);
+                    insertUserStmt.setString(5, role.toUpperCase());
+                    insertUserStmt.setString(6, secretKey);
+
+                    insertUserStmt.executeUpdate();
+                }
+
+                try (PreparedStatement insertWalletStmt = conn.prepareStatement(insertWalletSql)) {
+                    insertWalletStmt.setString(1, newId);
+                    insertWalletStmt.executeUpdate();
+                }
+
+                System.out.println("[System]: \"" + YELLOW + userName + RESET + "\" has just created an account. 2FA Enabled.");
+                return "SUCCESS|" + secretKey + "|" + qrUrl;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
             }
-
-            String newId          = "U-" + System.currentTimeMillis();
-            String hashedPassword = hashPassword(password);
-            String secretKey      = totpService.createSecretKey();
-            String qrUrl          = totpService.getQRUrl(userName, secretKey);
-
-            try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
-                insertStmt.setString(1, newId);
-                insertStmt.setString(2, userName);
-                insertStmt.setString(3, hashedPassword);
-                insertStmt.setString(4, name);
-                insertStmt.setString(5, role.toUpperCase());
-                insertStmt.setString(6, secretKey);
-
-                insertStmt.executeUpdate();
-            }
-
-            System.out.println("[System]: \"" + YELLOW + userName + RESET + "\" has just created an account. 2FA Enabled.");
-            return "SUCCESS|" + secretKey + "|" + qrUrl;
 
         } catch (SQLException e) {
             System.out.println("[Error]: Database Error during registration: " + RED + e.getMessage() + RESET);
-            e.printStackTrace();
-            return "Error: Database connection failed. Please try again later.";
+            return "[Error]: Database connection failed. Please try again later.";
         }
     }
 
@@ -115,7 +128,6 @@ public class UserController {
             }
         } catch (SQLException e) {
             System.out.println("[Error]: Database error during login: " + RED + e.getMessage() + RESET);
-            e.printStackTrace();
         }
 
         System.out.println("[System]: Login failed for \"" + YELLOW + userName + RESET + "\"");

@@ -19,6 +19,7 @@ public class ClientHandler implements Runnable {
     private PrintWriter out;
     private int cNC = 0;
     private volatile String clientName = "Guest" + (cNC++);
+    private model.User user;
 
     private UserController userController;
     private static final CommandDispatcher dispatcher = new CommandDispatcher(); // Gọi Tổng đài viên
@@ -108,7 +109,6 @@ public class ClientHandler implements Runnable {
     public String getClientName() {
         return clientName;
     }
-
     public void setClientName(String clientName) {
         this.clientName = clientName;
     }
@@ -116,4 +116,7 @@ public class ClientHandler implements Runnable {
     public UserController getUserController() {
         return userController;
     }
+
+    public model.User getUser() {return user;}
+    public void setUser(model.User user) {this.user = user;}
 }

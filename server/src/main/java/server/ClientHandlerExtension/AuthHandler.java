@@ -29,6 +29,7 @@ public class AuthHandler implements CommandHandler {
 
             if (user != null) {
                 client.setClientName(user.getUserName());
+                client.setUser(user);
                 client.sendResponse("LOGIN_SUCCESS", user);
             } else {
                 client.sendResponse("LOGIN_FAIL", "Wrong username or password");

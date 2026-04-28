@@ -73,7 +73,7 @@ public class NetworkClient {
                 }
             }
         }
-        System.out.println("[System]:" + BLUE + " Failed after 5 tries to connect to " + serverAddress + ":" + port + RESET);
+        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + serverAddress + ":" + port + RESET);
     }
 
     public boolean isConnected() {

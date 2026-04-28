@@ -102,6 +102,8 @@ public class Auction extends Entity {
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
 
+    public List<AutoBid> getActiveAutoBids() {return activeAutoBids;}
+
     public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
             System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
@@ -191,39 +193,7 @@ public class Auction extends Entity {
 
         System.out.println(BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + RESET);
 
-        resolveAutoBids();
-
         return true;
-    }
-
-    private synchronized void resolveAutoBids() {
-        boolean isPriceChanged;
-
-        do {
-            isPriceChanged = false;
-
-            for (AutoBid bot : activeAutoBids) {
-                if (winningBidder != null && bot.getBidder().getId().equals(winningBidder.getId())) {
-                    continue;
-                }
-
-                double requiredPrice = (winningBidder == null) ? item.getStartingPrice() : currentPrice + bot.getIncrement();
-
-                if (requiredPrice <= bot.getMaxBid()) {
-
-                    currentPrice  = requiredPrice;
-                    winningBidder = bot.getBidder();
-
-                    BidTransaction txn = new BidTransaction("AUTO-" + System.currentTimeMillis(), winningBidder, currentPrice);
-                    bidHistory.add(txn);
-
-                    System.out.println(BLUE + "[Auto-Bid]: \"" + winningBidder.getUserName() + "\" automatically raised the bid to: " + currentPrice + RESET);
-
-                    isPriceChanged = true;
-                    break;
-                }
-            }
-        } while (isPriceChanged);
     }
 
     @Override

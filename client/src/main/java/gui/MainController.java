@@ -7,31 +7,28 @@ import model.User;
 
 import java.io.IOException;
 
-public class MainController
-{
-    private static void startBidder() throws IOException{
-        ClientBidderController clientBidderController = new ClientBidderController();
-        clientBidderController.start();
-    }
-    private static void startSeller() throws IOException{
-        ClientSellerController clientSellerController = new ClientSellerController();
-        clientSellerController.start();
-    }
-    private static void startAdmin() throws IOException{
-        ClientAdminController clientAdminController = new ClientAdminController();
-        clientAdminController.start();
-    }
+public class MainController {
     public static void start(User user) throws IOException {
-        if(user instanceof Admin){
-            startAdmin();
+        if (user.getRole().equalsIgnoreCase("ADMIN")) {
+            startAdmin(user);
+        } else if (user.getRole().equalsIgnoreCase("SELLER")) {
+            startSeller(user);
+        } else {
+            startBidder(user);
         }
-        else if(user instanceof Bidder){
-            startBidder();
-        } else if (user instanceof Seller) {
-            startSeller();
-        }
-        //startBidder();
-        //startSeller();
-        //startAdmin();
+    }
+    private static void startBidder(User user) throws IOException {
+        ClientBidderController controller = new ClientBidderController(user);
+        controller.start();
+    }
+
+    private static void startSeller(User user) throws IOException {
+        ClientSellerController controller = new ClientSellerController(user);
+        controller.start();
+    }
+
+    private static void startAdmin(User user) throws IOException {
+        ClientAdminController controller = new ClientAdminController(user);
+        controller.start();
     }
 }
