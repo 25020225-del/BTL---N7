@@ -94,6 +94,7 @@ Project/
 				UserController.java
 			database/
 				DatabaseManager.java
+				TransactionManager.java
 			server/
 				ClientHandler.java
 				MultiThreadedServer.java
