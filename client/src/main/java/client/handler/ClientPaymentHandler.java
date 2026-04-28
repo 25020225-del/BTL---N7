@@ -1,7 +1,7 @@
 package client.handler;
 
 import client.network.NetworkClient;
-import gui.AlertHelper;
+import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import network.NetworkMessage;

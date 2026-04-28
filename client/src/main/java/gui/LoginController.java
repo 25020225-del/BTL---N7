@@ -8,9 +8,12 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import model.Bidder;
 import model.User;
 import network.NetworkMessage;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+
+import java.io.IOException;
 
 import static utils.ConsoleColors.*;
 
@@ -30,7 +33,6 @@ public class LoginController {
     @FXML
     protected void onMainViewButtonClick() {
         try{
-
             MainController.start(new Bidder());
         }
         catch (IOException e){}
@@ -86,8 +88,14 @@ public class LoginController {
 
                     loginAccountName.clear();
                     loginPasswordAccount.clear();
-
-                    MainController.start(loggedInUser);
+                    Platform.runLater(() -> {
+                        try {
+                            MainController.start(loggedInUser);
+                        }
+                        catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
                 } catch (Exception e) {
                     System.out.println("[Error]: Login error: " + RED + e.getMessage() + RESET);
                 }
