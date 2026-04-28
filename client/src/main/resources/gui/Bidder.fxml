@@ -13,12 +13,12 @@
         <HBox alignment="CENTER_LEFT" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #ddd; -fx-border-width: 0 0 1 0;">
             <padding><Insets bottom="15" left="25" right="25" top="15" /></padding>
             <Label fx:id="lblUserMenu" style="-fx-font-size: 26; -fx-font-weight: bold; -fx-text-fill: #e53238;" text="BIDDER" />
-            <TextField promptText="Tìm kiếm bất cứ thứ gì..." style="-fx-background-radius: 20; -fx-padding: 8 15;" styleClass="search-field" stylesheets="@Stylist.css" HBox.hgrow="ALWAYS" />
+            <TextField promptText="Search anything" style="-fx-background-radius: 20; -fx-padding: 8 15;" styleClass="search-field" stylesheets="@Stylist.css" HBox.hgrow="ALWAYS" />
         </HBox>
 
-        <ScrollPane fx:id="scrollPane" fitToWidth="true" style="-fx-background-color: #f7f7f7;" VBox.vgrow="ALWAYS">
+        <ScrollPane fx:id="scrollPane" fitToWidth="true" hbarPolicy="ALWAYS" style="-fx-background-color: #f7f7f7;" vbarPolicy="ALWAYS" VBox.vgrow="ALWAYS">
             <content>
-                <FlowPane fx:id="productContainer" alignment="TOP_CENTER" hgap="20.0" style="-fx-background-color: #f7f7f7;" vgap="20.0">
+                <FlowPane fx:id="productContainer" alignment="TOP_CENTER" hgap="20.0" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" style="-fx-background-color: #f7f7f7;" vgap="20.0">
                     <padding><Insets bottom="30" left="20" right="20" top="30" /></padding>
                 </FlowPane>
             </content>

@@ -1,5 +1,6 @@
 package gui;
 
+import gui.process.AnimateEffect;
 import gui.widget.IconButton;
 import gui.widget.MinimalItem;
 import javafx.fxml.FXML;

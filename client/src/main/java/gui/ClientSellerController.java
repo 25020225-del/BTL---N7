@@ -7,11 +7,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import client.network.NetworkClient;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import gui.process.AlertHelper;
 import gui.widget.IconButton;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -21,7 +20,6 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
@@ -29,8 +27,6 @@ import javafx.stage.Stage;
 import model.Auction;
 import model.Item;
 import model.Seller;
-
-import javax.security.sasl.AuthenticationException;
 
 public class ClientSellerController {
 

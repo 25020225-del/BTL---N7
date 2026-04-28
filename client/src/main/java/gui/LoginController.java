@@ -1,6 +1,7 @@
 package gui;
 
 import client.network.NetworkClient;
+import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
