@@ -29,6 +29,11 @@ public class CommandDispatcher {
 
         FetchAuctionsHandler fetchHandler = new FetchAuctionsHandler();
         handlers.put("FETCH_AUCTIONS", fetchHandler);
+        handlers.put("FETCH_PENDING_AUCTIONS", fetchHandler);
+
+        AdminActionHandler adminHandler = new AdminActionHandler();
+        handlers.put("APPROVE_AUCTION", adminHandler);
+        handlers.put("REJECT_AUCTION", adminHandler);
 
         handlers.put("PING", (message, client) -> client.sendResponse("PONG", "Request accepted"));
     }

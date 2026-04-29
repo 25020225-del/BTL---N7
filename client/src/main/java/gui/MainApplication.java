@@ -88,15 +88,14 @@ public class MainApplication extends Application {
         primalStage = stage;
         initProperties();
 
-        // 1. TẠO MÀN HÌNH LOADING NGAY LẬP TỨC
         VBox loadingLayout = new VBox(20);
         loadingLayout.setAlignment(Pos.CENTER);
-        ProgressIndicator spinner = new ProgressIndicator(); // Vòng xoay loading
-        Label statusLabel = new Label("Đang kết nối đến máy chủ...");
+        ProgressIndicator spinner = new ProgressIndicator(); // Loading icon
+        Label statusLabel = new Label("Connecting to server...");
         statusLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
         loadingLayout.getChildren().addAll(spinner, statusLabel);
 
-        Scene loadingScene = new Scene(loadingLayout, 800, 600); // Kích thước tạm bằng màn hình Login
+        Scene loadingScene = new Scene(loadingLayout, 800, 600);
         stage.setTitle("N7 Auction System - Connecting...");
         stage.setScene(loadingScene);
         stage.show();
@@ -106,10 +105,9 @@ public class MainApplication extends Application {
 
             Platform.runLater(() -> {
                 try {
-                    // Khởi tạo các Controller và truyền networkClient vào
                     init();
 
-                    // Chuyển sang màn hình Login
+                    // Switch to login UI
                     Scene sceneLogin = new Scene(rootLogin);
                     stage.setTitle("N7 Auction System - Client");
                     stage.setScene(sceneLogin);
@@ -118,7 +116,7 @@ public class MainApplication extends Application {
 
                     if (!networkClient.isConnected()) {
                         gui.process.AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.WARNING,
-                                "Cảnh báo mạng", "Không thể kết nối máy chủ. Đang chạy ở chế độ ngoại tuyến (Offline).");
+                                "Network Issue", "Cannot connect to server. Running offline version.");
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
