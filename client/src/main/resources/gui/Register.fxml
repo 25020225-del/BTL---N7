@@ -16,7 +16,7 @@
                   <TextField fx:id="registerAccountName" promptText="Username" />
                   <PasswordField fx:id="registerPasswordAccount" promptText="Password" />
                   <PasswordField fx:id="confirmPasswordAccount" promptText="Confirm Password" />
-                  <ComboBox fx:id="registerRole" maxWidth="Infinity" promptText="Select Role" />
+                  <!--<ComboBox fx:id="registerRole" maxWidth="Infinity" promptText="Select Role" />-->
                </children>
             </VBox>
 

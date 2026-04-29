@@ -75,12 +75,12 @@ public class MainApplication extends Application {
         LoginController loginCtrl = fxmlLogin.getController();
         if (loginCtrl != null) loginCtrl.setNetworkClient(networkClient);
 
-        ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
-        if (registerRole != null) {
-            registerRole.getItems().clear();
-            registerRole.getItems().addAll("Bidder", "Seller");
-            registerRole.getSelectionModel().selectFirst();
-        }
+        //ComboBox<String> registerRole = (ComboBox<String>) rootRegister.lookup("#registerRole");
+        //if (registerRole != null) {
+        //    registerRole.getItems().clear();
+        //    registerRole.getItems().addAll("Bidder", "Seller");
+        //    registerRole.getSelectionModel().selectFirst();
+        //}
     }
 
     @Override
@@ -100,13 +100,20 @@ public class MainApplication extends Application {
         stage.setScene(loadingScene);
         stage.show();
 
+        primalStage.setOnCloseRequest(event -> {
+            System.out.println("[System]: Closing application...");
+            // Clean UI threads
+            javafx.application.Platform.exit();
+            // Kill process
+            System.exit(0);
+        });
+
         new Thread(() -> {
             networkClient = ServerDiscovery.establishConnection(properties);
 
             Platform.runLater(() -> {
                 try {
                     init();
-
                     // Switch to login UI
                     Scene sceneLogin = new Scene(rootLogin);
                     stage.setTitle("N7 Auction System - Client");
