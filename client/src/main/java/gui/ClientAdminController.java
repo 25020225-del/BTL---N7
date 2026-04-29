@@ -1,31 +1,33 @@
 package gui;
 
 import gui.process.AlertHelper;
+import gui.widget.AdminAuctionItem;
 import gui.widget.IconButton;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.Button;
-import javafx.scene.control.ContentDisplay;
-import javafx.scene.layout.TilePane;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 import model.User;
-import javafx.scene.layout.HBox;
-import javafx.scene.control.Label;
 
 import java.io.IOException;
 
 public class ClientAdminController {
 
     private Parent mainView;
+    private Parent adminView;
+    private Parent tableView;
     private User currentAdmin;
 
     @FXML
     private VBox mainDock;
     @FXML private VBox mainViewController;
 
+    @FXML private HBox searchBarContainer;
     @FXML private TilePane mainTilePane;
+    @FXML private TextField searchField;
+    @FXML private Button searchButton;
 
     private IconButton account = new IconButton("mdi2a-account", "Hello Admin", "Account", "special-button");
     private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
@@ -35,18 +37,31 @@ public class ClientAdminController {
     public ClientAdminController(User user) throws IOException {
         this.currentAdmin = user;
         this.account = new IconButton("mdi2a-account", "Admin: " + user.getName(), "Account");
-        FXMLLoader loader = new FXMLLoader();
-        loader.setLocation(getClass().getResource("/gui/MainView.fxml"));
-        loader.setController(this);
-        mainView = loader.load();
+        FXMLLoader mainViewloader = new FXMLLoader(getClass().getResource("MainView.fxml"));
+        mainViewloader.setController(this);
+        mainView = mainViewloader.load();
+        FXMLLoader adminViewLoader = new FXMLLoader(getClass().getResource("AdminView.fxml"));
+        adminViewLoader.setController(this);
+        adminView = adminViewLoader.load();
+        FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
+        tableViewLoader.setController(this);
+        tableView = tableViewLoader.load();
+
         MainApplication.setNewScene(mainView);
     }
 
     private void setMainDock() {
-        mainDock.getChildren().add(account);
-        mainDock.getChildren().addFirst(itemList);
-        mainDock.getChildren().addFirst(accountList);
-        mainDock.getChildren().addFirst(toggleList);
+        Region region = new Region();
+        Separator separator  = new Separator();
+        VBox.setVgrow(region, Priority.ALWAYS);
+        mainDock.getChildren().addAll(
+                toggleList,
+                accountList,
+                itemList,
+                separator,
+                region,
+                account
+        );
 
         toggleList.setUserData(true);
         toggleList.setOnAction(event -> {
@@ -63,14 +78,15 @@ public class ClientAdminController {
             }
             toggleList.setUserData(!((boolean) toggleList.getUserData()));
         });
-    }
-    private void setMainViewController() {
         itemList.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(tableView);
             System.out.println("[System]: Loading pending auctions...");
             // Get data from server
             MainApplication.networkClient.sendMessage("FETCH_PENDING_AUCTIONS", "");
         });
-
+    }
+    private void setMainViewController() {
         // Listen to server response
         MainApplication.networkClient.setOnMessageReceived(response -> {
             javafx.application.Platform.runLater(() -> {
@@ -87,30 +103,7 @@ public class ClientAdminController {
                         String id = (String) data.get("id");
                         String name = (String) data.get("itemName");
 
-                        // Create a display box for the admin
-                        VBox itemBox = new VBox(10);
-                        itemBox.setStyle("-fx-border-color: #aaa; -fx-padding: 10; -fx-background-color: white;");
-                        Label lblName = new Label("Item: " + name);
-
-                        Button btnApprove = new Button("Aprrove");
-                        btnApprove.setStyle("-fx-background-color: green; -fx-text-fill: white;");
-
-                        Button btnReject = new Button("Reject");
-                        btnReject.setStyle("-fx-background-color: red; -fx-text-fill: white;");
-
-                        // Handle the “Approve” button click event
-                        btnApprove.setOnAction(e -> {
-                            gui.MainApplication.networkClient.sendMessage("APPROVE_AUCTION", id);
-                        });
-
-                        // Handle the “Reject” button click event
-                        btnReject.setOnAction(e -> {
-                            gui.MainApplication.networkClient.sendMessage("REJECT_AUCTION", id);
-                        });
-
-                        HBox btnGroup = new HBox(10, btnApprove, btnReject);
-                        itemBox.getChildren().addAll(lblName, btnGroup);
-                        mainTilePane.getChildren().add(itemBox);
+                        mainTilePane.getChildren().add(new AdminAuctionItem(id, name));
                     }
                 }
                 // 2. Receive a notification of successful approval

@@ -269,8 +269,9 @@ public class ClientUserController {
             if ("FETCH_AUCTIONS_SUCCESS".equals(command)) {
                 try {
                     @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> auctions =
-                            (List<Map<String, Object>>) response.getData();
+                    List<Map<String, Object>> auctions = (List<Map<String, Object>>) response.getData();
+
+                    System.out.println("[Log]: Found " + auctions.size() + " auctions");
 
                     mainTilePane.getChildren().clear();
 
