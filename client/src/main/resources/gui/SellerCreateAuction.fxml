@@ -28,19 +28,25 @@
             </Text>
             <HBox alignment="CENTER_LEFT" spacing="20.0">
                <children>
-                  <Label prefHeight="18.0" prefWidth="126.0" text="Tên Hàng" />
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Item name" />
                   <TextField fx:id="sellerCreateAuction_itemName" />
                </children>
             </HBox>
             <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
                <children>
-                  <Label prefWidth="126.0" text="Giá khởi điểm" />
+                  <Label prefWidth="126.0" text="Starting price" />
                   <TextField fx:id="sellerCreateAuction_startPrice" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Bid Increment" />
+                  <TextField fx:id="sellerCreateAuction_bidIncrement" />
                </children>
             </HBox>
             <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
                <children>
-                  <Label prefWidth="126.0" text="Chọn file" />
+                  <Label prefWidth="126.0" text="Choose file" />
                   <Button fx:id="chooseFile" mnemonicParsing="false" text="Button" />
                   <Label fx:id="fileLinkChoosen" />
                </children>
@@ -52,33 +58,33 @@
             </HBox>
             <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0" VBox.vgrow="ALWAYS">
                <children>
-                  <Label text="Mô tả" />
-                  <TextArea fx:id="sellerCreateAuction_descripsion" maxWidth="1.7976931348623157E308" prefHeight="202.0" HBox.hgrow="ALWAYS" />
+                  <Label text="Description" />
+                  <TextArea fx:id="sellerCreateAuction_description" maxWidth="1.7976931348623157E308" prefHeight="202.0" HBox.hgrow="ALWAYS" />
                </children>
             </HBox>
-            <HBox fx:id="startHourCreater" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
+            <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
                <children>
-                  <Label prefHeight="18.0" prefWidth="126.0" text="Thời gian bắt đầu" />
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Starting time" />
                   <DatePicker fx:id="sellerCreateAuction_startDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
                   <TextField fx:id="sellerCreateAuction_startHour" prefWidth="30.0" />
-                  <Label text="Giờ" />
+                  <Label text="Hour" />
                   <TextField fx:id="sellerCreateAuction_startMinute" prefHeight="27.0" prefWidth="30.0" />
-                  <Label text="Phút" />
+                  <Label text="Minute" />
                </children>
             </HBox>
             <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
                <children>
-                  <Label prefWidth="126.0" text="Thời gian kết thúc" />
+                  <Label prefWidth="126.0" text="Ending time" />
                   <DatePicker fx:id="sellerCreateAuction_endDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
                   <TextField fx:id="sellerCreateAuction_endHour" prefHeight="27.0" prefWidth="30.0" />
-                  <Label text="Giờ" />
+                  <Label text="Hour" />
                   <TextField fx:id="sellerCreateAuction_endMinute" prefHeight="27.0" prefWidth="30.0" />
-                  <Label text="Phút" />
+                  <Label text="Minute" />
                </children>
             </HBox>
             <HBox alignment="CENTER" prefHeight="100.0">
                <children>
-                  <Button fx:id="createAuction" mnemonicParsing="false" text="Tạo giao dịch mới" />
+                  <Button fx:id="createAuction" onAction="#handleSubmitAuction" mnemonicParsing="false" text="Create" />
                </children>
             </HBox>
          </children>

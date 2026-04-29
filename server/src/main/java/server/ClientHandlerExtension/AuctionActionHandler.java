@@ -25,7 +25,7 @@ public class AuctionActionHandler implements CommandHandler {
             model.User authenticatedUser = client.getUser();
 
             // Security check: not login or not seller = block
-            if (authenticatedUser == null || !authenticatedUser.getRole().equalsIgnoreCase("SELLER")) {
+            if (authenticatedUser == null) {
                 client.sendResponse("ERROR", "You do not have permission to use this command.");
                 return;
             }
