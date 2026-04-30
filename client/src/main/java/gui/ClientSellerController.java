@@ -74,7 +74,7 @@ public class ClientSellerController {
         this.seller = new Seller(user);
         this.account = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account");
         mainView = loadFx("MainView.fxml");
-        sellerCreateAuction = loadFx("SellerCreateAuction.fxml");
+        sellerCreateAuction = loadFx("CreateAuction.fxml");
         MainApplication.setNewScene(mainView);
     }
     public void setAutoCropCenter(ImageView imageView, Image image, double destWidth, double destHeight) {
