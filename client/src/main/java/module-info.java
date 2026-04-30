@@ -13,6 +13,7 @@ module org.example.demo {
     requires com.google.zxing;
     requires com.fasterxml.jackson.datatype.jsr310;
     requires java.security.sasl;
+    requires Java.WebSocket;
 
     opens gui to javafx.fxml;
     exports gui;

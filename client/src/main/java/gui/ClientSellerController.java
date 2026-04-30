@@ -201,7 +201,6 @@ public class ClientSellerController {
     public void start() {
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
         setMainDock();
         setMainViewController();
     }
