@@ -15,7 +15,7 @@ public class AutoBidEngine {
     // Thread pool to run in background bot's loops (not blocking main)
     private static final int MAX_BOTPOOL_SIZE = 200;
     private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
-    
+
     private static final ServerBidderController bidderCtrl = new ServerBidderController();
 
     public static void triggerBotScan(Auction auction) {
@@ -23,8 +23,16 @@ public class AutoBidEngine {
             boolean priceChanged;
             do {
                 priceChanged = false;
-                // Cloning to avoid ConcurrentModificationException
-                List<AutoBid> bots = new ArrayList<>(auction.getActiveAutoBids());
+                // Lấy danh sách gốc
+                List<AutoBid> originalBots = auction.getActiveAutoBids();
+                List<AutoBid> bots = new ArrayList<>();
+
+                // Thực hiện Deep Copy: Tạo các object hoàn toàn mới dựa trên dữ liệu cũ
+                for (AutoBid original : originalBots) {
+                    AutoBid copy = new AutoBid(original.getBidder(), original.getMaxBid(), original.getIncrement());
+                    copy.setTimeRegistered(original.getTimeRegistered());
+                    bots.add(copy);
+                }
 
                 for (AutoBid bot : bots) {
                     // Ignore if the bot is the current winner
@@ -54,7 +62,9 @@ public class AutoBidEngine {
                             System.out.println("[Auto-Bid Engine]: Bot of \""
                                     + YELLOW + bot.getBidder().getUserName() + RESET + "\" does not have enough money. " +
                                     "Automatically remove bot");
-                            auction.getActiveAutoBids().remove(bot);
+                            auction.getActiveAutoBids().removeIf(b ->
+                                    b.getBidder().getId().equals(bot.getBidder().getId())
+                            );
                         }
                     }
                 }

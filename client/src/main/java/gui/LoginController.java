@@ -6,9 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import model.Bidder;
 import model.User;
 import network.NetworkMessage;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -21,6 +21,7 @@ public class LoginController {
 
     @FXML private TextField loginAccountName;
     @FXML private PasswordField loginPasswordAccount;
+    @FXML private Button loginButton;
 
     private NetworkClient networkClient;
     private final ObjectMapper mapper = new ObjectMapper()
@@ -32,10 +33,6 @@ public class LoginController {
 
     @FXML
     protected void onMainViewButtonClick() {
-        //try{
-        //    MainController.start(new Bidder());
-        //}
-        //catch (IOException e){}
         String username = loginAccountName.getText().trim();
         String password = loginPasswordAccount.getText().trim();
 
@@ -47,27 +44,20 @@ public class LoginController {
         setNetworkClient(MainApplication.networkClient);
 
         if (networkClient != null) {
+            loginButton.setDisable(true);
+            loginButton.setText("SIGNING IN...");
+
             networkClient.setOnMessageReceived(this::handleServerResponse);
             User loginAttempt = new User("", username, password, "");
             networkClient.sendMessage("LOGIN", loginAttempt);
-            //System.out.println("[Log]: Login successful!");
-            /*Platform.runLater(() -> {
-                try {
-                    MainController.start(loginAttempt);
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });*/
         } else {
-            System.out.println("[Error]: " + RED + "Cannot connect to the server" + RESET);
+            System.out.println("[System]: " + RED + "Cannot connect to the server" + RESET);
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server");
         }
     }
 
     @FXML
     protected void onRegisterViewButtonClick() {
-        System.out.println("[Log]: Register UI view");
         loginAccountName.clear();
         loginPasswordAccount.clear();
         MainApplication.setNewScene(MainApplication.rootRegister);
@@ -75,11 +65,13 @@ public class LoginController {
 
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
+            loginButton.setDisable(false);
+            loginButton.setText("SIGN IN");
+
             String command = response.getCommand();
             System.out.println("[Log]: Server Response: " + command);
 
             if ("LOGIN_SUCCESS".equals(command)) {
-
                 try {
                     // Decipher user from server
                     User loggedInUser = mapper.convertValue(response.getData(), User.class);
@@ -88,16 +80,10 @@ public class LoginController {
 
                     loginAccountName.clear();
                     loginPasswordAccount.clear();
-                    Platform.runLater(() -> {
-                        try {
-                            MainController.start(loggedInUser);
-                        }
-                        catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    });
+
+                    MainController.start(loggedInUser);
                 } catch (Exception e) {
-                    System.out.println("[Error]: Login error: " + RED + e.getMessage() + RESET);
+                    System.out.println("[System]: Login error: " + RED + e.getMessage() + RESET);
                 }
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {

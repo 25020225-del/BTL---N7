@@ -18,6 +18,7 @@ module org.example.demo {
     requires com.google.zxing;
     requires com.fasterxml.jackson.datatype.jsr310;
     requires java.security.sasl;
+    requires Java.WebSocket;
 
     opens gui to javafx.fxml;
     exports gui;
@@ -253,24 +254,20 @@ import client.handler.ResponseDispatcher;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import network.NetworkMessage;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
 
-import java.io.*;
-import java.net.Socket;
-import java.util.function.Consumer;
-import java.util.Base64;
 import javax.crypto.SecretKey;
-import java.security.KeyFactory;
+import java.net.URI;
 import java.security.PublicKey;
-import java.security.spec.X509EncodedKeySpec;
+import java.util.function.Consumer;
 
 import utils.CryptoUtil;
 import static utils.ConsoleColors.*;
 
 public class NetworkClient {
 
-    private Socket socket;
-    private PrintWriter out;
-    private BufferedReader in;
+    private AuctionWSClient wsClient; // Lõi WebSocket thực thụ
 
     private final ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -279,76 +276,55 @@ public class NetworkClient {
     private final ResponseDispatcher dispatcher = new ResponseDispatcher();
 
     private SecretKey myAesKey;
+    private boolean isAesKeyEstablished = false; // Cờ theo dõi trạng thái bảo mật
+    private final Object handshakeLock = new Object();
 
     public NetworkClient(String serverAddress, int port) {
         System.out.println("===========================================");
-        System.out.println("[System]: Trying to connect to server...");
+        System.out.println("[System]: Connecting to server via WebSocket...");
+
+        // Chuẩn hóa đường dẫn thành ws://...
+        String wsUrl = "ws://" + serverAddress + ":" + port;
 
         for (int i = 0; i < 5; i++) {
             try {
-                socket = new Socket(serverAddress, port);
-                socket.setSoTimeout(3000);
+                wsClient = new AuctionWSClient(new URI(wsUrl));
 
-                out = new PrintWriter(socket.getOutputStream(), true);
-                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                // connectBlocking() sẽ chặn luồng chờ tới khi WebSocket Open hoặc Fail
+                boolean connected = wsClient.connectBlocking();
 
-                // --- HANDSHAKE ---
-                // 1. Retrieve RSA public key from server
-                String publicKeyBase64 = in.readLine();
-                if (publicKeyBase64 == null) throw new IOException("Server is not responding to handshake");
-
-                PublicKey serverPublicKey = CryptoUtil.getPublicKeyFromBase64(publicKeyBase64);
-
-                // 2. Generate the AES key, encrypt it using RSA, and send it back to the server
-                myAesKey = CryptoUtil.generateAESKey();
-                String encryptedAesKey = CryptoUtil.encryptAESKeyWithRSA(myAesKey, serverPublicKey);
-                out.println(encryptedAesKey);
-                // --- END HANDSHAKE ---
-
-                // AES connection test (replacing old PING command)
-                NetworkMessage pingMsg = new NetworkMessage("PING", "Connecting request from client");
-                String pingJson = mapper.writeValueAsString(pingMsg);
-                out.println(CryptoUtil.encryptAES(pingJson, myAesKey)); // PING Encoding
-
-                String responseLine = in.readLine();
-                if (responseLine == null) throw new IOException("Server is not on");
-
-                // Decoding PONG
-                String decryptedPong = CryptoUtil.decryptAES(responseLine, myAesKey);
-                NetworkMessage response = mapper.readValue(decryptedPong, NetworkMessage.class);
-                if (!"PONG".equals(response.getCommand())) {
-                    throw new IOException("Invalid format from server");
-                }
-
-                socket.setSoTimeout(0);
-
-                Thread listenerThread = new Thread(this::listenToServer);
-                listenerThread.setDaemon(true);
-                listenerThread.start();
-
-                System.out.println("[System]:" + GREEN + "Successfully connected" + RESET);
-                return;
-
-            } catch (IOException e) {
-                System.out.println("[System]:" + YELLOW + " Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
-                try {
-                    if (socket != null) socket.close();
-                } catch (Exception ignored) {}
-
-                if (i < 4) {
-                    try {
-                        Thread.sleep(2000);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
+                if (connected) {
+                    synchronized (handshakeLock) {
+                        if (!isAesKeyEstablished) {
+                            handshakeLock.wait(3000); // Ngủ đông tối đa 3 giây chờ tín hiệu
+                        }
                     }
+
+                    if (isAesKeyEstablished) {
+                        System.out.println("[System]:" + GREEN + " Successfully connected and secured!" + RESET);
+                        return;
+                    } else {
+                        System.out.println("[System]:" + YELLOW + " Connected but AES Handshake timeout." + RESET);
+                        wsClient.close();
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("[System]:" + YELLOW + " Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
+            }
+
+            if (i < 4) {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
                 }
             }
         }
-        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + serverAddress + ":" + port + RESET);
+        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + wsUrl + RESET);
     }
 
     public boolean isConnected() {
-        return socket != null && socket.isConnected() && out != null;
+        return wsClient != null && wsClient.isOpen() && isAesKeyEstablished;
     }
 
     public void setOnMessageReceived(Consumer<NetworkMessage> callback) {
@@ -361,7 +337,7 @@ public class NetworkClient {
 
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
-            System.out.println("[Error]: Cannot send command: \"" + YELLOW + command + RESET + "\" due to" + RED + " not being connected" + RESET);
+            System.out.println("[System]: Cannot send command: \"" + YELLOW + command + RESET + "\" due to" + RED + " not being fully connected." + RESET);
             return;
         }
 
@@ -369,23 +345,70 @@ public class NetworkClient {
             NetworkMessage msg = new NetworkMessage(command, data);
             String json = mapper.writeValueAsString(msg);
             String encryptedPayload = CryptoUtil.encryptAES(json, myAesKey);
-            out.println(encryptedPayload);
+
+            // Dùng hàm send() cực nhanh của WebSocket thay cho PrintWriter cũ
+            wsClient.send(encryptedPayload);
+
         } catch (Exception e) {
-            System.out.println("[Error]:" + RED + " JSON package error: " + e.getMessage() + RESET);
+            System.out.println("[System]: JSON package error: " + RED + e.getMessage() + RESET);
         }
     }
 
-    private void listenToServer() {
-        try {
-            String encryptedMessage;
-            while ((encryptedMessage = in.readLine()) != null) {
-                String jsonMessage = CryptoUtil.decryptAES(encryptedMessage, myAesKey);
+    // --- INNER CLASS ĐỂ LẮNG NGHE SỰ KIỆN WEBSOCKET ---
+    private class AuctionWSClient extends WebSocketClient {
+
+        public AuctionWSClient(URI serverUri) {
+            super(serverUri);
+        }
+
+        @Override
+        public void onOpen(ServerHandshake handshakedata) {
+            // Đã kết nối, chờ Server đẩy mã RSA về hàm onMessage
+        }
+
+        @Override
+        public void onMessage(String message) {
+            // 1. Nếu chưa có AES Key, chuỗi gửi tới CHẮC CHẮN là RSA Public Key
+            if (!isAesKeyEstablished) {
+                try {
+                    PublicKey serverPublicKey = CryptoUtil.getPublicKeyFromBase64(message);
+
+                    // Tạo AES Key, mã hóa nó bằng RSA và gửi lại cho Server
+                    myAesKey = CryptoUtil.generateAESKey();
+                    String encryptedAesKey = CryptoUtil.encryptAESKeyWithRSA(myAesKey, serverPublicKey);
+                    this.send(encryptedAesKey);
+
+                    isAesKeyEstablished = true;
+                    synchronized (handshakeLock) {
+                        handshakeLock.notifyAll(); // Đánh thức luồng chính dậy ngay lập tức
+                    }
+                } catch (Exception e) {
+                    System.out.println("[System]: Handshake failed: " + RED + e.getMessage() + RESET);
+                }
+                return;
+            }
+
+            // 2. Nếu đã hoàn tất bảo mật, tiến hành giải mã JSON
+            try {
+                String jsonMessage = CryptoUtil.decryptAES(message, myAesKey);
                 NetworkMessage response = mapper.readValue(jsonMessage, NetworkMessage.class);
 
-                dispatcher.dispatch(response, this);
+                dispatcher.dispatch(response, NetworkClient.this);
+
+            } catch (Exception e) {
+                System.out.println("[Warning]: Ignore invalid data package: " + YELLOW + e.getMessage() + RESET);
             }
-        } catch (Exception e) {
-            System.out.println("[Error]: Lost connection or Decryption failed: " + RED + e.getMessage() + RESET);
+        }
+
+        @Override
+        public void onClose(int code, String reason, boolean remote) {
+            isAesKeyEstablished = false; // Xóa cờ an toàn
+            System.out.println("[System]: Connection closed. Reason: " + YELLOW + reason + RESET);
+        }
+
+        @Override
+        public void onError(Exception ex) {
+            System.out.println("[System]: WebSocket Error: " + RED + ex.getMessage() + RESET);
         }
     }
 }
@@ -1423,9 +1446,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import model.Bidder;
 import model.User;
 import network.NetworkMessage;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -1438,6 +1461,7 @@ public class LoginController {
 
     @FXML private TextField loginAccountName;
     @FXML private PasswordField loginPasswordAccount;
+    @FXML private Button loginButton;
 
     private NetworkClient networkClient;
     private final ObjectMapper mapper = new ObjectMapper()
@@ -1449,10 +1473,6 @@ public class LoginController {
 
     @FXML
     protected void onMainViewButtonClick() {
-        //try{
-        //    MainController.start(new Bidder());
-        //}
-        //catch (IOException e){}
         String username = loginAccountName.getText().trim();
         String password = loginPasswordAccount.getText().trim();
 
@@ -1464,27 +1484,20 @@ public class LoginController {
         setNetworkClient(MainApplication.networkClient);
 
         if (networkClient != null) {
+            loginButton.setDisable(true);
+            loginButton.setText("SIGNING IN...");
+
             networkClient.setOnMessageReceived(this::handleServerResponse);
             User loginAttempt = new User("", username, password, "");
             networkClient.sendMessage("LOGIN", loginAttempt);
-            //System.out.println("[Log]: Login successful!");
-            /*Platform.runLater(() -> {
-                try {
-                    MainController.start(loginAttempt);
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });*/
         } else {
-            System.out.println("[Error]: " + RED + "Cannot connect to the server" + RESET);
+            System.out.println("[System]: " + RED + "Cannot connect to the server" + RESET);
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server");
         }
     }
 
     @FXML
     protected void onRegisterViewButtonClick() {
-        System.out.println("[Log]: Register UI view");
         loginAccountName.clear();
         loginPasswordAccount.clear();
         MainApplication.setNewScene(MainApplication.rootRegister);
@@ -1492,11 +1505,13 @@ public class LoginController {
 
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
+            loginButton.setDisable(false);
+            loginButton.setText("SIGN IN");
+
             String command = response.getCommand();
             System.out.println("[Log]: Server Response: " + command);
 
             if ("LOGIN_SUCCESS".equals(command)) {
-
                 try {
                     // Decipher user from server
                     User loggedInUser = mapper.convertValue(response.getData(), User.class);
@@ -1505,16 +1520,10 @@ public class LoginController {
 
                     loginAccountName.clear();
                     loginPasswordAccount.clear();
-                    Platform.runLater(() -> {
-                        try {
-                            MainController.start(loggedInUser);
-                        }
-                        catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    });
+
+                    MainController.start(loggedInUser);
                 } catch (Exception e) {
-                    System.out.println("[Error]: Login error: " + RED + e.getMessage() + RESET);
+                    System.out.println("[System]: Login error: " + RED + e.getMessage() + RESET);
                 }
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
@@ -4412,6 +4421,297 @@ public class MinimalItem extends VBox {
 
 
 ======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\DualRoleView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane prefHeight="600.0" prefWidth="900.0" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientBidderController">
+    <top>
+        <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="15.0" style="-fx-background-color: white; -fx-border-color: #e5e5e5; -fx-border-width: 0 0 1 0;">
+            <children>
+                <Label text="BIDDER" textFill="#3665f3">
+                    <font><Font name="System Bold" size="24.0" /></font>
+                </Label>
+
+                <Region HBox.hgrow="ALWAYS" />
+
+                <TextField prefWidth="350.0" promptText="Tìm kiếm sản phẩm..." styleClass="search-field" />
+
+                <Region HBox.hgrow="ALWAYS" />
+
+                <Button mnemonicParsing="false" styleClass="button-sell" text="Sell" />
+
+                <Label fx:id="lblUserMenu" style="-fx-cursor: hand;" text="My Account ▼" />
+            </children>
+            <padding><Insets left="20.0" right="20.0" /></padding>
+        </HBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;">
+            <content>
+                <FlowPane fx:id="productContainer" hgap="20.0" vgap="20.0" style="-fx-padding: 20;" />
+            </content>
+        </ScrollPane>
+    </center>
+</BorderPane>
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\index.css ///
+======================================================================
+
+/* Tổng thể: Trắng, font hệ thống */
+.root {
+    -fx-font-family: "Segoe UI", Arial;
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #2d3436;
+}
+
+/* Nền màn hình: Xanh dương cực nhạt (Alice Blue) */
+.auth-root, .main-view-root {
+    -fx-background-color: #f0f7ff;
+}
+
+/* Khung nội dung: Bo góc, đổ bóng xanh dương nhạt */
+.auth-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 12;
+    -fx-border-color: #d1e2f2;
+    -fx-border-width: 1;
+    /* Đổ bóng tông xanh dương để đồng bộ */
+    -fx-effect: dropshadow(three-pass-box, rgba(41, 128, 185, 0.08), 20, 0, 0, 8);
+}
+
+/* Tiêu đề: Xanh dương đậm (Royal Blue) */
+.auth-title {
+    -fx-fill: #2980b9;
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+}
+
+/* Ô nhập liệu: Viền xanh dương nhạt */
+.text-field, .password-field {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #2d3436;
+    -fx-prompt-text-fill: #a2b4bc;
+    -fx-border-color: #d1e2f2;
+    -fx-border-width: 0 0 2 0;
+    -fx-background-radius: 0;
+}
+
+/* Khi click vào ô nhập: Hiện viền xanh dương sáng */
+.text-field:focused, .password-field:focused {
+    -fx-background-color: #f7fbff;
+    -fx-border-color: #3498db;
+}
+
+/* Nút bấm chính: Màu xanh dương nhạt (Soft/Sky Blue) */
+.button {
+    -fx-max-width: infinity;
+    -fx-background-color: #a2d2ff; /* Màu xanh nhạt bạn yêu cầu */
+    -fx-text-fill: #2c3e50; /* Chữ đậm hơn tí cho dễ đọc trên nền nhạt */
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+    -fx-padding: 8 8 8 8;
+}
+
+.button:hover {
+    -fx-background-color: #85c1f5; /* Đậm hơn một chút khi hover */
+}
+
+/* Link chuyển cảnh */
+.auth-link {
+    -fx-background-color: transparent;
+    -fx-text-fill: #2980b9;
+    -fx-font-weight: bold;
+}
+
+/* Sidebar: Xanh dương xám nhạt */
+#mainDock {
+    -fx-background-radius: 30;
+    -fx-background-color: #ebf2f8;
+    -fx-border-color: transparent #d6e4f0 transparent transparent;
+}
+
+/* Thanh tìm kiếm */
+.top-search-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d1e2f2;
+    -fx-background-radius: 25;
+    -fx-border-radius: 25;
+    -fx-padding: 8 15 8 15;
+}
+
+/* ComboBox */
+.combo-box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d1e2f2;
+    -fx-background-radius: 4;
+}
+.combo-box .list-cell {
+    -fx-text-fill: #2d3436;
+    -fx-background-color: #ffffff;
+}
+
+/* ScrollPane Trắng Xanh Dương */
+.scroll-pane {
+    -fx-background-color: #ffffff;
+    -fx-background: #ffffff;
+    -fx-border-color: #d6e4f0;
+}
+
+/* Thanh cuộn (Scroll Bar) */
+.scroll-pane .scroll-bar .thumb {
+    -fx-background-color: #adcde7; /* Xanh dương nhạt */
+    -fx-background-radius: 10;
+}
+
+.scroll-pane .scroll-bar .thumb:hover {
+    -fx-background-color: #85b3d9;
+}
+
+/* --- ICON SECTION --- */
+
+/* Màu mặc định cho tất cả icon: Xanh dương */
+.ikonli-font-icon {
+    -fx-icon-color: #2980b9;
+    -fx-icon-size: 35px;
+}
+
+/* Icon trên nút bấm (Vì nền nút nhạt nên icon để màu xanh đậm sẽ đẹp hơn) */
+.button .ikonli-font-icon {
+    -fx-icon-color: #2c3e50;
+}
+
+/* Icon khi hover */
+.menu-item:hover .ikonli-font-icon {
+    -fx-icon-color: #3498db;
+}
+
+.special-button {
+    -fx-background-radius: 30;
+    -fx-padding: 10 10 10 10; /* Tăng lề trái cho icon */
+    -fx-alignment: CENTER_LEFT;
+    -fx-background-color: #d1e9ff; /* Màu nhạt riêng cho nút đặc biệt */
+    -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.6), 10, 0, 4, 4),
+                    dropshadow(three-pass-box, rgba(255, 255, 255, 0.9), 10, 0, -4, -4);
+}
+
+.special-button:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.8), 15, 0, 6, 6),
+                dropshadow(three-pass-box, rgba(255, 255, 255, 1.0), 15, 0, -6, -6);
+}
+
+/* Hiệu ứng khi nhấn: Nút lún xuống (Inset shadow giả lập) */
+.special-button:pressed {
+    -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.4), 5, 0, 1, 1),
+                dropshadow(three-pass-box, rgba(255, 255, 255, 0.6), 5, 0, -1, -1);
+    -fx-translate-y: 1; /* Di chuyển nhẹ để tạo cảm giác lún */
+}
+
+.special-button .ikonli-font-icon {
+    -fx-icon-size: 25px;
+    -fx-icon-color: #2980b9;
+}
+.date-picker {
+    -fx-background-color: transparent;
+    -fx-border-color: #dcdcdc;
+    -fx-border-radius: 5;
+    -fx-padding: 1;
+}
+
+/* 2. Thay đổi màu icon lịch */
+.date-picker .arrow-button {
+    -fx-background-color: #2196F3; /* Màu xanh chủ đạo */
+    -fx-background-radius: 5;
+}
+
+.date-picker .arrow-button .arrow {
+    -fx-background-color: white; /* Màu mũi tên bên trong icon */
+}
+
+/* 3. Tùy chỉnh bảng lịch (Popup) */
+.date-picker-popup {
+    -fx-background-color: white;
+    -fx-border-color: #2196F3;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);
+}
+
+/* 4. Đổi màu tiêu đề tháng/năm */
+.date-picker-popup .month-year-pane {
+    -fx-background-color: #2196F3;
+}
+
+.date-picker-popup .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* 5. Đổi màu các ngày trong tháng */
+.date-picker-popup .day-cell {
+    -fx-padding: 5;
+}
+
+/* Ngày đang chọn */
+.date-picker-popup .day-cell:selected {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: white;
+}
+
+/* Khi di chuột qua các ngày */
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: #e3f2fd;
+    -fx-text-fill: #2196F3;
+}
+
+/* Ngày hôm nay */
+.date-picker-popup .today {
+    -fx-border-color: #2196F3;
+    -fx-border-width: 1;
+}
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\Login.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.LoginController">
+   <children>
+      <VBox alignment="CENTER" fillWidth="false" maxWidth="400.0" prefWidth="400.0" spacing="25.0" styleClass="auth-card">
+         <children>
+            <Text styleClass="auth-title" text="Member Login" />
+
+            <VBox spacing="15.0" prefWidth="320.0">
+               <children>
+                  <TextField fx:id="loginAccountName" prefHeight="40.0" promptText="Username" styleClass="auth-input" />
+                  <PasswordField fx:id="loginPasswordAccount" prefHeight="40.0" promptText="Password" styleClass="auth-input" />
+               </children>
+            </VBox>
+
+            <Button fx:id="loginButton" mnemonicParsing="false" onAction="#onMainViewButtonClick" prefHeight="40.0" prefWidth="320.0" styleClass="auth-btn-primary" text="SIGN IN" />
+
+            <Button mnemonicParsing="false" onAction="#onRegisterViewButtonClick" styleClass="auth-link" style="-fx-background-color: transparent;" text="Don't have an account? Register" />
+         </children>
+         <padding>
+            <javafx.geometry.Insets top="40" bottom="40" left="30" right="30"/>
+         </padding>
+      </VBox>
+   </children>
+</StackPane>
+
+======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\MainView.fxml ///
 ======================================================================
 
@@ -4552,6 +4852,307 @@ public class MinimalItem extends VBox {
    </children>
 </VBox>
 
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\ProductItem.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox alignment="TOP_CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="200.0" spacing="10.0" style="-fx-border-color: #dddddd; -fx-border-radius: 10; -fx-background-color: white;" styleClass="product-card" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <ImageView fx:id="imgProduct" fitHeight="150.0" fitWidth="180.0" pickOnBounds="true" preserveRatio="true" />
+        <VBox spacing="5.0">
+            <children>
+                <Label fx:id="lblTitle" style="-fx-font-weight: bold;" text="Tên sản phẩm mẫu" wrapText="true" />
+                <Label fx:id="lblPrice" style="-fx-text-fill: #e53238; -fx-font-size: 16;" styleClass="price-text" stylesheets="@Stylist.css" text="\$100.00" />
+                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: #3665f3; -fx-text-fill: white;" styleClass="button-ebay" text="Đấu giá" />
+            </children>
+            <padding>
+                <Insets bottom="10.0" left="10.0" right="10.0" />
+            </padding>
+        </VBox>
+    </children>
+    <padding>
+        <Insets top="10.0" />
+    </padding>
+</VBox>
+
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\Register.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.geometry.Insets?>
+
+<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.RegisterController">
+   <children>
+      <VBox alignment="CENTER" fillWidth="false" maxWidth="500.0" spacing="20.0" styleClass="auth-card">
+         <children>
+            <Text styleClass="auth-title" text="CREATE ACCOUNT" />
+
+            <VBox spacing="15.0" prefWidth="380.0">
+               <children>
+                  <TextField fx:id="registerName" promptText="Full Name" />
+                  <TextField fx:id="registerAccountName" promptText="Username" />
+                  <PasswordField fx:id="registerPasswordAccount" promptText="Password" />
+                  <PasswordField fx:id="confirmPasswordAccount" promptText="Confirm Password" />
+                  <!--<ComboBox fx:id="registerRole" maxWidth="Infinity" promptText="Select Role" />-->
+               </children>
+            </VBox>
+
+            <Button fx:id="registerButton" onAction="#onRegisterButtonClick" prefHeight="40.0" prefWidth="380.0" text="REGISTER" />
+
+            <Button fx:id="changeLoginScene" onAction="#onLoginViewButtonClick" styleClass="auth-link" text="Already have an account? Login" />
+         </children>
+         <padding>
+            <Insets bottom="40" left="40" right="40" top="40" />
+         </padding>
+      </VBox>
+   </children>
+</StackPane>
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\SellingRequest.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="TOP_CENTER" prefWidth="500.0" spacing="20.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientSellerController">
+    <children>
+        <Label text="Đăng ký bán sản phẩm">
+            <font><Font name="System Bold" size="20.0" /></font>
+        </Label>
+
+        <VBox spacing="15.0" styleClass="form-container">
+            <children>
+                <VBox spacing="5.0">
+                    <children>
+                        <Label text="Tên sản phẩm" style="-fx-font-weight: bold;" />
+                        <TextField fx:id="txtProductName" promptText="VD: iPhone 15 Pro Max" />
+                    </children>
+                </VBox>
+
+                <VBox spacing="5.0">
+                    <children>
+                        <Label text="Giá khởi điểm ($)" style="-fx-font-weight: bold;" />
+                        <TextField fx:id="txtStartPrice" promptText="0.00" />
+                    </children>
+                </VBox>
+
+                <VBox spacing="5.0">
+                    <children>
+                        <Label text="Hình ảnh sản phẩm" style="-fx-font-weight: bold;" />
+                        <HBox spacing="10.0" alignment="CENTER_LEFT">
+                            <children>
+                                <Button text="Chọn ảnh..." />
+                                <Label text="Chưa chọn file nào" textFill="#777" />
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+
+                <VBox spacing="5.0">
+                    <children>
+                        <Label text="Mô tả chi tiết" style="-fx-font-weight: bold;" />
+                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Nhập tình trạng máy, thời gian bảo hành..." wrapText="true" />
+                    </children>
+                </VBox>
+
+                <Separator />
+
+                <Button maxWidth="Infinity" styleClass="button-ebay" text="Gửi yêu cầu xét duyệt (Request)">
+                    <font><Font name="System Bold" size="14.0" /></font>
+                </Button>
+
+                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Hủy bỏ" />
+            </children>
+        </VBox>
+    </children>
+    <padding><Insets bottom="30.0" left="40.0" right="40.0" top="30.0" /></padding>
+</VBox>
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\Stylist.css ///
+======================================================================
+
+/* Tổng thể nền ứng dụng */
+.root {
+    -fx-background-color: #f7f7f7;
+    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+/* Kiểu dáng cho từng ô sản phẩm (Product Card) */
+.product-card {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #e5e5e5;
+    -fx-border-width: 1;
+    /* Đổ bóng nhẹ cho chuyên nghiệp */
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);
+}
+
+/* Hiệu ứng khi di chuột qua ô sản phẩm */
+.product-card:hover {
+    -fx-border-color: #3665f3;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.2), 15, 0, 0, 5);
+}
+
+/* Nút bấm kiểu eBay (Xanh dương) */
+.button-ebay {
+    -fx-background-color: #3665f3;
+    -fx-text-fill: white;
+    -fx-background-radius: 20;
+    -fx-font-weight: bold;
+    -fx-padding: 8 20;
+}
+
+.button-ebay:hover {
+    -fx-background-color: #2b50c7;
+}
+
+/* Ô tìm kiếm */
+.search-field {
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: #333333;
+    -fx-background-color: white;
+    -fx-padding: 5 15;
+}
+
+.search-field:focused {
+    -fx-border-color: #3665f3;
+    -fx-border-width: 2;
+}
+
+/* Giá tiền */
+.price-text {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #111820;
+}
+
+/* Đồng hồ đếm ngược */
+.timer-text {
+    -fx-text-fill: #dd1e31;
+    -fx-font-weight: bold;
+}
+/* Trang trí hộp menu nhỏ */
+/* Thu nhỏ tổng thể cái hộp */
+.context-menu {
+    -fx-background-color: white;
+    -fx-padding: 2; /* Giảm khoảng cách từ viền hộp đến nội dung */
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-border-color: #dcdcdc;
+    -fx-border-width: 0.5; /* Viền mỏng thôi cho tinh tế */
+}
+
+/* Thu nhỏ từng dòng (Logout, Profile) */
+.menu-item {
+    -fx-padding: 4 10 4 10; /* Trên - Phải - Dưới - Trái. Giảm số 4 xuống nếu muốn mỏng hơn nữa */
+}
+
+/* Thu nhỏ chữ trong menu */
+.menu-item .label {
+    -fx-font-size: 12px; /* Chỉnh chữ nhỏ lại một chút */
+    -fx-text-fill: #333333;
+}
+.menu-item .label {
+    -fx-text-fill: #333;
+}
+
+.menu-item:focused {
+    -fx-background-color: #f4f4f4; /* Màu khi rê chuột qua dòng đó */
+}
+/* --- ADMIN DASHBOARD STYLES --- */
+
+/* Style cho TableView kiểu sạch sẽ */
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: #e5e5e5;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #f7f7f7; /* Nền xám nhạt cho tiêu đề bảng */
+    -fx-background-radius: 8 8 0 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-size: 40;
+}
+
+.table-view .table-row-cell:odd {
+    -fx-background-color: #fafafa;
+}
+
+.table-view .table-row-cell:hover {
+    -fx-background-color: #f0f5ff; /* Màu xanh cực nhạt khi di chuột qua dòng */
+}
+
+/* Nút xóa/chặn (Danger Action) */
+.button-danger {
+    -fx-background-color: white;
+    -fx-text-fill: #dd1e31;
+    -fx-border-color: #dd1e31;
+    -fx-border-radius: 20;
+    -fx-background-radius: 20;
+}
+
+.button-danger:hover {
+    -fx-background-color: #dd1e31;
+    -fx-text-fill: white;
+}
+
+/* Sidebar hoặc Thẻ thống kê nhanh */
+.stat-card {
+    -fx-background-color: white;
+    -fx-padding: 15;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
+}
+/* Nút Bán hàng
+.button-sell {
+    -fx-background-color: transparent;
+    -fx-border-color: #3665f3;
+    -fx-border-radius: 20;
+    -fx-text-fill: #3665f3;
+    -fx-font-weight: bold;
+    -fx-padding: 5 20;
+}
+
+.button-sell:hover {
+    -fx-background-color: #f0f5ff;
+}
+
+/* Form nhập liệu */
+.form-container {
+    -fx-background-color: white;
+    -fx-padding: 30;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);
+}
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\TableView.fxml ///
@@ -5371,16 +5972,17 @@ public class CryptoUtil {
 
 package controller;
 
-import model.Auction;
-import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.List;
+
+import model.Auction;
+import server.ServerExtension.AuctionManager;
 
 import static utils.ConsoleColors.*;
 
 public class AuctionMonitor {
-
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
 
@@ -5389,7 +5991,7 @@ public class AuctionMonitor {
     }
 
     public void startMonitoring() {
-        System.out.println("[Monitor]:" + GREEN + " The automatic auction monitoring system has been launched" + RESET);
+        System.out.println("[System]:" + GREEN + " Auction monitor has been launched." + RESET);
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
@@ -5397,9 +5999,18 @@ public class AuctionMonitor {
                     if (auction.getStatus().equals(Auction.STATUS_RUNNING)) {
                         auction.closeAuctionIfTimeIsUp();
                     }
+
+                    String status = auction.getStatus();
+                    if (status.equals(Auction.STATUS_FINISHED) ||
+                        status.equals(Auction.STATUS_CANCELED) ||
+                        status.equals(Auction.STATUS_DELETED)) {
+                        allAuctions.remove(auction);
+                        AuctionManager.removeAuctionLock(auction.getId());
+                        System.out.println("[System]: " + BLUE + "Removed auction " + YELLOW + auction.getId() + RESET + " from RAM.");
+                    }
                 }
             } catch (Exception e) {
-                System.out.println("[Error]: Error during the bidding scan process: " + RED + e.getMessage() + RESET);
+                System.out.println("[System](AuctionMonitor): Error occurred during bidding scan process: " + RED + e.getMessage() + RESET);
                 e.printStackTrace();
             }
         }, 0, 10, TimeUnit.SECONDS);
@@ -5407,9 +6018,8 @@ public class AuctionMonitor {
 
     public void stopMonitoring() {
         scheduler.shutdown();
-        System.out.println(YELLOW + "[Monitor]: The auction monitoring system has been turned off" + RESET);
+        System.out.println("[System]: " + YELLOW + " Auction monitor has been shutdown." + RESET);
     }
-
 }
 
 ======================================================================
@@ -6237,13 +6847,13 @@ package server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+
 import controller.UserController;
 import network.NetworkMessage;
+import org.java_websocket.WebSocket;
 import server.ServerExtension.ClientManager;
 import server.ClientHandlerExtension.*;
 
-import java.io.*;
-import java.net.Socket;
 import java.security.KeyPair;
 import java.util.Base64;
 import javax.crypto.SecretKey;
@@ -6252,13 +6862,11 @@ import utils.CryptoUtil;
 
 import static utils.ConsoleColors.*;
 
-public class ClientHandler implements Runnable {
+public class ClientHandler { // KHÔNG CẦN implements Runnable NỮA
 
-    private Socket socket;
-    private BufferedReader in;
-    private PrintWriter out;
-    private int cNC = 0;
-    private volatile String clientName = "Guest" + (cNC++);
+    private WebSocket conn; // Thay Socket truyền thống bằng WebSocket
+    private static int cNC = 0;
+    private String clientName = "Guest" + (cNC++);
     private model.User user;
 
     private UserController userController;
@@ -6270,73 +6878,77 @@ public class ClientHandler implements Runnable {
     private SecretKey sharedAesKey;
     private KeyPair rsaKeyPair;
 
-    public ClientHandler(Socket socket, UserController userController) {
-        this.socket = socket;
-        this.userController = userController;
+    // Cờ đánh dấu đã trao đổi Key mã hóa xong chưa
+    private boolean isAesKeyEstablished = false;
 
-        try {
-            this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            this.out = new PrintWriter(socket.getOutputStream(), true);
-        } catch (IOException e) {
-            System.out.println("[Error]: I/O exception in ClientHandler: " + RED + e.getMessage() + RESET);
-        }
+    public ClientHandler(WebSocket conn, UserController userController) {
+        this.conn = conn;
+        this.userController = userController;
     }
 
-    @Override
-    public void run() {
+    // Hàm này được gọi ngay khi Client vừa kết nối thành công (từ onOpen của Server)
+    public void startHandshake() {
         try {
-            // ---HANDSHAKE---
             // 1. Generate an RSA key pair and send the public key to the client
             rsaKeyPair = CryptoUtil.generateRSAKeyPair();
             String publicKeyBase64 = Base64.getEncoder().encodeToString(rsaKeyPair.getPublic().getEncoded());
-            out.println(publicKeyBase64);
+            conn.send(publicKeyBase64); // Gửi trực tiếp, không block luồng
+        } catch (Exception e) {
+            System.out.println("[Error]: Lỗi tạo RSA Key trong ClientHandler: " + RED + e.getMessage() + RESET);
+        }
+    }
 
-            // 2. Wait for the client to send back the encrypted AES key
-            String encryptedAesKey = in.readLine();
-            if (encryptedAesKey == null) return;
-            sharedAesKey = CryptoUtil.decryptAESKeyWithRSA(encryptedAesKey, rsaKeyPair.getPrivate());
-            System.out.println("[Security]: Handshake success with \"" + YELLOW + clientName + RESET + "\". AES Channel established.");
-            // ---END HANDSHAKE---
-
-            String encryptedJsonMessage;
-            while ((encryptedJsonMessage = in.readLine()) != null) {
-                System.out.println("[System]: Getting encrypted JSON from Client: " + YELLOW + encryptedJsonMessage + RESET);
-
-                try {
-                    // Decrypting by AES
-                    String jsonMessage = CryptoUtil.decryptAES(encryptedJsonMessage, sharedAesKey);
-                    System.out.println("[System]: Decrypted JSON from Client: " + YELLOW + jsonMessage + RESET);
-
-                    NetworkMessage message = mapper.readValue(jsonMessage, NetworkMessage.class);
-
-                    if (message.getCommand() == null) {
-                        System.out.println("[System]: \"" + YELLOW + clientName + RESET + "\" tried to send a null command");
-                        sendResponse("ERROR", "Command cannot be null");
-                        continue;
-                    }
-
-                    dispatcher.dispatch(message, this);
-
-                } catch (Exception e) {
-                    System.out.println("[Error]: Invalid JSON format: " + RED + e.getMessage() + RESET);
-                    sendResponse("ERROR", "Invalid JSON format");
-                }
+    // Hàm này được gọi mỗi khi có Text Message bay từ Client tới (từ onMessage của Server)
+    public void processIncomingMessage(String message) {
+        // Nếu chưa thiết lập xong AES, tin nhắn đầu tiên nhận được CHẮC CHẮN là AES Key
+        if (!isAesKeyEstablished) {
+            try {
+                sharedAesKey = CryptoUtil.decryptAESKeyWithRSA(message, rsaKeyPair.getPrivate());
+                isAesKeyEstablished = true;
+                System.out.println("[Security]: Handshake success with \"" + YELLOW + clientName + RESET + "\". AES Channel established.");
+            } catch (Exception e) {
+                System.out.println("[Security]: Handshake failed with " + YELLOW + clientName + RESET);
+                closeConnection();
             }
-        } catch (IOException e) {
-            System.out.println("[System]: Lost connection with " + (clientName != null ? clientName : "unknown Client"));
-        } finally {
-            closeConnection();
+            return;
+        }
+
+        // Nếu đã thiết lập xong AES, bắt đầu giải mã JSON như bình thường
+        try {
+            // Decrypting by AES
+            String jsonMessage = CryptoUtil.decryptAES(message, sharedAesKey);
+            System.out.println("[System]: Decrypted JSON from Client: " + YELLOW + jsonMessage + RESET);
+
+            NetworkMessage netMsg = mapper.readValue(jsonMessage, NetworkMessage.class);
+
+            if (netMsg.getCommand() == null) {
+                System.out.println("[System](ClientHandler): \"" + YELLOW + clientName + RESET + "\" sent a null command.");
+                sendResponse("ERROR", "Command cannot be null");
+                return;
+            }
+
+            dispatcher.dispatch(netMsg, this);
+
+        } catch (Exception e) {
+            System.out.println("[System](ClientHandler): Invalid JSON format or Decryption error: " + RED + e.getMessage() + RESET);
+            sendResponse("ERROR", "Invalid JSON format");
         }
     }
 
     public void sendResponse(String command, Object data) {
         try {
+            // Chỉ gửi khi kết nối còn mở và đã thiết lập xong mã hóa
+            if (conn == null || !conn.isOpen() || !isAesKeyEstablished) return;
+
             NetworkMessage responseMsg = new NetworkMessage(command, data);
             String jsonOutput = mapper.writeValueAsString(responseMsg);
             String encryptedPayload = CryptoUtil.encryptAES(jsonOutput, sharedAesKey);
-            out.println(encryptedPayload);
+
+            // conn.send() của Java-WebSocket đã tự động bao gồm hàng đợi (Queue) không block Thread
+            conn.send(encryptedPayload);
+
         } catch (Exception e) {
-            System.out.println("[Error]: JSON serialization: " + RED + e.getMessage() + RESET);
+            System.out.println("[System](ClientHandler): JSON serialization error: " + RED + e.getMessage() + RESET);
         }
     }
 
@@ -6344,22 +6956,18 @@ public class ClientHandler implements Runnable {
         sendResponse("CHAT", message);
     }
 
-    private void closeConnection() {
+    public void closeConnection() {
         ClientManager.removeClient(this);
-        System.out.println("[System]: \"" + YELLOW + clientName + RESET + "\" has stopped connecting");
-        try {
-            if (socket != null && !socket.isClosed()) socket.close();
-        } catch (IOException e) {
-            System.out.println("[Error]: Socket closing error: " + RED + e.getMessage() + RESET);
+        System.out.println("[System]: \"" + YELLOW + clientName + RESET + "\" has disconnected.");
+        if (conn != null && conn.isOpen()) {
+            conn.close(); // Đóng kết nối WebSocket an toàn
         }
     }
 
     public void forceDisconnect(String reason) {
         sendResponse("KICKED", reason);
-        try {
-            if (socket != null && !socket.isClosed()) socket.close();
-        } catch (IOException e) {
-            System.out.println("[Error]: Socket closing error: " + RED + e.getMessage() + RESET);
+        if (conn != null && conn.isOpen()) {
+            conn.closeConnection(1000, reason); // Code 1000: Đóng bình thường
         }
     }
 
@@ -6391,20 +6999,20 @@ package server;
 import controller.AuctionMonitor;
 import controller.UserController;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.java_websocket.WebSocket;
+import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.server.WebSocketServer;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -6417,9 +7025,7 @@ public class MultiThreadedServer {
     // scheduler for updating new address
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-    private static final int MAX_CLIENTPOOL_SIZE = 200; // Max number of threads for handling clients
-                                                        // Can be changed depend on scale
-    private static final ExecutorService clientPool = Executors.newFixedThreadPool(MAX_CLIENTPOOL_SIZE);
+    // ĐÃ XÓA clientPool VÌ WEBSOCKET SỬ DỤNG NIO (Non-blocking I/O) TỰ QUẢN LÝ LUỒNG RẤT TỐI ƯU
 
     // .env data getter
     private static final Dotenv dotenv = Dotenv.load();
@@ -6433,6 +7039,7 @@ public class MultiThreadedServer {
 
     private static final UserController userController = new UserController();
 
+    // --- CÁC HÀM API ĐỒNG BỘ GIỮ NGUYÊN ---
     public static void updateAddress(String currentIp, int currentPort) {
         try {
             String urlString = "https://api.jsonbin.io/v3/b/" + BIN_ID;
@@ -6447,7 +7054,6 @@ public class MultiThreadedServer {
             conn.setDoOutput(true);
 
             String jsonInputString = "{\"ip\": \"" + currentIp + "\", \"port\": " + currentPort + "}";
-            System.out.println("[Debug] JSON to JSONBin: " + jsonInputString);
 
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
@@ -6458,10 +7064,7 @@ public class MultiThreadedServer {
             if (responseCode == 200) {
                 System.out.println("[JSONBin]: New IP - Port synced: " + YELLOW + currentIp + ":" + currentPort + RESET);
             } else {
-                System.err.println("[JSONBin]: Error: " + RED + responseCode + RESET + " at URL: " + YELLOW + urlString + RESET);
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
-                    System.err.println("Error details: " + br.readLine());
-                }
+                System.err.println("[JSONBin]: Error: " + RED + responseCode + RESET);
             }
         } catch (Exception e) {
             System.out.println("[JSONBin]: Connection Error: " + RED + e.getMessage() + RESET);
@@ -6486,10 +7089,7 @@ public class MultiThreadedServer {
 
             Matcher tunnelStatus = Pattern.compile("\"status\":(\\d+)").matcher(jsonResponse);
             if (tunnelStatus.find()) {
-                int status = Integer.parseInt(tunnelStatus.group(1));
-                if (status == 0) {
-                    return null;
-                }
+                if (Integer.parseInt(tunnelStatus.group(1)) == 0) return null;
             }
 
             String ip = "";
@@ -6508,6 +7108,57 @@ public class MultiThreadedServer {
         return null;
     }
 
+    // --- LỚP LÕI WEBSOCKET SERVER ---
+    private static class AuctionWSServer extends WebSocketServer {
+
+        public AuctionWSServer(int port) {
+            super(new InetSocketAddress(port));
+        }
+
+        @Override
+        public void onOpen(WebSocket conn, ClientHandshake handshake) {
+            System.out.println("[System]: New WebSocket client connected from: " + YELLOW + conn.getRemoteSocketAddress().getAddress().getHostAddress() + RESET);
+
+            // Khởi tạo ClientHandler với đối tượng WebSocket
+            ClientHandler clientHandler = new ClientHandler(conn, userController);
+
+            // Gắn chặt ClientHandler này vào kết nối WebSocket để truy xuất sau này
+            conn.setAttachment(clientHandler);
+            ClientManager.addClient(clientHandler);
+
+            // Bắt đầu quá trình gửi RSA Key cho Client
+            clientHandler.startHandshake();
+        }
+
+        @Override
+        public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+            ClientHandler clientHandler = conn.getAttachment();
+            if (clientHandler != null) {
+                // Gọi hàm dọn dẹp bên trong ClientHandler
+                clientHandler.closeConnection();
+            }
+        }
+
+        @Override
+        public void onMessage(WebSocket conn, String message) {
+            ClientHandler clientHandler = conn.getAttachment();
+            if (clientHandler != null) {
+                // Đẩy chuỗi nhận được vào cho ClientHandler xử lý giải mã và điều hướng
+                clientHandler.processIncomingMessage(message);
+            }
+        }
+
+        @Override
+        public void onError(WebSocket conn, Exception ex) {
+            System.out.println("[System]: WebSocket Error: " + RED + ex.getMessage() + RESET);
+        }
+
+        @Override
+        public void onStart() {
+            System.out.println("[System]: WebSocket Server is running on port " + YELLOW + getPort() + RESET);
+        }
+    }
+
     public static void main(String[] args) {
         final int PORT = 6969;
 
@@ -6519,14 +7170,10 @@ public class MultiThreadedServer {
                     int newPort = Integer.parseInt(publicAddress[1]);
 
                     if (!newIp.equals(lastSyncedIp) || newPort != lastSyncedPort) {
-                        System.out.println(YELLOW + "\n[Auto-Sync]: Localtonet address change detected. Updating JSONBin..." + RESET);
                         updateAddress(newIp, newPort);
                         lastSyncedIp = newIp;
                         lastSyncedPort = newPort;
-                        System.out.println(GREEN + "[Auto-Sync]: Successfully synced: " + YELLOW + newIp + ":" + newPort + RESET);
                     }
-                } else {
-                    System.out.println("[Auto-Sync]: Error: " + RED + "Cannot call API" + RESET);
                 }
             } catch (Exception e) {
                 System.err.println("[Auto-Sync]: System error: " + RED + e.getMessage() + RESET);
@@ -6548,82 +7195,48 @@ public class MultiThreadedServer {
         AuctionMonitor monitor = new AuctionMonitor(AuctionManager.getAuctionList());
         monitor.startMonitoring();
 
+        // KHỞI CHẠY WEBSOCKET SERVER
+        AuctionWSServer wsServer = new AuctionWSServer(PORT);
+        wsServer.start();
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             ClientManager.broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly" + RESET, null);
             System.out.println(YELLOW + "[System]: Server has been shutdown" + RESET);
             monitor.stopMonitoring();
             scheduler.shutdown();
-
-            clientPool.shutdown();
-
             ClientManager.shutdown();
+            try {
+                wsServer.stop();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }));
 
-        Thread serverChatThread = new Thread(() -> {
-            Scanner scanner = new Scanner(System.in);
-            while (true) {
-                if (scanner.hasNextLine()) {
-                    String serverMessage = scanner.nextLine();
-                    if (serverMessage.startsWith("/kick ")) {
-                        String target = serverMessage.substring(6);
-                        System.out.print("Reason: ");
-                        String reason = scanner.nextLine();
-                        ClientManager.kickTarget(target, reason);
-                        continue;
-                    }
-                    if (serverMessage.startsWith("/clist")) {
-                        ClientManager.getClientList();
-                        continue;
-                    }
-                    if (serverMessage.startsWith("/kickn ")) {
-                        try {
-                            String index = serverMessage.substring(7);
-                            System.out.print("Reason: ");
-                            String reason = scanner.nextLine();
-                            ClientManager.kickTargetByNumber(Integer.parseInt(index), reason);
-                        } catch (NumberFormatException e) {
-                            System.out.println("[System]: Error: " + RED + "Index of /kickn command must be an integer" + RESET);
-                        }
-                        continue;
-                    }
-                    if (serverMessage.startsWith("/redirect ")) {
-                        String[] data = serverMessage.substring(10).split(" ");
-                        if (data.length == 2) {
-                            ClientManager.redirectClient(data[0], data[1]);
-                        } else {
-                            System.out.println("[System]: Invalid format. Use /redirect <username> <url>");
-                        }
-                        continue;
-                    }
-                    if (serverMessage.startsWith("/msg ")) {
-                        try {
-                            int s = serverMessage.indexOf("\"");
-                            int e = serverMessage.lastIndexOf("\"");
-                            ClientManager.privateMsg(serverMessage.substring(5, s), serverMessage.substring(s + 1, e));
-                        } catch (StringIndexOutOfBoundsException e) {
-                            System.out.println("[System]: Invalid command format");
-                        }
-                        continue;
-                    }
-                    ClientManager.broadcast("[Admin]: " + serverMessage, null);
+        // --- LỒNG CHAT SERVER GIỮ NGUYÊN ---
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            if (scanner.hasNextLine()) {
+                String serverMessage = scanner.nextLine();
+                if (serverMessage.startsWith("/kick ")) {
+                    String target = serverMessage.substring(6);
+                    System.out.print("Reason: ");
+                    String reason = scanner.nextLine();
+                    ClientManager.kickTarget(target, reason);
+                    continue;
                 }
+                if (serverMessage.startsWith("/clist")) {
+                    ClientManager.getClientList();
+                    continue;
+                }
+                if (serverMessage.startsWith("/redirect ")) {
+                    String[] data = serverMessage.substring(10).split(" ");
+                    if (data.length == 2) {
+                        ClientManager.redirectClient(data[0], data[1]);
+                    }
+                    continue;
+                }
+                ClientManager.broadcast("[Admin]: " + serverMessage, null);
             }
-        });
-        serverChatThread.start();
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("[System]: Server is running on port " + YELLOW + PORT + RESET);
-            while (true) {
-                Socket socket = serverSocket.accept();
-                System.out.println("[System]: New client connected from: " + YELLOW + socket.getInetAddress().getHostAddress() + RESET);
-
-                ClientHandler clientHandler = new ClientHandler(socket, userController);
-
-                ClientManager.addClient(clientHandler);
-
-                clientPool.execute(clientHandler);
-            }
-        } catch (IOException e) {
-            System.out.println("[System]: Server Error: " + RED + e.getMessage() + RESET);
         }
     }
 }
@@ -7169,17 +7782,21 @@ public class PaymentHandler implements CommandHandler {
 package server.ServerExtension;
 
 import model.Auction;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AuctionManager {
-    private static final List<Auction> auctionList = new ArrayList<>();
+    private static final List<Auction> auctionList = new CopyOnWriteArrayList<>();
 
     private static final ConcurrentHashMap<String, Object> auctionLocks = new ConcurrentHashMap<>();
 
     public static Object getLockForAuction(String auctionId) {
         return auctionLocks.computeIfAbsent(auctionId, k -> new Object());
+    }
+
+    public static void removeAuctionLock(String auctionId){
+        auctionLocks.remove(auctionId);
     }
 
     public static synchronized void addAuctionToMonitor(Auction auction) {
@@ -7344,7 +7961,7 @@ public class AutoBidEngine {
     // Thread pool to run in background bot's loops (not blocking main)
     private static final int MAX_BOTPOOL_SIZE = 200;
     private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
-    
+
     private static final ServerBidderController bidderCtrl = new ServerBidderController();
 
     public static void triggerBotScan(Auction auction) {
@@ -7352,8 +7969,16 @@ public class AutoBidEngine {
             boolean priceChanged;
             do {
                 priceChanged = false;
-                // Cloning to avoid ConcurrentModificationException
-                List<AutoBid> bots = new ArrayList<>(auction.getActiveAutoBids());
+                // Lấy danh sách gốc
+                List<AutoBid> originalBots = auction.getActiveAutoBids();
+                List<AutoBid> bots = new ArrayList<>();
+
+                // Thực hiện Deep Copy: Tạo các object hoàn toàn mới dựa trên dữ liệu cũ
+                for (AutoBid original : originalBots) {
+                    AutoBid copy = new AutoBid(original.getBidder(), original.getMaxBid(), original.getIncrement());
+                    copy.setTimeRegistered(original.getTimeRegistered());
+                    bots.add(copy);
+                }
 
                 for (AutoBid bot : bots) {
                     // Ignore if the bot is the current winner
@@ -7383,7 +8008,9 @@ public class AutoBidEngine {
                             System.out.println("[Auto-Bid Engine]: Bot of \""
                                     + YELLOW + bot.getBidder().getUserName() + RESET + "\" does not have enough money. " +
                                     "Automatically remove bot");
-                            auction.getActiveAutoBids().remove(bot);
+                            auction.getActiveAutoBids().removeIf(b ->
+                                    b.getBidder().getId().equals(bot.getBidder().getId())
+                            );
                         }
                     }
                 }
