@@ -13,7 +13,9 @@ import static utils.ConsoleColors.*;
 
 public class AutoBidEngine {
     // Thread pool to run in background bot's loops (not blocking main)
-    private static final ExecutorService botPool = Executors.newCachedThreadPool();
+    private static final int MAX_BOTPOOL_SIZE = 200;
+    private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
+    
     private static final ServerBidderController bidderCtrl = new ServerBidderController();
 
     public static void triggerBotScan(Auction auction) {

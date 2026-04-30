@@ -16,6 +16,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -25,20 +26,26 @@ import java.util.regex.Pattern;
 import static utils.ConsoleColors.*;
 
 public class MultiThreadedServer {
-
+    // scheduler for updating new address
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
+    private static final int MAX_CLIENTPOOL_SIZE = 200; // Max number of threads for handling clients
+                                                        // Can be changed depend on scale
+    private static final ExecutorService clientPool = Executors.newFixedThreadPool(MAX_CLIENTPOOL_SIZE);
+
+    // .env data getter
     private static final Dotenv dotenv = Dotenv.load();
     private static final String BIN_ID = dotenv.get("BIN_ID");
     private static final String JSONBIN_KEY = dotenv.get("JSONBIN_API_KEY");
     private static final String LOCALTONET_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
 
+    // cached address data
     private static String lastSyncedIp = "";
     private static int lastSyncedPort = -1;
 
     private static final UserController userController = new UserController();
 
-    public static void updateBulletinBoard(String currentIp, int currentPort) {
+    public static void updateAddress(String currentIp, int currentPort) {
         try {
             String urlString = "https://api.jsonbin.io/v3/b/" + BIN_ID;
             URL url = new URL(urlString);
@@ -73,7 +80,7 @@ public class MultiThreadedServer {
         }
     }
 
-    private static String[] getLocaltonetAddress() {
+    private static String[] getAddress() {
         try {
             URL url = new URL("https://localtonet.com/api/GetTunnels");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -118,14 +125,14 @@ public class MultiThreadedServer {
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                String[] publicAddress = getLocaltonetAddress();
+                String[] publicAddress = getAddress();
                 if (publicAddress != null) {
                     String newIp = publicAddress[0];
                     int newPort = Integer.parseInt(publicAddress[1]);
 
                     if (!newIp.equals(lastSyncedIp) || newPort != lastSyncedPort) {
                         System.out.println(YELLOW + "\n[Auto-Sync]: Localtonet address change detected. Updating JSONBin..." + RESET);
-                        updateBulletinBoard(newIp, newPort);
+                        updateAddress(newIp, newPort);
                         lastSyncedIp = newIp;
                         lastSyncedPort = newPort;
                         System.out.println(GREEN + "[Auto-Sync]: Successfully synced: " + YELLOW + newIp + ":" + newPort + RESET);
@@ -139,13 +146,13 @@ public class MultiThreadedServer {
         }, 0, 30, TimeUnit.SECONDS);
 
         System.out.println("[System]: Getting address...");
-        String[] publicAddress = getLocaltonetAddress();
+        String[] publicAddress = getAddress();
 
         if (publicAddress != null) {
-            updateBulletinBoard(publicAddress[0], Integer.parseInt(publicAddress[1]));
+            updateAddress(publicAddress[0], Integer.parseInt(publicAddress[1]));
         } else {
             System.out.println(BLUE + "[System]: Cannot get Localtonet address. Using localhost" + RESET);
-            updateBulletinBoard("127.0.0.1", PORT);
+            updateAddress("127.0.0.1", PORT);
         }
 
         database.DatabaseManager.initializeDatabase();
@@ -158,6 +165,9 @@ public class MultiThreadedServer {
             System.out.println(YELLOW + "[System]: Server has been shutdown" + RESET);
             monitor.stopMonitoring();
             scheduler.shutdown();
+
+            clientPool.shutdown();
+
             ClientManager.shutdown();
         }));
 
@@ -221,7 +231,8 @@ public class MultiThreadedServer {
                 ClientHandler clientHandler = new ClientHandler(socket, userController);
 
                 ClientManager.addClient(clientHandler);
-                new Thread(clientHandler).start();
+
+                clientPool.execute(clientHandler);
             }
         } catch (IOException e) {
             System.out.println("[System]: Server Error: " + RED + e.getMessage() + RESET);

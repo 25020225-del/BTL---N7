@@ -1,9 +1,10 @@
 package database;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -13,8 +14,21 @@ public class DatabaseManager {
 
     private static final String DB_URL = "jdbc:sqlite:auction_system.db?journal_mode=WAL";
 
+    private static final HikariDataSource dataSource;
+
+    static {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(DB_URL);
+        config.setMaximumPoolSize(200);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(600000);
+
+        dataSource = new HikariDataSource(config);
+    }
+
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(DB_URL);
+        return dataSource.getConnection();
     }
 
     public static void initializeDatabase() {

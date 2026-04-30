@@ -22,10 +22,10 @@ Project/
 					    NetworkClient.java
 					    ServerDiscovery.java
 				gui/
-				    BidderController
 					ClientAdminController.java
 					ClientBidderController.java
 					ClientSellerController.java
+					ClientUserController.java
 					ItemDetailController.java
 					Launcher.java
 					LoginController.java
@@ -38,13 +38,14 @@ Project/
 					    QRCodeHelper.java
 					    Search.java
 					widget/
+					    AdminAuctionItem.java
 					    CountdownClock.java
 					    IconButton.java
 					    MinimalItem.java
 			resources/gui/
 			    AdminView.fxml
-			    Bidder.fxml
 				config.properties
+				CreateAuction.fxml
 				DualRoleView.fxml
 				index.css
 				Login.fxml
@@ -52,9 +53,9 @@ Project/
 				Productdetail.fxml
 				ProductItem.fxml
 				Register.fxml
-				SellerCreateAuction.fxml
 				SellingRequest.fxml
-				Stylist.fxml
+				Stylist.css
+				TableView.fxml
 				images/
 					logo.png
 					logo2.png
@@ -99,10 +100,12 @@ Project/
 				ClientHandler.java
 				MultiThreadedServer.java
 				ClientHandlerExtension/
+				    AdminActionHandler.java
 				    AuctionActionHandler.java
 				    AuthHandler.java
 				    CommandDispatcher.java
 				    CommandHandler.java
+				    FetchAuctionsHandler.java
 				    PaymentHandler.java
 				ServerExtension
 				    AuctionManager.java

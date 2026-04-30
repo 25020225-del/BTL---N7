@@ -11,7 +11,9 @@ import static utils.ConsoleColors.*;
 
 public class ClientManager {
     private static final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
-    private static final ExecutorService broadcastPool = Executors.newCachedThreadPool();
+
+    private static final int MAX_BROADCASTPOOL_SIZE = 200;
+    private static final ExecutorService broadcastPool = Executors.newFixedThreadPool(MAX_BROADCASTPOOL_SIZE);
 
     public static void addClient(ClientHandler clientHandler) {
         clients.add(clientHandler);
