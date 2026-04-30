@@ -8,11 +8,8 @@ import network.NetworkMessage;
 import java.io.*;
 import java.net.Socket;
 import java.util.function.Consumer;
-import java.util.Base64;
 import javax.crypto.SecretKey;
-import java.security.KeyFactory;
 import java.security.PublicKey;
-import java.security.spec.X509EncodedKeySpec;
 
 import utils.CryptoUtil;
 import static utils.ConsoleColors.*;
@@ -33,7 +30,7 @@ public class NetworkClient {
 
     public NetworkClient(String serverAddress, int port) {
         System.out.println("===========================================");
-        System.out.println("[System]: Trying to connect to server...");
+        System.out.println("[System]: Connecting to server...");
 
         for (int i = 0; i < 5; i++) {
             try {
@@ -112,7 +109,7 @@ public class NetworkClient {
 
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
-            System.out.println("[Error]: Cannot send command: \"" + YELLOW + command + RESET + "\" due to" + RED + " not being connected" + RESET);
+            System.out.println("[System]: Cannot send command: \"" + YELLOW + command + RESET + "\" due to" + RED + " not being connected." + RESET);
             return;
         }
 
@@ -122,21 +119,27 @@ public class NetworkClient {
             String encryptedPayload = CryptoUtil.encryptAES(json, myAesKey);
             out.println(encryptedPayload);
         } catch (Exception e) {
-            System.out.println("[Error]:" + RED + " JSON package error: " + e.getMessage() + RESET);
+            System.out.println("[System]: JSON package error: " + RED + e.getMessage() + RESET);
         }
     }
 
     private void listenToServer() {
         try {
             String encryptedMessage;
-            while ((encryptedMessage = in.readLine()) != null) {
-                String jsonMessage = CryptoUtil.decryptAES(encryptedMessage, myAesKey);
-                NetworkMessage response = mapper.readValue(jsonMessage, NetworkMessage.class);
 
-                dispatcher.dispatch(response, this);
+            while ((encryptedMessage = in.readLine()) != null) {
+                try {
+                    String jsonMessage = CryptoUtil.decryptAES(encryptedMessage, myAesKey);
+                    NetworkMessage response = mapper.readValue(jsonMessage, NetworkMessage.class);
+
+                    dispatcher.dispatch(response, this);
+
+                } catch (Exception e) {
+                    System.out.println("[Warning]: Ignore invalid data package: " + YELLOW + e.getMessage() + RESET);
+                }
             }
-        } catch (Exception e) {
-            System.out.println("[Error]: Lost connection or Decryption failed: " + RED + e.getMessage() + RESET);
+        } catch (IOException e) {
+            System.out.println("[System]: Lost connection to server: " + RED + e.getMessage() + RESET);
         }
     }
 }
