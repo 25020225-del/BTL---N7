@@ -81,7 +81,7 @@ public class ClientHandler implements Runnable {
                     NetworkMessage message = mapper.readValue(jsonMessage, NetworkMessage.class);
 
                     if (message.getCommand() == null) {
-                        System.out.println("[System](ClientHandler): \"" + YELLOW + clientName + RESET + "\" tried to send a null command.");
+                        System.out.println("[System](ClientHandler): \"" + YELLOW + clientName + RESET + "\" sent a null command.");
                         sendResponse("ERROR", "Command cannot be null");
                         continue;
                     }
@@ -94,7 +94,7 @@ public class ClientHandler implements Runnable {
                 }
             }
         } catch (IOException e) {
-            System.out.println("[System](ClientHandler): Lost connection with " + YELLOW + clientName + RESET);
+            System.out.println("[System]: Lost connection with " + YELLOW + clientName + RESET);
         } finally {
             closeConnection();
         }
