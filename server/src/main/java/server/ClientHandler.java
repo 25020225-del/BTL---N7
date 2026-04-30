@@ -2,6 +2,7 @@ package server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+
 import controller.UserController;
 import network.NetworkMessage;
 import server.ServerExtension.ClientManager;
@@ -10,6 +11,8 @@ import server.ClientHandlerExtension.*;
 import java.io.*;
 import java.net.Socket;
 import java.security.KeyPair;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Base64;
 import javax.crypto.SecretKey;
 
@@ -34,6 +37,9 @@ public class ClientHandler implements Runnable {
 
     private SecretKey sharedAesKey;
     private KeyPair rsaKeyPair;
+
+    private final BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>(200);
+    private volatile boolean isRunning = true;
 
     public ClientHandler(Socket socket, UserController userController) {
         this.socket = socket;
@@ -62,9 +68,9 @@ public class ClientHandler implements Runnable {
             sharedAesKey = CryptoUtil.decryptAESKeyWithRSA(encryptedAesKey, rsaKeyPair.getPrivate());
             System.out.println("[Security]: Handshake success with \"" + YELLOW + clientName + RESET + "\". AES Channel established.");
             // ---END HANDSHAKE---
-
+            startWriterThread();
             String encryptedJsonMessage;
-            while ((encryptedJsonMessage = in.readLine()) != null) {
+            while (isRunning && (encryptedJsonMessage = in.readLine()) != null) {
                 System.out.println("[System]: Getting encrypted JSON from Client: " + YELLOW + encryptedJsonMessage + RESET);
 
                 try {
@@ -75,7 +81,7 @@ public class ClientHandler implements Runnable {
                     NetworkMessage message = mapper.readValue(jsonMessage, NetworkMessage.class);
 
                     if (message.getCommand() == null) {
-                        System.out.println("[System]: \"" + YELLOW + clientName + RESET + "\" tried to send a null command");
+                        System.out.println("[System](ClientHandler): \"" + YELLOW + clientName + RESET + "\" tried to send a null command.");
                         sendResponse("ERROR", "Command cannot be null");
                         continue;
                     }
@@ -83,12 +89,12 @@ public class ClientHandler implements Runnable {
                     dispatcher.dispatch(message, this);
 
                 } catch (Exception e) {
-                    System.out.println("[Error]: Invalid JSON format: " + RED + e.getMessage() + RESET);
+                    System.out.println("[System](ClientHandler): Invalid JSON format: " + RED + e.getMessage() + RESET);
                     sendResponse("ERROR", "Invalid JSON format");
                 }
             }
         } catch (IOException e) {
-            System.out.println("[System]: Lost connection with " + (clientName != null ? clientName : "unknown Client"));
+            System.out.println("[System](ClientHandler): Lost connection with " + YELLOW + clientName + RESET);
         } finally {
             closeConnection();
         }
@@ -99,9 +105,14 @@ public class ClientHandler implements Runnable {
             NetworkMessage responseMsg = new NetworkMessage(command, data);
             String jsonOutput = mapper.writeValueAsString(responseMsg);
             String encryptedPayload = CryptoUtil.encryptAES(jsonOutput, sharedAesKey);
-            out.println(encryptedPayload);
+
+            // ....offer(...) = false => message box full => bad connection
+            if (!messageQueue.offer(encryptedPayload)) {
+                System.out.println("[Network]: " + YELLOW + clientName + RESET + " has bad connection. Force disconnect.");
+                closeConnection(); // Kick to protect server
+            }
         } catch (Exception e) {
-            System.out.println("[Error]: JSON serialization: " + RED + e.getMessage() + RESET);
+            System.out.println("[System](ClientHandler): JSON serialization error: " + RED + e.getMessage() + RESET);
         }
     }
 
@@ -111,11 +122,11 @@ public class ClientHandler implements Runnable {
 
     private void closeConnection() {
         ClientManager.removeClient(this);
-        System.out.println("[System]: \"" + YELLOW + clientName + RESET + "\" has stopped connecting");
+        System.out.println("[System]: \"" + YELLOW + clientName + RESET + "\" has disconnected.");
         try {
             if (socket != null && !socket.isClosed()) socket.close();
         } catch (IOException e) {
-            System.out.println("[Error]: Socket closing error: " + RED + e.getMessage() + RESET);
+            System.out.println("[System](ClientHandler): Socket closing error: " + RED + e.getMessage() + RESET);
         }
     }
 
@@ -124,8 +135,30 @@ public class ClientHandler implements Runnable {
         try {
             if (socket != null && !socket.isClosed()) socket.close();
         } catch (IOException e) {
-            System.out.println("[Error]: Socket closing error: " + RED + e.getMessage() + RESET);
+            System.out.println("[System](ClientHandler): Socket closing error: " + RED + e.getMessage() + RESET);
         }
+    }
+
+    private void startWriterThread() {
+        Thread writerThread = new Thread(() -> {
+            while (isRunning) {
+                try {
+                    String payload = messageQueue.take();
+                    out.println(payload);
+
+                    if (out.checkError()) {
+                        System.out.println("[Network]: Network error to " + YELLOW + clientName + RESET);
+                        closeConnection();
+                        break;
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+        writerThread.setDaemon(true);
+        writerThread.start();
     }
 
     public void redirectToWebsite(String url) {
