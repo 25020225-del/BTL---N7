@@ -56,7 +56,7 @@ public class NetworkClient {
      */
     public NetworkClient(String fullWsUrl) {
         System.out.println("===========================================");
-        System.out.println("[System]: Connecting to server via WebSocket...");
+        System.out.println("[System]: Connecting to server...");
 
         for (int i = 0; i < 5; i++) {
             try {
@@ -73,12 +73,15 @@ public class NetworkClient {
                     boolean isHandshakeDone = handshakeLatch.await(3, TimeUnit.SECONDS);
 
                     if (isHandshakeDone && isAesKeyEstablished) {
-                        System.out.println("[System]:" + GREEN + " Successfully connected and secured!" + RESET);
+                        System.out.println("[System]:" + GREEN + " Successfully connected." + RESET);
                         return;
                     } else {
-                        System.out.println("[System]:" + YELLOW + " Connected but AES Handshake timeout." + RESET);
+                        System.out.println("[System]:" + YELLOW + " Failed at try " + (i+1) + " - Handshake timeout" + RESET);
                         wsClient.close();
                     }
+                } else {
+                    // Handle failed connectBlocking() (server offline)
+                    System.out.println("[System]: " + YELLOW + "Failed at try " + (i + 1) + " - Connection refused by server." + RESET);
                 }
             } catch (Exception e) {
                 System.out.println("[System]:" + YELLOW + " Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);

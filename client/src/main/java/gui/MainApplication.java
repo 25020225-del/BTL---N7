@@ -119,7 +119,7 @@ public class MainApplication extends Application {
                     stage.setTitle("N7 Auction System - Client");
                     stage.setScene(sceneLogin);
 
-                    System.out.println("[Log]: " + GREEN + "Application started successfully" + RESET);
+                    System.out.println("[System]: " + GREEN + "Application started successfully" + RESET);
 
                     if (!networkClient.isConnected()) {
                         gui.process.AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.WARNING,

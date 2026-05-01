@@ -296,25 +296,21 @@ public class NetworkClient {
     private CountDownLatch handshakeLatch;
 
     /**
-     * Initializes the client and attempts to connect to the WebSocket server.
+     * Initializes the client and attempts to connect to the WebSocket server using the provided full URL.
      * <p>
      * Implements a retry mechanism (max 5 attempts). It blocks the initializing thread
-     * until both the WebSocket connection and the RSA-AES handshake are successfully completed,
-     * or until it times out.
+     * using CountDownLatch until both the WebSocket connection and the RSA-AES handshake
+     * are successfully completed, or until it times out.
      *
-     * @param serverAddress The server's IP address or domain.
-     * @param port          The server's WebSocket port.
+     * @param fullWsUrl The complete WebSocket URL (e.g., "wss://domain.com:443" or "ws://localhost:6969").
      */
-    public NetworkClient(String serverAddress, int port) {
+    public NetworkClient(String fullWsUrl) {
         System.out.println("===========================================");
-        System.out.println("[System]: Connecting to server via WebSocket...");
-
-        // Normalize URL to ws:// protocol
-        String wsUrl = "ws://" + serverAddress + ":" + port;
+        System.out.println("[System]: Connecting to server...");
 
         for (int i = 0; i < 5; i++) {
             try {
-                wsClient = new AuctionWSClient(new URI(wsUrl));
+                wsClient = new AuctionWSClient(new URI(fullWsUrl));
 
                 // Reset the synchronization latch for each connection attempt
                 handshakeLatch = new CountDownLatch(1);
@@ -323,16 +319,19 @@ public class NetworkClient {
                 boolean connected = wsClient.connectBlocking();
 
                 if (connected) {
-                    // Block for up to 3 seconds waiting for the handshake to finish in the background
+                    // Wait for the AES handshake to finish in the background (Max 3 seconds)
                     boolean isHandshakeDone = handshakeLatch.await(3, TimeUnit.SECONDS);
 
                     if (isHandshakeDone && isAesKeyEstablished) {
-                        System.out.println("[System]:" + GREEN + " Successfully connected and secured!" + RESET);
+                        System.out.println("[System]:" + GREEN + " Successfully connected." + RESET);
                         return;
                     } else {
-                        System.out.println("[System]:" + YELLOW + " Connected but AES Handshake timeout." + RESET);
+                        System.out.println("[System]:" + YELLOW + " Failed at try " + (i+1) + " - Handshake timeout" + RESET);
                         wsClient.close();
                     }
+                } else {
+                    // Handle failed connectBlocking() (server offline)
+                    System.out.println("[System]: " + YELLOW + "Failed at try " + (i + 1) + " - Connection refused by server." + RESET);
                 }
             } catch (Exception e) {
                 System.out.println("[System]:" + YELLOW + " Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
@@ -340,13 +339,13 @@ public class NetworkClient {
 
             if (i < 4) {
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(2000); // Wait 2 seconds before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                 }
             }
         }
-        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + wsUrl + RESET);
+        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + fullWsUrl + RESET);
     }
 
     /**
@@ -472,8 +471,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import static utils.ConsoleColors.*;
 
+/**
+ * Utility class responsible for discovering the server's public address and
+ * establishing the appropriate network connection.
+ */
 public class ServerDiscovery {
 
+    /**
+     * Fetches the server's dynamic IP and Port from a remote JSONBin storage.
+     *
+     * @param binId The JSONBin ID containing the server address.
+     * @return A String array containing the IP at index 0 and Port at index 1, or null if failed.
+     */
     private static String[] getServerAddress(String binId) {
         try {
             URL url = new URL("https://api.jsonbin.io/v3/b/" + binId);
@@ -508,6 +517,13 @@ public class ServerDiscovery {
         return null;
     }
 
+    /**
+     * Constructs the correct WebSocket URL based on the environment and establishes a connection.
+     * Automatically enforces WSS (WebSocket Secure) for remote connections.
+     *
+     * @param properties Application properties containing fallback values and API keys.
+     * @return An initialized NetworkClient instance.
+     */
     public static NetworkClient establishConnection(Properties properties) {
         String binID = properties.getProperty("binID");
         System.out.println("[System]: Fetching server address from remote storage...");
@@ -526,18 +542,30 @@ public class ServerDiscovery {
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("[System]: Connecting to: " + YELLOW + serverURL + ":" + port + RESET);
-        NetworkClient client = new NetworkClient(serverURL, port);
+        System.out.println("[System]: Target server address is: " + YELLOW + serverURL + ":" + port + RESET);
 
-        if (!client.isConnected() && !serverURL.equals("localhost") && !serverURL.equals("127.0.0.1")) {
+        // SECURE CONNECTION ROUTING:
+        // Automatically determine if the connection is local or remote.
+        boolean isLocal = serverURL.equals("localhost") || serverURL.equals("127.0.0.1");
+
+        // Enforce secure WebSocket (wss://) for any external domain/IP.
+        String protocol = isLocal ? "ws://" : "wss://";
+        String fullUrl = protocol + serverURL + ":" + port;
+
+        NetworkClient client = new NetworkClient(fullUrl);
+
+        // Fallback mechanism if the main remote connection fails
+        if (!client.isConnected() && !isLocal) {
             System.out.println("\n[System]:" + BLUE + " Online server is unreachable. Automatically falling back to localhost..." + RESET);
 
             String fallbackURL = properties.getProperty("fallbackServerURL", "localhost");
             int fallbackPort = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
 
-            System.out.println("[System]: Connecting to fallback: " + YELLOW + fallbackURL + ":" + fallbackPort + RESET);
+            // Local fallback uses standard ws://
+            String fallbackFullUrl = "ws://" + fallbackURL + ":" + fallbackPort;
+            System.out.println("[System]: Connecting to fallback: " + YELLOW + fallbackFullUrl + RESET);
 
-            client = new NetworkClient(fallbackURL, fallbackPort);
+            client = new NetworkClient(fallbackFullUrl);
         }
 
         if (!client.isConnected()) {
@@ -1705,7 +1733,7 @@ public class MainApplication extends Application {
                     stage.setTitle("N7 Auction System - Client");
                     stage.setScene(sceneLogin);
 
-                    System.out.println("[Log]: " + GREEN + "Application started successfully" + RESET);
+                    System.out.println("[System]: " + GREEN + "Application started successfully" + RESET);
 
                     if (!networkClient.isConnected()) {
                         gui.process.AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.WARNING,
@@ -5907,42 +5935,59 @@ package utils;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 import java.util.Base64;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Utility class for cryptographic operations.
+ * Implements secure RSA-2048 for key exchange and AES-256-GCM for payload encryption.
+ */
 public class CryptoUtil {
 
     private static final String RSA = "RSA";
-    private static final String AES = "AES";
+    private static final String AES_ALGO = "AES";
 
-    // 1. Generate an RSA key pair (for server use)
+    // GCM (Galois/Counter Mode) with NoPadding prevents ECB vulnerabilities and provides data authenticity
+    private static final String AES_CIPHER_ALGO = "AES/GCM/NoPadding";
+
+    private static final int GCM_TAG_LENGTH = 128; // Authentication tag length in bits
+    private static final int GCM_IV_LENGTH = 12;   // Initialization Vector length in bytes (96 bits is optimal for GCM)
+
+    /**
+     * Generates an RSA-2048 key pair for the server.
+     */
     public static KeyPair generateRSAKeyPair() {
         try {
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance(RSA);
             keyGen.initialize(2048);
             return keyGen.generateKeyPair();
         } catch (NoSuchAlgorithmException e) {
-            System.out.println("[Crypto]: Error: " + RED + "RSA algorithm error" + RESET);
+            System.out.println("[Crypto]: Error: " + RED + "RSA algorithm not found." + RESET);
             throw new RuntimeException("Cannot find RSA algorithm", e);
         }
     }
 
-    // 2. AES symmetric key (Client-side)
+    /**
+     * Generates a secure AES-256 symmetric key for the client.
+     */
     public static SecretKey generateAESKey() {
         try {
-            KeyGenerator keyGen = KeyGenerator.getInstance(AES);
-            keyGen.init(128);
+            KeyGenerator keyGen = KeyGenerator.getInstance(AES_ALGO);
+            keyGen.init(256);
             return keyGen.generateKey();
         } catch (NoSuchAlgorithmException e) {
-            System.out.println("[Crypto]: " + RED + "AES algorithm error" + RESET);
+            System.out.println("[Crypto]: " + RED + "AES algorithm not found." + RESET);
             throw new RuntimeException("Cannot find AES algorithm", e);
         }
     }
 
-    // 3. The client encrypts the AES key using the server's public key
+    /**
+     * Encrypts the AES key using the Server's RSA Public Key.
+     */
     public static String encryptAESKeyWithRSA(SecretKey aesKey, PublicKey rsaPublicKey) {
         try {
             Cipher cipher = Cipher.getInstance(RSA);
@@ -5950,52 +5995,85 @@ public class CryptoUtil {
             byte[] encryptedKey = cipher.doFinal(aesKey.getEncoded());
             return Base64.getEncoder().encodeToString(encryptedKey);
         } catch (GeneralSecurityException e) {
-            System.out.println("[Crypto]: " + RED + "Encrypting AES key error" + RESET);
+            System.out.println("[Crypto]: " + RED + "Error encrypting AES key." + RESET);
             throw new RuntimeException("RSA encrypting error", e);
         }
     }
 
-    // 4. Server decrypts to retrieve the AES key using the private key
+    /**
+     * Decrypts the AES key using the Server's RSA Private Key.
+     */
     public static SecretKey decryptAESKeyWithRSA(String encryptedAesKeyBase64, PrivateKey rsaPrivateKey) {
         try {
             Cipher cipher = Cipher.getInstance(RSA);
             cipher.init(Cipher.DECRYPT_MODE, rsaPrivateKey);
             // An IllegalArgumentException may occur if the Base64 string is corrupted or the data is lost.
             byte[] decryptedKey = cipher.doFinal(Base64.getDecoder().decode(encryptedAesKeyBase64));
-            return new SecretKeySpec(decryptedKey, 0, decryptedKey.length, AES);
+            return new SecretKeySpec(decryptedKey, 0, decryptedKey.length, AES_ALGO);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "Wrong key format or RSA decrypting error" + RESET);
+            System.out.println("[Crypto]: " + RED + "Wrong key format or RSA decrypting error." + RESET);
             throw new RuntimeException("RSA decrypting error", e);
         }
     }
 
-    // 5. Encrypt the JSON payload using AES
+    /**
+     * Encrypts the JSON payload using AES-256-GCM.
+     * The randomly generated IV is prepended to the final encrypted byte array.
+     */
     public static String encryptAES(String plainText, SecretKey secretKey) {
         try {
-            Cipher cipher = Cipher.getInstance(AES);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            // Generate a secure random Initialization Vector (IV) for each encryption
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            SecureRandom random = new SecureRandom();
+            random.nextBytes(iv);
+
+            GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+            Cipher cipher = Cipher.getInstance(AES_CIPHER_ALGO);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
+
             byte[] encryptedBytes = cipher.doFinal(plainText.getBytes());
-            return Base64.getEncoder().encodeToString(encryptedBytes);
+
+            // Prepend the IV to the encrypted payload so the decryptor can extract it
+            byte[] cipherMessage = new byte[GCM_IV_LENGTH + encryptedBytes.length];
+            System.arraycopy(iv, 0, cipherMessage, 0, GCM_IV_LENGTH);
+            System.arraycopy(encryptedBytes, 0, cipherMessage, GCM_IV_LENGTH, encryptedBytes.length);
+
+            return Base64.getEncoder().encodeToString(cipherMessage);
         } catch (GeneralSecurityException e) {
-            System.out.println("[Crypto]: " + RED + "Encrypting payload JSON error" + RESET);
+            System.out.println("[Crypto]: " + RED + "Error encrypting payload with AES-GCM." + RESET);
             throw new RuntimeException("Encrypting AES error", e);
         }
     }
 
-    // 6. Decrypt the JSON payload using AES
+    /**
+     * Decrypts the JSON payload using AES-256-GCM.
+     * Extracts the IV from the beginning of the byte array before decrypting.
+     */
     public static String decryptAES(String encryptedText, SecretKey secretKey) {
         try {
-            Cipher cipher = Cipher.getInstance(AES);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey);
-            byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedText));
+            byte[] cipherMessage = Base64.getDecoder().decode(encryptedText);
+
+            // Extract the IV from the first 12 bytes
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            System.arraycopy(cipherMessage, 0, iv, 0, GCM_IV_LENGTH);
+            GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+
+            // Extract the actual encrypted payload
+            int payloadLength = cipherMessage.length - GCM_IV_LENGTH;
+            byte[] encryptedBytes = new byte[payloadLength];
+            System.arraycopy(cipherMessage, GCM_IV_LENGTH, encryptedBytes, 0, payloadLength);
+
+            Cipher cipher = Cipher.getInstance(AES_CIPHER_ALGO);
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec);
+
+            byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
             return new String(decryptedBytes);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "Decrypting payload JSON error " +
-                    "(Data package is manipulated or Lost connection): " + RESET);
+            System.out.println("[Crypto]: " + RED + "AES Decryption failed (Data manipulated or corrupted)." + RESET);
             throw new RuntimeException("Decrypting AES error", e);
         }
     }
-    // 7. Reconstruct the PublicKey from a Base64 string (used by the client to read the server's key)
+    // Reconstruct the PublicKey from a Base64 string (used by the client to read the server's key)
     public static PublicKey getPublicKeyFromBase64(String base64Key) {
         try {
             byte[] keyBytes = Base64.getDecoder().decode(base64Key);
@@ -6003,7 +6081,7 @@ public class CryptoUtil {
             KeyFactory keyFactory = KeyFactory.getInstance(RSA);
             return keyFactory.generatePublic(spec);
         } catch (NoSuchAlgorithmException | java.security.spec.InvalidKeySpecException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "Server public key generating error" + RESET);
+            System.out.println("[Crypto]: " + RED + "Server public key generating error." + RESET);
             throw new RuntimeException("Public key getting error", e);
         }
     }
@@ -6139,15 +6217,27 @@ import java.util.concurrent.Callable;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Controller responsible for handling bidding operations on the server side.
+ * Manages manual bids, auto-bids, and ensures financial transactions
+ * are executed securely and atomically.
+ */
 public class ServerBidderController {
 
     /**
-     * Bid processing (Manual or Auto-bid) uses the Transaction Queue.
-     * @param isBot true if the command is triggered by an automated bot.
+     * Processes a bid placed by a user on a specific auction.
+     * This method encapsulates the entire bidding transaction, including security checks,
+     * atomic wallet deductions to prevent race conditions, and refunding the previous winner.
+     *
+     * @param currentUser The user attempting to place the bid.
+     * @param auction     The target auction for the bid.
+     * @param newMaxBid   The maximum amount the user is willing to bid.
+     * @param isBot       Indicates whether this bid was triggered by the automated AutoBidEngine (true) or a manual user action (false).
+     * @return {@code true} if the bid was successfully placed and recorded; {@code false} otherwise.
      */
     public boolean placeBidOnAuction(User currentUser, Auction auction, double newMaxBid, boolean isBot) {
 
-        // 1. Perform basic security checks before adding to the queue
+        // Prevent the seller from bidding on their own auction to avoid price manipulation
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             System.out.println("[System]: " + RED + "You cannot bid on your own auction" + RESET);
             return false;
@@ -6155,82 +6245,80 @@ public class ServerBidderController {
 
         final Bidder bidder = new Bidder(currentUser);
 
-        // 2. Encapsulating business logic into a Callable task
+        // Encapsulate the complex business and database logic into a Callable task
         Callable<Boolean> bidTask = () -> {
-            // Save the information of the previous winner for a refund
+            // Snapshot the previous winner's state for refund processing
             Bidder previousWinner = auction.getWinningBidder();
             double amountToRefund = auction.getHighestMaxBid();
 
             try (Connection conn = DatabaseManager.getConnection()) {
-                // Start a Database Transaction
+                // Initialize a database transaction to ensure ACID properties
                 conn.setAutoCommit(false);
 
                 try {
-                    // --- STEP 1: CHECK THE WALLET BALANCE FROM THE DATABASE ---
-                    double currentBalance = 0;
-                    String checkWalletSql = "SELECT balance FROM wallets WHERE user_id = ?";
-                    try (PreparedStatement pstmt = conn.prepareStatement(checkWalletSql)) {
-                        pstmt.setString(1, bidder.getId());
-                        ResultSet rs = pstmt.executeQuery();
-                        if (rs.next()) {
-                            currentBalance = rs.getDouble("balance");
-                        } else {
-                            System.out.println("[System]: Balance not found for: " + YELLOW + bidder.getId() + RESET);
+                    // --- STEP 1: ATOMIC WALLET DEDUCTION (ANTI RACE-CONDITION) ---
+                    // Combine SELECT and UPDATE into a single atomic query.
+                    // This guarantees the balance never drops below 0 even under heavy concurrency.
+                    String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+
+                    try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
+                        pstmt.setDouble(1, newMaxBid);       // Amount to deduct
+                        pstmt.setString(2, bidder.getId());  // Target user
+                        pstmt.setDouble(3, newMaxBid);       // Condition: Ensure balance is at least the bid amount
+
+                        int rowsAffected = pstmt.executeUpdate();
+
+                        // If rowsAffected is 0, the user lacks sufficient funds or the record does not exist.
+                        if (rowsAffected == 0) {
+                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
                             conn.rollback();
                             return false;
                         }
                     }
 
-                    if (currentBalance < newMaxBid) {
-                        System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
-                        conn.rollback();
-                        return false;
-                    }
-
                     // --- STEP 2: PROCESSING AUCTION LOGIC IN RAM ---
-                    // This function performs a comparison of the current bid
+                    // Now that funds are securely locked/deducted in the DB, proceed with auction validation.
                     boolean isSuccess = auction.placeBid(bidder, newMaxBid);
 
                     if (isSuccess) {
                         String now = LocalDateTime.now().toString();
 
-                        // --- STEP 3: UPDATE FINANCIAL DATA (UPDATE DB) ---
-                        String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
+                        // --- STEP 3: RECORD TRANSACTIONS & REFUND PREVIOUS WINNER ---
                         String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
 
-                        // A. Deduct from new bidder's deposit
-                        try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
-                            pstmt.setDouble(1, -newMaxBid);
-                            pstmt.setString(2, bidder.getId());
-                            pstmt.executeUpdate();
-                        }
+                        // A. Log the deduction transaction for the new bidder
                         try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
                             pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
                             pstmt.setString(2, bidder.getId());
                             pstmt.setDouble(3, -newMaxBid);
-                            pstmt.setString(4, "Set the price for the session: " + auction.getId());
+                            pstmt.setString(4, "Auction bid placed for session: " + auction.getId());
                             pstmt.setString(5, now);
                             pstmt.executeUpdate();
                         }
 
-                        // B. Refund to the previous winner (if applicable and not themselves)
+                        // B. Refund the previous winner (if applicable and if they are not outbidding themselves)
                         if (previousWinner != null && !previousWinner.getId().equals(bidder.getId())) {
-                            try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
+                            String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
+
+                            // Return the locked funds to the previous winner's wallet
+                            try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
                                 pstmt.setDouble(1, amountToRefund);
                                 pstmt.setString(2, previousWinner.getId());
                                 pstmt.executeUpdate();
                             }
+
+                            // Log the refund transaction
                             try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
                                 pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
                                 pstmt.setString(2, previousWinner.getId());
                                 pstmt.setDouble(3, amountToRefund);
-                                pstmt.setString(4, "Refund for price overrun during the session: " + auction.getId());
+                                pstmt.setString(4, "Refund for price overrun during session: " + auction.getId());
                                 pstmt.setString(5, now);
                                 pstmt.executeUpdate();
                             }
                         }
 
-                        // C. Save Bid History (Bid Transaction)
+                        // C. Persist the Bid History (Bid Transaction)
                         String bidLogSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
                         try (PreparedStatement pstmt = conn.prepareStatement(bidLogSql)) {
                             pstmt.setString(1, "BID-" + System.currentTimeMillis());
@@ -6241,7 +6329,7 @@ public class ServerBidderController {
                             pstmt.executeUpdate();
                         }
 
-                        // D. Current price update for the auction
+                        // D. Update the current active price of the auction in the database
                         String updateAuctionSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
                         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
                             pstmt.setDouble(1, auction.getCurrentPrice());
@@ -6249,12 +6337,14 @@ public class ServerBidderController {
                             pstmt.executeUpdate();
                         }
 
-                        // End of the financial trading cycle
+                        // Commit all database changes as a single unit of work
                         conn.commit();
-                        System.out.println("[System]: Successfully bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+                        System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                         return true;
 
                     } else {
+                        // RAM logic failed (e.g., bid is too low, or auction has ended).
+                        // Rollback the DB transaction to revert the wallet deduction and leave the DB untouched.
                         conn.rollback();
                         return false;
                     }
@@ -6270,14 +6360,13 @@ public class ServerBidderController {
             }
         };
 
-        // 3. Submit the task to a single queue and wait for the result (Blocking)
+        // Submit the task to the queue manager and wait for the result
+        // Note: Using .get() is synchronous and will block the current thread.
         try {
-            // .get() will pause the current Socket thread to wait for the Worker Thread to finish processing the task
             boolean finalResult = TransactionManager.submitTask(bidTask).get();
 
-            // 4. If successful and this is a real user, enable the Engine for the response bot
+            // If the transaction was successful, notify connected clients and trigger bots
             if (finalResult) {
-                // Create a data package contain new auction info
                 Map<String, Object> updateData = new HashMap<>();
                 updateData.put("auctionId", auction.getId());
                 updateData.put("newPrice", auction.getCurrentPrice());
@@ -6285,6 +6374,7 @@ public class ServerBidderController {
 
                 server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
 
+                // Only trigger the AutoBidEngine if this was a manual user action to prevent infinite bot loops
                 if (!isBot) {
                     AutoBidEngine.triggerBotScan(auction);
                 }
@@ -6292,51 +6382,67 @@ public class ServerBidderController {
             return finalResult;
 
         } catch (Exception e) {
-            System.out.println("[System]: The order cannot be executed via the order queue: " + RED + e.getMessage() + RESET);
+            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + e.getMessage() + RESET);
             return false;
         }
     }
 
     /**
-     * Set up Auto-bid (Automatic Bidding)
+     * Registers an auto-bid configuration for a user on a specific auction.
+     * The system will automatically place bids on behalf of the user up to the specified maximum amount.
+     *
+     * @param currentUser The user setting up the auto-bid.
+     * @param auction     The target auction.
+     * @param maxBid      The absolute maximum amount the user is willing to pay.
+     * @param increment   The incremental amount to increase the bid by when outbidding competitors.
+     * @return {@code true} if the auto-bid configuration was successfully verified and saved; {@code false} otherwise.
      */
     public boolean setupAutoBid(User currentUser, Auction auction, double maxBid, double increment) {
+
+        // Prevent sellers from setting auto-bids on their own items
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[System]: " + RED + "You cannot set auto-bid on your own auction" + RESET);
+            System.out.println("[System]: " + RED + "You cannot set an auto-bid on your own auction" + RESET);
             return false;
         }
 
         final Bidder bidder = new Bidder(currentUser);
 
-        // Logic in-memory check
+        // Verify logical constraints in RAM (e.g., maxBid > currentPrice)
         boolean isSuccess = auction.registerAutoBid(bidder, maxBid, increment);
 
         if (isSuccess) {
             Callable<Boolean> saveAutoBidTask = () -> {
                 String sql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
+
                 try (Connection conn = DatabaseManager.getConnection();
                      PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
                     pstmt.setString(1, "AB-" + System.currentTimeMillis());
                     pstmt.setString(2, auction.getId());
                     pstmt.setString(3, bidder.getId());
                     pstmt.setDouble(4, maxBid);
                     pstmt.setDouble(5, increment);
+
                     pstmt.executeUpdate();
                     return true;
                 } catch (SQLException e) {
+                    System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
                     return false;
                 }
             };
 
             try {
+                // Execute the database insertion task
                 boolean saved = TransactionManager.submitTask(saveAutoBidTask).get();
                 if (saved) {
-                    System.out.println("[System]: Auto-Bid Setting for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved.");
+                    System.out.println("[System]: Auto-Bid Configuration for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved.");
+
+                    // Trigger the bot scan to process the newly added configuration immediately
                     AutoBidEngine.triggerBotScan(auction);
                     return true;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                System.out.println("[System]: Execution error while saving auto-bid: " + RED + e.getMessage() + RESET);
             }
         }
         return false;
