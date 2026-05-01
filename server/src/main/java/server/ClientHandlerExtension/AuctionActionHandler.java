@@ -2,6 +2,7 @@ package server.ClientHandlerExtension;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import model.ItemFactory;
 import network.NetworkMessage;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
@@ -9,7 +10,11 @@ import server.ServerExtension.ClientManager;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Handles requests from clients to create new auction sessions.
+ */
 public class AuctionActionHandler implements CommandHandler {
+
     private final ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Override
@@ -19,17 +24,25 @@ public class AuctionActionHandler implements CommandHandler {
         }
     }
 
+    /**
+     * Processes the incoming JSON payload to construct a new auction.
+     * Utilizes the ItemFactory to instantiate the correct item subtype.
+     *
+     * @param data   The JSON payload containing auction parameters.
+     * @param client The client requesting the creation.
+     */
     private void processCreateAuction(Object data, ClientHandler client) {
         try {
-            // Get user identification from login session
+            // Retrieve user identification from the active login session
             model.User authenticatedUser = client.getUser();
 
-            // Security check: not login or not seller = block
+            // Security check: Reject if the user is not authenticated
             if (authenticatedUser == null) {
                 client.sendResponse("ERROR", "You do not have permission to use this command.");
                 return;
             }
 
+            // Extract data from the incoming JSON payload
             java.util.Map<String, String> map = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
 
             String itemName = map.get("itemName");
@@ -38,9 +51,15 @@ public class AuctionActionHandler implements CommandHandler {
             double bidIncrement = Double.parseDouble(map.get("bidIncrement"));
             int durationMinutes = Integer.parseInt(map.get("durationMinutes"));
 
-            model.Item item = new model.Art("ITM-" + System.currentTimeMillis(), itemName, description, startingPrice);
+            // Extract item type if provided by the GUI dropdown, otherwise default to TANGIBLE
+            String itemType = map.containsKey("itemType") ? map.get("itemType") : ItemFactory.TYPE_TANGIBLE;
 
-            // DIRECTLY USE AUTHENTICATED USER
+            String newItemId = "ITM-" + System.currentTimeMillis();
+
+            // FACTORY PATTERN APPLIED: Dynamically create the item based on its generalized category
+            model.Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
+
+            // Forward the creation request to the Seller Controller
             controller.ServerSellerController sellerCtrl = new controller.ServerSellerController();
             model.Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, durationMinutes);
 
@@ -48,20 +67,22 @@ public class AuctionActionHandler implements CommandHandler {
                 newAuction.setStatus(model.Auction.STATUS_RUNNING);
                 AuctionManager.addAuctionToMonitor(newAuction);
 
-                System.out.println("[System]: Seller \"" + YELLOW + authenticatedUser.getName() + RESET + "\" has created an auction");
+                System.out.println("[System]: Seller \"" + YELLOW + authenticatedUser.getName() + RESET + "\" has created an auction.");
 
                 String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
                 ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
 
                 client.sendResponse("CREATE_SUCCESS", "Successfully created auction.");
+
+                // Broadcast the newly created auction to all clients for real-time UI updates
                 ClientManager.broadcast("NEW_AUCTION_ADDED", newAuction, null);
             } else {
-                client.sendResponse("ERROR", "Cannot create auction due to database error.");
+                client.sendResponse("ERROR", "Cannot create auction due to a database error.");
             }
 
         } catch (Exception e) {
-            System.out.println("[System](AuctionActionHandler): Error: " + RED + e.getMessage() + RESET);
-            client.sendResponse("ERROR", "Invalid data to create auction.");
+            System.out.println("[System](AuctionActionHandler): Error parsing creation data: " + RED + e.getMessage() + RESET);
+            client.sendResponse("ERROR", "Invalid data format provided for creating auction.");
         }
     }
 }
