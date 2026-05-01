@@ -73,7 +73,11 @@ public class NetworkClient {
                     boolean isHandshakeDone = handshakeLatch.await(3, TimeUnit.SECONDS);
 
                     if (isHandshakeDone && isAesKeyEstablished) {
-                        System.out.println("[System]:" + GREEN + " Successfully connected." + RESET);
+                        System.out.println("[System]:" + GREEN + " Successfully connected and secured." + RESET);
+
+                        // TIME SYNC INITIATION: Ping the server to synchronize clocks securely
+                        this.sendMessage("TIME_SYNC", System.currentTimeMillis());
+
                         return;
                     } else {
                         System.out.println("[System]:" + YELLOW + " Failed at try " + (i+1) + " - Handshake timeout" + RESET);

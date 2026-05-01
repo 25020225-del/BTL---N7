@@ -8,6 +8,10 @@ import java.util.Map;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Central dispatcher that routes incoming JSON commands from the server
+ * to their appropriate dedicated handler classes.
+ */
 public class ResponseDispatcher {
     private final Map<String, ResponseHandler> handlers = new HashMap<>();
 
@@ -19,6 +23,7 @@ public class ResponseDispatcher {
         ClientSystemHandler systemHandler = new ClientSystemHandler();
         handlers.put("REDIRECT", systemHandler);
         handlers.put("KICKED", systemHandler);
+        handlers.put("TIME_SYNC_ACK", systemHandler);
 
         ClientAuctionHandler auctionHandler = new ClientAuctionHandler();
         handlers.put("CLI_BROADCAST", auctionHandler);
@@ -41,6 +46,7 @@ public class ResponseDispatcher {
                 System.out.println("[Error]: Client Dispatcher error for \"" + YELLOW + command + RESET + "\": " + RED + e.getMessage() + RESET);
             }
         } else {
+            // Unhandled commands are forwarded directly to the UI component if a callback is registered
             if (client.getOnMessageReceived() != null) {
                 Platform.runLater(() -> client.getOnMessageReceived().accept(message));
             }

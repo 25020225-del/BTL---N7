@@ -7,7 +7,7 @@ import controller.UserController;
 import network.NetworkMessage;
 import org.java_websocket.WebSocket;
 import server.ServerExtension.ClientManager;
-import server.ClientHandlerExtension.*;
+import server.handler.*;
 
 import java.security.KeyPair;
 import java.util.Base64;

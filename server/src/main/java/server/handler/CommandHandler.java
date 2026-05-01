@@ -1,4 +1,4 @@
-package server.ClientHandlerExtension;
+package server.handler;
 
 import network.NetworkMessage;
 import server.ClientHandler;

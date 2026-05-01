@@ -7006,7 +7006,7 @@ import controller.UserController;
 import network.NetworkMessage;
 import org.java_websocket.WebSocket;
 import server.ServerExtension.ClientManager;
-import server.ClientHandlerExtension.*;
+import server.handler.*;
 
 import java.security.KeyPair;
 import java.util.Base64;
@@ -7517,7 +7517,7 @@ public class MultiThreadedServer {
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ClientHandlerExtension\AdminActionHandler.java ///
 ======================================================================
 
-package server.ClientHandlerExtension;
+package server.handler;
 
 import database.DatabaseManager;
 import database.TransactionManager;
@@ -7587,7 +7587,7 @@ public class AdminActionHandler implements CommandHandler {
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ClientHandlerExtension\AuctionActionHandler.java ///
 ======================================================================
 
-package server.ClientHandlerExtension;
+package server.handler;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7659,7 +7659,7 @@ public class AuctionActionHandler implements CommandHandler {
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ClientHandlerExtension\AuthHandler.java ///
 ======================================================================
 
-package server.ClientHandlerExtension;
+package server.handler;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7733,7 +7733,7 @@ public class AuthHandler implements CommandHandler {
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ClientHandlerExtension\CommandDispatcher.java ///
 ======================================================================
 
-package server.ClientHandlerExtension;
+package server.handler;
 
 import network.NetworkMessage;
 import server.ClientHandler;
@@ -7795,7 +7795,7 @@ public class CommandDispatcher {
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ClientHandlerExtension\CommandHandler.java ///
 ======================================================================
 
-package server.ClientHandlerExtension;
+package server.handler;
 
 import network.NetworkMessage;
 import server.ClientHandler;
@@ -7808,7 +7808,7 @@ public interface CommandHandler {
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ClientHandlerExtension\FetchAuctionsHandler.java ///
 ======================================================================
 
-package server.ClientHandlerExtension;
+package server.handler;
 
 import database.DatabaseManager;
 import network.NetworkMessage;
@@ -7882,7 +7882,7 @@ public class FetchAuctionsHandler implements CommandHandler {
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ClientHandlerExtension\PaymentHandler.java ///
 ======================================================================
 
-package server.ClientHandlerExtension;
+package server.handler;
 
 import controller.ServerPaymentController;
 import model.User;

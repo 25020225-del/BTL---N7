@@ -1,4 +1,4 @@
-package server.ClientHandlerExtension;
+package server.handler;
 
 import controller.ServerPaymentController;
 import model.User;
