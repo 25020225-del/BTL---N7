@@ -2,10 +2,17 @@ package model;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.PriorityQueue;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Represents an auction session in the system.
+ * Manages the item details, seller, current bidding state, bid history,
+ * and automated bot queue (AutoBids).
+ */
 public class Auction extends Entity {
 
     public static final String STATUS_PENDING  = "PENDING_APPROVAL";
@@ -27,14 +34,30 @@ public class Auction extends Entity {
     private String status;
     private LocalDateTime endTime;
     private List<BidTransaction> bidHistory;
-    private List<AutoBid> activeAutoBids;
+
+    // PriorityQueue to guarantee that auto-bids are processed based on their registration time
+    private PriorityQueue<AutoBid> activeAutoBids;
     private LocalDateTime startTime;
 
+    /**
+     * Default constructor.
+     * Initializes the auto-bid queue with a time-based comparator.
+     */
     public Auction() {
         super();
-        this.activeAutoBids = new ArrayList<>();
+        this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
     }
 
+    /**
+     * Full constructor to initialize a new auction session.
+     *
+     * @param id           The unique identifier of the auction.
+     * @param item         The item being auctioned.
+     * @param seller       The user selling the item.
+     * @param bidIncrement The minimum increment required for a new bid.
+     * @param startTime    The starting time of the auction.
+     * @param endTime      The scheduled ending time of the auction.
+     */
     public Auction(String id, Item item, Seller seller, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
         super(id);
         this.item = item;
@@ -45,7 +68,9 @@ public class Auction extends Entity {
         this.startTime = startTime;
         this.endTime = endTime;
         this.bidHistory = new ArrayList<>();
-        this.activeAutoBids = new ArrayList<>();
+
+        // Priority queue sorted by earliest registration time first
+        this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
 
         if (seller.isGood()) {
             this.status = STATUS_OPEN;
@@ -54,10 +79,11 @@ public class Auction extends Entity {
         }
     }
 
+    /**
+     * Factory method to generate a new Auction instance with calculated start and end times.
+     */
     public static Auction createNewAuction(Item item, Seller seller, double bidIncrement, int durationMinutes) {
-
         String newId = "AUC-" + System.currentTimeMillis();
-
         LocalDateTime start = LocalDateTime.now();
         LocalDateTime end = start.plusMinutes(durationMinutes);
 
@@ -71,6 +97,8 @@ public class Auction extends Entity {
 
         return newAuction;
     }
+
+    // --- GETTERS & SETTERS ---
 
     public Item getItem() { return item; }
     public void setItem(Item item) { this.item = item; }
@@ -102,8 +130,18 @@ public class Auction extends Entity {
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
 
-    public List<AutoBid> getActiveAutoBids() {return activeAutoBids;}
+    public PriorityQueue<AutoBid> getActiveAutoBids() { return activeAutoBids; }
 
+    // --- BUSINESS LOGIC METHODS ---
+
+    /**
+     * Core logic to process a bid. Evaluates validity, manages outbidding,
+     * and implements anti-sniping mechanisms.
+     *
+     * @param bidder    The user placing the bid.
+     * @param newMaxBid The bid amount.
+     * @return true if the bid is valid and successfully placed.
+     */
     public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
             System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
@@ -126,16 +164,19 @@ public class Auction extends Entity {
             return false;
         }
 
+        // Logic for handling the winning bidder and outbidding
         if (winningBidder == null) {
             currentPrice = item.getStartingPrice();
             highestMaxBid = newMaxBid;
             winningBidder = bidder;
 
         } else if (bidder.getId().equals(winningBidder.getId())) {
+            // User is increasing their own maximum bid limit
             if (newMaxBid > highestMaxBid) {
                 highestMaxBid = newMaxBid;
             }
         } else {
+            // User is trying to outbid the current winner
             if (newMaxBid > highestMaxBid) {
                 currentPrice = highestMaxBid + bidIncrement;
                 if (currentPrice > newMaxBid) {
@@ -154,6 +195,7 @@ public class Auction extends Entity {
         BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
         bidHistory.add(transaction);
 
+        // Anti-Sniping Algorithm: Extend time by 2 minutes if a bid is placed in the last minute
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             endTime = endTime.plusMinutes(2);
             System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + RESET);
@@ -162,6 +204,9 @@ public class Auction extends Entity {
         return true;
     }
 
+    /**
+     * Checks if the auction duration has passed and transitions the state appropriately.
+     */
     public synchronized void closeAuctionIfTimeIsUp() {
         if (this.status.equals(STATUS_RUNNING) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
@@ -175,6 +220,14 @@ public class Auction extends Entity {
         }
     }
 
+    /**
+     * Registers a new auto-bid bot into the auction's priority queue.
+     *
+     * @param bidder        The owner of the bot.
+     * @param maxBid        The absolute maximum limit for this bot.
+     * @param userIncrement The step amount to increase when outbidding competitors.
+     * @return true if successfully registered.
+     */
     public synchronized boolean registerAutoBid(Bidder bidder, double maxBid, double userIncrement) {
         if (!status.equals(STATUS_RUNNING)) {
             System.out.println("[Error]: " + RED + "Auction is not in RUNNING status" + RESET);
@@ -187,9 +240,9 @@ public class Auction extends Entity {
         }
 
         AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
-        activeAutoBids.add(newAutoBid);
 
-        activeAutoBids.sort((b1, b2) -> b1.getTimeRegistered().compareTo(b2.getTimeRegistered()));
+        // PriorityQueue automatically sorts the elements based on the Comparator (registration time)
+        activeAutoBids.offer(newAutoBid);
 
         System.out.println(BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + RESET);
 
@@ -205,5 +258,4 @@ public class Auction extends Entity {
                 "Leading Bidder: " + (winningBidder != null ? winningBidder.getUserName() : "None") + "\n" +
                 "Status: " + this.status;
     }
-
 }

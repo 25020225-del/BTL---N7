@@ -6214,33 +6214,34 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 
 import static utils.ConsoleColors.*;
 
 /**
  * Controller responsible for handling bidding operations on the server side.
  * Manages manual bids, auto-bids, and ensures financial transactions
- * are executed securely and atomically.
+ * are executed securely, atomically, and asynchronously.
  */
 public class ServerBidderController {
 
     /**
-     * Processes a bid placed by a user on a specific auction.
-     * This method encapsulates the entire bidding transaction, including security checks,
-     * atomic wallet deductions to prevent race conditions, and refunding the previous winner.
+     * Processes a bid placed by a user asynchronously to prevent blocking the WebSocket NIO threads.
+     * This method encapsulates the entire bidding transaction, ensuring atomic wallet
+     * deductions and returning a Future for callback execution.
      *
      * @param currentUser The user attempting to place the bid.
      * @param auction     The target auction for the bid.
      * @param newMaxBid   The maximum amount the user is willing to bid.
-     * @param isBot       Indicates whether this bid was triggered by the automated AutoBidEngine (true) or a manual user action (false).
-     * @return {@code true} if the bid was successfully placed and recorded; {@code false} otherwise.
+     * @param isBot       Indicates whether this bid was triggered by the automated AutoBidEngine.
+     * @return A CompletableFuture representing the asynchronous execution of the bid.
      */
-    public boolean placeBidOnAuction(User currentUser, Auction auction, double newMaxBid, boolean isBot) {
+    public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, double newMaxBid, boolean isBot) {
 
         // Prevent the seller from bidding on their own auction to avoid price manipulation
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             System.out.println("[System]: " + RED + "You cannot bid on your own auction" + RESET);
-            return false;
+            return CompletableFuture.completedFuture(false);
         }
 
         final Bidder bidder = new Bidder(currentUser);
@@ -6360,11 +6361,10 @@ public class ServerBidderController {
             }
         };
 
-        // Submit the task to the queue manager and wait for the result
-        // Note: Using .get() is synchronous and will block the current thread.
-        try {
-            boolean finalResult = TransactionManager.submitTask(bidTask).get();
-
+        // PERFORMANCE FIX: Submit the task to the queue manager and return the CompletableFuture directly.
+        // use .thenApply() to handle the result asynchronously once the DB worker finishes,
+        // rather than using .get() which would block the current WebSocket network thread.
+        return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
             // If the transaction was successful, notify connected clients and trigger bots
             if (finalResult) {
                 Map<String, Object> updateData = new HashMap<>();
@@ -6380,11 +6380,10 @@ public class ServerBidderController {
                 }
             }
             return finalResult;
-
-        } catch (Exception e) {
-            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + e.getMessage() + RESET);
+        }).exceptionally(ex -> {
+            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
             return false;
-        }
+        });
     }
 
     /**
@@ -6818,10 +6817,16 @@ public class DatabaseManager {
     static {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(DB_URL);
-        config.setMaximumPoolSize(200);
-        config.setMinimumIdle(2);
+        config.setMaximumPoolSize(5); // SQLite does not support highly concurrent writes
+        config.setMinimumIdle(1);
         config.setConnectionTimeout(30000);
         config.setIdleTimeout(600000);
+
+        // Enable Write-Ahead Logging (WAL) for better read/write concurrency
+        config.addDataSourceProperty("journal_mode", "WAL");
+
+        // Instruct SQLite to queue threads and wait up to 5000ms if the DB is locked
+        config.addDataSourceProperty("busy_timeout", "5000");
 
         dataSource = new HikariDataSource(config);
     }
@@ -8224,65 +8229,97 @@ import java.util.concurrent.Executors;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Manages automated bidding operations asynchronously.
+ * Prevents thread starvation by using recursive callbacks instead of blocking loops.
+ */
 public class AutoBidEngine {
-    // Thread pool to run in background bot's loops (not blocking main)
-    private static final int MAX_BOTPOOL_SIZE = 200;
+
+    // Reduced thread pool size since tasks are now non-blocking
+    private static final int MAX_BOTPOOL_SIZE = 50;
     private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
 
     private static final ServerBidderController bidderCtrl = new ServerBidderController();
 
+    /**
+     * Initiates the auto-bid scanning process for a specific auction.
+     * @param auction The auction to scan for potential auto-bids.
+     */
     public static void triggerBotScan(Auction auction) {
-        botPool.submit(() -> {
-            boolean priceChanged;
-            do {
-                priceChanged = false;
-                // Lấy danh sách gốc
-                List<AutoBid> originalBots = auction.getActiveAutoBids();
-                List<AutoBid> bots = new ArrayList<>();
+        botPool.submit(() -> processNextBot(auction));
+    }
 
-                // Thực hiện Deep Copy: Tạo các object hoàn toàn mới dựa trên dữ liệu cũ
-                for (AutoBid original : originalBots) {
-                    AutoBid copy = new AutoBid(original.getBidder(), original.getMaxBid(), original.getIncrement());
-                    copy.setTimeRegistered(original.getTimeRegistered());
-                    bots.add(copy);
-                }
+    /**
+     * Recursively and asynchronously processes bots one by one.
+     * Evaluates constraints and submits bids without blocking the active thread.
+     *
+     * @param auction The auction being processed.
+     */
+    private static void processNextBot(Auction auction) {
+        // Double-check if the auction is still running before processing bots
+        if (!auction.getStatus().equals(Auction.STATUS_RUNNING)) {
+            return;
+        }
 
-                for (AutoBid bot : bots) {
-                    // Ignore if the bot is the current winner
-                    if (auction.getWinningBidder() != null &&
-                            bot.getBidder().getId().equals(auction.getWinningBidder().getId())) {
-                        continue;
-                    }
+        List<AutoBid> originalBots = auction.getActiveAutoBids();
+        if (originalBots.isEmpty()) return;
 
-                    // Min amount to surpass current winner
-                    double requiredBid = (auction.getWinningBidder() == null) ?
-                            auction.getItem().getStartingPrice() :
-                            auction.getCurrentPrice() + bot.getIncrement();
+        // Perform Deep Copy to prevent ConcurrentModificationException during asynchronous execution
+        List<AutoBid> bots = new ArrayList<>();
+        for (AutoBid original : originalBots) {
+            AutoBid copy = new AutoBid(original.getBidder(), original.getMaxBid(), original.getIncrement());
+            copy.setTimeRegistered(original.getTimeRegistered());
+            bots.add(copy);
+        }
 
-                    // if max bid can afford
-                    if (requiredBid <= bot.getMaxBid()) {
-                        System.out.println("[Auto-Bid Engine]: Bot of \""
-                                + YELLOW + bot.getBidder().getUserName() + RESET + "\" is trying to auto-bid");
+        AutoBid capableBot = null;
+        double requiredBid = 0;
 
-                        // Call bid function with transaction & refund Database (isBot = true)
-                        boolean success = bidderCtrl.placeBidOnAuction(bot.getBidder(), auction, bot.getMaxBid(), true);
+        // Identify the first bot capable of outbidding the current winner
+        for (AutoBid bot : bots) {
+            if (auction.getWinningBidder() != null &&
+                    bot.getBidder().getId().equals(auction.getWinningBidder().getId())) {
+                continue;
+            }
 
+            requiredBid = (auction.getWinningBidder() == null) ?
+                    auction.getItem().getStartingPrice() :
+                    auction.getCurrentPrice() + bot.getIncrement();
+
+            if (requiredBid <= bot.getMaxBid()) {
+                capableBot = bot;
+                break; // Found the next bot to bid
+            }
+        }
+
+        // If a capable bot is found, submit the bid asynchronously
+        if (capableBot != null) {
+            final AutoBid currentBot = capableBot;
+            final double finalRequiredBid = requiredBid; // Must be final for lambda
+
+            System.out.println("[Auto-Bid Engine]: Bot of \""
+                    + YELLOW + currentBot.getBidder().getUserName() + RESET + "\" is trying to auto-bid");
+
+            // Execute bid and handle the result via an async callback (.thenAccept)
+            bidderCtrl.placeBidOnAuction(currentBot.getBidder(), auction, finalRequiredBid, true)
+                    .thenAccept(success -> {
                         if (success) {
-                            priceChanged = true; // Price change => tell other bots to autobid
-                            break;
+                            // If successful, the price changed. Recursively check for the next bot.
+                            processNextBot(auction);
                         } else {
-                            // Remove if failed
+                            // If failed (e.g., insufficient funds), remove the bot and proceed.
                             System.out.println("[Auto-Bid Engine]: Bot of \""
-                                    + YELLOW + bot.getBidder().getUserName() + RESET + "\" does not have enough money. " +
-                                    "Automatically remove bot");
+                                    + YELLOW + currentBot.getBidder().getUserName() + RESET + "\" failed (insufficient funds). Removing configuration.");
                             auction.getActiveAutoBids().removeIf(b ->
-                                    b.getBidder().getId().equals(bot.getBidder().getId())
+                                    b.getBidder().getId().equals(currentBot.getBidder().getId())
                             );
+                            processNextBot(auction);
                         }
-                    }
-                }
-            } while (priceChanged); // Loop autobid until there's no affordable bot
-        });
+                    }).exceptionally(ex -> {
+                        System.out.println("[System]: Bot Engine execution failed: " + RED + ex.getMessage() + RESET);
+                        return null;
+                    });
+        }
     }
 }
 
