@@ -15,7 +15,8 @@
 
                 <Region HBox.hgrow="ALWAYS" />
 
-                <TextField prefWidth="350.0" promptText="Tìm kiếm sản phẩm..." styleClass="search-field" />
+                <!-- Translated search placeholder -->
+                <TextField prefWidth="350.0" promptText="Search items..." styleClass="search-field" />
 
                 <Region HBox.hgrow="ALWAYS" />
 

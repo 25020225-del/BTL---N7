@@ -19,10 +19,16 @@ public class DatabaseManager {
     static {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(DB_URL);
-        config.setMaximumPoolSize(200);
-        config.setMinimumIdle(2);
+        config.setMaximumPoolSize(5); // SQLite does not support highly concurrent writes
+        config.setMinimumIdle(1);
         config.setConnectionTimeout(30000);
         config.setIdleTimeout(600000);
+
+        // Enable Write-Ahead Logging (WAL) for better read/write concurrency
+        config.addDataSourceProperty("journal_mode", "WAL");
+
+        // Instruct SQLite to queue threads and wait up to 5000ms if the DB is locked
+        config.addDataSourceProperty("busy_timeout", "5000");
 
         dataSource = new HikariDataSource(config);
     }

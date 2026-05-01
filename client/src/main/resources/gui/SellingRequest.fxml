@@ -8,7 +8,7 @@
 
 <VBox alignment="TOP_CENTER" prefWidth="500.0" spacing="20.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientSellerController">
     <children>
-        <Label text="Đăng ký bán sản phẩm">
+        <Label text="Register Item for Sale">
             <font><Font name="System Bold" size="20.0" /></font>
         </Label>
 
@@ -16,25 +16,25 @@
             <children>
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Tên sản phẩm" style="-fx-font-weight: bold;" />
-                        <TextField fx:id="txtProductName" promptText="VD: iPhone 15 Pro Max" />
+                        <Label text="Item Name" style="-fx-font-weight: bold;" />
+                        <TextField fx:id="txtProductName" promptText="Ex: iPhone 15 Pro Max" />
                     </children>
                 </VBox>
 
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Giá khởi điểm ($)" style="-fx-font-weight: bold;" />
+                        <Label text="Starting Price (VND)" style="-fx-font-weight: bold;" />
                         <TextField fx:id="txtStartPrice" promptText="0.00" />
                     </children>
                 </VBox>
 
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Hình ảnh sản phẩm" style="-fx-font-weight: bold;" />
+                        <Label text="Item Image" style="-fx-font-weight: bold;" />
                         <HBox spacing="10.0" alignment="CENTER_LEFT">
                             <children>
-                                <Button text="Chọn ảnh..." />
-                                <Label text="Chưa chọn file nào" textFill="#777" />
+                                <Button text="Select Image..." />
+                                <Label text="No file selected" textFill="#777" />
                             </children>
                         </HBox>
                     </children>
@@ -42,18 +42,18 @@
 
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Mô tả chi tiết" style="-fx-font-weight: bold;" />
-                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Nhập tình trạng máy, thời gian bảo hành..." wrapText="true" />
+                        <Label text="Detailed Description" style="-fx-font-weight: bold;" />
+                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Enter item condition, warranty details, etc..." wrapText="true" />
                     </children>
                 </VBox>
 
                 <Separator />
 
-                <Button maxWidth="Infinity" styleClass="button-ebay" text="Gửi yêu cầu xét duyệt (Request)">
+                <Button maxWidth="Infinity" styleClass="button-ebay" text="Submit Request">
                     <font><Font name="System Bold" size="14.0" /></font>
                 </Button>
 
-                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Hủy bỏ" />
+                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Cancel" />
             </children>
         </VBox>
     </children>

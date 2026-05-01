@@ -1,4 +1,4 @@
-package server.ClientHandlerExtension;
+package server.handler;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;

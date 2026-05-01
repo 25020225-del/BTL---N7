@@ -1,4 +1,4 @@
-package server.ClientHandlerExtension;
+package server.handler;
 
 import network.NetworkMessage;
 import server.ClientHandler;
@@ -8,6 +8,10 @@ import java.util.Map;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * The central command router for the server.
+ * Decodes incoming JSON requests and dispatches them to their respective operational handlers.
+ */
 public class CommandDispatcher {
     private final Map<String, CommandHandler> handlers = new HashMap<>();
 
@@ -16,6 +20,11 @@ public class CommandDispatcher {
     }
 
     private void registerHandlers() {
+        // Register System level functions (Ping, Time Sync)
+        SystemHandler sysHandler = new SystemHandler();
+        handlers.put("PING", sysHandler);
+        handlers.put("TIME_SYNC", sysHandler);
+
         AuthHandler authHandler = new AuthHandler();
         handlers.put("LOGIN", authHandler);
         handlers.put("REGISTER", authHandler);
@@ -34,8 +43,6 @@ public class CommandDispatcher {
         AdminActionHandler adminHandler = new AdminActionHandler();
         handlers.put("APPROVE_AUCTION", adminHandler);
         handlers.put("REJECT_AUCTION", adminHandler);
-
-        handlers.put("PING", (message, client) -> client.sendResponse("PONG", "Request accepted"));
     }
 
     public void dispatch(NetworkMessage message, ClientHandler client) {

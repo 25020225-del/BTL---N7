@@ -46,25 +46,21 @@ public class NetworkClient {
     private CountDownLatch handshakeLatch;
 
     /**
-     * Initializes the client and attempts to connect to the WebSocket server.
+     * Initializes the client and attempts to connect to the WebSocket server using the provided full URL.
      * <p>
      * Implements a retry mechanism (max 5 attempts). It blocks the initializing thread
-     * until both the WebSocket connection and the RSA-AES handshake are successfully completed,
-     * or until it times out.
+     * using CountDownLatch until both the WebSocket connection and the RSA-AES handshake
+     * are successfully completed, or until it times out.
      *
-     * @param serverAddress The server's IP address or domain.
-     * @param port          The server's WebSocket port.
+     * @param fullWsUrl The complete WebSocket URL (e.g., "wss://domain.com:443" or "ws://localhost:6969").
      */
-    public NetworkClient(String serverAddress, int port) {
+    public NetworkClient(String fullWsUrl) {
         System.out.println("===========================================");
-        System.out.println("[System]: Connecting to server via WebSocket...");
-
-        // Normalize URL to ws:// protocol
-        String wsUrl = "ws://" + serverAddress + ":" + port;
+        System.out.println("[System]: Connecting to server...");
 
         for (int i = 0; i < 5; i++) {
             try {
-                wsClient = new AuctionWSClient(new URI(wsUrl));
+                wsClient = new AuctionWSClient(new URI(fullWsUrl));
 
                 // Reset the synchronization latch for each connection attempt
                 handshakeLatch = new CountDownLatch(1);
@@ -73,16 +69,23 @@ public class NetworkClient {
                 boolean connected = wsClient.connectBlocking();
 
                 if (connected) {
-                    // Block for up to 3 seconds waiting for the handshake to finish in the background
+                    // Wait for the AES handshake to finish in the background (Max 3 seconds)
                     boolean isHandshakeDone = handshakeLatch.await(3, TimeUnit.SECONDS);
 
                     if (isHandshakeDone && isAesKeyEstablished) {
-                        System.out.println("[System]:" + GREEN + " Successfully connected and secured!" + RESET);
+                        System.out.println("[System]:" + GREEN + " Successfully connected." + RESET);
+
+                        // TIME SYNC INITIATION: Ping the server to synchronize clocks securely
+                        this.sendMessage("TIME_SYNC", System.currentTimeMillis());
+
                         return;
                     } else {
-                        System.out.println("[System]:" + YELLOW + " Connected but AES Handshake timeout." + RESET);
+                        System.out.println("[System]:" + YELLOW + " Failed at try " + (i+1) + " - Handshake timeout" + RESET);
                         wsClient.close();
                     }
+                } else {
+                    // Handle failed connectBlocking() (server offline)
+                    System.out.println("[System]: " + YELLOW + "Failed at try " + (i + 1) + " - Connection refused by server." + RESET);
                 }
             } catch (Exception e) {
                 System.out.println("[System]:" + YELLOW + " Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
@@ -90,13 +93,13 @@ public class NetworkClient {
 
             if (i < 4) {
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(2000); // Wait 2 seconds before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                 }
             }
         }
-        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + wsUrl + RESET);
+        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + fullWsUrl + RESET);
     }
 
     /**
