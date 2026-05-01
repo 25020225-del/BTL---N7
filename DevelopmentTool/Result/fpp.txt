@@ -1334,13 +1334,17 @@ import static utils.ConsoleColors.*;
 /**
  * The primary controller for standard users (Bidders and Sellers).
  * Manages the main dashboard navigation, marketplace grid updates,
- * and handles server events related to UI synchronization.
+ * handles server events related to UI synchronization, and manages user settings.
  */
 public class ClientUserController {
 
     private Parent mainView;
     private Parent createAuctionView;
     private Parent tableAuctionView;
+
+    // Extracted FXML views for Account and Settings
+    private Parent accountView;
+    private Parent settingsView;
 
     private User currentUser;
 
@@ -1363,6 +1367,10 @@ public class ClientUserController {
     @FXML private TextField ca_endHour;
     @FXML private TextField ca_endMinute;
 
+    // Labels corresponding to AccountView.fxml
+    @FXML private Label accName;
+    @FXML private Label accUsername;
+
     private IconButton accountBtn;
     private IconButton toggleList           = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
     private IconButton toggleSearchButton   = new IconButton("mdi2f-file-find-outline",     "Search",                "Search",          "special-button");
@@ -1370,15 +1378,18 @@ public class ClientUserController {
     private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
     private IconButton depositBtn           = new IconButton("mdi2c-cash-plus",             "Deposit 50k (Test)",    "Deposit",         "special-button");
     private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
+    private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
 
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
         this.accountBtn  = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
 
+        // 1. Load Main View
         FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainLoader.setController(this);
         mainView = mainLoader.load();
 
+        // 2. Load Sub Views
         FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
         sellerLoader.setController(this);
         createAuctionView = sellerLoader.load();
@@ -1386,6 +1397,20 @@ public class ClientUserController {
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
         tableViewLoader.setController(this);
         tableAuctionView = tableViewLoader.load();
+
+        // 3. Load Account Profile View
+        FXMLLoader accountLoader = new FXMLLoader(getClass().getResource("AccountView.fxml"));
+        accountLoader.setController(this);
+        accountView = accountLoader.load();
+
+        // Inject user data into the FXML labels
+        accName.setText("Full Name: " + currentUser.getName());
+        accUsername.setText("Username: " + currentUser.getUserName());
+
+        // 4. Load Settings View
+        FXMLLoader settingsLoader = new FXMLLoader(getClass().getResource("SettingsView.fxml"));
+        settingsLoader.setController(this);
+        settingsView = settingsLoader.load();
 
         MainApplication.setNewScene(mainView);
     }
@@ -1405,6 +1430,7 @@ public class ClientUserController {
                 testCreateAuctionBtn,
                 separator,
                 region,
+                settingsBtn,
                 accountBtn
         );
 
@@ -1419,11 +1445,7 @@ public class ClientUserController {
             toggleList.setUserData(!collapsed);
         });
 
-        marketplaceBtn.setOnAction(event -> {
-            mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(tableAuctionView);
-            MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
-        });
+        marketplaceBtn.setOnAction(event -> handleBackToMarketplace());
 
         createAuctionBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
@@ -1444,15 +1466,57 @@ public class ClientUserController {
             System.out.println("[Debug]: Sending CREATE_AUCTION for " + testItemName);
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
         });
+
+        accountBtn.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(accountView);
+        });
+
+        settingsBtn.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(settingsView);
+        });
     }
+
+    // =================================================================================
+    // ACTIONS TRIGGERED BY FXML BUTTONS (AccountView & SettingsView)
+    // =================================================================================
+
+    /**
+     * Navigates the user back to the primary marketplace table view.
+     * Can be invoked from the side navigation or 'Back' buttons in sub-views.
+     */
+    @FXML
+    public void handleBackToMarketplace() {
+        mainViewController.getChildren().clear();
+        mainViewController.getChildren().add(tableAuctionView);
+        MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
+    }
+
+    /**
+     * Handles the user sign out process by clearing the session
+     * and redirecting to the login root scene.
+     */
+    @FXML
+    public void handleSignOut() {
+        System.out.println("[System]: User \"" + currentUser.getName() + "\" is signing out.");
+
+        // Notify the Server to clear the User object from this socket connection
+        MainApplication.networkClient.sendMessage("LOGOUT", "");
+
+        // Prevent background chart updates from crashing after logout
+        client.handler.ClientAuctionHandler.activeDetailController = null;
+
+        // Return to the login screen
+        MainApplication.setNewScene(MainApplication.rootLogin);
+    }
+
+    // =================================================================================
 
     private void setMainViewController() {
         mainTilePane.getChildren().clear();
     }
 
-    /**
-     * Configures the real-time local search bar to filter items in the grid.
-     */
     private void setupSearch() {
         if (searchField == null || mainTilePane == null) return;
 
@@ -1474,9 +1538,6 @@ public class ClientUserController {
         }
     }
 
-    /**
-     * Sends a request to the server to mock a deposit into the user's wallet.
-     */
     public void requestDeposit(double amount) {
         if (amount <= 0) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
@@ -1485,9 +1546,6 @@ public class ClientUserController {
         MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
 
-    /**
-     * Parses the UI form data to submit a request for creating a new auction session.
-     */
     @FXML
     public void handleSubmitAuction(javafx.event.ActionEvent event) {
         try {
@@ -1544,11 +1602,6 @@ public class ClientUserController {
         }
     }
 
-    /**
-     * Loads the detailed view for a specific item and injects the dynamic payload data.
-     *
-     * @param auctionData A mapped dictionary of properties for the targeted auction.
-     */
     private void openItemDetail(Map<String, Object> auctionData) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
@@ -1567,11 +1620,6 @@ public class ClientUserController {
         }
     }
 
-    /**
-     * Global router for server messages intended to manipulate the Dashboard UI.
-     *
-     * @param response The structured NetworkMessage from the server.
-     */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             String command = response.getCommand();
@@ -1617,11 +1665,9 @@ public class ClientUserController {
                 } catch (Exception e) {}
 
             } else if ("REMOVE_AUCTION".equals(command)) {
-                // BUG FIX: Automatically remove the product card from the UI grid when the Server broadcasts an expiration notice
                 try {
                     String auctionIdToRemove = (String) response.getData();
                     mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
-                    System.out.println("[UI System]: Removed expired auction from grid: " + auctionIdToRemove);
                 } catch (Exception e) {}
 
             } else {
@@ -1645,53 +1691,202 @@ public class ClientUserController {
 
 package gui;
 
+import gui.process.AlertHelper;
+import gui.process.ImageUtil;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+
+/**
+ * Controller for the Auction Item Detail View.
+ * Handles countdown synchronization, UI population, manual bidding,
+ * and rendering the real-time bid history line chart.
+ */
 public class ItemDetailController {
+
     @FXML private ImageView imgLarge;
     @FXML private Label lblDetailTitle;
-    @FXML private Label lblDetailPrice;
+    @FXML private Label lblStartPrice;
+    @FXML private Label lblCurrentPrice;
+    @FXML private Label lblLeader;
     @FXML private Label lblTimeLeft;
     @FXML private TextField txtBidAmount;
+    @FXML private Button btnPlaceBid;
     @FXML private TextArea txtDescription;
 
-    // 2. Các biến phục vụ logic đồng hồ
-    private int totalSeconds = 3600; // Giả sử 1 giờ
-    private Timeline timeline;
+    // --- Chart Components ---
+    @FXML private LineChart<String, Number> bidHistoryChart;
+    @FXML private CategoryAxis xAxisTime;
+    @FXML private NumberAxis yAxisPrice;
+    private XYChart.Series<String, Number> priceSeries;
+    private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    // 3. Hàm khởi tạo (Chạy tự động khi mở Popup)
+    private Timeline timeline;
+    private String currentAuctionId;
+    private long endTimeMillis;
+
     @FXML
     public void initialize() {
-        System.out.println("Màn hình chi tiết đã sẵn sàng!");
+        System.out.println("[System]: Item Detail View Initialized.");
+        setupChart();
+    }
+
+    /**
+     * Initializes the LineChart structure for tracking bid history.
+     */
+    private void setupChart() {
+        priceSeries = new XYChart.Series<>();
+        priceSeries.setName("Bid Price");
+        bidHistoryChart.getData().add(priceSeries);
+
+        // Optimize chart performance for real-time updates
+        bidHistoryChart.setCreateSymbols(true);
+        bidHistoryChart.setAnimated(true);
+    }
+
+    /**
+     * Populates the UI with detailed auction data received from the server.
+     *
+     * @param auctionData A map containing the auction details.
+     */
+    public void setProductData(Map<String, Object> auctionData) {
+        this.currentAuctionId = (String) auctionData.get("id");
+
+        // Safely extract values
+        String name = (String) auctionData.get("itemName");
+        String desc = (String) auctionData.get("description");
+        double startPrice = ((Number) auctionData.get("startingPrice")).doubleValue();
+        double currentPrice = ((Number) auctionData.get("currentPrice")).doubleValue();
+        this.endTimeMillis = ((Number) auctionData.get("endTime")).longValue();
+
+        String leader = auctionData.containsKey("winnerName") && auctionData.get("winnerName") != null
+                ? (String) auctionData.get("winnerName") : "None";
+
+        // Handle Base64 Image if available
+        if (auctionData.containsKey("imageData")) {
+            String base64Img = (String) auctionData.get("imageData");
+            Image img = ImageUtil.decodeBase64ToImage(base64Img);
+            if (img != null) {
+                imgLarge.setImage(img);
+            }
+        }
+
+        // Set UI text
+        lblDetailTitle.setText(name);
+        txtDescription.setText(desc);
+        lblStartPrice.setText(String.format("%,.0f VND", startPrice));
+        lblCurrentPrice.setText(String.format("%,.0f VND", currentPrice));
+        lblLeader.setText(leader);
+
+        // Add the initial starting point to the chart
+        addPointToChart(startPrice);
+
+        // Configure Bidding Button Action
+        btnPlaceBid.setOnAction(e -> handlePlaceBid());
+
         startCountdown();
     }
 
-    // 4. Hàm nhận dữ liệu từ trang chủ (Giữ lại hàm này để MainController gọi)
-    public void setProductData(String name, String price) {
-        lblDetailTitle.setText(name);
-        lblDetailPrice.setText(price);
+    /**
+     * Triggered by the global ResponseDispatcher when a new bid is placed.
+     * Updates the local UI dynamically.
+     *
+     * @param newPrice   The newly established price.
+     * @param winnerName The username of the user who placed the bid.
+     */
+    public void updateRealTimePrice(double newPrice, String winnerName) {
+        // Ensure UI updates run on the JavaFX Application Thread
+        Platform.runLater(() -> {
+            lblCurrentPrice.setText(String.format("%,.0f VND", newPrice));
+            lblLeader.setText(winnerName);
+
+            // Add a new dynamic node to the line chart
+            addPointToChart(newPrice);
+
+            // Add an engaging visual highlight effect to the price label
+            gui.process.AnimateEffect.highlightText(lblCurrentPrice);
+        });
     }
 
-    // 5. Logic đếm ngược (Dán thêm phần này)
+    /**
+     * Adds a new data point to the active LineChart.
+     */
+    private void addPointToChart(double price) {
+        String currentTimeStr = LocalDateTime.now().format(timeFormatter);
+        XYChart.Data<String, Number> newPoint = new XYChart.Data<>(currentTimeStr, price);
+        priceSeries.getData().add(newPoint);
+
+        // Optional: Keep chart clean by removing old nodes if there are too many (e.g., > 20)
+        if (priceSeries.getData().size() > 20) {
+            priceSeries.getData().remove(0);
+        }
+    }
+
+    /**
+     * Handles the manual bid placement logic.
+     */
+    private void handlePlaceBid() {
+        try {
+            double bidAmount = Double.parseDouble(txtBidAmount.getText().replace(",", ""));
+
+            if (bidAmount <= 0) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Amount must be greater than 0");
+                return;
+            }
+
+            // Create payload map for the server
+            Map<String, Object> payload = Map.of(
+                    "auctionId", currentAuctionId,
+                    "bidAmount", bidAmount,
+                    "isAutoBid", false
+            );
+
+            System.out.println("[Log]: Submitting manual bid of " + bidAmount + " for " + currentAuctionId);
+            MainApplication.networkClient.sendMessage("PLACE_BID", payload);
+
+            txtBidAmount.clear();
+
+        } catch (NumberFormatException e) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Please enter a valid numeric amount");
+        }
+    }
+
+    /**
+     * Manages the synchronized countdown timer for the auction end time.
+     */
     private void startCountdown() {
+        if (timeline != null) timeline.stop();
+
         timeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
-            totalSeconds--;
+            // Utilize the NTP-style synchronized time utility
+            long diffMillis = endTimeMillis - utils.TimeUtil.getCurrentServerTime();
 
-            int hours = totalSeconds / 3600;
-            int minutes = (totalSeconds % 3600) / 60;
-            int seconds = totalSeconds % 60;
-
-            lblTimeLeft.setText(String.format("Thời gian còn lại: %02d:%02d:%02d", hours, minutes, seconds));
-
-            if (totalSeconds <= 0) {
+            if (diffMillis <= 0) {
                 timeline.stop();
-                lblTimeLeft.setText("HẾT GIỜ!");
-                lblTimeLeft.setStyle("-fx-text-fill: red;");
+                lblTimeLeft.setText("AUCTION HAS ENDED!");
+                lblTimeLeft.setStyle("-fx-text-fill: gray;");
+                btnPlaceBid.setDisable(true);
+                txtBidAmount.setDisable(true);
+            } else {
+                long seconds = diffMillis / 1000;
+                long h = seconds / 3600;
+                long m = (seconds % 3600) / 60;
+                long s = seconds % 60;
+                lblTimeLeft.setText(String.format("Time left: %02d:%02d:%02d", h, m, s));
             }
         }));
 
@@ -2650,6 +2845,40 @@ public class MinimalItem extends VBox {
 }
 
 ======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\AccountView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="600.0" prefWidth="800.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-radius: 10;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <Button mnemonicParsing="false" onAction="#handleBackToMarketplace" styleClass="button-ebay" text="&lt;- Back to Marketplace" />
+
+        <Label text="Account Profile">
+            <font>
+                <Font name="System Bold" size="28.0" />
+            </font>
+            <style>
+                -fx-text-fill: #3665f3;
+            </style>
+            <VBox.margin>
+                <Insets top="10.0" />
+            </VBox.margin>
+        </Label>
+
+        <Label fx:id="accName" style="-fx-font-size: 18px;" text="Full Name: " />
+        <Label fx:id="accUsername" style="-fx-font-size: 18px;" text="Username: " />
+    </children>
+</VBox>
+
+======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\AdminView.fxml ///
 ======================================================================
 
@@ -3474,6 +3703,45 @@ public class MinimalItem extends VBox {
 </VBox>
 
 ======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\SettingsView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="600.0" prefWidth="800.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-radius: 10;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <Button mnemonicParsing="false" onAction="#handleBackToMarketplace" styleClass="button-ebay" text="&lt;- Back to Marketplace" />
+
+        <Label text="App Settings">
+            <font>
+                <Font name="System Bold" size="28.0" />
+            </font>
+            <style>
+                -fx-text-fill: #3665f3;
+            </style>
+            <VBox.margin>
+                <Insets top="10.0" />
+            </VBox.margin>
+        </Label>
+
+        <Label style="-fx-font-size: 16px;" text="• Notifications: Enabled" />
+        <Label style="-fx-font-size: 16px;" text="• Display Theme: Light Mode" />
+
+        <Region VBox.vgrow="ALWAYS" />
+
+        <Button mnemonicParsing="false" onAction="#handleSignOut" style="-fx-background-color: #dd1e31; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 30; -fx-background-radius: 5;" text="SIGN OUT" />
+    </children>
+</VBox>
+
+======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\Stylist.css ///
 ======================================================================
 
@@ -3673,6 +3941,41 @@ public class MinimalItem extends VBox {
 
 
 ======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\AccountView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="600.0" prefWidth="800.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-radius: 10;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <Button mnemonicParsing="false" onAction="#handleBackToMarketplace" styleClass="button-ebay" text="&lt;- Back to Marketplace" />
+
+        <Label text="Account Profile">
+            <font>
+                <Font name="System Bold" size="28.0" />
+            </font>
+            <style>
+                -fx-text-fill: #3665f3;
+            </style>
+            <VBox.margin>
+                <Insets top="10.0" />
+            </VBox.margin>
+        </Label>
+
+        <Label fx:id="accName" style="-fx-font-size: 18px;" text="Full Name: " />
+        <Label fx:id="accUsername" style="-fx-font-size: 18px;" text="Username: " />
+        <Label fx:id="accRole" style="-fx-font-size: 18px; -fx-text-fill: #28a745; -fx-font-weight: bold;" text="System Role: " />
+    </children>
+</VBox>
+
+======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\AdminView.fxml ///
 ======================================================================
 
@@ -3702,7 +4005,7 @@ public class MinimalItem extends VBox {
                 </Label>
                 <Label style="-fx-background-color: #333; -fx-text-fill: white; -fx-padding: 2 8; -fx-background-radius: 4;" text="ADMIN" />
                 <Region HBox.hgrow="ALWAYS" />
-                <TextField prefWidth="300.0" promptText="Tìm kiếm hệ thống..." styleClass="search-field" />
+                <TextField prefWidth="300.0" promptText="Search system..." styleClass="search-field" />
                 <Label fx:id="lblAdminMenu" style="-fx-cursor: hand;" text="Admin Account ▼">
                     <font>
                         <Font name="System Semibold" size="14.0" />
@@ -3722,19 +4025,19 @@ public class MinimalItem extends VBox {
                     <children>
                         <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Tổng sản phẩm" textFill="#777" />
+                                <Label text="Total Items" textFill="#777" />
                                 <Label style="-fx-font-size: 24; -fx-font-weight: bold;" text="177013" />
                             </children>
                         </VBox>
                         <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Đang đấu giá" textFill="#777" />
+                                <Label text="Active Auctions" textFill="#777" />
                                 <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #3665f3;" text="67" />
                             </children>
                         </VBox>
                         <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Người dùng mới" textFill="#777" />
+                                <Label text="New Users" textFill="#777" />
                                 <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #28a745;" text="+67" />
                             </children>
                         </VBox>
@@ -3745,24 +4048,24 @@ public class MinimalItem extends VBox {
                     <children>
                         <HBox alignment="CENTER_LEFT">
                             <children>
-                                <Label text="Quản lý danh sách đấu giá">
+                                <Label text="Auction Management">
                                     <font>
                                         <Font name="System Bold" size="18.0" />
                                     </font>
                                 </Label>
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Button styleClass="button-ebay" text="+ Thêm sản phẩm" />
+                                <Button styleClass="button-ebay" text="+ Add Item" />
                             </children>
                         </HBox>
 
                         <TableView fx:id="tableAuctions" VBox.vgrow="ALWAYS">
                             <columns>
                                 <TableColumn fx:id="colId" prefWidth="60.0" text="ID" />
-                                <TableColumn fx:id="colName" prefWidth="250.0" text="Tên sản phẩm" />
-                                <TableColumn fx:id="colSeller" prefWidth="120.0" text="Người bán" />
-                                <TableColumn fx:id="colPrice" prefWidth="120.0" text="Giá hiện tại" />
-                                <TableColumn fx:id="colStatus" prefWidth="100.0" text="Trạng thái" />
-                                <TableColumn fx:id="colAction" prefWidth="150.0" text="Thao tác" />
+                                <TableColumn fx:id="colName" prefWidth="250.0" text="Item Name" />
+                                <TableColumn fx:id="colSeller" prefWidth="120.0" text="Seller" />
+                                <TableColumn fx:id="colPrice" prefWidth="120.0" text="Current Price" />
+                                <TableColumn fx:id="colStatus" prefWidth="100.0" text="Status" />
+                                <TableColumn fx:id="colAction" prefWidth="150.0" text="Action" />
                             </columns>
                         </TableView>
                     </children>
@@ -3777,7 +4080,6 @@ public class MinimalItem extends VBox {
         </VBox>
     </center>
 </BorderPane>
-
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\CreateAuction.fxml ///
@@ -3898,7 +4200,8 @@ public class MinimalItem extends VBox {
 
                 <Region HBox.hgrow="ALWAYS" />
 
-                <TextField prefWidth="350.0" promptText="Tìm kiếm sản phẩm..." styleClass="search-field" />
+                <!-- Translated search placeholder -->
+                <TextField prefWidth="350.0" promptText="Search items..." styleClass="search-field" />
 
                 <Region HBox.hgrow="ALWAYS" />
 
@@ -4259,7 +4562,7 @@ public class MinimalItem extends VBox {
                     <children>
                         <HBox>
                             <children>
-                                <Label fx:id="lblDetailTitle" prefHeight="32.0" text="Tên sản phẩm" wrapText="true">
+                                <Label fx:id="lblDetailTitle" prefHeight="32.0" text="Item Name" wrapText="true">
                                     <font>
                                         <Font name="System Bold" size="22.0" />
                                     </font>
@@ -4271,7 +4574,7 @@ public class MinimalItem extends VBox {
                             <children>
                                 <HBox>
                                     <children>
-                                        <Label prefHeight="21.0" prefWidth="100.0" text="Giá khởi điểm : " />
+                                        <Label prefHeight="21.0" prefWidth="110.0" text="Starting Price:" />
                                         <Label fx:id="lblStartPrice" styleClass="price-text" text="\$0.00" textFill="#e53238">
                                             <font>
                                                 <Font name="System Bold" size="20.0" />
@@ -4281,7 +4584,7 @@ public class MinimalItem extends VBox {
                                 </HBox>
                                 <HBox spacing="10.0">
                                     <children>
-                                        <Label prefHeight="30.0" prefWidth="100.0" text="Giá hiện tại:" />
+                                        <Label prefHeight="30.0" prefWidth="110.0" text="Current Price:" />
                                         <Label fx:id="lblCurrentPrice" prefHeight="24.0" styleClass="price-text" text="\$0.00" textFill="#e53238">
                                             <font>
                                                 <Font name="System Bold" size="20.0" />
@@ -4291,8 +4594,8 @@ public class MinimalItem extends VBox {
                                 </HBox>
                                 <HBox spacing="10.0">
                                     <children>
-                                        <Label prefHeight="30.0" prefWidth="100.0" text="Người dẫn đầu:" />
-                                        <Label fx:id="lblLeader" prefHeight="24.0" text="Chưa có" textFill="#3665f3">
+                                        <Label prefHeight="30.0" prefWidth="110.0" text="Leading Bidder:" />
+                                        <Label fx:id="lblLeader" prefHeight="24.0" text="None" textFill="#3665f3">
                                             <font>
                                                 <Font name="System Bold" size="16.0" />
                                             </font>
@@ -4307,8 +4610,8 @@ public class MinimalItem extends VBox {
                             <children>
                                 <Label text="Bidding amount:" />
                                 <HBox spacing="10.0">
-                                    <TextField fx:id="txtBidAmount" HBox.hgrow="ALWAYS"/>
-                                    <Button fx:id="btnPlaceBid" mnemonicParsing="false" style="-fx-background-color: #3665f3;" text="ĐẤU GIÁ" textFill="WHITE">
+                                    <TextField fx:id="txtBidAmount" HBox.hgrow="ALWAYS" promptText="Enter amount..."/>
+                                    <Button fx:id="btnPlaceBid" mnemonicParsing="false" style="-fx-background-color: #3665f3;" text="PLACE BID" textFill="WHITE">
                                         <font>
                                             <Font name="System Bold" size="14.0" />
                                         </font>
@@ -4343,17 +4646,17 @@ public class MinimalItem extends VBox {
 
                 <!-- Real-time Bid History Chart -->
                 <VBox HBox.hgrow="ALWAYS" prefWidth="600.0" style="-fx-border-color: #ddd; -fx-background-color: white; -fx-padding: 10;">
-                    <Label text="Lịch sử giá đấu (Real-time)">
+                    <Label text="Bid History (Real-time)">
                         <font>
                             <Font name="System Bold" size="16.0" />
                         </font>
                     </Label>
                     <LineChart fx:id="bidHistoryChart" animated="true" legendVisible="false" VBox.vgrow="ALWAYS">
                         <xAxis>
-                            <CategoryAxis fx:id="xAxisTime" label="Thời gian" side="BOTTOM" />
+                            <CategoryAxis fx:id="xAxisTime" label="Time" side="BOTTOM" />
                         </xAxis>
                         <yAxis>
-                            <NumberAxis fx:id="yAxisPrice" forceZeroInRange="false" label="Giá (VND)" side="LEFT" />
+                            <NumberAxis fx:id="yAxisPrice" forceZeroInRange="false" label="Price (VND)" side="LEFT" />
                         </yAxis>
                     </LineChart>
                 </VBox>
@@ -4379,9 +4682,9 @@ public class MinimalItem extends VBox {
         <ImageView fx:id="imgProduct" fitHeight="150.0" fitWidth="180.0" pickOnBounds="true" preserveRatio="true" />
         <VBox spacing="5.0">
             <children>
-                <Label fx:id="lblTitle" style="-fx-font-weight: bold;" text="Tên sản phẩm mẫu" wrapText="true" />
+                <Label fx:id="lblTitle" style="-fx-font-weight: bold;" text="Sample Item" wrapText="true" />
                 <Label fx:id="lblPrice" style="-fx-text-fill: #e53238; -fx-font-size: 16;" styleClass="price-text" stylesheets="@Stylist.css" text="\$100.00" />
-                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: #3665f3; -fx-text-fill: white;" styleClass="button-ebay" text="Đấu giá" />
+                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: #3665f3; -fx-text-fill: white;" styleClass="button-ebay" text="Place Bid" />
             </children>
             <padding>
                 <Insets bottom="10.0" left="10.0" right="10.0" />
@@ -4392,7 +4695,6 @@ public class MinimalItem extends VBox {
         <Insets top="10.0" />
     </padding>
 </VBox>
-
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\Register.fxml ///
@@ -4445,7 +4747,7 @@ public class MinimalItem extends VBox {
 
 <VBox alignment="TOP_CENTER" prefWidth="500.0" spacing="20.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientSellerController">
     <children>
-        <Label text="Đăng ký bán sản phẩm">
+        <Label text="Register Item for Sale">
             <font><Font name="System Bold" size="20.0" /></font>
         </Label>
 
@@ -4453,25 +4755,25 @@ public class MinimalItem extends VBox {
             <children>
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Tên sản phẩm" style="-fx-font-weight: bold;" />
-                        <TextField fx:id="txtProductName" promptText="VD: iPhone 15 Pro Max" />
+                        <Label text="Item Name" style="-fx-font-weight: bold;" />
+                        <TextField fx:id="txtProductName" promptText="Ex: iPhone 15 Pro Max" />
                     </children>
                 </VBox>
 
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Giá khởi điểm ($)" style="-fx-font-weight: bold;" />
+                        <Label text="Starting Price (VND)" style="-fx-font-weight: bold;" />
                         <TextField fx:id="txtStartPrice" promptText="0.00" />
                     </children>
                 </VBox>
 
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Hình ảnh sản phẩm" style="-fx-font-weight: bold;" />
+                        <Label text="Item Image" style="-fx-font-weight: bold;" />
                         <HBox spacing="10.0" alignment="CENTER_LEFT">
                             <children>
-                                <Button text="Chọn ảnh..." />
-                                <Label text="Chưa chọn file nào" textFill="#777" />
+                                <Button text="Select Image..." />
+                                <Label text="No file selected" textFill="#777" />
                             </children>
                         </HBox>
                     </children>
@@ -4479,22 +4781,61 @@ public class MinimalItem extends VBox {
 
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Mô tả chi tiết" style="-fx-font-weight: bold;" />
-                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Nhập tình trạng máy, thời gian bảo hành..." wrapText="true" />
+                        <Label text="Detailed Description" style="-fx-font-weight: bold;" />
+                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Enter item condition, warranty details, etc..." wrapText="true" />
                     </children>
                 </VBox>
 
                 <Separator />
 
-                <Button maxWidth="Infinity" styleClass="button-ebay" text="Gửi yêu cầu xét duyệt (Request)">
+                <Button maxWidth="Infinity" styleClass="button-ebay" text="Submit Request">
                     <font><Font name="System Bold" size="14.0" /></font>
                 </Button>
 
-                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Hủy bỏ" />
+                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Cancel" />
             </children>
         </VBox>
     </children>
     <padding><Insets bottom="30.0" left="40.0" right="40.0" top="30.0" /></padding>
+</VBox>
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\SettingsView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="600.0" prefWidth="800.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-radius: 10;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <Button mnemonicParsing="false" onAction="#handleBackToMarketplace" styleClass="button-ebay" text="&lt;- Back to Marketplace" />
+
+        <Label text="App Settings">
+            <font>
+                <Font name="System Bold" size="28.0" />
+            </font>
+            <style>
+                -fx-text-fill: #3665f3;
+            </style>
+            <VBox.margin>
+                <Insets top="10.0" />
+            </VBox.margin>
+        </Label>
+
+        <Label style="-fx-font-size: 16px;" text="• Notifications: Enabled" />
+        <Label style="-fx-font-size: 16px;" text="• Display Theme: Light Mode" />
+
+        <Region VBox.vgrow="ALWAYS" />
+
+        <Button mnemonicParsing="false" onAction="#handleSignOut" style="-fx-background-color: #dd1e31; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 30; -fx-background-radius: 5;" text="SIGN OUT" />
+    </children>
 </VBox>
 
 ======================================================================
@@ -4697,6 +5038,41 @@ public class MinimalItem extends VBox {
 
 
 ======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\AccountView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="600.0" prefWidth="800.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-radius: 10;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <Button mnemonicParsing="false" onAction="#handleBackToMarketplace" styleClass="button-ebay" text="&lt;- Back to Marketplace" />
+
+        <Label text="Account Profile">
+            <font>
+                <Font name="System Bold" size="28.0" />
+            </font>
+            <style>
+                -fx-text-fill: #3665f3;
+            </style>
+            <VBox.margin>
+                <Insets top="10.0" />
+            </VBox.margin>
+        </Label>
+
+        <Label fx:id="accName" style="-fx-font-size: 18px;" text="Full Name: " />
+        <Label fx:id="accUsername" style="-fx-font-size: 18px;" text="Username: " />
+        <Label fx:id="accRole" style="-fx-font-size: 18px; -fx-text-fill: #28a745; -fx-font-weight: bold;" text="System Role: " />
+    </children>
+</VBox>
+
+======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\AdminView.fxml ///
 ======================================================================
 
@@ -4726,7 +5102,7 @@ public class MinimalItem extends VBox {
                 </Label>
                 <Label style="-fx-background-color: #333; -fx-text-fill: white; -fx-padding: 2 8; -fx-background-radius: 4;" text="ADMIN" />
                 <Region HBox.hgrow="ALWAYS" />
-                <TextField prefWidth="300.0" promptText="Tìm kiếm hệ thống..." styleClass="search-field" />
+                <TextField prefWidth="300.0" promptText="Search system..." styleClass="search-field" />
                 <Label fx:id="lblAdminMenu" style="-fx-cursor: hand;" text="Admin Account ▼">
                     <font>
                         <Font name="System Semibold" size="14.0" />
@@ -4746,19 +5122,19 @@ public class MinimalItem extends VBox {
                     <children>
                         <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Tổng sản phẩm" textFill="#777" />
+                                <Label text="Total Items" textFill="#777" />
                                 <Label style="-fx-font-size: 24; -fx-font-weight: bold;" text="177013" />
                             </children>
                         </VBox>
                         <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Đang đấu giá" textFill="#777" />
+                                <Label text="Active Auctions" textFill="#777" />
                                 <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #3665f3;" text="67" />
                             </children>
                         </VBox>
                         <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Người dùng mới" textFill="#777" />
+                                <Label text="New Users" textFill="#777" />
                                 <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #28a745;" text="+67" />
                             </children>
                         </VBox>
@@ -4769,24 +5145,24 @@ public class MinimalItem extends VBox {
                     <children>
                         <HBox alignment="CENTER_LEFT">
                             <children>
-                                <Label text="Quản lý danh sách đấu giá">
+                                <Label text="Auction Management">
                                     <font>
                                         <Font name="System Bold" size="18.0" />
                                     </font>
                                 </Label>
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Button styleClass="button-ebay" text="+ Thêm sản phẩm" />
+                                <Button styleClass="button-ebay" text="+ Add Item" />
                             </children>
                         </HBox>
 
                         <TableView fx:id="tableAuctions" VBox.vgrow="ALWAYS">
                             <columns>
                                 <TableColumn fx:id="colId" prefWidth="60.0" text="ID" />
-                                <TableColumn fx:id="colName" prefWidth="250.0" text="Tên sản phẩm" />
-                                <TableColumn fx:id="colSeller" prefWidth="120.0" text="Người bán" />
-                                <TableColumn fx:id="colPrice" prefWidth="120.0" text="Giá hiện tại" />
-                                <TableColumn fx:id="colStatus" prefWidth="100.0" text="Trạng thái" />
-                                <TableColumn fx:id="colAction" prefWidth="150.0" text="Thao tác" />
+                                <TableColumn fx:id="colName" prefWidth="250.0" text="Item Name" />
+                                <TableColumn fx:id="colSeller" prefWidth="120.0" text="Seller" />
+                                <TableColumn fx:id="colPrice" prefWidth="120.0" text="Current Price" />
+                                <TableColumn fx:id="colStatus" prefWidth="100.0" text="Status" />
+                                <TableColumn fx:id="colAction" prefWidth="150.0" text="Action" />
                             </columns>
                         </TableView>
                     </children>
@@ -4801,7 +5177,6 @@ public class MinimalItem extends VBox {
         </VBox>
     </center>
 </BorderPane>
-
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\CreateAuction.fxml ///
@@ -4922,7 +5297,8 @@ public class MinimalItem extends VBox {
 
                 <Region HBox.hgrow="ALWAYS" />
 
-                <TextField prefWidth="350.0" promptText="Tìm kiếm sản phẩm..." styleClass="search-field" />
+                <!-- Translated search placeholder -->
+                <TextField prefWidth="350.0" promptText="Search items..." styleClass="search-field" />
 
                 <Region HBox.hgrow="ALWAYS" />
 
@@ -5283,7 +5659,7 @@ public class MinimalItem extends VBox {
                     <children>
                         <HBox>
                             <children>
-                                <Label fx:id="lblDetailTitle" prefHeight="32.0" text="Tên sản phẩm" wrapText="true">
+                                <Label fx:id="lblDetailTitle" prefHeight="32.0" text="Item Name" wrapText="true">
                                     <font>
                                         <Font name="System Bold" size="22.0" />
                                     </font>
@@ -5295,7 +5671,7 @@ public class MinimalItem extends VBox {
                             <children>
                                 <HBox>
                                     <children>
-                                        <Label prefHeight="21.0" prefWidth="100.0" text="Giá khởi điểm : " />
+                                        <Label prefHeight="21.0" prefWidth="110.0" text="Starting Price:" />
                                         <Label fx:id="lblStartPrice" styleClass="price-text" text="\$0.00" textFill="#e53238">
                                             <font>
                                                 <Font name="System Bold" size="20.0" />
@@ -5305,7 +5681,7 @@ public class MinimalItem extends VBox {
                                 </HBox>
                                 <HBox spacing="10.0">
                                     <children>
-                                        <Label prefHeight="30.0" prefWidth="100.0" text="Giá hiện tại:" />
+                                        <Label prefHeight="30.0" prefWidth="110.0" text="Current Price:" />
                                         <Label fx:id="lblCurrentPrice" prefHeight="24.0" styleClass="price-text" text="\$0.00" textFill="#e53238">
                                             <font>
                                                 <Font name="System Bold" size="20.0" />
@@ -5315,8 +5691,8 @@ public class MinimalItem extends VBox {
                                 </HBox>
                                 <HBox spacing="10.0">
                                     <children>
-                                        <Label prefHeight="30.0" prefWidth="100.0" text="Người dẫn đầu:" />
-                                        <Label fx:id="lblLeader" prefHeight="24.0" text="Chưa có" textFill="#3665f3">
+                                        <Label prefHeight="30.0" prefWidth="110.0" text="Leading Bidder:" />
+                                        <Label fx:id="lblLeader" prefHeight="24.0" text="None" textFill="#3665f3">
                                             <font>
                                                 <Font name="System Bold" size="16.0" />
                                             </font>
@@ -5331,8 +5707,8 @@ public class MinimalItem extends VBox {
                             <children>
                                 <Label text="Bidding amount:" />
                                 <HBox spacing="10.0">
-                                    <TextField fx:id="txtBidAmount" HBox.hgrow="ALWAYS"/>
-                                    <Button fx:id="btnPlaceBid" mnemonicParsing="false" style="-fx-background-color: #3665f3;" text="ĐẤU GIÁ" textFill="WHITE">
+                                    <TextField fx:id="txtBidAmount" HBox.hgrow="ALWAYS" promptText="Enter amount..."/>
+                                    <Button fx:id="btnPlaceBid" mnemonicParsing="false" style="-fx-background-color: #3665f3;" text="PLACE BID" textFill="WHITE">
                                         <font>
                                             <Font name="System Bold" size="14.0" />
                                         </font>
@@ -5367,17 +5743,17 @@ public class MinimalItem extends VBox {
 
                 <!-- Real-time Bid History Chart -->
                 <VBox HBox.hgrow="ALWAYS" prefWidth="600.0" style="-fx-border-color: #ddd; -fx-background-color: white; -fx-padding: 10;">
-                    <Label text="Lịch sử giá đấu (Real-time)">
+                    <Label text="Bid History (Real-time)">
                         <font>
                             <Font name="System Bold" size="16.0" />
                         </font>
                     </Label>
                     <LineChart fx:id="bidHistoryChart" animated="true" legendVisible="false" VBox.vgrow="ALWAYS">
                         <xAxis>
-                            <CategoryAxis fx:id="xAxisTime" label="Thời gian" side="BOTTOM" />
+                            <CategoryAxis fx:id="xAxisTime" label="Time" side="BOTTOM" />
                         </xAxis>
                         <yAxis>
-                            <NumberAxis fx:id="yAxisPrice" forceZeroInRange="false" label="Giá (VND)" side="LEFT" />
+                            <NumberAxis fx:id="yAxisPrice" forceZeroInRange="false" label="Price (VND)" side="LEFT" />
                         </yAxis>
                     </LineChart>
                 </VBox>
@@ -5403,9 +5779,9 @@ public class MinimalItem extends VBox {
         <ImageView fx:id="imgProduct" fitHeight="150.0" fitWidth="180.0" pickOnBounds="true" preserveRatio="true" />
         <VBox spacing="5.0">
             <children>
-                <Label fx:id="lblTitle" style="-fx-font-weight: bold;" text="Tên sản phẩm mẫu" wrapText="true" />
+                <Label fx:id="lblTitle" style="-fx-font-weight: bold;" text="Sample Item" wrapText="true" />
                 <Label fx:id="lblPrice" style="-fx-text-fill: #e53238; -fx-font-size: 16;" styleClass="price-text" stylesheets="@Stylist.css" text="\$100.00" />
-                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: #3665f3; -fx-text-fill: white;" styleClass="button-ebay" text="Đấu giá" />
+                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: #3665f3; -fx-text-fill: white;" styleClass="button-ebay" text="Place Bid" />
             </children>
             <padding>
                 <Insets bottom="10.0" left="10.0" right="10.0" />
@@ -5416,7 +5792,6 @@ public class MinimalItem extends VBox {
         <Insets top="10.0" />
     </padding>
 </VBox>
-
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\Register.fxml ///
@@ -5469,7 +5844,7 @@ public class MinimalItem extends VBox {
 
 <VBox alignment="TOP_CENTER" prefWidth="500.0" spacing="20.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientSellerController">
     <children>
-        <Label text="Đăng ký bán sản phẩm">
+        <Label text="Register Item for Sale">
             <font><Font name="System Bold" size="20.0" /></font>
         </Label>
 
@@ -5477,25 +5852,25 @@ public class MinimalItem extends VBox {
             <children>
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Tên sản phẩm" style="-fx-font-weight: bold;" />
-                        <TextField fx:id="txtProductName" promptText="VD: iPhone 15 Pro Max" />
+                        <Label text="Item Name" style="-fx-font-weight: bold;" />
+                        <TextField fx:id="txtProductName" promptText="Ex: iPhone 15 Pro Max" />
                     </children>
                 </VBox>
 
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Giá khởi điểm ($)" style="-fx-font-weight: bold;" />
+                        <Label text="Starting Price (VND)" style="-fx-font-weight: bold;" />
                         <TextField fx:id="txtStartPrice" promptText="0.00" />
                     </children>
                 </VBox>
 
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Hình ảnh sản phẩm" style="-fx-font-weight: bold;" />
+                        <Label text="Item Image" style="-fx-font-weight: bold;" />
                         <HBox spacing="10.0" alignment="CENTER_LEFT">
                             <children>
-                                <Button text="Chọn ảnh..." />
-                                <Label text="Chưa chọn file nào" textFill="#777" />
+                                <Button text="Select Image..." />
+                                <Label text="No file selected" textFill="#777" />
                             </children>
                         </HBox>
                     </children>
@@ -5503,22 +5878,61 @@ public class MinimalItem extends VBox {
 
                 <VBox spacing="5.0">
                     <children>
-                        <Label text="Mô tả chi tiết" style="-fx-font-weight: bold;" />
-                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Nhập tình trạng máy, thời gian bảo hành..." wrapText="true" />
+                        <Label text="Detailed Description" style="-fx-font-weight: bold;" />
+                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Enter item condition, warranty details, etc..." wrapText="true" />
                     </children>
                 </VBox>
 
                 <Separator />
 
-                <Button maxWidth="Infinity" styleClass="button-ebay" text="Gửi yêu cầu xét duyệt (Request)">
+                <Button maxWidth="Infinity" styleClass="button-ebay" text="Submit Request">
                     <font><Font name="System Bold" size="14.0" /></font>
                 </Button>
 
-                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Hủy bỏ" />
+                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Cancel" />
             </children>
         </VBox>
     </children>
     <padding><Insets bottom="30.0" left="40.0" right="40.0" top="30.0" /></padding>
+</VBox>
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\SettingsView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="600.0" prefWidth="800.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-radius: 10;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <Button mnemonicParsing="false" onAction="#handleBackToMarketplace" styleClass="button-ebay" text="&lt;- Back to Marketplace" />
+
+        <Label text="App Settings">
+            <font>
+                <Font name="System Bold" size="28.0" />
+            </font>
+            <style>
+                -fx-text-fill: #3665f3;
+            </style>
+            <VBox.margin>
+                <Insets top="10.0" />
+            </VBox.margin>
+        </Label>
+
+        <Label style="-fx-font-size: 16px;" text="• Notifications: Enabled" />
+        <Label style="-fx-font-size: 16px;" text="• Display Theme: Light Mode" />
+
+        <Region VBox.vgrow="ALWAYS" />
+
+        <Button mnemonicParsing="false" onAction="#handleSignOut" style="-fx-background-color: #dd1e31; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 30; -fx-background-radius: 5;" text="SIGN OUT" />
+    </children>
 </VBox>
 
 ======================================================================
@@ -7941,6 +8355,9 @@ public class ClientHandler {
 
     public model.User getUser() {return user;}
     public void setUser(model.User user) {this.user = user;}
+
+    public static int getcNC() {return cNC;}
+    public static void incrementcNC() {cNC++;}
 }
 
 ======================================================================
@@ -8443,7 +8860,22 @@ public class AuthHandler implements CommandHandler {
             processLogin(message.getData(), client);
         } else if ("REGISTER".equals(command)) {
             processRegister(message.getData(), client);
+        } else if ("LOGOUT".equals(command)) {
+            processLogout(client); // <-- Gọi hàm dọn dẹp
         }
+    }
+
+    /**
+     * Clears the user session data from the active ClientHandler socket
+     * and reverts the connection identity back to an anonymous guest.
+     */
+    private void processLogout(ClientHandler client) {
+        String oldName = client.getClientName();
+        client.setUser(null);
+        client.setClientName("Guest"+ClientHandler.getcNC());
+        ClientHandler.incrementcNC();
+
+        System.out.println("[System]: \"" + YELLOW + oldName + RESET + "\" signed out and reverted to " + client.getClientName());
     }
 
     private void processLogin(Object data, ClientHandler client) {
@@ -8526,6 +8958,7 @@ public class CommandDispatcher {
         AuthHandler authHandler = new AuthHandler();
         handlers.put("LOGIN", authHandler);
         handlers.put("REGISTER", authHandler);
+        handlers.put("LOGOUT", authHandler);
 
         AuctionActionHandler auctionHandler = new AuctionActionHandler();
         handlers.put("CREATE_AUCTION", auctionHandler);

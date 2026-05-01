@@ -28,17 +28,15 @@ import java.util.Map;
 import static utils.ConsoleColors.*;
 
 /**
- * The primary controller for standard users (Bidders and Sellers).
- * Manages the main dashboard navigation, marketplace grid updates,
- * handles server events related to UI synchronization, and manages user settings.
+ * The unified primary controller for standard users.
+ * This single controller manages both buying (Bidding) and selling (Auction Creation)
+ * capabilities, acting as the main dashboard for the application.
  */
 public class ClientUserController {
 
     private Parent mainView;
     private Parent createAuctionView;
     private Parent tableAuctionView;
-
-    // Extracted FXML views for Account and Settings
     private Parent accountView;
     private Parent settingsView;
 
@@ -63,7 +61,6 @@ public class ClientUserController {
     @FXML private TextField ca_endHour;
     @FXML private TextField ca_endMinute;
 
-    // Labels corresponding to AccountView.fxml
     @FXML private Label accName;
     @FXML private Label accUsername;
 
@@ -76,16 +73,20 @@ public class ClientUserController {
     private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
     private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
 
+    /**
+     * Initializes the Unified User Controller and loads all required FXML layouts.
+     *
+     * @param user The currently authenticated user instance.
+     * @throws IOException If FXML files cannot be loaded.
+     */
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
         this.accountBtn  = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
 
-        // 1. Load Main View
         FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainLoader.setController(this);
         mainView = mainLoader.load();
 
-        // 2. Load Sub Views
         FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
         sellerLoader.setController(this);
         createAuctionView = sellerLoader.load();
@@ -94,16 +95,13 @@ public class ClientUserController {
         tableViewLoader.setController(this);
         tableAuctionView = tableViewLoader.load();
 
-        // 3. Load Account Profile View
         FXMLLoader accountLoader = new FXMLLoader(getClass().getResource("AccountView.fxml"));
         accountLoader.setController(this);
         accountView = accountLoader.load();
 
-        // Inject user data into the FXML labels
         accName.setText("Full Name: " + currentUser.getName());
         accUsername.setText("Username: " + currentUser.getUserName());
 
-        // 4. Load Settings View
         FXMLLoader settingsLoader = new FXMLLoader(getClass().getResource("SettingsView.fxml"));
         settingsLoader.setController(this);
         settingsView = settingsLoader.load();
@@ -112,7 +110,7 @@ public class ClientUserController {
     }
 
     /**
-     * Initializes the side navigation menu layout and button actions.
+     * Configures the side navigation dock menu.
      */
     private void setMainDock() {
         Separator separator = new Separator();
@@ -174,13 +172,8 @@ public class ClientUserController {
         });
     }
 
-    // =================================================================================
-    // ACTIONS TRIGGERED BY FXML BUTTONS (AccountView & SettingsView)
-    // =================================================================================
-
     /**
      * Navigates the user back to the primary marketplace table view.
-     * Can be invoked from the side navigation or 'Back' buttons in sub-views.
      */
     @FXML
     public void handleBackToMarketplace() {
@@ -190,29 +183,23 @@ public class ClientUserController {
     }
 
     /**
-     * Handles the user sign out process by clearing the session
-     * and redirecting to the login root scene.
+     * Handles the user sign out process by clearing the session.
      */
     @FXML
     public void handleSignOut() {
         System.out.println("[System]: User \"" + currentUser.getName() + "\" is signing out.");
-
-        // Notify the Server to clear the User object from this socket connection
         MainApplication.networkClient.sendMessage("LOGOUT", "");
-
-        // Prevent background chart updates from crashing after logout
         client.handler.ClientAuctionHandler.activeDetailController = null;
-
-        // Return to the login screen
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
-
-    // =================================================================================
 
     private void setMainViewController() {
         mainTilePane.getChildren().clear();
     }
 
+    /**
+     * Initializes the local search functionality within the active marketplace grid.
+     */
     private void setupSearch() {
         if (searchField == null || mainTilePane == null) return;
 
@@ -234,6 +221,9 @@ public class ClientUserController {
         }
     }
 
+    /**
+     * Requests a balance deposit from the server.
+     */
     public void requestDeposit(double amount) {
         if (amount <= 0) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
@@ -242,6 +232,9 @@ public class ClientUserController {
         MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
 
+    /**
+     * Handles the submission of the Create Auction form.
+     */
     @FXML
     public void handleSubmitAuction(javafx.event.ActionEvent event) {
         try {
@@ -298,6 +291,9 @@ public class ClientUserController {
         }
     }
 
+    /**
+     * Navigates to the detailed view of a specific auction item.
+     */
     private void openItemDetail(Map<String, Object> auctionData) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
@@ -316,6 +312,9 @@ public class ClientUserController {
         }
     }
 
+    /**
+     * Global router for server messages intended to manipulate the User UI.
+     */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             String command = response.getCommand();
@@ -372,6 +371,9 @@ public class ClientUserController {
         });
     }
 
+    /**
+     * Bootstraps the controller logic upon initial navigation.
+     */
     public void start() {
         setMainDock();
         setMainViewController();
