@@ -1,4 +1,4 @@
-package model;
+package model.item;
 
 import static utils.ConsoleColors.*;
 

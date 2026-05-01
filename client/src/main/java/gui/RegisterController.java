@@ -3,7 +3,7 @@ package gui;
 import client.network.NetworkClient;
 import gui.process.AlertHelper;
 import gui.process.QRCodeHelper;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 import javafx.application.Platform;
 import javafx.fxml.FXML;

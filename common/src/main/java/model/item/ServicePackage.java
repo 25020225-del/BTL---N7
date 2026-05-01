@@ -1,4 +1,4 @@
-package model;
+package model.item;
 
 /**
  * Represents a service or experience in the auction system.

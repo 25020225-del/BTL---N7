@@ -15,7 +15,7 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 
 import java.io.IOException;

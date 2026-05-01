@@ -2,7 +2,7 @@ package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
-import model.Auction;
+import model.auction.Auction;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 

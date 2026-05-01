@@ -14,6 +14,7 @@ import java.util.Base64;
 import javax.crypto.SecretKey;
 
 import utils.CryptoUtil;
+import model.user.User;
 
 import static utils.ConsoleColors.*;
 
@@ -35,7 +36,7 @@ public class ClientHandler {
     private final WebSocket conn;
     private static int cNC = 0;
     private String clientName = "Guest" + (cNC++);
-    private model.User user;
+    private User user;
 
     private final UserController userController;
     private static final CommandDispatcher dispatcher = new CommandDispatcher();
@@ -198,8 +199,8 @@ public class ClientHandler {
         return userController;
     }
 
-    public model.User getUser() {return user;}
-    public void setUser(model.User user) {this.user = user;}
+    public User getUser() {return user;}
+    public void setUser(User user) {this.user = user;}
 
     public static int getcNC() {return cNC;}
     public static void incrementcNC() {cNC++;}

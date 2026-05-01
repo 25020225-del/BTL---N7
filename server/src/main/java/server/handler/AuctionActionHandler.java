@@ -2,7 +2,10 @@ package server.handler;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import model.ItemFactory;
+import model.item.Item;
+import model.item.ItemFactory;
+import model.auction.Auction;
+import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
@@ -34,7 +37,7 @@ public class AuctionActionHandler implements CommandHandler {
     private void processCreateAuction(Object data, ClientHandler client) {
         try {
             // Retrieve user identification from the active login session
-            model.User authenticatedUser = client.getUser();
+            User authenticatedUser = client.getUser();
 
             // Security check: Reject if the user is not authenticated
             if (authenticatedUser == null) {
@@ -57,14 +60,14 @@ public class AuctionActionHandler implements CommandHandler {
             String newItemId = "ITM-" + System.currentTimeMillis();
 
             // FACTORY PATTERN APPLIED: Dynamically create the item based on its generalized category
-            model.Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
+            Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
 
             // Forward the creation request to the Seller Controller
             controller.ServerSellerController sellerCtrl = new controller.ServerSellerController();
-            model.Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, durationMinutes);
+            Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, durationMinutes);
 
             if (newAuction != null) {
-                newAuction.setStatus(model.Auction.STATUS_RUNNING);
+                newAuction.setStatus(Auction.STATUS_RUNNING);
                 AuctionManager.addAuctionToMonitor(newAuction);
 
                 System.out.println("[System]: Seller \"" + YELLOW + authenticatedUser.getName() + RESET + "\" has created an auction.");

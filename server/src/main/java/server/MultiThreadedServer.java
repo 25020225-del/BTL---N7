@@ -289,6 +289,16 @@ public class MultiThreadedServer {
                     ClientManager.kickTarget(target, reason);
                     continue;
                 }
+                if (serverMessage.startsWith("/kickn ")) {
+                    try {
+                        int index = Integer.parseInt(serverMessage.substring(7));
+                        System.out.print("Reason: ");
+                        String reason = scanner.nextLine();
+                        ClientManager.kickTargetByNumber(index, reason);
+                    } catch (NumberFormatException e) {
+                        System.out.println("[System]: /kickn must be followed by an integer.");
+                    }
+                }
                 if (serverMessage.startsWith("/clist")) {
                     ClientManager.getClientList();
                     continue;

@@ -647,7 +647,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import model.User;
+import model.user.User;
 
 import java.io.IOException;
 
@@ -791,514 +791,6 @@ public class ClientAdminController {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\ClientBidderController.java ///
-======================================================================
-
-package gui;
-
-import client.handler.ResponseDispatcher;
-import gui.process.AnimateEffect;
-import gui.process.AlertHelper;
-import gui.process.Search;
-import gui.widget.IconButton;
-import javafx.animation.FadeTransition;
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.control.*;
-import javafx.scene.layout.TilePane;
-import javafx.scene.layout.VBox;
-import javafx.scene.layout.HBox;
-import javafx.util.Duration;
-import model.User;
-import network.NetworkMessage;
-import gui.widget.MinimalItem;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import static utils.ConsoleColors.*;
-
-/**
- * Controller dedicated to the Bidder role within the client application.
- * Manages the marketplace grid, handles real-time UI updates for auctions
- * (adding, removing, and price changes), and delegates user actions to the server.
- */
-public class ClientBidderController {
-
-    private Parent mainView = null;
-    private User currentUser;
-
-    @FXML private VBox mainDock;
-    @FXML private VBox mainViewController;
-    @FXML private HBox searchBarContainer;
-    @FXML private TilePane mainTilePane;
-
-    @FXML private Button searchButton;
-    @FXML private TextField searchField;
-
-    // Side navigation buttons
-    private IconButton toggleSearchButton = new IconButton("mdi2f-file-find-outline", "Search", "Search", "special-button");
-    private IconButton account            = new IconButton("mdi2a-account", "Hello Bidder", "Account", "special-button");
-    private IconButton toggleList         = new IconButton("mdi2m-menu", "List", "List", "special-button");
-
-    // Mock deposit button for testing purposes
-    private Button testDepositButton      = new IconButton("mdi2c-cash-plus", "Deposit 50,000 (Test)", "Test PayPal", "special-button");
-
-    /**
-     * Initializes the Bidder Controller and loads the main view layout.
-     *
-     * @param user The currently authenticated user instance.
-     * @throws IOException If the corresponding FXML file cannot be loaded.
-     */
-    public ClientBidderController(User user) throws IOException {
-        this.currentUser = user;
-        this.account = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account");
-
-        FXMLLoader fxmlMainView = new FXMLLoader(ClientBidderController.class.getResource("MainView.fxml"));
-        fxmlMainView.setController(this);
-        mainView = fxmlMainView.load();
-
-        MainApplication.setNewScene(mainView);
-    }
-
-    /**
-     * Configures the side navigation dock, attaching corresponding action events
-     * to the menu buttons.
-     */
-    private void setMainDock() {
-        mainDock.getChildren().add(account);
-        mainDock.getChildren().addFirst(toggleSearchButton);
-        mainDock.getChildren().addFirst(toggleList);
-        mainDock.getChildren().add(testDepositButton);
-
-        // Ensure all buttons share the same base styling
-        for(Node k : mainDock.getChildren()){
-            if(k instanceof Button && !k.getStyleClass().contains("special-button")){
-                k.getStyleClass().add("special-button");
-            }
-        }
-
-        testDepositButton.setOnAction(event -> {
-            double testAmount = 50000;
-            requestDeposit(testAmount);
-        });
-
-        toggleList.setUserData(true);
-        toggleList.setOnAction(event -> {
-            boolean isCollapsed = (boolean) toggleList.getUserData();
-            for(Node k : mainDock.getChildren()) {
-                if (k instanceof Button) {
-                    Button b = (Button) k;
-                    if (isCollapsed) {
-                        b.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-                    } else {
-                        b.setContentDisplay(ContentDisplay.LEFT);
-                    }
-                }
-            }
-            toggleList.setUserData(!isCollapsed);
-        });
-
-        toggleSearchButton.setOnAction(event -> {
-            AnimateEffect.fadeNode(searchBarContainer, !searchBarContainer.isVisible());
-        });
-    }
-
-    /**
-     * Prepares the main content area by clearing any residual child nodes.
-     */
-    private void setMainViewController() {
-        if (mainTilePane != null) {
-            mainTilePane.getChildren().clear();
-        }
-    }
-
-    /**
-     * Initializes the search bar functionality to filter items currently displayed in the grid.
-     */
-    private void setupSearch() {
-        if (searchField == null || mainTilePane == null) return;
-
-        searchField.setOnAction(event -> {
-            if (searchButton != null) searchButton.fire();
-        });
-
-        if (searchButton != null) {
-            searchButton.setOnAction(event -> {
-                String keyword = searchField.getText();
-                System.out.println("[Log]: Searching for: " + YELLOW + keyword + RESET);
-                for (Node node : mainTilePane.getChildren()) {
-                    if (node instanceof MinimalItem item) {
-                        boolean match = Search.searchText(keyword, item);
-                        item.setVisible(match);
-                        item.setManaged(match);
-                    }
-                }
-            });
-        }
-    }
-
-    /**
-     * Dispatches a deposit request to the server.
-     *
-     * @param amount The numerical value of the deposit.
-     */
-    public void requestDeposit(double amount) {
-        if (amount <= 0) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0.");
-            return;
-        }
-
-        System.out.println("[Log]: Sending a deposit request of " + amount + " VND...");
-        MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
-    }
-
-    /**
-     * Loads the detailed view for a specific item and injects the dynamic payload data.
-     * Registers the controller to listen for real-time WebSocket price updates.
-     *
-     * @param auctionData A mapped dictionary of properties for the targeted auction.
-     */
-    private void openItemDetail(Map<String, Object> auctionData) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
-            Parent detailView = loader.load();
-
-            ItemDetailController detailController = loader.getController();
-            detailController.setProductData(auctionData);
-
-            // CRITICAL: Bind this controller globally to receive live price streams
-            client.handler.ClientAuctionHandler.activeDetailController = detailController;
-
-            // Transition the UI
-            mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(detailView);
-
-            System.out.println("[Log]: Opened detail view for auction ID: " + auctionData.get("id"));
-
-        } catch (IOException e) {
-            System.out.println("[Error]: Failed to load Product Detail View: " + RED + e.getMessage() + RESET);
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Global router for server messages intended to manipulate the Bidder UI.
-     *
-     * @param response The structured NetworkMessage originating from the server.
-     */
-    private void handleServerResponse(NetworkMessage response) {
-        Platform.runLater(() -> {
-            String command = response.getCommand();
-
-            if ("FETCH_AUCTIONS_SUCCESS".equals(command)) {
-                try {
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> auctions = (List<Map<String, Object>>) response.getData();
-
-                    mainTilePane.getChildren().clear();
-
-                    for (Map<String, Object> data : auctions) {
-                        String id      = (String) data.get("id");
-                        String name    = (String) data.get("itemName");
-                        String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
-                        long   endTime = ((Number) data.get("endTime")).longValue();
-
-                        MinimalItem item = new MinimalItem(id, name, price, endTime);
-
-                        // Attach the event to transition to the detail/chart view
-                        item.getAuctionButton().setOnAction(e -> openItemDetail(data));
-
-                        mainTilePane.getChildren().add(item);
-                    }
-                } catch (Exception e) {
-                    System.out.println("[Error]: UI Render error during fetch: " + e.getMessage());
-                }
-
-            } else if ("NEW_AUCTION_ADDED".equals(command)) {
-                try {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> data = (Map<String, Object>) response.getData();
-
-                    String id      = (String) data.get("id");
-                    String name    = (String) data.get("itemName");
-                    String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
-                    long   endTime = ((Number) data.get("endTime")).longValue();
-
-                    MinimalItem newItem = new MinimalItem(id, name, price, endTime);
-                    newItem.getAuctionButton().setOnAction(e -> openItemDetail(data));
-
-                    // Insert the new item at the top with a smooth fade-in animation
-                    newItem.setOpacity(0);
-                    mainTilePane.getChildren().add(0, newItem);
-
-                    FadeTransition ft = new FadeTransition(Duration.millis(500), newItem);
-                    ft.setToValue(1.0);
-                    ft.play();
-                } catch (Exception e) {
-                    System.out.println("[Error]: Failed to render newly added auction: " + e.getMessage());
-                }
-
-            } else if ("REMOVE_AUCTION".equals(command)) {
-                // BUG FIX: Automatically remove the product card from the UI grid when the Server broadcasts an expiration notice
-                try {
-                    String auctionIdToRemove = (String) response.getData();
-                    mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
-                    System.out.println("[UI System]: Removed expired auction from grid: " + auctionIdToRemove);
-                } catch (Exception e) {
-                    System.out.println("[Error]: Failed to remove expired auction: " + e.getMessage());
-                }
-
-            } else {
-                // Route unhandled commands to the centralized ResponseDispatcher
-                new ResponseDispatcher().dispatch(response, MainApplication.networkClient);
-            }
-        });
-    }
-
-    /**
-     * Bootstraps the controller logic upon initial navigation to this view.
-     *
-     * @throws IOException If UI components fail to load.
-     */
-    public void start() throws IOException {
-        setMainDock();
-        setMainViewController();
-        setupSearch();
-
-        MainApplication.networkClient.setOnMessageReceived(this::handleServerResponse);
-
-        System.out.println("[Log]: Initializing Bidder View Components...");
-
-        if (mainTilePane == null) {
-            System.out.println("[Error]: " + RED + "Could not find Item Table (TilePane) in UI" + RESET);
-            return;
-        }
-
-        // Request the latest active auctions from the server
-        MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
-        System.out.println("[System]: " + GREEN + "Bidder Controller started successfully. Awaiting data." + RESET);
-    }
-}
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\ClientSellerController.java ///
-======================================================================
-
-package gui;
-
-import java.io.File;
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import gui.process.AlertHelper;
-import gui.widget.IconButton;
-import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.geometry.Rectangle2D;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.TilePane;
-import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
-import model.Auction;
-import model.Item;
-import model.Seller;
-import model.User;
-
-public class ClientSellerController {
-
-    private static ObjectMapper mapper = new ObjectMapper();
-
-    private Parent mainView;
-    private Parent sellerCreateAuction;
-    private User currentUser;
-    private Seller seller;
-
-    @FXML private VBox mainDock;
-    @FXML private VBox mainViewController;
-
-    @FXML private TilePane mainTilePane;
-
-    @FXML private Button createAuction;
-    @FXML private TextField sellerCreateAuction_itemName;
-    @FXML private TextField sellerCreateAuction_startPrice;
-    @FXML private Button chooseFile;
-    @FXML private Label fileLinkChoosen;
-    @FXML private ImageView sellerCreateAuction_image;
-    @FXML private TextArea sellerCreateAuction_descripsion;
-    @FXML private DatePicker sellerCreateAuction_startDate;
-    @FXML private DatePicker sellerCreateAuction_endDate;
-    @FXML private TextField sellerCreateAuction_startMinute;
-    @FXML private TextField sellerCreateAuction_startHour;
-    @FXML private TextField sellerCreateAuction_endHour;
-    @FXML private TextField sellerCreateAuction_endMinute;
-
-    private IconButton account = new IconButton("mdi2a-account", "Hello Seller", "Account", "special-button");
-    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
-    private IconButton createTransaction = new IconButton("mdi2a-archive-plus-outline", "Create Transaction", "Create Transaction", "special-button");
-
-    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug", "Create Auction (Test)", "Test Create", "special-button");
-
-    private Parent loadFx(String location) throws IOException {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource(location));
-        loader.setController(this);
-        return loader.load();
-    }
-
-    public ClientSellerController(User user) throws IOException {
-        this.currentUser = user;
-        this.seller = new Seller(user);
-        this.account = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account");
-        mainView = loadFx("MainView.fxml");
-        sellerCreateAuction = loadFx("CreateAuction.fxml");
-        MainApplication.setNewScene(mainView);
-    }
-    public void setAutoCropCenter(ImageView imageView, Image image, double destWidth, double destHeight) {
-        imageView.setImage(image);
-        imageView.setPreserveRatio(false); // Tắt preserve ratio để viewport làm việc
-        imageView.setSmooth(true);
-
-        double sourceWidth = image.getWidth();
-        double sourceHeight = image.getHeight();
-
-        // Tính toán tỉ lệ để biết nên scale theo chiều nào
-        double ratio = Math.max(destWidth / sourceWidth, destHeight / sourceHeight);
-
-        // Tính toán kích thước vùng cắt (Viewport)
-        double viewportWidth = destWidth / ratio;
-        double viewportHeight = destHeight / ratio;
-
-        // Tính toán tọa độ để lấy ở giữa ảnh gốc
-        double viewportX = (sourceWidth - viewportWidth) / 2;
-        double viewportY = (sourceHeight - viewportHeight) / 2;
-
-        // Áp dụng vùng cắt
-        imageView.setViewport(new Rectangle2D(viewportX, viewportY, viewportWidth, viewportHeight));
-
-        // Ép kích thước hiển thị cuối cùng
-        imageView.setFitWidth(destWidth);
-        imageView.setFitHeight(destHeight);
-    }
-
-    private void setMainDock() {
-        mainDock.getChildren().add(account);
-        mainDock.getChildren().addFirst(createTransaction);
-        mainDock.getChildren().addFirst(testCreateAuctionBtn); //test
-        mainDock.getChildren().addFirst(toggleList);
-
-        toggleList.setUserData(true);
-        toggleList.setOnAction(event -> {
-            for(Node k : mainDock.getChildren()) {
-                if (k instanceof Button) {
-                    Button b = (Button) k;
-                    if ((boolean)  toggleList.getUserData()) {
-                        b.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-                    }
-                    else {
-                        b.setContentDisplay(ContentDisplay.LEFT);
-                    }
-                }
-            }
-            toggleList.setUserData(!((boolean) toggleList.getUserData()));
-        });
-
-        testCreateAuctionBtn.setOnAction(event -> {
-            java.util.Map<String, String> dummyData = new java.util.HashMap<>();
-
-            String testItemName = "CẶC" + (System.currentTimeMillis() % 10000);
-
-            dummyData.put("itemName", testItemName);
-            dummyData.put("description", "ĐỊT MẸ MÀY");
-            dummyData.put("startingPrice", "50000");
-            dummyData.put("bidIncrement", "5000");
-            dummyData.put("durationMinutes", "60");
-
-            System.out.println("[Debug]: Send CREATE_AUCTION for " + testItemName);
-
-            MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
-        });
-
-        createTransaction.setOnAction(event -> {
-            mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(sellerCreateAuction);
-        });
-    }
-    private void setMainViewController() {
-        mainViewController.getChildren().clear();
-        chooseFile.setOnAction(event -> {
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Open Resource File");
-            fileChooser.getExtensionFilters().addAll( new  FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg") );
-            Stage stage = new Stage();
-            stage.setTitle("Open Resource File");
-            stage.setResizable(false);
-            File file = fileChooser.showOpenDialog(stage);
-            fileLinkChoosen.setText(file.getAbsolutePath());
-            Image image = new Image(file.toURI().toString());
-            setAutoCropCenter(sellerCreateAuction_image,image,320,240);
-        });
-        createAuction.setOnAction(event -> {
-            try {
-                // get data from UI
-                String itemName = sellerCreateAuction_itemName.getText();
-                String description = sellerCreateAuction_descripsion.getText();
-                double startPrice = Double.parseDouble(sellerCreateAuction_startPrice.getText());
-
-                // Temp simulating bidIncrement and durationMinutes (MUST be changed later)
-                double bidIncrement = startPrice * 0.1;
-                int durationMinutes = 60;
-
-                // Data package
-                Map<String, String> auctionData = new HashMap<>();
-                auctionData.put("itemName", itemName);
-                auctionData.put("description", description);
-                auctionData.put("startingPrice", String.valueOf(startPrice));
-                auctionData.put("bidIncrement", String.valueOf(bidIncrement));
-                auctionData.put("durationMinutes", String.valueOf(durationMinutes));
-
-                System.out.println("[Log]: Sending creating auction request for " + itemName + "...");
-
-                // send cmd to server
-                MainApplication.networkClient.sendMessage("CREATE_AUCTION", auctionData);
-
-                // delete form after successfully sending
-                sellerCreateAuction_itemName.clear();
-                sellerCreateAuction_startPrice.clear();
-                sellerCreateAuction_descripsion.clear();
-
-            } catch (NumberFormatException e) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Price or time is invalid");
-            } catch (Exception e) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Input error: " + e.getMessage());
-            }
-        });
-    }
-
-    public void start() {
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        setMainDock();
-        setMainViewController();
-    }
-}
-
-
-======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\ClientUserController.java ///
 ======================================================================
 
@@ -1319,7 +811,7 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 
 import java.io.IOException;
@@ -1332,17 +824,15 @@ import java.util.Map;
 import static utils.ConsoleColors.*;
 
 /**
- * The primary controller for standard users (Bidders and Sellers).
- * Manages the main dashboard navigation, marketplace grid updates,
- * handles server events related to UI synchronization, and manages user settings.
+ * The unified primary controller for standard users.
+ * This single controller manages both buying (Bidding) and selling (Auction Creation)
+ * capabilities, acting as the main dashboard for the application.
  */
 public class ClientUserController {
 
     private Parent mainView;
     private Parent createAuctionView;
     private Parent tableAuctionView;
-
-    // Extracted FXML views for Account and Settings
     private Parent accountView;
     private Parent settingsView;
 
@@ -1367,7 +857,6 @@ public class ClientUserController {
     @FXML private TextField ca_endHour;
     @FXML private TextField ca_endMinute;
 
-    // Labels corresponding to AccountView.fxml
     @FXML private Label accName;
     @FXML private Label accUsername;
 
@@ -1380,16 +869,20 @@ public class ClientUserController {
     private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
     private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
 
+    /**
+     * Initializes the Unified User Controller and loads all required FXML layouts.
+     *
+     * @param user The currently authenticated user instance.
+     * @throws IOException If FXML files cannot be loaded.
+     */
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
         this.accountBtn  = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
 
-        // 1. Load Main View
         FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainLoader.setController(this);
         mainView = mainLoader.load();
 
-        // 2. Load Sub Views
         FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
         sellerLoader.setController(this);
         createAuctionView = sellerLoader.load();
@@ -1398,16 +891,13 @@ public class ClientUserController {
         tableViewLoader.setController(this);
         tableAuctionView = tableViewLoader.load();
 
-        // 3. Load Account Profile View
         FXMLLoader accountLoader = new FXMLLoader(getClass().getResource("AccountView.fxml"));
         accountLoader.setController(this);
         accountView = accountLoader.load();
 
-        // Inject user data into the FXML labels
         accName.setText("Full Name: " + currentUser.getName());
         accUsername.setText("Username: " + currentUser.getUserName());
 
-        // 4. Load Settings View
         FXMLLoader settingsLoader = new FXMLLoader(getClass().getResource("SettingsView.fxml"));
         settingsLoader.setController(this);
         settingsView = settingsLoader.load();
@@ -1416,7 +906,7 @@ public class ClientUserController {
     }
 
     /**
-     * Initializes the side navigation menu layout and button actions.
+     * Configures the side navigation dock menu.
      */
     private void setMainDock() {
         Separator separator = new Separator();
@@ -1478,13 +968,8 @@ public class ClientUserController {
         });
     }
 
-    // =================================================================================
-    // ACTIONS TRIGGERED BY FXML BUTTONS (AccountView & SettingsView)
-    // =================================================================================
-
     /**
      * Navigates the user back to the primary marketplace table view.
-     * Can be invoked from the side navigation or 'Back' buttons in sub-views.
      */
     @FXML
     public void handleBackToMarketplace() {
@@ -1494,29 +979,23 @@ public class ClientUserController {
     }
 
     /**
-     * Handles the user sign out process by clearing the session
-     * and redirecting to the login root scene.
+     * Handles the user sign out process by clearing the session.
      */
     @FXML
     public void handleSignOut() {
         System.out.println("[System]: User \"" + currentUser.getName() + "\" is signing out.");
-
-        // Notify the Server to clear the User object from this socket connection
         MainApplication.networkClient.sendMessage("LOGOUT", "");
-
-        // Prevent background chart updates from crashing after logout
         client.handler.ClientAuctionHandler.activeDetailController = null;
-
-        // Return to the login screen
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
-
-    // =================================================================================
 
     private void setMainViewController() {
         mainTilePane.getChildren().clear();
     }
 
+    /**
+     * Initializes the local search functionality within the active marketplace grid.
+     */
     private void setupSearch() {
         if (searchField == null || mainTilePane == null) return;
 
@@ -1538,6 +1017,9 @@ public class ClientUserController {
         }
     }
 
+    /**
+     * Requests a balance deposit from the server.
+     */
     public void requestDeposit(double amount) {
         if (amount <= 0) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
@@ -1546,6 +1028,9 @@ public class ClientUserController {
         MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
 
+    /**
+     * Handles the submission of the Create Auction form.
+     */
     @FXML
     public void handleSubmitAuction(javafx.event.ActionEvent event) {
         try {
@@ -1602,6 +1087,9 @@ public class ClientUserController {
         }
     }
 
+    /**
+     * Navigates to the detailed view of a specific auction item.
+     */
     private void openItemDetail(Map<String, Object> auctionData) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
@@ -1620,6 +1108,9 @@ public class ClientUserController {
         }
     }
 
+    /**
+     * Global router for server messages intended to manipulate the User UI.
+     */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             String command = response.getCommand();
@@ -1676,6 +1167,9 @@ public class ClientUserController {
         });
     }
 
+    /**
+     * Bootstraps the controller logic upon initial navigation.
+     */
     public void start() {
         setMainDock();
         setMainViewController();
@@ -1932,7 +1426,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 
@@ -2033,7 +1527,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.layout.VBox;
@@ -2166,44 +1659,41 @@ public class MainApplication extends Application {
 
 package gui;
 
-import model.Admin;
-import model.Bidder;
-import model.Seller;
-import model.User;
-
+import model.user.User;
 import java.io.IOException;
 
+/**
+ * Main routing controller that directs authenticated users to their appropriate dashboards.
+ */
 public class MainController {
+
+    /**
+     * Starts the appropriate UI controller based on the user's role.
+     *
+     * @param user The authenticated user object containing role information.
+     * @throws IOException If the FXML files fail to load.
+     */
     public static void start(User user) throws IOException {
-        if (user.getRole().equalsIgnoreCase("ADMIN")) {
-            startAdmin(user);
-        } else {
-            // Both Bidder and Seller use the same UI
-            startUnifiedUser(user);
-        }
+        if (user.getRole().equalsIgnoreCase("ADMIN")) startAdmin(user);
+        else startUnifiedUser(user);
     }
 
+    /**
+     * Initializes the unified dashboard for standard users (Bidders & Sellers).
+     */
     private static void startUnifiedUser(User user) throws IOException {
         ClientUserController controller = new ClientUserController(user);
         controller.start();
     }
 
-    //private static void startBidder(User user) throws IOException {
-    //    ClientBidderController controller = new ClientBidderController(user);
-    //    controller.start();
-    //}
-
-    //private static void startSeller(User user) throws IOException {
-    //    ClientSellerController controller = new ClientSellerController(user);
-    //    controller.start();
-    //}
-
+    /**
+     * Initializes the dashboard for system administrators.
+     */
     private static void startAdmin(User user) throws IOException {
         ClientAdminController controller = new ClientAdminController(user);
         controller.start();
     }
 }
-
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\RegisterController.java ///
@@ -2214,7 +1704,7 @@ package gui;
 import client.network.NetworkClient;
 import gui.process.AlertHelper;
 import gui.process.QRCodeHelper;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -2226,6 +1716,10 @@ import java.util.List;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Controller responsible for handling new user registrations.
+ * All new public registrations are defaulted to the standard "USER" role.
+ */
 public class RegisterController {
 
     @FXML private TextField registerName;
@@ -2241,6 +1735,10 @@ public class RegisterController {
         this.networkClient = client;
     }
 
+    /**
+     * Handles the registration button click event.
+     * Validates input fields and sends the registration payload to the server.
+     */
     @FXML
     protected void onRegisterButtonClick() {
         System.out.println("[Log]: Registration process started");
@@ -2273,6 +1771,7 @@ public class RegisterController {
             return;
         }
 
+        // Unify all new sign-ups to the generic "USER" role
         User newUser = new User("", username, password, name, "USER");
 
         if (networkClient != null) {
@@ -2287,13 +1786,22 @@ public class RegisterController {
         }
     }
 
+    /**
+     * Switches the view back to the Login screen.
+     */
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("[Log]: Login UI view");
+        System.out.println("[Log]: Navigating to Login UI");
         clearFields();
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
+    /**
+     * Processes the server's response regarding the registration attempt.
+     * Handles 2FA setup upon successful registration.
+     *
+     * @param response The network message received from the server.
+     */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             registerButton.setDisable(false);
@@ -2343,6 +1851,9 @@ public class RegisterController {
         });
     }
 
+    /**
+     * Clears all input fields in the registration form.
+     */
     private void clearFields() {
         registerName.clear();
         registerAccountName.clear();
@@ -3083,49 +2594,6 @@ public class MinimalItem extends VBox {
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\DualRoleView.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-
-<BorderPane prefHeight="600.0" prefWidth="900.0" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientBidderController">
-    <top>
-        <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="15.0" style="-fx-background-color: white; -fx-border-color: #e5e5e5; -fx-border-width: 0 0 1 0;">
-            <children>
-                <Label text="BIDDER" textFill="#3665f3">
-                    <font><Font name="System Bold" size="24.0" /></font>
-                </Label>
-
-                <Region HBox.hgrow="ALWAYS" />
-
-                <!-- Translated search placeholder -->
-                <TextField prefWidth="350.0" promptText="Search items..." styleClass="search-field" />
-
-                <Region HBox.hgrow="ALWAYS" />
-
-                <Button mnemonicParsing="false" styleClass="button-sell" text="Sell" />
-
-                <Label fx:id="lblUserMenu" style="-fx-cursor: hand;" text="My Account ▼" />
-            </children>
-            <padding><Insets left="20.0" right="20.0" /></padding>
-        </HBox>
-    </top>
-
-    <center>
-        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;">
-            <content>
-                <FlowPane fx:id="productContainer" hgap="20.0" vgap="20.0" style="-fx-padding: 20;" />
-            </content>
-        </ScrollPane>
-    </center>
-</BorderPane>
-
-======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\index.css ///
 ======================================================================
 
@@ -3637,72 +3105,6 @@ public class MinimalItem extends VBox {
 </StackPane>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\SellingRequest.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-
-<VBox alignment="TOP_CENTER" prefWidth="500.0" spacing="20.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientSellerController">
-    <children>
-        <Label text="Register Item for Sale">
-            <font><Font name="System Bold" size="20.0" /></font>
-        </Label>
-
-        <VBox spacing="15.0" styleClass="form-container">
-            <children>
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Item Name" style="-fx-font-weight: bold;" />
-                        <TextField fx:id="txtProductName" promptText="Ex: iPhone 15 Pro Max" />
-                    </children>
-                </VBox>
-
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Starting Price (VND)" style="-fx-font-weight: bold;" />
-                        <TextField fx:id="txtStartPrice" promptText="0.00" />
-                    </children>
-                </VBox>
-
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Item Image" style="-fx-font-weight: bold;" />
-                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                            <children>
-                                <Button text="Select Image..." />
-                                <Label text="No file selected" textFill="#777" />
-                            </children>
-                        </HBox>
-                    </children>
-                </VBox>
-
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Detailed Description" style="-fx-font-weight: bold;" />
-                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Enter item condition, warranty details, etc..." wrapText="true" />
-                    </children>
-                </VBox>
-
-                <Separator />
-
-                <Button maxWidth="Infinity" styleClass="button-ebay" text="Submit Request">
-                    <font><Font name="System Bold" size="14.0" /></font>
-                </Button>
-
-                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Cancel" />
-            </children>
-        </VBox>
-    </children>
-    <padding><Insets bottom="30.0" left="40.0" right="40.0" top="30.0" /></padding>
-</VBox>
-
-======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\SettingsView.fxml ///
 ======================================================================
 
@@ -3971,7 +3373,6 @@ public class MinimalItem extends VBox {
 
         <Label fx:id="accName" style="-fx-font-size: 18px;" text="Full Name: " />
         <Label fx:id="accUsername" style="-fx-font-size: 18px;" text="Username: " />
-        <Label fx:id="accRole" style="-fx-font-size: 18px; -fx-text-fill: #28a745; -fx-font-weight: bold;" text="System Role: " />
     </children>
 </VBox>
 
@@ -4178,49 +3579,6 @@ public class MinimalItem extends VBox {
    </content>
 </ScrollPane>
 
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\DualRoleView.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-
-<BorderPane prefHeight="600.0" prefWidth="900.0" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientBidderController">
-    <top>
-        <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="15.0" style="-fx-background-color: white; -fx-border-color: #e5e5e5; -fx-border-width: 0 0 1 0;">
-            <children>
-                <Label text="BIDDER" textFill="#3665f3">
-                    <font><Font name="System Bold" size="24.0" /></font>
-                </Label>
-
-                <Region HBox.hgrow="ALWAYS" />
-
-                <!-- Translated search placeholder -->
-                <TextField prefWidth="350.0" promptText="Search items..." styleClass="search-field" />
-
-                <Region HBox.hgrow="ALWAYS" />
-
-                <Button mnemonicParsing="false" styleClass="button-sell" text="Sell" />
-
-                <Label fx:id="lblUserMenu" style="-fx-cursor: hand;" text="My Account ▼" />
-            </children>
-            <padding><Insets left="20.0" right="20.0" /></padding>
-        </HBox>
-    </top>
-
-    <center>
-        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;">
-            <content>
-                <FlowPane fx:id="productContainer" hgap="20.0" vgap="20.0" style="-fx-padding: 20;" />
-            </content>
-        </ScrollPane>
-    </center>
-</BorderPane>
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\index.css ///
@@ -4734,72 +4092,6 @@ public class MinimalItem extends VBox {
 </StackPane>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\SellingRequest.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-
-<VBox alignment="TOP_CENTER" prefWidth="500.0" spacing="20.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientSellerController">
-    <children>
-        <Label text="Register Item for Sale">
-            <font><Font name="System Bold" size="20.0" /></font>
-        </Label>
-
-        <VBox spacing="15.0" styleClass="form-container">
-            <children>
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Item Name" style="-fx-font-weight: bold;" />
-                        <TextField fx:id="txtProductName" promptText="Ex: iPhone 15 Pro Max" />
-                    </children>
-                </VBox>
-
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Starting Price (VND)" style="-fx-font-weight: bold;" />
-                        <TextField fx:id="txtStartPrice" promptText="0.00" />
-                    </children>
-                </VBox>
-
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Item Image" style="-fx-font-weight: bold;" />
-                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                            <children>
-                                <Button text="Select Image..." />
-                                <Label text="No file selected" textFill="#777" />
-                            </children>
-                        </HBox>
-                    </children>
-                </VBox>
-
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Detailed Description" style="-fx-font-weight: bold;" />
-                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Enter item condition, warranty details, etc..." wrapText="true" />
-                    </children>
-                </VBox>
-
-                <Separator />
-
-                <Button maxWidth="Infinity" styleClass="button-ebay" text="Submit Request">
-                    <font><Font name="System Bold" size="14.0" /></font>
-                </Button>
-
-                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Cancel" />
-            </children>
-        </VBox>
-    </children>
-    <padding><Insets bottom="30.0" left="40.0" right="40.0" top="30.0" /></padding>
-</VBox>
-
-======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\SettingsView.fxml ///
 ======================================================================
 
@@ -5068,7 +4360,6 @@ public class MinimalItem extends VBox {
 
         <Label fx:id="accName" style="-fx-font-size: 18px;" text="Full Name: " />
         <Label fx:id="accUsername" style="-fx-font-size: 18px;" text="Username: " />
-        <Label fx:id="accRole" style="-fx-font-size: 18px; -fx-text-fill: #28a745; -fx-font-weight: bold;" text="System Role: " />
     </children>
 </VBox>
 
@@ -5275,49 +4566,6 @@ public class MinimalItem extends VBox {
    </content>
 </ScrollPane>
 
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\DualRoleView.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-
-<BorderPane prefHeight="600.0" prefWidth="900.0" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientBidderController">
-    <top>
-        <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="15.0" style="-fx-background-color: white; -fx-border-color: #e5e5e5; -fx-border-width: 0 0 1 0;">
-            <children>
-                <Label text="BIDDER" textFill="#3665f3">
-                    <font><Font name="System Bold" size="24.0" /></font>
-                </Label>
-
-                <Region HBox.hgrow="ALWAYS" />
-
-                <!-- Translated search placeholder -->
-                <TextField prefWidth="350.0" promptText="Search items..." styleClass="search-field" />
-
-                <Region HBox.hgrow="ALWAYS" />
-
-                <Button mnemonicParsing="false" styleClass="button-sell" text="Sell" />
-
-                <Label fx:id="lblUserMenu" style="-fx-cursor: hand;" text="My Account ▼" />
-            </children>
-            <padding><Insets left="20.0" right="20.0" /></padding>
-        </HBox>
-    </top>
-
-    <center>
-        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;">
-            <content>
-                <FlowPane fx:id="productContainer" hgap="20.0" vgap="20.0" style="-fx-padding: 20;" />
-            </content>
-        </ScrollPane>
-    </center>
-</BorderPane>
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\index.css ///
@@ -5831,72 +5079,6 @@ public class MinimalItem extends VBox {
 </StackPane>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\SellingRequest.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-
-<VBox alignment="TOP_CENTER" prefWidth="500.0" spacing="20.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientSellerController">
-    <children>
-        <Label text="Register Item for Sale">
-            <font><Font name="System Bold" size="20.0" /></font>
-        </Label>
-
-        <VBox spacing="15.0" styleClass="form-container">
-            <children>
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Item Name" style="-fx-font-weight: bold;" />
-                        <TextField fx:id="txtProductName" promptText="Ex: iPhone 15 Pro Max" />
-                    </children>
-                </VBox>
-
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Starting Price (VND)" style="-fx-font-weight: bold;" />
-                        <TextField fx:id="txtStartPrice" promptText="0.00" />
-                    </children>
-                </VBox>
-
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Item Image" style="-fx-font-weight: bold;" />
-                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                            <children>
-                                <Button text="Select Image..." />
-                                <Label text="No file selected" textFill="#777" />
-                            </children>
-                        </HBox>
-                    </children>
-                </VBox>
-
-                <VBox spacing="5.0">
-                    <children>
-                        <Label text="Detailed Description" style="-fx-font-weight: bold;" />
-                        <TextArea fx:id="txtDescription" prefHeight="100.0" promptText="Enter item condition, warranty details, etc..." wrapText="true" />
-                    </children>
-                </VBox>
-
-                <Separator />
-
-                <Button maxWidth="Infinity" styleClass="button-ebay" text="Submit Request">
-                    <font><Font name="System Bold" size="14.0" /></font>
-                </Button>
-
-                <Button maxWidth="Infinity" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="Cancel" />
-            </children>
-        </VBox>
-    </children>
-    <padding><Insets bottom="30.0" left="40.0" right="40.0" top="30.0" /></padding>
-</VBox>
-
-======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\SettingsView.fxml ///
 ======================================================================
 
@@ -6139,44 +5321,25 @@ public class MinimalItem extends VBox {
 ======================================================================
 
 module common {
-    // Khai báo mở khóa các gói này để client và server có thể gọi được
     exports network;
-    exports model;
-    exports utils;   // Sẵn tiện mở luôn gói model (chứa User, Auction...)
-
-    // Nếu NetworkMessage có dùng Jackson, bạn cần open nó cho Jackson đọc
-    // opens network to com.fasterxml.jackson.databind;
+    exports utils;
+    exports model.auction;
+    exports model.base;
+    exports model.finance;
+    exports model.item;
+    exports model.user;
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\Admin.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\auction\Auction.java ///
 ======================================================================
 
-package model;
+package model.auction;
 
-public class Admin extends User {
-
-    public Admin(String id, String userName, String userPass, String name) {
-        super(id, userName, userPass, name, "Admin");
-    }
-    public Admin(User admin) {
-        super(admin.getId(), admin.getUserName(), admin.getUserPass(), admin.getName(), "Admin");
-    }
-
-
-    @Override
-    public String getInfo() {
-        return    "[Admin] ID: " + this.getId()
-                + " | Name: " + this.getName() + " (System Administrator)";
-    }
-
-}
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\Auction.java ///
-======================================================================
-
-package model;
+import model.base.Entity;
+import model.finance.BidTransaction;
+import model.item.Item;
+import model.user.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -6188,8 +5351,6 @@ import static utils.ConsoleColors.*;
 
 /**
  * Represents an auction session in the system.
- * Manages the item details, seller, current bidding state, bid history,
- * and automated bot queue (AutoBids).
  */
 public class Auction extends Entity {
 
@@ -6202,41 +5363,26 @@ public class Auction extends Entity {
     public static final String STATUS_DELETED  = "DELETED";
 
     private Item item;
-    private Seller seller;
+    private User seller; // Đã đổi từ Seller thành User
 
     private double currentPrice;
     private double highestMaxBid;
     private double bidIncrement;
 
-    private Bidder winningBidder;
+    private User winningBidder; // Đã đổi từ Bidder thành User
     private String status;
     private LocalDateTime endTime;
     private List<BidTransaction> bidHistory;
 
-    // PriorityQueue to guarantee that auto-bids are processed based on their registration time
     private PriorityQueue<AutoBid> activeAutoBids;
     private LocalDateTime startTime;
 
-    /**
-     * Default constructor.
-     * Initializes the auto-bid queue with a time-based comparator.
-     */
     public Auction() {
         super();
         this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
     }
 
-    /**
-     * Full constructor to initialize a new auction session.
-     *
-     * @param id           The unique identifier of the auction.
-     * @param item         The item being auctioned.
-     * @param seller       The user selling the item.
-     * @param bidIncrement The minimum increment required for a new bid.
-     * @param startTime    The starting time of the auction.
-     * @param endTime      The scheduled ending time of the auction.
-     */
-    public Auction(String id, Item item, Seller seller, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
+    public Auction(String id, Item item, User seller, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
         super(id);
         this.item = item;
         this.seller = seller;
@@ -6247,9 +5393,9 @@ public class Auction extends Entity {
         this.endTime = endTime;
         this.bidHistory = new ArrayList<>();
 
-        // Priority queue sorted by earliest registration time first
         this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
 
+        // Kiểm tra uy tín bằng isGood() trực tiếp từ class User
         if (seller.isGood()) {
             this.status = STATUS_OPEN;
         } else {
@@ -6257,10 +5403,7 @@ public class Auction extends Entity {
         }
     }
 
-    /**
-     * Factory method to generate a new Auction instance with calculated start and end times.
-     */
-    public static Auction createNewAuction(Item item, Seller seller, double bidIncrement, int durationMinutes) {
+    public static Auction createNewAuction(Item item, User seller, double bidIncrement, int durationMinutes) {
         String newId = "AUC-" + System.currentTimeMillis();
         LocalDateTime start = LocalDateTime.now();
         LocalDateTime end = start.plusMinutes(durationMinutes);
@@ -6276,13 +5419,12 @@ public class Auction extends Entity {
         return newAuction;
     }
 
-    // --- GETTERS & SETTERS ---
-
+    // --- GETTERS & SETTERS (Đã cập nhật return type cho User) ---
     public Item getItem() { return item; }
     public void setItem(Item item) { this.item = item; }
 
-    public Seller getSeller() { return seller; }
-    public void setSeller(Seller seller) { this.seller = seller; }
+    public User getSeller() { return seller; }
+    public void setSeller(User seller) { this.seller = seller; }
 
     public double getCurrentPrice() { return currentPrice; }
     public void setCurrentPrice(double currentPrice) { this.currentPrice = currentPrice; }
@@ -6293,8 +5435,8 @@ public class Auction extends Entity {
     public double getBidIncrement() { return bidIncrement; }
     public void setBidIncrement(double bidIncrement) { this.bidIncrement = bidIncrement; }
 
-    public Bidder getWinningBidder() { return winningBidder; }
-    public void setWinningBidder(Bidder winningBidder) { this.winningBidder = winningBidder; }
+    public User getWinningBidder() { return winningBidder; }
+    public void setWinningBidder(User winningBidder) { this.winningBidder = winningBidder; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
@@ -6313,14 +5455,9 @@ public class Auction extends Entity {
     // --- BUSINESS LOGIC METHODS ---
 
     /**
-     * Core logic to process a bid. Evaluates validity, manages outbidding,
-     * and implements anti-sniping mechanisms.
-     *
-     * @param bidder    The user placing the bid.
-     * @param newMaxBid The bid amount.
-     * @return true if the bid is valid and successfully placed.
+     * Tham số Bidder đã được đổi thành User
      */
-    public synchronized boolean placeBid(Bidder bidder, double newMaxBid) {
+    public synchronized boolean placeBid(User bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
             System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
             return false;
@@ -6342,19 +5479,16 @@ public class Auction extends Entity {
             return false;
         }
 
-        // Logic for handling the winning bidder and outbidding
         if (winningBidder == null) {
             currentPrice = item.getStartingPrice();
             highestMaxBid = newMaxBid;
             winningBidder = bidder;
 
         } else if (bidder.getId().equals(winningBidder.getId())) {
-            // User is increasing their own maximum bid limit
             if (newMaxBid > highestMaxBid) {
                 highestMaxBid = newMaxBid;
             }
         } else {
-            // User is trying to outbid the current winner
             if (newMaxBid > highestMaxBid) {
                 currentPrice = highestMaxBid + bidIncrement;
                 if (currentPrice > newMaxBid) {
@@ -6373,7 +5507,6 @@ public class Auction extends Entity {
         BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
         bidHistory.add(transaction);
 
-        // Anti-Sniping Algorithm: Extend time by 2 minutes if a bid is placed in the last minute
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             endTime = endTime.plusMinutes(2);
             System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + RESET);
@@ -6382,12 +5515,7 @@ public class Auction extends Entity {
         return true;
     }
 
-    /**
-     * Checks if the auction duration has passed and transitions the state appropriately.
-     * Evaluates both actively running auctions and open ones with no bids.
-     */
     public synchronized void closeAuctionIfTimeIsUp() {
-        // FIX: Allow closing even if the status is strictly OPEN (meaning 0 bids were placed)
         if ((this.status.equals(STATUS_RUNNING) || this.status.equals(STATUS_OPEN)) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
                 this.status = STATUS_FINISHED;
@@ -6401,14 +5529,9 @@ public class Auction extends Entity {
     }
 
     /**
-     * Registers a new auto-bid bot into the auction's priority queue.
-     *
-     * @param bidder        The owner of the bot.
-     * @param maxBid        The absolute maximum limit for this bot.
-     * @param userIncrement The step amount to increase when outbidding competitors.
-     * @return true if successfully registered.
+     * Tham số Bidder đã được đổi thành User
      */
-    public synchronized boolean registerAutoBid(Bidder bidder, double maxBid, double userIncrement) {
+    public synchronized boolean registerAutoBid(User bidder, double maxBid, double userIncrement) {
         if (!status.equals(STATUS_RUNNING)) {
             System.out.println("[Error]: " + RED + "Auction is not in RUNNING status" + RESET);
             return false;
@@ -6420,8 +5543,6 @@ public class Auction extends Entity {
         }
 
         AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
-
-        // PriorityQueue automatically sorts the elements based on the Comparator (registration time)
         activeAutoBids.offer(newAutoBid);
 
         System.out.println(BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + RESET);
@@ -6441,31 +5562,32 @@ public class Auction extends Entity {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\AutoBid.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\auction\AutoBid.java ///
 ======================================================================
 
-package model;
+package model.auction;
 
+import model.user.User;
 import java.time.LocalDateTime;
 
 public class AutoBid {
 
-    private Bidder bidder;
+    private User bidder; // Đã đổi Bidder thành User
     private double maxBid;
     private double increment;
     private LocalDateTime timeRegistered;
 
     public AutoBid() {super();}
 
-    public AutoBid(Bidder bidder, double maxBid, double increment) {
+    public AutoBid(User bidder, double maxBid, double increment) {
         this.bidder         = bidder;
         this.maxBid         = maxBid;
         this.increment      = increment;
         this.timeRegistered = LocalDateTime.now();
     }
 
-    public Bidder getBidder() { return bidder; }
-    public void setBidder(Bidder bidder) { this.bidder = bidder; }
+    public User getBidder() { return bidder; }
+    public void setBidder(User bidder) { this.bidder = bidder; }
 
     public double getMaxBid() { return maxBid; }
     public void setMaxBid(double maxBid) { this.maxBid = maxBid; }
@@ -6475,36 +5597,40 @@ public class AutoBid {
 
     public LocalDateTime getTimeRegistered() { return timeRegistered; }
     public void setTimeRegistered(LocalDateTime timeRegistered) { this.timeRegistered = timeRegistered; }
-
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\Bidder.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\base\Entity.java ///
 ======================================================================
 
-package model;
+package model.base;
 
-public class Bidder extends User {
+public abstract class Entity {
+    private String id;
 
-    public Bidder() {super(); this.setRole("BIDDER");}
+    public Entity() {}
 
-    public Bidder(User baseUser) {
-        super(baseUser.getId(), baseUser.getUserName(), baseUser.getUserPass(), baseUser.getName(), "BIDDER");
-    }
+    public Entity(String id) {this.id = id;}
 
+    public String getId() {return id;}
+    public void setId(String id) {this.id = id;}
+
+    public abstract String getInfo();
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\BidTransaction.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\finance\BidTransaction.java ///
 ======================================================================
 
-package model;
+package model.finance;
 
+import model.base.Entity;
+import model.user.User;
 import java.time.LocalDateTime;
 
 public class BidTransaction extends Entity {
 
-    private Bidder bidder;
+    private User bidder; // Đã đổi Bidder thành User
     private double bidAmount;
     private LocalDateTime timestamp;
 
@@ -6512,15 +5638,15 @@ public class BidTransaction extends Entity {
         super();
     }
 
-    public BidTransaction(String id, Bidder bidder, double bidAmount) {
+    public BidTransaction(String id, User bidder, double bidAmount) {
         super(id);
         this.bidder    = bidder;
         this.bidAmount = bidAmount;
         this.timestamp = LocalDateTime.now();
     }
 
-    public Bidder getBidder() { return bidder; }
-    public void setBidder(Bidder bidder) { this.bidder = bidder; }
+    public User getBidder() { return bidder; }
+    public void setBidder(User bidder) { this.bidder = bidder; }
 
     public double getBidAmount() { return bidAmount; }
     public void setBidAmount(double bidAmount) { this.bidAmount = bidAmount; }
@@ -6531,16 +5657,89 @@ public class BidTransaction extends Entity {
     @Override
     public String getInfo() {
         String name = (bidder != null) ? bidder.getUserName() : "Unknown";
-        return "[Transaction]: Bidder \"" + name + "\" placed VND " + bidAmount + " at " + timestamp;
+        return "[Transaction]: User \"" + name + "\" placed VND " + bidAmount + " at " + timestamp;
     }
-
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\DigitalItem.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\finance\Wallet.java ///
 ======================================================================
 
-package model;
+package model.finance;
+
+public class Wallet {
+    private String userId;
+    private double balance;
+
+    public Wallet() {}
+
+    public Wallet(String userId, double balance) {
+        this.userId = userId;
+        this.balance = balance;
+    }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+
+    public double getBalance() { return balance; }
+    public void setBalance(double balance) { this.balance = balance; }
+
+    // safety check
+    public boolean hasEnoughBalance(double amount) {
+        return this.balance >= amount;
+    }
+}
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\finance\WalletTransaction.java ///
+======================================================================
+
+package model.finance;
+
+import model.base.Entity;
+
+import java.time.LocalDateTime;
+
+public class WalletTransaction extends Entity {
+    private String userId;
+    private double amount; // + = deposit/refund, - = withdraw/bid
+    private String description;
+    private LocalDateTime createdAt;
+
+    public WalletTransaction() { super(); }
+
+    public WalletTransaction(String id, String userId, double amount, String description) {
+        super(id);
+        this.userId = userId;
+        this.amount = amount;
+        this.description = description;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+
+    public double getAmount() { return amount; }
+    public void setAmount(double amount) { this.amount = amount; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    @Override
+    public String getInfo() {
+        String type = (amount >= 0) ? "[+ In]" : "[- Out]";
+        return type + " Amount: " + amount + " | Time: " + createdAt + " | Desc: " + description;
+    }
+}
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\DigitalItem.java ///
+======================================================================
+
+package model.item;
 
 /**
  * Represents a digital product in the auction system.
@@ -6561,29 +5760,12 @@ public class DigitalItem extends Item {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\Entity.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\Item.java ///
 ======================================================================
 
-package model;
+package model.item;
 
-public abstract class Entity {
-    private String id;
-
-    public Entity() {}
-
-    public Entity(String id) {this.id = id;}
-
-    public String getId() {return id;}
-    public void setId(String id) {this.id = id;}
-
-    public abstract String getInfo();
-}
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\Item.java ///
-======================================================================
-
-package model;
+import model.base.Entity;
 
 public class Item extends Entity {
     private String itemName;
@@ -6625,10 +5807,10 @@ public class Item extends Entity {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\ItemFactory.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\ItemFactory.java ///
 ======================================================================
 
-package model;
+package model.item;
 
 import static utils.ConsoleColors.*;
 
@@ -6678,34 +5860,10 @@ public class ItemFactory {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\Seller.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\ServicePackage.java ///
 ======================================================================
 
-package model;
-
-public class Seller extends User {
-
-    public Seller() {
-        super();
-    }
-
-    public Seller(User baseUser) {
-        super(baseUser.getId(), baseUser.getUserName(), baseUser.getUserPass(), baseUser.getName(), "SELLER");
-        this.setGood(baseUser.isGood());
-    }
-
-    @Override
-    public String getInfo() {
-        String tag = this.isGood() ? "[TRUSTED] " : "";
-        return tag + super.getInfo();
-    }
-}
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\ServicePackage.java ///
-======================================================================
-
-package model;
+package model.item;
 
 /**
  * Represents a service or experience in the auction system.
@@ -6726,10 +5884,10 @@ public class ServicePackage extends Item {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\TangibleItem.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\TangibleItem.java ///
 ======================================================================
 
-package model;
+package model.item;
 
 /**
  * Represents a physical, tangible item in the auction system.
@@ -6750,10 +5908,34 @@ public class TangibleItem extends Item {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\User.java ///
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\user\Admin.java ///
 ======================================================================
 
-package model;
+package model.user;
+
+public class Admin extends User {
+
+    public Admin(String id, String userName, String userPass, String name) {
+        super(id, userName, userPass, name, "Admin");
+    }
+    public Admin(User admin) {
+        super(admin.getId(), admin.getUserName(), admin.getUserPass(), admin.getName(), "Admin");
+    }
+
+    @Override
+    public String getInfo() {
+        return    "[Admin] ID: " + this.getId()
+                + " | Name: " + this.getName() + " (System Administrator)";
+    }
+}
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\user\User.java ///
+======================================================================
+
+package model.user;
+
+import model.base.Entity;
 
 public class User extends Entity {
 
@@ -6799,83 +5981,11 @@ public class User extends Entity {
 
     @Override
     public String getInfo() {
-        return       "ID: "       + this.getId()
+        String tag = this.isGood() ? "[TRUSTED] " : "";
+        return tag + "ID: " + this.getId()
                 + " | Username: " + this.userName
                 + " | Name: "     + this.name
                 + " | Role: "     + this.role;
-    }
-
-}
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\Wallet.java ///
-======================================================================
-
-package model;
-
-public class Wallet {
-    private String userId;
-    private double balance;
-
-    public Wallet() {}
-
-    public Wallet(String userId, double balance) {
-        this.userId = userId;
-        this.balance = balance;
-    }
-
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
-
-    public double getBalance() { return balance; }
-    public void setBalance(double balance) { this.balance = balance; }
-
-    // safety check
-    public boolean hasEnoughBalance(double amount) {
-        return this.balance >= amount;
-    }
-}
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\WalletTransaction.java ///
-======================================================================
-
-package model;
-
-import java.time.LocalDateTime;
-
-public class WalletTransaction extends Entity {
-    private String userId;
-    private double amount; // + = deposit/refund, - = withdraw/bid
-    private String description;
-    private LocalDateTime createdAt;
-
-    public WalletTransaction() { super(); }
-
-    public WalletTransaction(String id, String userId, double amount, String description) {
-        super(id);
-        this.userId = userId;
-        this.amount = amount;
-        this.description = description;
-        this.createdAt = LocalDateTime.now();
-    }
-
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
-
-    public double getAmount() { return amount; }
-    public void setAmount(double amount) { this.amount = amount; }
-
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    @Override
-    public String getInfo() {
-        String type = (amount >= 0) ? "[+ In]" : "[- Out]";
-        return type + " Amount: " + amount + " | Time: " + createdAt + " | Desc: " + description;
     }
 }
 
@@ -7139,7 +6249,7 @@ package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
-import model.Auction;
+import model.auction.Auction;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
@@ -7305,9 +6415,8 @@ public class AuctionMonitor {
 
 package controller;
 
-import model.Admin;
-import model.Seller;
-import model.Auction;
+import model.user.*;
+import model.auction.Auction;
 
 import static utils.ConsoleColors.*;
 
@@ -7357,9 +6466,8 @@ package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
-import model.Auction;
-import model.Bidder;
-import model.User;
+import model.auction.Auction;
+import model.user.User;
 import service.AutoBidEngine;
 
 import java.sql.Connection;
@@ -7612,7 +6720,7 @@ package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
-import model.User;
+import model.user.User;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -7684,9 +6792,8 @@ public class ServerPaymentController {
 package controller;
 
 import database.DatabaseManager;
-import model.Auction;
-import model.Item;
-import model.Seller;
+import model.auction.Auction;
+import model.item.Item;
 import model.User;
 
 import java.sql.Connection;
@@ -7812,8 +6919,7 @@ public class ServerSellerController {
 package controller;
 
 import database.DatabaseManager;
-import model.Admin;
-import model.User;
+import model.user.*;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.security.MessageDigest;
@@ -8190,7 +7296,7 @@ public class ClientHandler {
     private final WebSocket conn;
     private static int cNC = 0;
     private String clientName = "Guest" + (cNC++);
-    private model.User user;
+    private model.user.User user;
 
     private final UserController userController;
     private static final CommandDispatcher dispatcher = new CommandDispatcher();
@@ -8680,7 +7786,7 @@ package server.handler;
 
 import database.DatabaseManager;
 import database.TransactionManager;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
 
@@ -8750,7 +7856,7 @@ package server.handler;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import model.ItemFactory;
+import model.item.ItemFactory;
 import network.NetworkMessage;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
@@ -8843,7 +7949,7 @@ package server.handler;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
 
@@ -9095,7 +8201,7 @@ public class FetchAuctionsHandler implements CommandHandler {
 package server.handler;
 
 import controller.ServerPaymentController;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
 import service.PayPalService;
@@ -9302,7 +8408,7 @@ public class SystemHandler implements CommandHandler {
 
 package server.ServerExtension;
 
-import model.Auction;
+import model.auction.Auction;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -9468,8 +8574,8 @@ public class ClientManager {
 package service;
 
 import controller.ServerBidderController;
-import model.Auction;
-import model.AutoBid;
+import model.auction.Auction;
+import model.auction.AutoBid;
 
 import java.util.Comparator;
 import java.util.PriorityQueue;

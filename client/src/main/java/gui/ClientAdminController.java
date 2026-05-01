@@ -9,7 +9,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import model.User;
+import model.user.User;
 
 import java.io.IOException;
 
