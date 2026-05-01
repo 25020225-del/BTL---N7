@@ -1,4 +1,4 @@
-package model;
+package model.item;
 
 /**
  * Represents a digital product in the auction system.

@@ -3,7 +3,7 @@ package gui;
 import client.network.NetworkClient;
 import gui.process.AlertHelper;
 import gui.process.QRCodeHelper;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -15,6 +15,10 @@ import java.util.List;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Controller responsible for handling new user registrations.
+ * All new public registrations are defaulted to the standard "USER" role.
+ */
 public class RegisterController {
 
     @FXML private TextField registerName;
@@ -30,6 +34,10 @@ public class RegisterController {
         this.networkClient = client;
     }
 
+    /**
+     * Handles the registration button click event.
+     * Validates input fields and sends the registration payload to the server.
+     */
     @FXML
     protected void onRegisterButtonClick() {
         System.out.println("[Log]: Registration process started");
@@ -62,6 +70,7 @@ public class RegisterController {
             return;
         }
 
+        // Unify all new sign-ups to the generic "USER" role
         User newUser = new User("", username, password, name, "USER");
 
         if (networkClient != null) {
@@ -76,13 +85,22 @@ public class RegisterController {
         }
     }
 
+    /**
+     * Switches the view back to the Login screen.
+     */
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("[Log]: Login UI view");
+        System.out.println("[Log]: Navigating to Login UI");
         clearFields();
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
+    /**
+     * Processes the server's response regarding the registration attempt.
+     * Handles 2FA setup upon successful registration.
+     *
+     * @param response The network message received from the server.
+     */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             registerButton.setDisable(false);
@@ -132,6 +150,9 @@ public class RegisterController {
         });
     }
 
+    /**
+     * Clears all input fields in the registration form.
+     */
     private void clearFields() {
         registerName.clear();
         registerAccountName.clear();

@@ -16,31 +16,43 @@ import java.util.Map;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Handles requests for retrieving auction listings from the database.
+ * This class identifies whether a user is requesting public active auctions
+ * or administrative pending auctions and formats the data for client-side display,
+ * including time conversions for countdown timers.
+ */
 public class FetchAuctionsHandler implements CommandHandler {
+
+    /**
+     * Processes FETCH_AUCTIONS and FETCH_PENDING_AUCTIONS commands.
+     * For pending auctions, it enforces a security check to ensure the
+     * requesting user has administrative privileges.
+     *
+     * @param message The network message containing the specific fetch command.
+     * @param client  The client handler session requesting the data.
+     */
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
         String command = message.getCommand();
         String sql = "";
 
         if ("FETCH_AUCTIONS".equals(command)) {
-            // FIX: Added 'description' and 'starting_price' to the SELECT query
             sql = "SELECT id, item_name, description, starting_price, current_price, end_time FROM auctions WHERE status IN ('RUNNING', 'OPEN')";
 
         } else if ("FETCH_PENDING_AUCTIONS".equals(command)) {
             if (client.getUser() != null && client.getUser().getRole().equalsIgnoreCase("ADMIN")) {
-                // FIX: Added 'description' and 'starting_price' to the SELECT query
                 sql = "SELECT id, item_name, description, starting_price, current_price, end_time FROM auctions WHERE status = 'PENDING_APPROVAL'";
             } else {
                 client.sendResponse("ERROR", "You do not have permission to view pending auctions.");
                 return;
             }
         } else {
-            return; // If neither of the two commands above applies, skip it
+            return;
         }
 
         List<Map<String, Object>> activeAuctions = new ArrayList<>();
 
-        // 2. Run SQL and export data
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
@@ -49,14 +61,10 @@ public class FetchAuctionsHandler implements CommandHandler {
                 Map<String, Object> auctionData = new HashMap<>();
                 auctionData.put("id", rs.getString("id"));
                 auctionData.put("itemName", rs.getString("item_name"));
-
-                // NEW: Read the missing columns from the database
                 auctionData.put("description", rs.getString("description"));
                 auctionData.put("startingPrice", rs.getDouble("starting_price"));
-
                 auctionData.put("currentPrice", rs.getDouble("current_price"));
 
-                // Convert the time to milliseconds for the countdown UI
                 LocalDateTime endTime = LocalDateTime.parse(rs.getString("end_time"));
                 long endTimeMillis = endTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
                 auctionData.put("endTime", endTimeMillis);
@@ -64,7 +72,6 @@ public class FetchAuctionsHandler implements CommandHandler {
                 activeAuctions.add(auctionData);
             }
 
-            // NOTE: Return a single “FETCH_AUCTIONS_SUCCESS” flag to make it easier for the client to reuse the UI
             client.sendResponse("FETCH_AUCTIONS_SUCCESS", activeAuctions);
             System.out.println("[System]: Sent auction list (" + command + ") to \"" + YELLOW + client.getClientName() + RESET + "\"");
 

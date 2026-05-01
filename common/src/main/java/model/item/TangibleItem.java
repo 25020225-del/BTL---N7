@@ -1,4 +1,4 @@
-package model;
+package model.item;
 
 /**
  * Represents a physical, tangible item in the auction system.

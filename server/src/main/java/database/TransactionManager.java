@@ -7,19 +7,30 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Manages asynchronous database transaction execution using a single-threaded worker pattern.
+ * This class ensures that all write operations to the SQLite database are serialized
+ * (executed one after another) to prevent "Database is locked" errors, as SQLite
+ * does not natively support high-concurrency writes.
+ */
 public class TransactionManager {
 
-    // The queue contains tasks that need to be written to the database
+    /**
+     * Thread-safe queue containing database tasks awaiting execution.
+     * Implements the Producer-Consumer pattern.
+     */
     private static final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
+
+    /** The single background thread dedicated to consuming and running database tasks. */
     private static final Thread dbWorker;
 
     static {
-        // Create a single Worker Thread (Consumer)
+        // Initialize the dedicated Database Worker Thread
         dbWorker = new Thread(() -> {
             System.out.println("[Database]: " + GREEN + "Transaction Worker Thread started." + RESET);
             while (true) {
                 try {
-                    // Remove the task from the queue (it will automatically wait if the queue is empty)
+                    // Block and wait for the next available task in the queue
                     Runnable task = queue.take();
                     task.run();
                 } catch (InterruptedException e) {
@@ -32,25 +43,34 @@ public class TransactionManager {
             }
         });
 
-        // Set this process to run in the background so it doesn't interfere with the server shutdown process
+        // Set the worker as a daemon to ensure it doesn't block the JVM from shutting down
         dbWorker.setDaemon(true);
         dbWorker.start();
     }
 
     /**
-     * Receive a task (Callable) from ClientHandler, enqueue it
-     * and return a CompletableFuture so that the client can wait for the result.
+     * Submits a database task for asynchronous execution and returns a future result.
+     * This method acts as the 'Producer'. It wraps a {@link Callable} into a {@link Runnable},
+     * adds it to the internal queue, and provides a {@link CompletableFuture} that the
+     * caller can use to retrieve the result or handle errors.
+     *
+     * @param <T>  The type of the result produced by the task.
+     * @param task The logic to be executed by the database worker thread.
+     * @return A {@link CompletableFuture} that will be completed once the worker finishes the task.
      */
     public static <T> CompletableFuture<T> submitTask(Callable<T> task) {
         CompletableFuture<T> future = new CompletableFuture<>();
 
+        // Enqueue the task; execution will happen on the dbWorker thread
         queue.offer(() -> {
             try {
-                // Execute the task (at this point, only one thread is accessing SQLite)
+                // Execute the task logic
                 T result = task.call();
-                future.complete(result); // Return a success result
+                // Signal success to the future
+                future.complete(result);
             } catch (Exception e) {
-                future.completeExceptionally(e); // Return any errors
+                // Signal failure to the future
+                future.completeExceptionally(e);
             }
         });
 

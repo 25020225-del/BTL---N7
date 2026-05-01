@@ -56,7 +56,6 @@ public class ClientAuctionHandler implements ResponseHandler {
         else if ("CREATE_SUCCESS".equals(command)) {
             System.out.println("[System]: " + GREEN + message.getData() + RESET);
             Platform.runLater(() -> {
-                // Translated alert to English
                 AlertHelper.showAlert(AlertType.INFORMATION, "Success", message.getData().toString());
             });
         }

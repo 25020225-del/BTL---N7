@@ -10,39 +10,66 @@ import java.sql.Statement;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Manages database connectivity and lifecycle for the auction system.
+ * This class utilizes HikariCP for efficient connection pooling and handles
+ * the initial creation and migration of SQLite database tables.
+ */
 public class DatabaseManager {
 
+    /** The JDBC connection URL for the SQLite database, configured with WAL mode. */
     private static final String DB_URL = "jdbc:sqlite:auction_system.db?journal_mode=WAL";
 
+    /** The pooled data source instance used to provide database connections. */
     private static final HikariDataSource dataSource;
 
     static {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(DB_URL);
-        config.setMaximumPoolSize(5); // SQLite does not support highly concurrent writes
+
+        // SQLite configuration: limited to 5 concurrent connections to prevent file locking issues
+        config.setMaximumPoolSize(5);
         config.setMinimumIdle(1);
         config.setConnectionTimeout(30000);
         config.setIdleTimeout(600000);
 
-        // Enable Write-Ahead Logging (WAL) for better read/write concurrency
+        // Optimization: Enable Write-Ahead Logging (WAL) for better read/write concurrency in SQLite
         config.addDataSourceProperty("journal_mode", "WAL");
 
-        // Instruct SQLite to queue threads and wait up to 5000ms if the DB is locked
+        // Set a busy timeout of 5000ms to allow threads to wait if the database is temporarily locked
         config.addDataSourceProperty("busy_timeout", "5000");
 
         dataSource = new HikariDataSource(config);
     }
 
+    /**
+     * Retrieves a connection from the HikariCP connection pool.
+     *
+     * @return A {@link Connection} object ready for database operations.
+     * @throws SQLException If a connection cannot be established or retrieved from the pool.
+     */
     public static Connection getConnection() throws SQLException {
         return dataSource.getConnection();
     }
 
+    /**
+     * Initializes the relational database schema.
+     * This method performs the following tasks:
+     * <ul>
+     *     <li>Enables foreign key constraints.</li>
+     *     <li>Creates core tables: users, wallets, auctions, transactions, and auto-bids.</li>
+     *     <li>Handles legacy table upgrades for TOTP security features.</li>
+     *     <li>Seeds a default administrator account with a secure hashed password.</li>
+     * </ul>
+     */
     public static void initializeDatabase() {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
 
+            // Ensure SQLite enforces relational integrity
             stmt.execute("PRAGMA foreign_keys = ON;");
 
+            // --- USER MANAGEMENT SCHEMA ---
             String createUsersTable = "CREATE TABLE IF NOT EXISTS users (" +
                     "id TEXT PRIMARY KEY, " +
                     "username TEXT UNIQUE NOT NULL, " +
@@ -55,6 +82,7 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createUsersTable);
 
+            // --- FINANCIAL SCHEMA ---
             String createWalletsTable = "CREATE TABLE IF NOT EXISTS wallets (" +
                     "user_id TEXT PRIMARY KEY, " +
                     "balance REAL DEFAULT 0.0, " +
@@ -72,18 +100,22 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createWalletTxnTable);
 
+            // LEGACY MIGRATION: Safely add TOTP columns if they are missing from older versions
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
                 System.out.println("[Database]: " + GREEN + "Successfully upgraded user table" + RESET);
             } catch (SQLException ignored) {
+                // Columns already exist
             }
 
+            // SEED DATA: Insert default admin user if not present
             String adminPass = BCrypt.hashpw("123456", BCrypt.gensalt(12));
             String insertAdmin = "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good, is_totp_enabled) " +
                     "VALUES ('A001', 'admin', '" + adminPass + "', 'Super Admin', 'ADMIN', 1, 0);";
             stmt.execute(insertAdmin);
 
+            // --- AUCTION SYSTEM SCHEMA ---
             String createAuctionsTable = "CREATE TABLE IF NOT EXISTS auctions (" +
                     "id TEXT PRIMARY KEY, " +
                     "item_name TEXT NOT NULL, " +
