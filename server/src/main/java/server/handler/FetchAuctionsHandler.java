@@ -23,11 +23,13 @@ public class FetchAuctionsHandler implements CommandHandler {
         String sql = "";
 
         if ("FETCH_AUCTIONS".equals(command)) {
-            sql = "SELECT id, item_name, current_price, end_time FROM auctions WHERE status IN ('RUNNING', 'OPEN')";
+            // FIX: Added 'description' and 'starting_price' to the SELECT query
+            sql = "SELECT id, item_name, description, starting_price, current_price, end_time FROM auctions WHERE status IN ('RUNNING', 'OPEN')";
 
         } else if ("FETCH_PENDING_AUCTIONS".equals(command)) {
             if (client.getUser() != null && client.getUser().getRole().equalsIgnoreCase("ADMIN")) {
-                sql = "SELECT id, item_name, current_price, end_time FROM auctions WHERE status = 'PENDING_APPROVAL'";
+                // FIX: Added 'description' and 'starting_price' to the SELECT query
+                sql = "SELECT id, item_name, description, starting_price, current_price, end_time FROM auctions WHERE status = 'PENDING_APPROVAL'";
             } else {
                 client.sendResponse("ERROR", "You do not have permission to view pending auctions.");
                 return;
@@ -47,6 +49,11 @@ public class FetchAuctionsHandler implements CommandHandler {
                 Map<String, Object> auctionData = new HashMap<>();
                 auctionData.put("id", rs.getString("id"));
                 auctionData.put("itemName", rs.getString("item_name"));
+
+                // NEW: Read the missing columns from the database
+                auctionData.put("description", rs.getString("description"));
+                auctionData.put("startingPrice", rs.getDouble("starting_price"));
+
                 auctionData.put("currentPrice", rs.getDouble("current_price"));
 
                 // Convert the time to milliseconds for the countdown UI

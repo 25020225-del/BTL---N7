@@ -206,9 +206,11 @@ public class Auction extends Entity {
 
     /**
      * Checks if the auction duration has passed and transitions the state appropriately.
+     * Evaluates both actively running auctions and open ones with no bids.
      */
     public synchronized void closeAuctionIfTimeIsUp() {
-        if (this.status.equals(STATUS_RUNNING) && LocalDateTime.now().isAfter(this.endTime)) {
+        // FIX: Allow closing even if the status is strictly OPEN (meaning 0 bids were placed)
+        if ((this.status.equals(STATUS_RUNNING) || this.status.equals(STATUS_OPEN)) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
                 this.status = STATUS_FINISHED;
                 System.out.println(GREEN + "[System]: Auction session \"" + this.getId() + "\" has ended" + RESET);

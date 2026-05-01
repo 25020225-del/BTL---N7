@@ -11,9 +11,9 @@
         <ImageView fx:id="imgProduct" fitHeight="150.0" fitWidth="180.0" pickOnBounds="true" preserveRatio="true" />
         <VBox spacing="5.0">
             <children>
-                <Label fx:id="lblTitle" style="-fx-font-weight: bold;" text="Tên sản phẩm mẫu" wrapText="true" />
+                <Label fx:id="lblTitle" style="-fx-font-weight: bold;" text="Sample Item" wrapText="true" />
                 <Label fx:id="lblPrice" style="-fx-text-fill: #e53238; -fx-font-size: 16;" styleClass="price-text" stylesheets="@Stylist.css" text="\$100.00" />
-                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: #3665f3; -fx-text-fill: white;" styleClass="button-ebay" text="Đấu giá" />
+                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: #3665f3; -fx-text-fill: white;" styleClass="button-ebay" text="Place Bid" />
             </children>
             <padding>
                 <Insets bottom="10.0" left="10.0" right="10.0" />

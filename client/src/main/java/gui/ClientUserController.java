@@ -27,6 +27,11 @@ import java.util.Map;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * The primary controller for standard users (Bidders and Sellers).
+ * Manages the main dashboard navigation, marketplace grid updates,
+ * and handles server events related to UI synchronization.
+ */
 public class ClientUserController {
 
     private Parent mainView;
@@ -54,14 +59,13 @@ public class ClientUserController {
     @FXML private TextField ca_endHour;
     @FXML private TextField ca_endMinute;
 
-
     private IconButton accountBtn;
-    private IconButton toggleList    = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
-    private IconButton toggleSearchButton = new IconButton("mdi2f-file-find-outline","Search",                "Search",          "special-button");
-    private IconButton marketplaceBtn = new IconButton("mdi2s-storefront-outline",   "Chợ đấu giá",           "Marketplace",     "special-button");
-    private IconButton createAuctionBtn = new IconButton("mdi2a-archive-plus-outline","Đăng bán",             "Create Auction",  "special-button");
-    private IconButton depositBtn     = new IconButton("mdi2c-cash-plus",            "Deposit 50,000 (Test)", "Deposit",         "special-button");
-    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",            "Create Auction (Test)", "Test Create",     "special-button");
+    private IconButton toggleList           = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
+    private IconButton toggleSearchButton   = new IconButton("mdi2f-file-find-outline",     "Search",                "Search",          "special-button");
+    private IconButton marketplaceBtn       = new IconButton("mdi2s-storefront-outline",    "Marketplace",           "Marketplace",     "special-button");
+    private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
+    private IconButton depositBtn           = new IconButton("mdi2c-cash-plus",             "Deposit 50k (Test)",    "Deposit",         "special-button");
+    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
 
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
@@ -75,7 +79,6 @@ public class ClientUserController {
         sellerLoader.setController(this);
         createAuctionView = sellerLoader.load();
 
-
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
         tableViewLoader.setController(this);
         tableAuctionView = tableViewLoader.load();
@@ -83,6 +86,9 @@ public class ClientUserController {
         MainApplication.setNewScene(mainView);
     }
 
+    /**
+     * Initializes the side navigation menu layout and button actions.
+     */
     private void setMainDock() {
         Separator separator = new Separator();
         Region region = new Region();
@@ -109,15 +115,12 @@ public class ClientUserController {
             toggleList.setUserData(!collapsed);
         });
 
-
-        // Navigate to marketplace and refresh listings
         marketplaceBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(tableAuctionView);
             MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
         });
 
-        // Navigate to create-auction form
         createAuctionBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(createAuctionView);
@@ -143,11 +146,11 @@ public class ClientUserController {
         mainTilePane.getChildren().clear();
     }
 
+    /**
+     * Configures the real-time local search bar to filter items in the grid.
+     */
     private void setupSearch() {
-        if (searchField == null || mainTilePane == null) {
-            System.out.println("[Warning]: " + YELLOW + "searchField or mainTilePane not found – check @FXML bindings." + RESET);
-            return;
-        }
+        if (searchField == null || mainTilePane == null) return;
 
         searchField.setOnAction(event -> {
             if (searchButton != null) searchButton.fire();
@@ -156,7 +159,6 @@ public class ClientUserController {
         if (searchButton != null) {
             searchButton.setOnAction(event -> {
                 String keyword = searchField.getText();
-                System.out.println("[Log]: Searching for: " + YELLOW + keyword + RESET);
                 for (Node node : mainTilePane.getChildren()) {
                     if (node instanceof MinimalItem item) {
                         boolean match = Search.searchText(keyword, item);
@@ -168,70 +170,50 @@ public class ClientUserController {
         }
     }
 
+    /**
+     * Sends a request to the server to mock a deposit into the user's wallet.
+     */
     public void requestDeposit(double amount) {
         if (amount <= 0) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
             return;
         }
-        System.out.println("[Log]: Sending deposit request of " + amount + " VND...");
         MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
 
+    /**
+     * Parses the UI form data to submit a request for creating a new auction session.
+     */
     @FXML
     public void handleSubmitAuction(javafx.event.ActionEvent event) {
-        System.out.println("[Log]: Processing create auction request...");
         try {
-            TextField  inputName       = ca_itemName;
-            TextArea   inputDesc       = ca_description;
-            TextField  inputStartPrice = ca_startPrice;
-            TextField  inputBidInc     = ca_bidIncrement;
-            DatePicker startDate       = ca_startDate;
-            DatePicker endDate         = ca_endDate;
-            TextField  startHour       = ca_startHour;
-            TextField  startMinute     = ca_startMinute;
-            TextField  endHour         = ca_endHour;
-            TextField  endMinute       = ca_endMinute;
-
-            // Validate text fields
-            String name       = inputName.getText().trim();
-            String desc       = inputDesc.getText().trim();
-            String startPrice = inputStartPrice.getText().trim();
-            String bidInc     = inputBidInc.getText().trim();
+            String name       = ca_itemName.getText().trim();
+            String desc       = ca_description.getText().trim();
+            String startPrice = ca_startPrice.getText().trim();
+            String bidInc     = ca_bidIncrement.getText().trim();
 
             if (name.isEmpty() || desc.isEmpty() || startPrice.isEmpty() || bidInc.isEmpty()) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Fields", "Please fill in all required fields");
+                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Fields", "Please fill in all required fields.");
                 return;
             }
 
-            // Validate dates
-            if (startDate.getValue() == null || endDate.getValue() == null) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Date", "Please select both start and end dates");
+            if (ca_startDate.getValue() == null || ca_endDate.getValue() == null) {
+                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Date", "Please select both start and end dates.");
                 return;
             }
 
-            // Parse and validate time fields
-            LocalDateTime startDT = LocalDateTime.of(
-                    startDate.getValue(),
-                    LocalTime.of(Integer.parseInt(startHour.getText().trim()),
-                            Integer.parseInt(startMinute.getText().trim()))
-            );
-            LocalDateTime endDT = LocalDateTime.of(
-                    endDate.getValue(),
-                    LocalTime.of(Integer.parseInt(endHour.getText().trim()),
-                            Integer.parseInt(endMinute.getText().trim()))
-            );
+            LocalDateTime startDT = LocalDateTime.of(ca_startDate.getValue(), LocalTime.of(Integer.parseInt(ca_startHour.getText().trim()), Integer.parseInt(ca_startMinute.getText().trim())));
+            LocalDateTime endDT = LocalDateTime.of(ca_endDate.getValue(), LocalTime.of(Integer.parseInt(ca_endHour.getText().trim()), Integer.parseInt(ca_endMinute.getText().trim())));
 
             long durationMinutes = java.time.Duration.between(startDT, endDT).toMinutes();
             if (durationMinutes <= 0) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Time", "End time must be after start time");
+                AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Time", "End time must be after start time.");
                 return;
             }
 
-            // Validate numeric fields
             Double.parseDouble(startPrice);
             Double.parseDouble(bidInc);
 
-            // Build payload and send
             Map<String, String> auctionData = new HashMap<>();
             auctionData.put("itemName",        name);
             auctionData.put("description",     desc);
@@ -239,29 +221,53 @@ public class ClientUserController {
             auctionData.put("bidIncrement",    bidInc);
             auctionData.put("durationMinutes", String.valueOf(durationMinutes));
 
-            System.out.println("[Log]: Sending CREATE_AUCTION for " + YELLOW + name + RESET + "...");
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", auctionData);
 
-            // Clear form
-            inputName.clear();       inputDesc.clear();
-            inputStartPrice.clear(); inputBidInc.clear();
-            startHour.clear();       startMinute.clear();
-            endHour.clear();         endMinute.clear();
-            startDate.setValue(null); endDate.setValue(null);
+            ca_itemName.clear();       ca_description.clear();
+            ca_startPrice.clear();     ca_bidIncrement.clear();
+            ca_startHour.clear();      ca_startMinute.clear();
+            ca_endHour.clear();        ca_endMinute.clear();
+            ca_startDate.setValue(null); ca_endDate.setValue(null);
 
-            // Navigate back to marketplace
             if (marketplaceBtn != null) marketplaceBtn.fire();
 
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Price, hours, and minutes must be valid numbers");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Price, hours, and minutes must be valid numbers.");
         } catch (java.time.DateTimeException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Hour must be 0–23 and minute must be 0–59");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Hour must be 0–23 and minute must be 0–59.");
         } catch (Exception e) {
-            System.out.println("[Error]: " + RED + e.getMessage() + RESET);
             e.printStackTrace();
         }
     }
 
+    /**
+     * Loads the detailed view for a specific item and injects the dynamic payload data.
+     *
+     * @param auctionData A mapped dictionary of properties for the targeted auction.
+     */
+    private void openItemDetail(Map<String, Object> auctionData) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
+            Parent detailView = loader.load();
+
+            ItemDetailController detailController = loader.getController();
+            detailController.setProductData(auctionData);
+
+            client.handler.ClientAuctionHandler.activeDetailController = detailController;
+
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(detailView);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Global router for server messages intended to manipulate the Dashboard UI.
+     *
+     * @param response The structured NetworkMessage from the server.
+     */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             String command = response.getCommand();
@@ -271,47 +277,50 @@ public class ClientUserController {
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> auctions = (List<Map<String, Object>>) response.getData();
 
-                    System.out.println("[Log]: Found " + auctions.size() + " auctions");
-
                     mainTilePane.getChildren().clear();
 
                     for (Map<String, Object> data : auctions) {
+                        String id      = (String) data.get("id");
                         String name    = (String) data.get("itemName");
                         String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
                         long   endTime = ((Number) data.get("endTime")).longValue();
 
-                        mainTilePane.getChildren().add(new MinimalItem(name, price, endTime));
+                        MinimalItem item = new MinimalItem(id, name, price, endTime);
+                        item.getAuctionButton().setOnAction(e -> openItemDetail(data));
+                        mainTilePane.getChildren().add(item);
                     }
-
-                    System.out.println("[System]: " + GREEN + "Auction list refreshed." + RESET);
-                } catch (Exception e) {
-                    System.out.println("[Error]: Auction list render error: " + RED + e.getMessage() + RESET);
-                }
+                } catch (Exception e) {}
 
             } else if ("NEW_AUCTION_ADDED".equals(command)) {
                 try {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> data = (Map<String, Object>) response.getData();
 
+                    String id      = (String) data.get("id");
                     String name    = (String) data.get("itemName");
                     String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
                     long   endTime = ((Number) data.get("endTime")).longValue();
 
-                    MinimalItem newItem = new MinimalItem(name, price, endTime);
+                    MinimalItem newItem = new MinimalItem(id, name, price, endTime);
+                    newItem.getAuctionButton().setOnAction(e -> openItemDetail(data));
+
                     newItem.setOpacity(0);
                     mainTilePane.getChildren().add(0, newItem);
 
                     FadeTransition ft = new FadeTransition(Duration.millis(500), newItem);
                     ft.setToValue(1.0);
                     ft.play();
+                } catch (Exception e) {}
 
-                    System.out.println("[System]: New auction added: " + YELLOW + name + RESET);
-                } catch (Exception e) {
-                    System.out.println("[Error]: New-auction render error: " + RED + e.getMessage() + RESET);
-                }
+            } else if ("REMOVE_AUCTION".equals(command)) {
+                // BUG FIX: Automatically remove the product card from the UI grid when the Server broadcasts an expiration notice
+                try {
+                    String auctionIdToRemove = (String) response.getData();
+                    mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
+                    System.out.println("[UI System]: Removed expired auction from grid: " + auctionIdToRemove);
+                } catch (Exception e) {}
 
             } else {
-                // Forward unhandled commands to the shared dispatcher
                 new ResponseDispatcher().dispatch(response, MainApplication.networkClient);
             }
         });
@@ -323,6 +332,5 @@ public class ClientUserController {
         setupSearch();
         MainApplication.networkClient.setOnMessageReceived(this::handleServerResponse);
         MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
-        System.out.println("[System]: " + GREEN + "User Controller started successfully." + RESET);
     }
 }
