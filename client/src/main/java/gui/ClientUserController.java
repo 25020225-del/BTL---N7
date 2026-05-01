@@ -30,13 +30,17 @@ import static utils.ConsoleColors.*;
 /**
  * The primary controller for standard users (Bidders and Sellers).
  * Manages the main dashboard navigation, marketplace grid updates,
- * and handles server events related to UI synchronization.
+ * handles server events related to UI synchronization, and manages user settings.
  */
 public class ClientUserController {
 
     private Parent mainView;
     private Parent createAuctionView;
     private Parent tableAuctionView;
+
+    // Extracted FXML views for Account and Settings
+    private Parent accountView;
+    private Parent settingsView;
 
     private User currentUser;
 
@@ -59,6 +63,10 @@ public class ClientUserController {
     @FXML private TextField ca_endHour;
     @FXML private TextField ca_endMinute;
 
+    // Labels corresponding to AccountView.fxml
+    @FXML private Label accName;
+    @FXML private Label accUsername;
+
     private IconButton accountBtn;
     private IconButton toggleList           = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
     private IconButton toggleSearchButton   = new IconButton("mdi2f-file-find-outline",     "Search",                "Search",          "special-button");
@@ -66,15 +74,18 @@ public class ClientUserController {
     private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
     private IconButton depositBtn           = new IconButton("mdi2c-cash-plus",             "Deposit 50k (Test)",    "Deposit",         "special-button");
     private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
+    private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
 
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
         this.accountBtn  = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
 
+        // 1. Load Main View
         FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainLoader.setController(this);
         mainView = mainLoader.load();
 
+        // 2. Load Sub Views
         FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
         sellerLoader.setController(this);
         createAuctionView = sellerLoader.load();
@@ -82,6 +93,20 @@ public class ClientUserController {
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
         tableViewLoader.setController(this);
         tableAuctionView = tableViewLoader.load();
+
+        // 3. Load Account Profile View
+        FXMLLoader accountLoader = new FXMLLoader(getClass().getResource("AccountView.fxml"));
+        accountLoader.setController(this);
+        accountView = accountLoader.load();
+
+        // Inject user data into the FXML labels
+        accName.setText("Full Name: " + currentUser.getName());
+        accUsername.setText("Username: " + currentUser.getUserName());
+
+        // 4. Load Settings View
+        FXMLLoader settingsLoader = new FXMLLoader(getClass().getResource("SettingsView.fxml"));
+        settingsLoader.setController(this);
+        settingsView = settingsLoader.load();
 
         MainApplication.setNewScene(mainView);
     }
@@ -101,6 +126,7 @@ public class ClientUserController {
                 testCreateAuctionBtn,
                 separator,
                 region,
+                settingsBtn,
                 accountBtn
         );
 
@@ -115,11 +141,7 @@ public class ClientUserController {
             toggleList.setUserData(!collapsed);
         });
 
-        marketplaceBtn.setOnAction(event -> {
-            mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(tableAuctionView);
-            MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
-        });
+        marketplaceBtn.setOnAction(event -> handleBackToMarketplace());
 
         createAuctionBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
@@ -140,15 +162,57 @@ public class ClientUserController {
             System.out.println("[Debug]: Sending CREATE_AUCTION for " + testItemName);
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
         });
+
+        accountBtn.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(accountView);
+        });
+
+        settingsBtn.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(settingsView);
+        });
     }
+
+    // =================================================================================
+    // ACTIONS TRIGGERED BY FXML BUTTONS (AccountView & SettingsView)
+    // =================================================================================
+
+    /**
+     * Navigates the user back to the primary marketplace table view.
+     * Can be invoked from the side navigation or 'Back' buttons in sub-views.
+     */
+    @FXML
+    public void handleBackToMarketplace() {
+        mainViewController.getChildren().clear();
+        mainViewController.getChildren().add(tableAuctionView);
+        MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
+    }
+
+    /**
+     * Handles the user sign out process by clearing the session
+     * and redirecting to the login root scene.
+     */
+    @FXML
+    public void handleSignOut() {
+        System.out.println("[System]: User \"" + currentUser.getName() + "\" is signing out.");
+
+        // Notify the Server to clear the User object from this socket connection
+        MainApplication.networkClient.sendMessage("LOGOUT", "");
+
+        // Prevent background chart updates from crashing after logout
+        client.handler.ClientAuctionHandler.activeDetailController = null;
+
+        // Return to the login screen
+        MainApplication.setNewScene(MainApplication.rootLogin);
+    }
+
+    // =================================================================================
 
     private void setMainViewController() {
         mainTilePane.getChildren().clear();
     }
 
-    /**
-     * Configures the real-time local search bar to filter items in the grid.
-     */
     private void setupSearch() {
         if (searchField == null || mainTilePane == null) return;
 
@@ -170,9 +234,6 @@ public class ClientUserController {
         }
     }
 
-    /**
-     * Sends a request to the server to mock a deposit into the user's wallet.
-     */
     public void requestDeposit(double amount) {
         if (amount <= 0) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
@@ -181,9 +242,6 @@ public class ClientUserController {
         MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
 
-    /**
-     * Parses the UI form data to submit a request for creating a new auction session.
-     */
     @FXML
     public void handleSubmitAuction(javafx.event.ActionEvent event) {
         try {
@@ -240,11 +298,6 @@ public class ClientUserController {
         }
     }
 
-    /**
-     * Loads the detailed view for a specific item and injects the dynamic payload data.
-     *
-     * @param auctionData A mapped dictionary of properties for the targeted auction.
-     */
     private void openItemDetail(Map<String, Object> auctionData) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
@@ -263,11 +316,6 @@ public class ClientUserController {
         }
     }
 
-    /**
-     * Global router for server messages intended to manipulate the Dashboard UI.
-     *
-     * @param response The structured NetworkMessage from the server.
-     */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             String command = response.getCommand();
@@ -313,11 +361,9 @@ public class ClientUserController {
                 } catch (Exception e) {}
 
             } else if ("REMOVE_AUCTION".equals(command)) {
-                // BUG FIX: Automatically remove the product card from the UI grid when the Server broadcasts an expiration notice
                 try {
                     String auctionIdToRemove = (String) response.getData();
                     mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
-                    System.out.println("[UI System]: Removed expired auction from grid: " + auctionIdToRemove);
                 } catch (Exception e) {}
 
             } else {

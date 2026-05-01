@@ -19,7 +19,22 @@ public class AuthHandler implements CommandHandler {
             processLogin(message.getData(), client);
         } else if ("REGISTER".equals(command)) {
             processRegister(message.getData(), client);
+        } else if ("LOGOUT".equals(command)) {
+            processLogout(client); // <-- Gọi hàm dọn dẹp
         }
+    }
+
+    /**
+     * Clears the user session data from the active ClientHandler socket
+     * and reverts the connection identity back to an anonymous guest.
+     */
+    private void processLogout(ClientHandler client) {
+        String oldName = client.getClientName();
+        client.setUser(null);
+        client.setClientName("Guest"+ClientHandler.getcNC());
+        ClientHandler.incrementcNC();
+
+        System.out.println("[System]: \"" + YELLOW + oldName + RESET + "\" signed out and reverted to " + client.getClientName());
     }
 
     private void processLogin(Object data, ClientHandler client) {

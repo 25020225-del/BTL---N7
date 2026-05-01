@@ -200,4 +200,7 @@ public class ClientHandler {
 
     public model.User getUser() {return user;}
     public void setUser(model.User user) {this.user = user;}
+
+    public static int getcNC() {return cNC;}
+    public static void incrementcNC() {cNC++;}
 }

@@ -28,6 +28,7 @@ public class CommandDispatcher {
         AuthHandler authHandler = new AuthHandler();
         handlers.put("LOGIN", authHandler);
         handlers.put("REGISTER", authHandler);
+        handlers.put("LOGOUT", authHandler);
 
         AuctionActionHandler auctionHandler = new AuctionActionHandler();
         handlers.put("CREATE_AUCTION", auctionHandler);
