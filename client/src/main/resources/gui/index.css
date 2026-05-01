@@ -208,3 +208,29 @@
     -fx-border-color: #2196F3;
     -fx-border-width: 1;
 }
+.profile-popover {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #e5e5e5;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 15, 0, 0, 8);
+}
+
+.user-name-label {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #111820;
+}
+//nut dang xuất
+.button-logout {
+    -fx-background-color: transparent;
+    -fx-text-fill: #dd1e31;
+    -fx-font-weight: bold;
+    -fx-border-color: #dd1e31;
+    -fx-border-radius: 20;
+    -fx-padding: 5 15;
+}
+
+.button-logout:hover {
+    -fx-background-color: #fff1f1;
+}
