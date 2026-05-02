@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane prefHeight="600.0" prefWidth="900.0" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientAdminController">
+<BorderPane prefHeight="600.0" prefWidth="900.0" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
 
     <top>
         <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #e5e5e5; -fx-border-width: 0 0 1 0;">
@@ -24,7 +24,7 @@
                 </Label>
                 <Label style="-fx-background-color: #333; -fx-text-fill: white; -fx-padding: 2 8; -fx-background-radius: 4;" text="ADMIN" />
                 <Region HBox.hgrow="ALWAYS" />
-                <TextField prefWidth="300.0" promptText="Tìm kiếm hệ thống..." styleClass="search-field" />
+                <TextField prefWidth="300.0" promptText="Search system..." styleClass="search-field" />
                 <Label fx:id="lblAdminMenu" style="-fx-cursor: hand;" text="Admin Account ▼">
                     <font>
                         <Font name="System Semibold" size="14.0" />
@@ -44,19 +44,19 @@
                     <children>
                         <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Tổng sản phẩm" textFill="#777" />
+                                <Label text="Total Items" textFill="#777" />
                                 <Label style="-fx-font-size: 24; -fx-font-weight: bold;" text="177013" />
                             </children>
                         </VBox>
                         <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Đang đấu giá" textFill="#777" />
+                                <Label text="Active Auctions" textFill="#777" />
                                 <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #3665f3;" text="67" />
                             </children>
                         </VBox>
                         <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Người dùng mới" textFill="#777" />
+                                <Label text="New Users" textFill="#777" />
                                 <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #28a745;" text="+67" />
                             </children>
                         </VBox>
@@ -67,24 +67,24 @@
                     <children>
                         <HBox alignment="CENTER_LEFT">
                             <children>
-                                <Label text="Quản lý danh sách đấu giá">
+                                <Label text="Auction Management">
                                     <font>
                                         <Font name="System Bold" size="18.0" />
                                     </font>
                                 </Label>
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Button styleClass="button-ebay" text="+ Thêm sản phẩm" />
+                                <Button styleClass="button-ebay" text="+ Add Item" />
                             </children>
                         </HBox>
 
                         <TableView fx:id="tableAuctions" VBox.vgrow="ALWAYS">
                             <columns>
                                 <TableColumn fx:id="colId" prefWidth="60.0" text="ID" />
-                                <TableColumn fx:id="colName" prefWidth="250.0" text="Tên sản phẩm" />
-                                <TableColumn fx:id="colSeller" prefWidth="120.0" text="Người bán" />
-                                <TableColumn fx:id="colPrice" prefWidth="120.0" text="Giá hiện tại" />
-                                <TableColumn fx:id="colStatus" prefWidth="100.0" text="Trạng thái" />
-                                <TableColumn fx:id="colAction" prefWidth="150.0" text="Thao tác" />
+                                <TableColumn fx:id="colName" prefWidth="250.0" text="Item Name" />
+                                <TableColumn fx:id="colSeller" prefWidth="120.0" text="Seller" />
+                                <TableColumn fx:id="colPrice" prefWidth="120.0" text="Current Price" />
+                                <TableColumn fx:id="colStatus" prefWidth="100.0" text="Status" />
+                                <TableColumn fx:id="colAction" prefWidth="150.0" text="Action" />
                             </columns>
                         </TableView>
                     </children>

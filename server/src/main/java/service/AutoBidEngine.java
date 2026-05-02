@@ -1,62 +1,115 @@
 package service;
 
 import controller.ServerBidderController;
-import model.Auction;
-import model.AutoBid;
+import model.auction.Auction;
+import model.auction.AutoBid;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * The core engine responsible for managing and executing automated bidding logic.
+ * It processes registered bots asynchronously using a priority-based approach
+ * (First-In, First-Out by registration time) to ensure fairness and prevent thread starvation.
+ *
+ * Part of the Auction System project.
+ */
 public class AutoBidEngine {
-    // Thread pool to run in background bot's loops (not blocking main)
-    private static final ExecutorService botPool = Executors.newCachedThreadPool();
+
+    /** Fixed thread pool for managing concurrent bot execution. */
+    private static final int MAX_BOTPOOL_SIZE = 50;
+    private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
+
+    /** Controller used to handle the actual bid placement and wallet transactions. */
     private static final ServerBidderController bidderCtrl = new ServerBidderController();
 
+    /**
+     * Entry point to trigger an automated scan for a specific auction.
+     * This is usually called after a manual bid or a new bot registration.
+     *
+     * @param auction The auction session to be scanned for potential bot actions.
+     */
     public static void triggerBotScan(Auction auction) {
-        botPool.submit(() -> {
-            boolean priceChanged;
-            do {
-                priceChanged = false;
-                // Cloning to avoid ConcurrentModificationException
-                List<AutoBid> bots = new ArrayList<>(auction.getActiveAutoBids());
+        botPool.submit(() -> processNextBot(auction));
+    }
 
-                for (AutoBid bot : bots) {
-                    // Ignore if the bot is the current winner
-                    if (auction.getWinningBidder() != null &&
-                            bot.getBidder().getId().equals(auction.getWinningBidder().getId())) {
-                        continue;
-                    }
+    /**
+     * Recursively evaluates the bot queue and executes bids.
+     * Uses a deep copy of the bot registry to ensure thread safety and avoid
+     * ConcurrentModificationException during asynchronous processing.
+     *
+     * @param auction The active auction session being processed.
+     */
+    private static void processNextBot(Auction auction) {
+        if (!auction.getStatus().equals(Auction.STATUS_RUNNING)) {
+            return;
+        }
 
-                    // Min amount to surpass current winner
-                    double requiredBid = (auction.getWinningBidder() == null) ?
-                            auction.getItem().getStartingPrice() :
-                            auction.getCurrentPrice() + bot.getIncrement();
+        PriorityQueue<AutoBid> originalBots = auction.getActiveAutoBids();
+        if (originalBots.isEmpty()) return;
 
-                    // if max bid can afford
-                    if (requiredBid <= bot.getMaxBid()) {
-                        System.out.println("[Auto-Bid Engine]: Bot of \""
-                                + YELLOW + bot.getBidder().getUserName() + RESET + "\" is trying to auto-bid");
+        // ENFORCEMENT: Create a deep copy to prevent mutability issues across threads.
+        PriorityQueue<AutoBid> bots = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
+        for (AutoBid original : originalBots) {
+            AutoBid copy = new AutoBid(original.getBidder(), original.getMaxBid(), original.getIncrement());
+            copy.setTimeRegistered(original.getTimeRegistered());
+            bots.offer(copy);
+        }
 
-                        // Call bid function with transaction & refund Database (isBot = true)
-                        boolean success = bidderCtrl.placeBidOnAuction(bot.getBidder(), auction, bot.getMaxBid(), true);
+        AutoBid capableBot = null;
+        double requiredBid = 0;
 
+        while (!bots.isEmpty()) {
+            AutoBid bot = bots.poll();
+
+            // Skip if the bot is already leading the auction.
+            if (auction.getWinningBidder() != null &&
+                    bot.getBidder().getId().equals(auction.getWinningBidder().getId())) {
+                continue;
+            }
+
+            // Calculate the next required bid based on auction rules and bot preferences.
+            double actualIncrement = Math.max(auction.getBidIncrement(), bot.getIncrement());
+            requiredBid = (auction.getWinningBidder() == null) ?
+                    auction.getItem().getStartingPrice() :
+                    auction.getCurrentPrice() + actualIncrement;
+
+            if (requiredBid <= bot.getMaxBid()) {
+                capableBot = bot;
+                break;
+            }
+        }
+
+        if (capableBot != null) {
+            final AutoBid currentBot = capableBot;
+            final double finalRequiredBid = requiredBid;
+
+            System.out.println("[Auto-Bid Engine]: Bot of \""
+                    + YELLOW + currentBot.getBidder().getUserName() + RESET + "\" is attempting an automatic bid.");
+
+            // Use an async callback to either recurse or clean up failed bots.
+            bidderCtrl.placeBidOnAuction(currentBot.getBidder(), auction, finalRequiredBid, true)
+                    .thenAccept(success -> {
                         if (success) {
-                            priceChanged = true; // Price change => tell other bots to autobid
-                            break;
+                            // Price changed, re-trigger scanning to see if other bots respond.
+                            processNextBot(auction);
                         } else {
-                            // Remove if failed
+                            // Typically occurs if the user has insufficient wallet funds.
                             System.out.println("[Auto-Bid Engine]: Bot of \""
-                                    + YELLOW + bot.getBidder().getUserName() + RESET + "\" does not have enough money. " +
-                                    "Automatically remove bot");
-                            auction.getActiveAutoBids().remove(bot);
+                                    + YELLOW + currentBot.getBidder().getUserName() + RESET + "\" failed. Removing configuration.");
+                            auction.getActiveAutoBids().removeIf(b ->
+                                    b.getBidder().getId().equals(currentBot.getBidder().getId())
+                            );
+                            processNextBot(auction);
                         }
-                    }
-                }
-            } while (priceChanged); // Loop autobid until there's no affordable bot
-        });
+                    }).exceptionally(ex -> {
+                        System.out.println("[System]: Bot Engine execution failed: " + RED + ex.getMessage() + RESET);
+                        return null;
+                    });
+        }
     }
 }

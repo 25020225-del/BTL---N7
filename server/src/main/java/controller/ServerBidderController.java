@@ -1,124 +1,130 @@
 package controller;
 
 import database.DatabaseManager;
-import model.Auction;
-import model.Bidder;
-import model.User;
+import database.TransactionManager;
+import model.auction.Auction;
+import model.user.User;
 import service.AutoBidEngine;
-import server.ServerExtension.AuctionManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Controller responsible for handling bidding operations on the server side.
+ * It manages manual bid placements, automated bidding configurations,
+ * and ensures financial transactions (deductions and refunds) are executed
+ * atomically and asynchronously.
+ */
 public class ServerBidderController {
 
     /**
-     * Resolving manual/autobid
-     * @param isBot true if the command is activated by a bot.
+     * Processes a bid placement attempt for a specific auction.
+     * This method executes a complex database transaction that includes:
+     * <ul>
+     *     <li>Atomic wallet balance deduction.</li>
+     *     <li>Auction state validation (RAM).</li>
+     *     <li>Refunding the previous leading bidder's max bid.</li>
+     *     <li>Persisting bid and wallet transaction logs.</li>
+     * </ul>
+     *
+     * @param currentUser The user attempting to place the bid.
+     * @param auction     The target auction session.
+     * @param newMaxBid   The maximum amount the user is offering.
+     * @param isBot       Indicates if the bid was placed by the {@link AutoBidEngine}.
+     * @return A {@link CompletableFuture} that resolves to {@code true} if the bid
+     *         was successfully placed; {@code false} otherwise.
      */
-    public boolean placeBidOnAuction(User currentUser, Auction auction, double newMaxBid, boolean isBot) {
-        // seller mustn't bid on their own auction
+    public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, double newMaxBid, boolean isBot) {
+
+        // Prevent users from bidding on items they are selling
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[Security]: " + RED + "You cannot bid on your own auction" + RESET);
-            return false;
+            System.out.println("[System]: " + RED + "You cannot bid on your own auction" + RESET);
+            return CompletableFuture.completedFuture(false);
         }
 
-        Bidder bidder = new Bidder(currentUser);
-
-        // Get Lock respective to auction ID to avoid Race Condition when many users bid at the same time
-        Object auctionLock = AuctionManager.getLockForAuction(auction.getId());
-
-        synchronized (auctionLock) {
-            // Save old temp winner's info and bid amount for refund
-            Bidder previousWinner = auction.getWinningBidder();
+        // Encapsulate the transaction logic into a task for the database worker thread
+        Callable<Boolean> bidTask = () -> {
+            User previousWinner = auction.getWinningBidder();
             double amountToRefund = auction.getHighestMaxBid();
 
             try (Connection conn = DatabaseManager.getConnection()) {
-                // Start Database Transaction
-                conn.setAutoCommit(false);
+                conn.setAutoCommit(false); // Begin ACID transaction
 
                 try {
-                    // Check wallet balance from database
-                    double currentBalance = 0;
-                    String checkWalletSql = "SELECT balance FROM wallets WHERE user_id = ?";
-                    try (PreparedStatement pstmt = conn.prepareStatement(checkWalletSql)) {
-                        pstmt.setString(1, bidder.getId());
-                        ResultSet rs = pstmt.executeQuery();
-                        if (rs.next()) {
-                            currentBalance = rs.getDouble("balance");
-                        } else {
-                            System.out.println("[Error]: Wallet not found for user: " + YELLOW + bidder.getId() + RESET);
+                    // STEP 1: Atomic wallet deduction with balance check
+                    String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+
+                    try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
+                        pstmt.setDouble(1, newMaxBid);
+                        pstmt.setString(2, currentUser.getId());
+                        pstmt.setDouble(3, newMaxBid);
+
+                        int rowsAffected = pstmt.executeUpdate();
+
+                        if (rowsAffected == 0) {
+                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
                             conn.rollback();
                             return false;
                         }
                     }
 
-                    // Check afford ability
-                    if (currentBalance < newMaxBid) {
-                        System.out.println("[System]: " + YELLOW + currentUser.getName() + RESET + " does not have enough money");
-                        conn.rollback();
-                        return false;
-                    }
-
-                    // Executing bid matching logic in-memory (RAM)
-                    boolean isSuccess = auction.placeBid(bidder, newMaxBid);
+                    // STEP 2: Validate auction logic in RAM
+                    boolean isSuccess = auction.placeBid(currentUser, newMaxBid);
 
                     if (isSuccess) {
                         String now = LocalDateTime.now().toString();
-
-                        // Save and store new winner's bid amount
-                        String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
                         String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
 
-                        // Temp remove money
-                        try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
-                            pstmt.setDouble(1, -newMaxBid);
-                            pstmt.setString(2, bidder.getId());
-                            pstmt.executeUpdate();
-                        }
+                        // Log the withdrawal transaction
                         try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
                             pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
-                            pstmt.setString(2, bidder.getId());
+                            pstmt.setString(2, currentUser.getId());
                             pstmt.setDouble(3, -newMaxBid);
-                            pstmt.setString(4, "Placed bid for auction: " + auction.getId());
+                            pstmt.setString(4, "Auction bid placed for session: " + auction.getId());
                             pstmt.setString(5, now);
                             pstmt.executeUpdate();
                         }
 
-                        // Refund for old winner
-                        if (previousWinner != null && !previousWinner.getId().equals(bidder.getId())) {
-                            try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
+                        // STEP 3: Refund the previous winner (if not the same user)
+                        if (previousWinner != null && !previousWinner.getId().equals(currentUser.getId())) {
+                            String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
+
+                            try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
                                 pstmt.setDouble(1, amountToRefund);
                                 pstmt.setString(2, previousWinner.getId());
                                 pstmt.executeUpdate();
                             }
+
+                            // Log the refund transaction
                             try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
                                 pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
                                 pstmt.setString(2, previousWinner.getId());
                                 pstmt.setDouble(3, amountToRefund);
-                                pstmt.setString(4, "Refund outbid amount for auction: " + auction.getId());
+                                pstmt.setString(4, "Refund for price overrun during session: " + auction.getId());
                                 pstmt.setString(5, now);
                                 pstmt.executeUpdate();
                             }
                         }
 
-                        // new Bid Transaction info
+                        // STEP 4: Record the bid history and update auction current price
                         String bidLogSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
                         try (PreparedStatement pstmt = conn.prepareStatement(bidLogSql)) {
                             pstmt.setString(1, "BID-" + System.currentTimeMillis());
                             pstmt.setString(2, auction.getId());
-                            pstmt.setString(3, bidder.getId());
+                            pstmt.setString(3, currentUser.getId());
                             pstmt.setDouble(4, auction.getCurrentPrice());
                             pstmt.setString(5, now);
                             pstmt.executeUpdate();
                         }
 
-                        // Update current amount
                         String updateAuctionSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
                         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
                             pstmt.setDouble(1, auction.getCurrentPrice());
@@ -126,62 +132,102 @@ public class ServerBidderController {
                             pstmt.executeUpdate();
                         }
 
-                        // Confirm completing financial cycle
-                        conn.commit();
-                        System.out.println("[System]: Bid recorded successfully for \"" + YELLOW + currentUser.getName() + RESET + "\"");
-
-                        // if bidder = human => call bot to respond
-                        if (!isBot) {
-                            AutoBidEngine.triggerBotScan(auction);
-                        }
+                        conn.commit(); // Finalize all changes
+                        System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                         return true;
 
                     } else {
-                        // if logic auction declines
                         conn.rollback();
                         return false;
                     }
 
                 } catch (SQLException e) {
                     conn.rollback();
-                    System.out.println("[Error]: Database Transaction Error: " + RED + e.getMessage() + RESET);
+                    System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
+                    return false;
                 }
             } catch (SQLException e) {
-                System.out.println("[Error]: Database Connection Error: " + RED + e.getMessage() + RESET);
+                System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+                return false;
             }
-        }
-        return false;
+        };
+
+        // Submit task to TransactionManager to avoid blocking the NIO network thread
+        return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
+            if (finalResult) {
+                // Broadcast price update to all connected clients
+                Map<String, Object> updateData = new HashMap<>();
+                updateData.put("auctionId", auction.getId());
+                updateData.put("newPrice", auction.getCurrentPrice());
+                updateData.put("winnerName", currentUser.getUserName());
+
+                server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
+
+                // Trigger the auto-bid engine scan if this was a manual bid
+                if (!isBot) {
+                    AutoBidEngine.triggerBotScan(auction);
+                }
+            }
+            return finalResult;
+        }).exceptionally(ex -> {
+            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
+            return false;
+        });
     }
 
+    /**
+     * Registers an automated bidding configuration (bot) for a user.
+     * The system will automatically place bids on the user's behalf up to the specified limit.
+     *
+     * @param currentUser The user setting up the bot.
+     * @param auction     The target auction session.
+     * @param maxBid      The maximum budget the user is willing to spend.
+     * @param increment   The minimum step to increase the price when outbidding others.
+     * @return {@code true} if the auto-bid was successfully configured and persisted;
+     *         {@code false} otherwise.
+     */
     public boolean setupAutoBid(User currentUser, Auction auction, double maxBid, double increment) {
+
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[Security]: " + RED + "You cannot set auto-bid on your own auction" + RESET);
+            System.out.println("[System]: " + RED + "You cannot set an auto-bid on your own auction" + RESET);
             return false;
         }
 
-        Bidder bidder = new Bidder(currentUser);
-        boolean isSuccess = auction.registerAutoBid(bidder, maxBid, increment); //
+        // Register bot in RAM first
+        boolean isSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
 
         if (isSuccess) {
-            String sql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
+            Callable<Boolean> saveAutoBidTask = () -> {
+                String sql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
 
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                try (Connection conn = DatabaseManager.getConnection();
+                     PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-                pstmt.setString(1, "AB-" + System.currentTimeMillis());
-                pstmt.setString(2, auction.getId());
-                pstmt.setString(3, bidder.getId());
-                pstmt.setDouble(4, maxBid);
-                pstmt.setDouble(5, increment);
+                    pstmt.setString(1, "AB-" + System.currentTimeMillis());
+                    pstmt.setString(2, auction.getId());
+                    pstmt.setString(3, currentUser.getId());
+                    pstmt.setDouble(4, maxBid);
+                    pstmt.setDouble(5, increment);
 
-                pstmt.executeUpdate();
-                System.out.println("[System]: Auto-Bid configuration saved for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+                    pstmt.executeUpdate();
+                    return true;
+                } catch (SQLException e) {
+                    System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
+                    return false;
+                }
+            };
 
-                AutoBidEngine.triggerBotScan(auction);
-                return true;
-
-            } catch (SQLException e) {
-                System.out.println("[Error]: Database Error saving AutoBid: " + RED + e.getMessage() + RESET);
+            try {
+                // Execute persistence task
+                boolean saved = TransactionManager.submitTask(saveAutoBidTask).get();
+                if (saved) {
+                    System.out.println("[System]: Auto-Bid Configuration for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved.");
+                    // Immediately trigger a scan to see if the new bot should place a bid
+                    AutoBidEngine.triggerBotScan(auction);
+                    return true;
+                }
+            } catch (Exception e) {
+                System.out.println("[System]: Execution error while saving auto-bid: " + RED + e.getMessage() + RESET);
             }
         }
         return false;

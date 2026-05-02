@@ -4,80 +4,112 @@ import client.handler.ResponseDispatcher;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import network.NetworkMessage;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
 
-import java.io.*;
-import java.net.Socket;
+import javax.crypto.SecretKey;
+import java.net.URI;
+import java.security.PublicKey;
 import java.util.function.Consumer;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import utils.CryptoUtil;
+import utils.JacksonConfig;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * The core networking component for the client application.
+ * <p>
+ * This class establishes and maintains a WebSocket connection to the server.
+ * It is responsible for:
+ * <ul>
+ *     <li>Attempting automatic connection retries (up to 5 times) with timeout handling.</li>
+ *     <li>Performing the client-side of the RSA-AES hybrid cryptographic handshake.</li>
+ *     <li>Encrypting outgoing payloads and decrypting incoming payloads seamlessly.</li>
+ *     <li>Delegating received commands to the {@link ResponseDispatcher} or custom callbacks.</li>
+ * </ul>
+ */
 public class NetworkClient {
 
-    private Socket socket;
-    private PrintWriter out;
-    private BufferedReader in;
+    private AuctionWSClient wsClient;
 
-    private final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    // Ignore unknown properties to prevent crashes on schema updates
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     private Consumer<NetworkMessage> onMessageReceived;
     private final ResponseDispatcher dispatcher = new ResponseDispatcher();
 
-    public NetworkClient(String serverAddress, int port) {
+    // Security state
+    private SecretKey myAesKey;
+    private boolean isAesKeyEstablished = false;
+    private CountDownLatch handshakeLatch;
+
+    /**
+     * Initializes the client and attempts to connect to the WebSocket server using the provided full URL.
+     * <p>
+     * Implements a retry mechanism (max 5 attempts). It blocks the initializing thread
+     * using CountDownLatch until both the WebSocket connection and the RSA-AES handshake
+     * are successfully completed, or until it times out.
+     *
+     * @param fullWsUrl The complete WebSocket URL (e.g., "wss://domain.com:443" or "ws://localhost:6969").
+     */
+    public NetworkClient(String fullWsUrl) {
         System.out.println("===========================================");
-        System.out.println("[System]: Trying to connect to server...");
+        System.out.println("[System]: Connecting to server...");
 
         for (int i = 0; i < 5; i++) {
             try {
-                socket = new Socket(serverAddress, port);
-                socket.setSoTimeout(3000);
+                wsClient = new AuctionWSClient(new URI(fullWsUrl));
 
-                out = new PrintWriter(socket.getOutputStream(), true);
-                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                // Reset the synchronization latch for each connection attempt
+                handshakeLatch = new CountDownLatch(1);
 
-                NetworkMessage pingMsg = new NetworkMessage("PING", "Connecting request from client");
-                out.println(mapper.writeValueAsString(pingMsg));
+                // Block the thread until the WebSocket is OPEN or fails
+                boolean connected = wsClient.connectBlocking();
 
-                String responseLine = in.readLine();
+                if (connected) {
+                    // Wait for the AES handshake to finish in the background (Max 3 seconds)
+                    boolean isHandshakeDone = handshakeLatch.await(3, TimeUnit.SECONDS);
 
-                if (responseLine == null) {
-                    throw new IOException("Server is not on");
-                }
+                    if (isHandshakeDone && isAesKeyEstablished) {
+                        System.out.println("[System]:" + GREEN + " Successfully connected." + RESET);
 
-                NetworkMessage response = mapper.readValue(responseLine, NetworkMessage.class);
-                if (!"PONG".equals(response.getCommand())) {
-                    throw new IOException("Invalid format from server");
-                }
+                        // TIME SYNC INITIATION: Ping the server to synchronize clocks securely
+                        this.sendMessage("TIME_SYNC", System.currentTimeMillis());
 
-                socket.setSoTimeout(0);
-
-                Thread listenerThread = new Thread(this::listenToServer);
-                listenerThread.setDaemon(true);
-                listenerThread.start();
-
-                System.out.println("[System]:" + GREEN + "Successfully connected" + RESET);
-                return;
-
-            } catch (IOException e) {
-                System.out.println("[System]:" + YELLOW + " Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
-                try {
-                    if (socket != null) socket.close();
-                } catch (Exception ignored) {}
-
-                if (i < 4) {
-                    try {
-                        Thread.sleep(2000);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
+                        return;
+                    } else {
+                        System.out.println("[System]:" + YELLOW + " Failed at try " + (i+1) + " - Handshake timeout" + RESET);
+                        wsClient.close();
                     }
+                } else {
+                    // Handle failed connectBlocking() (server offline)
+                    System.out.println("[System]: " + YELLOW + "Failed at try " + (i + 1) + " - Connection refused by server." + RESET);
+                }
+            } catch (Exception e) {
+                System.out.println("[System]:" + YELLOW + " Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
+            }
+
+            if (i < 4) {
+                try {
+                    Thread.sleep(2000); // Wait 2 seconds before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
                 }
             }
         }
-        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + serverAddress + ":" + port + RESET);
+        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + fullWsUrl + RESET);
     }
 
+    /**
+     * Checks if the client is fully connected and the secure channel is established.
+     *
+     * @return true if connected and secured, false otherwise.
+     */
     public boolean isConnected() {
-        return socket != null && socket.isConnected() && out != null;
+        return wsClient != null && wsClient.isOpen() && isAesKeyEstablished;
     }
 
     public void setOnMessageReceived(Consumer<NetworkMessage> callback) {
@@ -88,31 +120,93 @@ public class NetworkClient {
         return this.onMessageReceived;
     }
 
+    /**
+     * Serializes, encrypts, and sends a command and its associated data to the server.
+     *
+     * @param command The action command (e.g., "LOGIN", "CREATE_AUCTION").
+     * @param data    The data payload to be serialized into JSON.
+     */
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
-            System.out.println("[Error]: Cannot send command: \"" + YELLOW + command + RESET + "\" due to" + RED + " not being connected" + RESET);
+            System.out.println("[System]: Cannot send command: \"" + YELLOW + command + RESET + "\" due to" + RED + " not being fully connected." + RESET);
             return;
         }
 
         try {
             NetworkMessage msg = new NetworkMessage(command, data);
             String json = mapper.writeValueAsString(msg);
-            out.println(json);
+            String encryptedPayload = CryptoUtil.encryptAES(json, myAesKey);
+
+            // Use the non-blocking send method of Java-WebSocket
+            wsClient.send(encryptedPayload);
+
         } catch (Exception e) {
-            System.out.println("[Error]:" + RED + " JSON package error: " + e.getMessage() + RESET);
+            System.out.println("[System]: JSON package error: " + RED + e.getMessage() + RESET);
         }
     }
 
-    private void listenToServer() {
-        try {
-            String jsonMessage;
-            while ((jsonMessage = in.readLine()) != null) {
+    // === INNER CLASS FOR WEBSOCKET EVENTS ===
+
+    /**
+     * The internal WebSocket client implementation.
+     * Listens asynchronously for incoming frames and manages the connection lifecycle.
+     */
+    private class AuctionWSClient extends WebSocketClient {
+
+        public AuctionWSClient(URI serverUri) {
+            super(serverUri);
+        }
+
+        @Override
+        public void onOpen(ServerHandshake handshakedata) {
+            // Connection opened. Do nothing but wait for the server to send the RSA Public Key.
+        }
+
+        @Override
+        public void onMessage(String message) {
+            // Phase 1: If AES key is not set, the incoming message is STRICTLY the Server's RSA Public Key.
+            if (!isAesKeyEstablished) {
+                try {
+                    PublicKey serverPublicKey = CryptoUtil.getPublicKeyFromBase64(message);
+
+                    // Generate local AES key, encrypt it with Server's RSA, and send it back
+                    myAesKey = CryptoUtil.generateAESKey();
+                    String encryptedAesKey = CryptoUtil.encryptAESKeyWithRSA(myAesKey, serverPublicKey);
+                    this.send(encryptedAesKey);
+
+                    isAesKeyEstablished = true;
+                } catch (Exception e) {
+                    System.out.println("[System]: Handshake failed: " + RED + e.getMessage() + RESET);
+                } finally {
+                    // Always release the main thread block, regardless of success or failure
+                    if (handshakeLatch != null) {
+                        handshakeLatch.countDown();
+                    }
+                }
+                return;
+            }
+
+            // Phase 2: Secure channel established. Decrypt and route standard JSON packages.
+            try {
+                String jsonMessage = CryptoUtil.decryptAES(message, myAesKey);
                 NetworkMessage response = mapper.readValue(jsonMessage, NetworkMessage.class);
 
-                dispatcher.dispatch(response, this);
+                dispatcher.dispatch(response, NetworkClient.this);
+
+            } catch (Exception e) {
+                System.out.println("[Warning]: Ignore invalid data package: " + YELLOW + e.getMessage() + RESET);
             }
-        } catch (IOException e) {
-            System.out.println("[Error]:" + RED + " Lost connection to server: " + e.getMessage() + RESET);
+        }
+
+        @Override
+        public void onClose(int code, String reason, boolean remote) {
+            isAesKeyEstablished = false; // Revoke security clearance
+            System.out.println("[System]: Connection closed. Reason: " + YELLOW + reason + RESET);
+        }
+
+        @Override
+        public void onError(Exception ex) {
+            System.out.println("[System]: WebSocket Error: " + RED + ex.getMessage() + RESET);
         }
     }
 }

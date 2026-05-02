@@ -3,16 +3,17 @@ package server;
 import controller.AuctionMonitor;
 import controller.UserController;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.java_websocket.WebSocket;
+import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.server.WebSocketServer;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
@@ -24,26 +25,54 @@ import java.util.regex.Pattern;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * The core entry point for the N7 Auction System Server.
+ * <p>
+ * This class serves as the heart of the backend, handling several critical roles:
+ * <ul>
+ *     <li>Initializing the SQLite database alongside HikariCP for connection pooling.</li>
+ *     <li>Automatically retrieving the public IP/Port from Localtonet and syncing it to JSONBin.</li>
+ *     <li>Launching the background {@link controller.AuctionMonitor} to handle expired auctions.</li>
+ *     <li>Instantiating and starting the high-performance NIO WebSocket server.</li>
+ *     <li>Providing an interactive Command Line Interface (CLI) for direct server administration.</li>
+ * </ul>
+ */
 public class MultiThreadedServer {
-
+    // Scheduler for periodic IP/Port updates
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
+    // Load environment variables
     private static final Dotenv dotenv = Dotenv.load();
     private static final String BIN_ID = dotenv.get("BIN_ID");
     private static final String JSONBIN_KEY = dotenv.get("JSONBIN_API_KEY");
     private static final String LOCALTONET_TOKEN = dotenv.get("LOCALTONET_API_TOKEN");
 
+    // Cached address to prevent redundant API calls
     private static String lastSyncedIp = "";
     private static int lastSyncedPort = -1;
 
     private static final UserController userController = new UserController();
 
-    public static void updateBulletinBoard(String currentIp, int currentPort) {
+    // === API SYNCING METHODS ===
+
+    /**
+     * Updates the server's current public IP and Port to JSONBin via HTTP PUT.
+     * <p>
+     * This method acts as a lightweight Dynamic DNS (DDNS) solution. By updating the JSONBin,
+     * clients can always fetch the latest server address without hardcoded configurations.
+     * It disables versioning ("X-Bin-Versioning") to save cloud storage quota.
+     *
+     * @param currentIp   The current public IP address or domain name.
+     * @param currentPort The current public port.
+     */
+    public static void updateAddress(String currentIp, int currentPort) {
         try {
             String urlString = "https://api.jsonbin.io/v3/b/" + BIN_ID;
             URL url = new URL(urlString);
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+            // Disable versioning to overwrite the exact same bin and save storage quota
             conn.setRequestProperty("X-Bin-Versioning", "false");
 
             conn.setRequestMethod("PUT");
@@ -51,8 +80,8 @@ public class MultiThreadedServer {
             conn.setRequestProperty("X-Master-Key", JSONBIN_KEY);
             conn.setDoOutput(true);
 
+            // Manually construct JSON string to avoid loading heavy JSON libraries just for 2 variables
             String jsonInputString = "{\"ip\": \"" + currentIp + "\", \"port\": " + currentPort + "}";
-            System.out.println("[Debug] JSON to JSONBin: " + jsonInputString);
 
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
@@ -63,17 +92,23 @@ public class MultiThreadedServer {
             if (responseCode == 200) {
                 System.out.println("[JSONBin]: New IP - Port synced: " + YELLOW + currentIp + ":" + currentPort + RESET);
             } else {
-                System.err.println("[JSONBin]: Error: " + RED + responseCode + RESET + " at URL: " + YELLOW + urlString + RESET);
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
-                    System.err.println("Error details: " + br.readLine());
-                }
+                System.err.println("[JSONBin]: Error: " + RED + responseCode + RESET);
             }
         } catch (Exception e) {
             System.out.println("[JSONBin]: Connection Error: " + RED + e.getMessage() + RESET);
         }
     }
 
-    private static String[] getLocaltonetAddress() {
+    /**
+     * Retrieves the current public IP and Port from the Localtonet API.
+     * <p>
+     * This method utilizes Regular Expressions (Regex) instead of heavy JSON mapping libraries
+     * (like Jackson) to extract data quickly and keep the memory footprint extremely low.
+     *
+     * @return A String array where index 0 is the Domain/IP and index 1 is the Port,
+     *         or {@code null} if the tunnel is offline or an error occurs.
+     */
+    private static String[] getAddress() {
         try {
             URL url = new URL("https://localtonet.com/api/GetTunnels");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -89,17 +124,17 @@ public class MultiThreadedServer {
 
             String jsonResponse = content.toString();
 
+            // Extract connection status using Regex for lightweight parsing
             Matcher tunnelStatus = Pattern.compile("\"status\":(\\d+)").matcher(jsonResponse);
             if (tunnelStatus.find()) {
-                int status = Integer.parseInt(tunnelStatus.group(1));
-                if (status == 0) {
-                    return null;
-                }
+                // Status 0 means the Localtonet tunnel is currently offline/disabled
+                if (Integer.parseInt(tunnelStatus.group(1)) == 0) return null;
             }
 
             String ip = "";
             String port = "";
 
+            // Extract IP and Port via Regex to bypass strict JSON mapping
             Matcher ipMatcher = Pattern.compile("\"serverDomain\":\"([^\"]+)\"").matcher(jsonResponse);
             if (ipMatcher.find()) ip = ipMatcher.group(1);
 
@@ -113,25 +148,96 @@ public class MultiThreadedServer {
         return null;
     }
 
+    // === WEBSOCKET SERVER CORE ===
+
+    /**
+     * The core WebSocket Server implementation utilizing Java-WebSocket.
+     * <p>
+     * It uses Non-blocking I/O (NIO) to handle thousands of concurrent client connections
+     * efficiently without requiring a dedicated thread for each client.
+     */
+    private static class AuctionWSServer extends WebSocketServer {
+
+        public AuctionWSServer(int port) {
+            super(new InetSocketAddress(port));
+        }
+
+        /**
+         * Triggered automatically when a new client establishes a WebSocket connection.
+         * <p>
+         * It creates a new {@link ClientHandler}, attaches it to the WebSocket session,
+         * and initiates the RSA security handshake.
+         */
+        @Override
+        public void onOpen(WebSocket conn, ClientHandshake handshake) {
+            System.out.println("[System]: New WebSocket client connected from: " + YELLOW + conn.getRemoteSocketAddress().getAddress().getHostAddress() + RESET);
+
+            // Initialize ClientHandler with the new WebSocket connection
+            ClientHandler clientHandler = new ClientHandler(conn, userController);
+
+            // Attach ClientHandler to the connection for later retrieval
+            conn.setAttachment(clientHandler);
+            ClientManager.addClient(clientHandler);
+
+            // Initiate security handshake by sending RSA Public Key
+            clientHandler.startHandshake();
+        }
+
+        /**
+         * Triggered when the WebSocket connection is closed (intentionally or due to an error).
+         * This safely removes the client from the server's memory.
+         */
+        @Override
+        public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+            ClientHandler clientHandler = conn.getAttachment();
+            if (clientHandler != null) {
+                // Trigger connection cleanup
+                clientHandler.closeConnection();
+            }
+        }
+
+        /**
+         * Triggered when the server receives a text frame from the client.
+         * The payload is passed directly to the attached {@link ClientHandler} for AES decryption and dispatching.
+         */
+        @Override
+        public void onMessage(WebSocket conn, String message) {
+            ClientHandler clientHandler = conn.getAttachment();
+            if (clientHandler != null) {
+                // Pass incoming payload to ClientHandler for decryption and dispatching
+                clientHandler.processIncomingMessage(message);
+            }
+        }
+
+        @Override
+        public void onError(WebSocket conn, Exception ex) {
+            System.out.println("[System]: WebSocket Error: " + RED + ex.getMessage() + RESET);
+        }
+
+        @Override
+        public void onStart() {
+            System.out.println("[System]: Server is running on port " + YELLOW + getPort() + RESET);
+        }
+    }
+
+    /**
+     * The main execution block of the Server application.
+     */
     public static void main(String[] args) {
         final int PORT = 6969;
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                String[] publicAddress = getLocaltonetAddress();
+                String[] publicAddress = getAddress();
                 if (publicAddress != null) {
                     String newIp = publicAddress[0];
                     int newPort = Integer.parseInt(publicAddress[1]);
 
                     if (!newIp.equals(lastSyncedIp) || newPort != lastSyncedPort) {
-                        System.out.println(YELLOW + "\n[Auto-Sync]: Localtonet address change detected. Updating JSONBin..." + RESET);
-                        updateBulletinBoard(newIp, newPort);
+                        updateAddress(newIp, newPort);
                         lastSyncedIp = newIp;
                         lastSyncedPort = newPort;
-                        System.out.println(GREEN + "[Auto-Sync]: Successfully synced: " + YELLOW + newIp + ":" + newPort + RESET);
                     }
-                } else {
-                    System.out.println("[Auto-Sync]: Error: " + RED + "Cannot call API" + RESET);
                 }
             } catch (Exception e) {
                 System.err.println("[Auto-Sync]: System error: " + RED + e.getMessage() + RESET);
@@ -139,13 +245,13 @@ public class MultiThreadedServer {
         }, 0, 30, TimeUnit.SECONDS);
 
         System.out.println("[System]: Getting address...");
-        String[] publicAddress = getLocaltonetAddress();
+        String[] publicAddress = getAddress();
 
         if (publicAddress != null) {
-            updateBulletinBoard(publicAddress[0], Integer.parseInt(publicAddress[1]));
+            updateAddress(publicAddress[0], Integer.parseInt(publicAddress[1]));
         } else {
-            System.out.println(BLUE + "[System]: Cannot get Localtonet address. Using localhost" + RESET);
-            updateBulletinBoard("127.0.0.1", PORT);
+            System.out.println("[System]: " + BLUE + "Cannot get public address. Using localhost" + RESET);
+            updateAddress("127.0.0.1", PORT);
         }
 
         database.DatabaseManager.initializeDatabase();
@@ -153,78 +259,59 @@ public class MultiThreadedServer {
         AuctionMonitor monitor = new AuctionMonitor(AuctionManager.getAuctionList());
         monitor.startMonitoring();
 
+        // RUN SERVER
+        AuctionWSServer wsServer = new AuctionWSServer(PORT);
+        wsServer.start();
+
+        // Graceful shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            ClientManager.broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly" + RESET, null);
-            System.out.println(YELLOW + "[System]: Server has been shutdown" + RESET);
+            ClientManager.broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly." + RESET, null);
+            System.out.println(YELLOW + "[System]: Server has been shutdown." + RESET);
             monitor.stopMonitoring();
             scheduler.shutdown();
             ClientManager.shutdown();
+            try {
+                wsServer.stop();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }));
 
-        Thread serverChatThread = new Thread(() -> {
-            Scanner scanner = new Scanner(System.in);
-            while (true) {
-                if (scanner.hasNextLine()) {
-                    String serverMessage = scanner.nextLine();
-                    if (serverMessage.startsWith("/kick ")) {
-                        String target = serverMessage.substring(6);
+        // === SERVER CONSOLE COMMANDS ===
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            if (scanner.hasNextLine()) {
+                String serverMessage = scanner.nextLine();
+                if (serverMessage.startsWith("/kick ")) {
+                    String target = serverMessage.substring(6);
+                    System.out.print("Reason: ");
+                    String reason = scanner.nextLine();
+                    ClientManager.kickTarget(target, reason);
+                    continue;
+                }
+                if (serverMessage.startsWith("/kickn ")) {
+                    try {
+                        int index = Integer.parseInt(serverMessage.substring(7));
                         System.out.print("Reason: ");
                         String reason = scanner.nextLine();
-                        ClientManager.kickTarget(target, reason);
-                        continue;
+                        ClientManager.kickTargetByNumber(index, reason);
+                    } catch (NumberFormatException e) {
+                        System.out.println("[System]: /kickn must be followed by an integer.");
                     }
-                    if (serverMessage.startsWith("/clist")) {
-                        ClientManager.getClientList();
-                        continue;
-                    }
-                    if (serverMessage.startsWith("/kickn ")) {
-                        try {
-                            String index = serverMessage.substring(7);
-                            System.out.print("Reason: ");
-                            String reason = scanner.nextLine();
-                            ClientManager.kickTargetByNumber(Integer.parseInt(index), reason);
-                        } catch (NumberFormatException e) {
-                            System.out.println("[System]: Error: " + RED + "Index of /kickn command must be an integer" + RESET);
-                        }
-                        continue;
-                    }
-                    if (serverMessage.startsWith("/redirect ")) {
-                        String[] data = serverMessage.substring(10).split(" ");
-                        if (data.length == 2) {
-                            ClientManager.redirectClient(data[0], data[1]);
-                        } else {
-                            System.out.println("[System]: Invalid format. Use /redirect <username> <url>");
-                        }
-                        continue;
-                    }
-                    if (serverMessage.startsWith("/msg ")) {
-                        try {
-                            int s = serverMessage.indexOf("\"");
-                            int e = serverMessage.lastIndexOf("\"");
-                            ClientManager.privateMsg(serverMessage.substring(5, s), serverMessage.substring(s + 1, e));
-                        } catch (StringIndexOutOfBoundsException e) {
-                            System.out.println("[System]: Invalid command format");
-                        }
-                        continue;
-                    }
-                    ClientManager.broadcast("[Admin]: " + serverMessage, null);
                 }
+                if (serverMessage.startsWith("/clist")) {
+                    ClientManager.getClientList();
+                    continue;
+                }
+                if (serverMessage.startsWith("/redirect ")) {
+                    String[] data = serverMessage.substring(10).split(" ");
+                    if (data.length == 2) {
+                        ClientManager.redirectClient(data[0], data[1]);
+                    }
+                    continue;
+                }
+                ClientManager.broadcast("[Admin]: " + serverMessage, null);
             }
-        });
-        serverChatThread.start();
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("[System]: Server is running on port " + YELLOW + PORT + RESET);
-            while (true) {
-                Socket socket = serverSocket.accept();
-                System.out.println("[System]: New client connected from: " + YELLOW + socket.getInetAddress().getHostAddress() + RESET);
-
-                ClientHandler clientHandler = new ClientHandler(socket, userController);
-
-                ClientManager.addClient(clientHandler);
-                new Thread(clientHandler).start();
-            }
-        } catch (IOException e) {
-            System.out.println("[System]: Server Error: " + RED + e.getMessage() + RESET);
         }
     }
 }

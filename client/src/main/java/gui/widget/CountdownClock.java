@@ -5,21 +5,34 @@ import javafx.animation.Timeline;
 import javafx.scene.control.Label;
 import javafx.util.Duration;
 
+/**
+ * A custom JavaFX {@link Label} that acts as a real-time countdown timer.
+ * It synchronizes with the authoritative server time to continuously display
+ * the remaining duration until a specified expiration timestamp.
+ */
 public class CountdownClock extends Label {
     private Timeline timeline;
     private long endTime;
 
+    /**
+     * Initializes the countdown clock with a default display of "00:00:00".
+     */
     public CountdownClock() {
         this.setText("00:00:00");
     }
 
+    /**
+     * Starts the countdown sequence targeting the given expiration timestamp.
+     * The clock updates its text every second based on the synchronized server time.
+     *
+     * @param endTimeTimestamp The target expiration time in milliseconds.
+     */
     public void start(long endTimeTimestamp) {
         this.endTime = endTimeTimestamp;
-
         if (timeline != null) timeline.stop();
 
         timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            long diff = endTime - System.currentTimeMillis();
+            long diff = endTime - utils.TimeUtil.getCurrentServerTime();
 
             if (diff <= 0) {
                 this.setText("00:00:00");
@@ -33,11 +46,25 @@ public class CountdownClock extends Label {
         timeline.play();
     }
 
+    /**
+     * Retrieves the target expiration timestamp of this clock.
+     *
+     * @return The expiration time in milliseconds.
+     */
     public long getEndTime() {
         return endTime;
     }
+
+    /**
+     * Formats the remaining time in milliseconds into a human-readable string representation.
+     * The format dynamically changes based on the magnitude of the remaining time
+     * (e.g., minutes/seconds, hours/minutes, days, weeks).
+     *
+     * @param millis The remaining time in milliseconds.
+     * @return A formatted string representing the remaining duration.
+     */
     private String formatTime(long millis) {
-        if (millis <= 0) return "Hết thời gian";
+        if (millis <= 0) return "Time's up";
 
         java.time.Duration d = java.time.Duration.ofMillis(millis);
 
@@ -46,38 +73,27 @@ public class CountdownClock extends Label {
         long hours = d.toHours();
         long days = d.toDays();
 
-        // 1. Nếu dưới 1 tiếng -> hiển thị phút và giây (mm:ss)
         if (hours < 1) {
             return String.format("%02d:%02d", d.toMinutesPart(), d.toSecondsPart());
         }
-
-        // 2. Nếu dưới 24 tiếng -> hiển thị giờ và phút (hh:mm)
         if (days < 1) {
-            return String.format("%02d giờ %02d phút", hours, d.toMinutesPart());
+            return String.format("%02d hrs %02d mins", hours, d.toMinutesPart());
         }
-
-        // 3. Nếu dưới 7 ngày -> hiển thị số ngày
         if (days < 7) {
-            return days + " ngày";
+            return days + " days";
         }
-
-        // 4. Nếu dưới 30 ngày -> hiển thị số tuần
         if (days < 30) {
-            long weeks = days / 7;
-            return weeks + " tuần";
+            return (days / 7) + " weeks";
         }
-
-        // 5. Nếu dưới 365 ngày -> hiển thị số tháng
         if (days < 365) {
-            long months = days / 30; // Ước tính trung bình 30 ngày/tháng
-            return months + " tháng";
+            return (days / 30) + " months";
         }
-
-        // 6. Phần còn lại -> Hiển thị năm
-        long years = days / 365;
-        return years + " năm";
+        return (days / 365) + " years";
     }
 
+    /**
+     * Stops the active countdown timeline, halting any further UI updates.
+     */
     public void stop() {
         if (timeline != null) timeline.stop();
     }

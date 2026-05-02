@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import utils.JacksonConfig;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -32,7 +33,7 @@ public class PayPalService {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
-        this.mapper = new ObjectMapper();
+        this.mapper = JacksonConfig.mapper();;
     }
 
     /**

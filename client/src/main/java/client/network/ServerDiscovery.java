@@ -9,8 +9,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import static utils.ConsoleColors.*;
 
+/**
+ * Utility class responsible for discovering the server's public address and
+ * establishing the appropriate network connection.
+ */
 public class ServerDiscovery {
 
+    /**
+     * Fetches the server's dynamic IP and Port from a remote JSONBin storage.
+     *
+     * @param binId The JSONBin ID containing the server address.
+     * @return A String array containing the IP at index 0 and Port at index 1, or null if failed.
+     */
     private static String[] getServerAddress(String binId) {
         try {
             URL url = new URL("https://api.jsonbin.io/v3/b/" + binId);
@@ -45,6 +55,13 @@ public class ServerDiscovery {
         return null;
     }
 
+    /**
+     * Constructs the correct WebSocket URL based on the environment and establishes a connection.
+     * Automatically enforces WSS (WebSocket Secure) for remote connections.
+     *
+     * @param properties Application properties containing fallback values and API keys.
+     * @return An initialized NetworkClient instance.
+     */
     public static NetworkClient establishConnection(Properties properties) {
         String binID = properties.getProperty("binID");
         System.out.println("[System]: Fetching server address from remote storage...");
@@ -63,18 +80,30 @@ public class ServerDiscovery {
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("[System]: Connecting to: " + YELLOW + serverURL + ":" + port + RESET);
-        NetworkClient client = new NetworkClient(serverURL, port);
+        System.out.println("[System]: Target server address is: " + YELLOW + serverURL + ":" + port + RESET);
 
-        if (!client.isConnected() && !serverURL.equals("localhost") && !serverURL.equals("127.0.0.1")) {
+        // SECURE CONNECTION ROUTING:
+        // Automatically determine if the connection is local or remote.
+        boolean isLocal = serverURL.equals("localhost") || serverURL.equals("127.0.0.1");
+
+        // Enforce secure WebSocket (wss://) for any external domain/IP.
+        String protocol = isLocal ? "ws://" : "wss://";
+        String fullUrl = protocol + serverURL + ":" + port;
+
+        NetworkClient client = new NetworkClient(fullUrl);
+
+        // Fallback mechanism if the main remote connection fails
+        if (!client.isConnected() && !isLocal) {
             System.out.println("\n[System]:" + BLUE + " Online server is unreachable. Automatically falling back to localhost..." + RESET);
 
             String fallbackURL = properties.getProperty("fallbackServerURL", "localhost");
             int fallbackPort = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
 
-            System.out.println("[System]: Connecting to fallback: " + YELLOW + fallbackURL + ":" + fallbackPort + RESET);
+            // Local fallback uses standard ws://
+            String fallbackFullUrl = "ws://" + fallbackURL + ":" + fallbackPort;
+            System.out.println("[System]: Connecting to fallback: " + YELLOW + fallbackFullUrl + RESET);
 
-            client = new NetworkClient(fallbackURL, fallbackPort);
+            client = new NetworkClient(fallbackFullUrl);
         }
 
         if (!client.isConnected()) {
