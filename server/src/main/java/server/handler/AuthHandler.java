@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
+import utils.JacksonConfig;
 
 import static utils.ConsoleColors.*;
 
@@ -17,7 +18,7 @@ import static utils.ConsoleColors.*;
 public class AuthHandler implements CommandHandler {
 
     /** Jackson object mapper used to convert generic network data into domain models. */
-    private final ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     /**
      * Dispatches authentication commands to their respective processing methods.

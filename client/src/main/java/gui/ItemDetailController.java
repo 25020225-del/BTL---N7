@@ -1,6 +1,7 @@
 package gui;
 
 import gui.process.AlertHelper;
+import gui.process.CropImage;
 import gui.process.ImageUtil;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -78,9 +79,20 @@ public class ItemDetailController {
         // Safely extract values
         String name = (String) auctionData.get("itemName");
         String desc = (String) auctionData.get("description");
+        String imageUrl = (String) auctionData.get("imageUrl");
         double startPrice = ((Number) auctionData.get("startingPrice")).doubleValue();
         double currentPrice = ((Number) auctionData.get("currentPrice")).doubleValue();
         this.endTimeMillis = ((Number) auctionData.get("endTime")).longValue();
+
+        if(imageUrl == null) { imageUrl = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg"; }
+        Image image = new Image(imageUrl,true);
+        image.progressProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue.doubleValue() == 1.0 && !image.isError()) {
+                Platform.runLater(() -> {
+                    CropImage.cropImage(imgLarge,image,300,300);
+                });
+            }
+        });
 
         String leader = auctionData.containsKey("winnerName") && auctionData.get("winnerName") != null
                 ? (String) auctionData.get("winnerName") : "None";

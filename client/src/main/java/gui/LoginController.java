@@ -12,6 +12,7 @@ import javafx.scene.control.TextField;
 import model.user.User;
 import network.NetworkMessage;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import utils.JacksonConfig;
 
 import java.io.IOException;
 
@@ -32,8 +33,7 @@ public class LoginController {
 
     // Configured ObjectMapper to ignore unknown properties, preventing crashes if the server
     // sends additional fields not mapped in the local User model.
-    private final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     /**
      * Injects the active network client instance into this controller.

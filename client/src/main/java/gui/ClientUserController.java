@@ -1,9 +1,8 @@
 package gui;
 
 import client.handler.ResponseDispatcher;
-import gui.process.AlertHelper;
-import gui.process.AnimateEffect;
-import gui.process.Search;
+import com.beust.ah.A;
+import gui.process.*;
 import gui.widget.IconButton;
 import gui.widget.MinimalItem;
 import javafx.animation.FadeTransition;
@@ -13,11 +12,17 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.util.Duration;
+import model.auction.Auction;
+import model.item.Item;
 import model.user.User;
 import network.NetworkMessage;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -42,6 +47,8 @@ public class ClientUserController {
 
     private User currentUser;
 
+    private File imagefile;
+
     @FXML private VBox mainDock;
     @FXML private VBox mainViewController;
 
@@ -60,6 +67,7 @@ public class ClientUserController {
     @FXML private TextField ca_startMinute;
     @FXML private TextField ca_endHour;
     @FXML private TextField ca_endMinute;
+    @FXML private ImageView ca_image;
 
     @FXML private Label accName;
     @FXML private Label accUsername;
@@ -195,6 +203,29 @@ public class ClientUserController {
 
     private void setMainViewController() {
         mainTilePane.getChildren().clear();
+
+    }
+
+    /**
+     * Choose image from local storage.
+     */
+    @FXML
+    private void handleSelectImage(){
+        final int MAX_IMAGE_SIZE = 5*1024*1024;
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choose an image");
+        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+        imagefile = fileChooser.showOpenDialog(mainViewController.getScene().getWindow());
+        if (imagefile != null) {
+            System.out.println("[System]: Selected image file: " + imagefile.getName());
+            Image image = new Image(imagefile.toURI().toString());
+            CropImage.cropImage(ca_image,image,720,480);
+        }
+        else return;
+        if (imagefile.length()>MAX_IMAGE_SIZE){
+            AlertHelper.showAlert(Alert.AlertType.ERROR,"Error","Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 5MB!");
+            return;
+        }
     }
 
     /**
@@ -261,18 +292,32 @@ public class ClientUserController {
                 AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Time", "End time must be after start time.");
                 return;
             }
+            if (imagefile == null) {
+                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Image", "Please select an image file.");
+                return;
+            }
 
             Double.parseDouble(startPrice);
             Double.parseDouble(bidInc);
 
-            Map<String, String> auctionData = new HashMap<>();
-            auctionData.put("itemName",        name);
-            auctionData.put("description",     desc);
-            auctionData.put("startingPrice",   startPrice);
-            auctionData.put("bidIncrement",    bidInc);
-            auctionData.put("durationMinutes", String.valueOf(durationMinutes));
+            Auction auction = new Auction();
+            auction.setItem(new Item());
+            auction.getItem().setItemName(name);
+            auction.getItem().setDescription(desc);
+            auction.getItem().setStartingPrice(Double.parseDouble(startPrice));
+            auction.getItem().setFile(ImageCompressor.compressToBytes(imagefile, 0.05F));
+            auction.setBidIncrement(Double.parseDouble(bidInc));
+            auction.setEndTime(endDT);
 
-            MainApplication.networkClient.sendMessage("CREATE_AUCTION", auctionData);
+//
+//            Map<String, String> auctionData = new HashMap<>();
+//            auctionData.put("itemName",        name);
+//            auctionData.put("description",     desc);
+//            auctionData.put("startingPrice",   startPrice);
+//            auctionData.put("bidIncrement",    bidInc);
+//            auctionData.put("durationMinutes", String.valueOf(durationMinutes));
+
+            MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
 
             ca_itemName.clear();       ca_description.clear();
             ca_startPrice.clear();     ca_bidIncrement.clear();
@@ -330,13 +375,16 @@ public class ClientUserController {
                         String id      = (String) data.get("id");
                         String name    = (String) data.get("itemName");
                         String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
+                        String imageUrl = (String) data.get("imageUrl");
                         long   endTime = ((Number) data.get("endTime")).longValue();
 
-                        MinimalItem item = new MinimalItem(id, name, price, endTime);
+                        MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTime);
                         item.getAuctionButton().setOnAction(e -> openItemDetail(data));
                         mainTilePane.getChildren().add(item);
                     }
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                    System.out.println("[ClientAuctionHandler]: FETCH_AUCTIONS_SUCCESS parse error: " + e.getMessage());
+                }
 
             } else if ("NEW_AUCTION_ADDED".equals(command)) {
                 try {
@@ -346,9 +394,10 @@ public class ClientUserController {
                     String id      = (String) data.get("id");
                     String name    = (String) data.get("itemName");
                     String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
+                    String imageUrl= (String) data.get("imageUrl");
                     long   endTime = ((Number) data.get("endTime")).longValue();
 
-                    MinimalItem newItem = new MinimalItem(id, name, price, endTime);
+                    MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTime);
                     newItem.getAuctionButton().setOnAction(e -> openItemDetail(data));
 
                     newItem.setOpacity(0);

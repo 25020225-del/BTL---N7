@@ -38,11 +38,11 @@ public class FetchAuctionsHandler implements CommandHandler {
         String sql = "";
 
         if ("FETCH_AUCTIONS".equals(command)) {
-            sql = "SELECT id, item_name, description, starting_price, current_price, end_time FROM auctions WHERE status IN ('RUNNING', 'OPEN')";
+            sql = "SELECT id, item_name, description, starting_price, current_price, end_time, image_url FROM auctions WHERE status IN ('RUNNING', 'OPEN')";
 
         } else if ("FETCH_PENDING_AUCTIONS".equals(command)) {
             if (client.getUser() != null && client.getUser().getRole().equalsIgnoreCase("ADMIN")) {
-                sql = "SELECT id, item_name, description, starting_price, current_price, end_time FROM auctions WHERE status = 'PENDING_APPROVAL'";
+                sql = "SELECT id, item_name, description, starting_price, current_price, end_time, image_url FROM auctions WHERE status = 'PENDING_APPROVAL'";
             } else {
                 client.sendResponse("ERROR", "You do not have permission to view pending auctions.");
                 return;
@@ -68,6 +68,7 @@ public class FetchAuctionsHandler implements CommandHandler {
                 LocalDateTime endTime = LocalDateTime.parse(rs.getString("end_time"));
                 long endTimeMillis = endTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
                 auctionData.put("endTime", endTimeMillis);
+                auctionData.put("imageUrl", rs.getString("image_url"));
 
                 activeAuctions.add(auctionData);
             }

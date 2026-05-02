@@ -10,6 +10,10 @@ import network.NetworkMessage;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
+import service.CloudinaryService;
+import utils.JacksonConfig;
+
+import java.time.LocalDateTime;
 
 import static utils.ConsoleColors.*;
 
@@ -18,7 +22,7 @@ import static utils.ConsoleColors.*;
  */
 public class AuctionActionHandler implements CommandHandler {
 
-    private final ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
@@ -46,21 +50,24 @@ public class AuctionActionHandler implements CommandHandler {
             }
 
             // Extract data from the incoming JSON payload
-            java.util.Map<String, String> map = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
+            Auction auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {});
 
-            String itemName = map.get("itemName");
-            String description = map.get("description");
-            double startingPrice = Double.parseDouble(map.get("startingPrice"));
-            double bidIncrement = Double.parseDouble(map.get("bidIncrement"));
-            int durationMinutes = Integer.parseInt(map.get("durationMinutes"));
+            String itemName = auction.getItem().getItemName();
+            String description = auction.getItem().getDescription();
+            String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
+            double startingPrice = auction.getItem().getStartingPrice();
+            double bidIncrement = auction.getBidIncrement();
+            int durationMinutes = (int) java.time.Duration.between(LocalDateTime.now(),auction.getEndTime()).toMinutes();
 
             // Extract item type if provided by the GUI dropdown, otherwise default to TANGIBLE
-            String itemType = map.containsKey("itemType") ? map.get("itemType") : ItemFactory.TYPE_TANGIBLE;
+            //String itemType = map.containsKey("itemType") ? map.get("itemType") : ItemFactory.TYPE_TANGIBLE;
+            String itemType = ItemFactory.TYPE_TANGIBLE;
 
             String newItemId = "ITM-" + System.currentTimeMillis();
 
             // FACTORY PATTERN APPLIED: Dynamically create the item based on its generalized category
             Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
+            item.setImageUrl(imageUrl);
 
             // Forward the creation request to the Seller Controller
             controller.ServerSellerController sellerCtrl = new controller.ServerSellerController();
