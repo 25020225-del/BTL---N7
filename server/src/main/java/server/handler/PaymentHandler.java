@@ -152,8 +152,7 @@ public class PaymentHandler implements CommandHandler {
 
     /**
      * Confirms and captures a completed PayPal transaction.
-     * If the capture is successful, the funds are credited to the user's wallet
-     * through an atomic database transaction.
+     * If successful, funds are credited asynchronously to avoid thread starvation.
      *
      * @param data        The PayPal Order ID to be verified.
      * @param client      The client handler for sending success or error feedback.
@@ -162,7 +161,6 @@ public class PaymentHandler implements CommandHandler {
      */
     private void handleConfirmDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
         String orderId = data.toString().trim();
-
         DepositInfo depositInfo = pendingDeposits.get(orderId);
 
         if (depositInfo == null) {
@@ -177,14 +175,17 @@ public class PaymentHandler implements CommandHandler {
             double amountVND = depositInfo.getAmountVND();
 
             // Credit the user's wallet and log the transaction atomically
-            boolean dbSuccess = paymentController.processDepositSuccess(currentUser, amountVND, orderId);
-
-            if (dbSuccess) {
-                client.sendResponse("DEPOSIT_SUCCESS", "Successful transaction. Deposited " + amountVND + " VND to balance.");
-                pendingDeposits.remove(orderId); // Remove from memory immediately upon completion
-            } else {
-                client.sendResponse("ERROR", "Money is deducted but not deposited. Please contact Admins.");
-            }
+            paymentController.processDepositSuccess(currentUser, amountVND, orderId).thenAccept(dbSuccess -> {
+                if (dbSuccess) {
+                    client.sendResponse("DEPOSIT_SUCCESS", "Successful transaction. Deposited " + amountVND + " VND to balance.");
+                    pendingDeposits.remove(orderId); // Free memory
+                } else {
+                    client.sendResponse("ERROR", "Money is deducted but not deposited. Please contact Admins.");
+                }
+            }).exceptionally(ex -> {
+                client.sendResponse("ERROR", "Database logging error.");
+                return null;
+            });
         } else {
             client.sendResponse("ERROR", "Transaction is not completed or is canceled.");
         }

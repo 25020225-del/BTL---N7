@@ -176,21 +176,19 @@ public class ServerBidderController {
     }
 
     /**
-     * Registers an automated bidding configuration (bot) for a user.
-     * The system will automatically place bids on the user's behalf up to the specified limit.
+     * Registers an automated bidding configuration (bot) for a user asynchronously.
      *
      * @param currentUser The user setting up the bot.
      * @param auction     The target auction session.
      * @param maxBid      The maximum budget the user is willing to spend.
      * @param increment   The minimum step to increase the price when outbidding others.
-     * @return {@code true} if the auto-bid was successfully configured and persisted;
-     *         {@code false} otherwise.
+     * @return A {@link CompletableFuture} resolving to true if configured successfully.
      */
-    public boolean setupAutoBid(User currentUser, Auction auction, double maxBid, double increment) {
+    public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, double maxBid, double increment) {
 
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             System.out.println("[System]: " + RED + "You cannot set an auto-bid on your own auction" + RESET);
-            return false;
+            return CompletableFuture.completedFuture(false);
         }
 
         // Register bot in RAM first
@@ -217,19 +215,18 @@ public class ServerBidderController {
                 }
             };
 
-            try {
-                // Execute persistence task
-                boolean saved = TransactionManager.submitTask(saveAutoBidTask).get();
+            return TransactionManager.submitTask(saveAutoBidTask).thenApply(saved -> {
                 if (saved) {
                     System.out.println("[System]: Auto-Bid Configuration for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved.");
                     // Immediately trigger a scan to see if the new bot should place a bid
                     AutoBidEngine.triggerBotScan(auction);
-                    return true;
                 }
-            } catch (Exception e) {
-                System.out.println("[System]: Execution error while saving auto-bid: " + RED + e.getMessage() + RESET);
-            }
+                return saved;
+            }).exceptionally(ex -> {
+                System.out.println("[System]: Execution error while saving auto-bid: " + RED + ex.getMessage() + RESET);
+                return false;
+            });
         }
-        return false;
+        return CompletableFuture.completedFuture(false);
     }
 }

@@ -104,6 +104,17 @@ public class AuctionMonitor {
     }
 
     /**
+     * Sweeps and finalizes finished auctions.
+     * Executes financial settlements: refunds excess locked funds to the winner
+     * and transfers the final closing price to the seller's wallet.
+     */
+    private void processFinancialSettlement(Auction auction) {
+        // Viết logic cộng tiền (currentPrice) cho auction.getSeller()
+        // Viết logic hoàn tiền (highestMaxBid - currentPrice) cho auction.getWinningBidder()
+        // Thông qua TransactionManager để đảm bảo tính ACID
+    }
+
+    /**
      * Scans the database directly to find and close any auctions that expired
      * but were not loaded into RAM (e.g., created before a recent server restart).
      */

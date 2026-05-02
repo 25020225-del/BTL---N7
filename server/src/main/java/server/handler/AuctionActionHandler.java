@@ -57,7 +57,38 @@ public class AuctionActionHandler implements CommandHandler {
             String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
             double startingPrice = auction.getItem().getStartingPrice();
             double bidIncrement = auction.getBidIncrement();
-            int durationMinutes = (int) java.time.Duration.between(LocalDateTime.now(),auction.getEndTime()).toMinutes();
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime reqStart = auction.getStartTime();
+            LocalDateTime reqEnd = auction.getEndTime();
+
+            if (reqStart == null || reqEnd == null) {
+                client.sendResponse("ERROR", "Invalid time format.");
+                return;
+            }
+
+            // Calculate the requested duration explicitly sent by the client
+            long durationMinutes = java.time.Duration.between(reqStart, reqEnd).toMinutes();
+            final long MAX_DURATION_MINUTES = 43200; // 30 days
+
+            if (durationMinutes <= 0) {
+                client.sendResponse("ERROR", "Invalid duration.");
+                return;
+            }
+            if (durationMinutes > MAX_DURATION_MINUTES) {
+                durationMinutes = MAX_DURATION_MINUTES; // Clamp to 30 days securely
+            }
+
+            // Validate Start Time constraints
+            // Allowing a 5-minute leeway to account for network delay between Client's 'now' and Server's 'now'
+            if (reqStart.isAfter(now.plusMinutes(5)) && reqStart.isBefore(now.plusDays(1).minusMinutes(5))) {
+                client.sendResponse("ERROR", "Pre-set time must be 24 hours behind current time.");
+                return;
+            }
+            //If the start time is in the past (or exactly 'now' from client), normalize it to server's exact 'now'
+            if (reqStart.isBefore(now.plusMinutes(5))) reqStart = now;
+
+            //-----------------------------------------------------------------------------------------------------
 
             // Extract item type if provided by the GUI dropdown, otherwise default to TANGIBLE
             //String itemType = map.containsKey("itemType") ? map.get("itemType") : ItemFactory.TYPE_TANGIBLE;
@@ -71,7 +102,7 @@ public class AuctionActionHandler implements CommandHandler {
 
             // Forward the creation request to the Seller Controller
             controller.ServerSellerController sellerCtrl = new controller.ServerSellerController();
-            Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, durationMinutes);
+            Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, reqStart, (int) durationMinutes);
 
             if (newAuction != null) {
                 newAuction.setStatus(Auction.STATUS_RUNNING);

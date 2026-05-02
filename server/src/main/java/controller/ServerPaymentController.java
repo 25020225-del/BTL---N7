@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 
 import static utils.ConsoleColors.*;
 
@@ -20,16 +21,14 @@ public class ServerPaymentController {
 
     /**
      * Processes a successful deposit notification from a payment gateway (e.g., PayPal).
-     * This method encapsulates the balance update and history logging into a single
-     * ACID-compliant database transaction.
+     * Encapsulates the balance update and history logging into a single ACID transaction.
      *
      * @param user           The user whose wallet will be credited.
      * @param amountVND      The numerical value of the deposit in VND.
      * @param payPalOrderId  The external order identifier provided by PayPal for tracking.
-     * @return {@code true} if the database transaction was successfully committed;
-     *         {@code false} if an error occurred or the transaction was rolled back.
+     * @return A {@link CompletableFuture} resolving to true if the transaction succeeds.
      */
-    public boolean processDepositSuccess(User user, double amountVND, String payPalOrderId) {
+    public CompletableFuture<Boolean> processDepositSuccess(User user, double amountVND, String payPalOrderId) {
         // Wrap deposit logic into a Task to add to the asynchronous database worker queue
         Callable<Boolean> depositTask = () -> {
             String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
@@ -74,11 +73,6 @@ public class ServerPaymentController {
         };
 
         // Submit the task to the TransactionManager and wait for the synchronous result
-        try {
-            return TransactionManager.submitTask(depositTask).get();
-        } catch (Exception e) {
-            System.out.println("[System]: Cannot process deposit order: " + e.getMessage());
-            return false;
-        }
+        return TransactionManager.submitTask(depositTask);
     }
 }

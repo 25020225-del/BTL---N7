@@ -49,7 +49,7 @@ public class AuthHandler implements CommandHandler {
     private void processLogout(ClientHandler client) {
         String oldName = client.getClientName();
         client.setUser(null);
-        client.setClientName("Guest"+ClientHandler.getcNC());
+        client.setClientName("#Guest"+ClientHandler.getcNC());
         ClientHandler.incrementcNC();
 
         System.out.println("[System]: \"" + YELLOW + oldName + RESET + "\" signed out and reverted to " + client.getClientName());

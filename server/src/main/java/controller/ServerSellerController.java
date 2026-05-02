@@ -30,12 +30,11 @@ public class ServerSellerController {
      * @param durationMinutes The total time the auction will remain active.
      * @return A newly created {@link Auction} instance if successful; {@code null} if a database error occurs.
      */
-    public Auction addAuction(User currentUser, Item item, double bidIncrement, int durationMinutes) {
+    public Auction addAuction(User currentUser, Item item, double bidIncrement, LocalDateTime startTime, int durationMinutes) {
         // Utilize the factory method to prepare the Auction object in RAM
-        Auction newAuction = Auction.createNewAuction(item, currentUser, bidIncrement, durationMinutes);
+        Auction newAuction = Auction.createNewAuction(item, currentUser, bidIncrement, startTime, durationMinutes);
 
         String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
