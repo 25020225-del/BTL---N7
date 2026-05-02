@@ -107,7 +107,7 @@ public class ClientManager {
         receiver = receiver.trim();
         for (ClientHandler client : clients) {
             if (client.getClientName() != null && client.getClientName().equals(receiver)) {
-                client.sendMessage("[Admin]" + BLUE + " (private)" + RESET + ": " + message);
+                client.sendMessage("[Admin]" + BLUE + "(private)" + RESET + ": " + message);
                 return;
             }
         }

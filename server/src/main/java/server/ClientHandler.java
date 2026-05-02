@@ -36,7 +36,7 @@ public class ClientHandler {
 
     private final WebSocket conn;
     private static int cNC = 0;
-    private String clientName = "Guest" + (cNC++);
+    private String clientName = "#Guest" + (cNC++);
     private User user;
 
     private final UserController userController;

@@ -210,20 +210,28 @@ public class ClientUserController {
      */
     @FXML
     private void handleSelectImage(){
-        final int MAX_IMAGE_SIZE = 5*1024*1024;
+        // Hạ giới hạn xuống 1MB để bảo vệ RAM của Server khi mã hóa và parse JSON
+        final int MAX_IMAGE_SIZE = 1 * 1024 * 1024;
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Choose an image");
         fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
-        imagefile = fileChooser.showOpenDialog(mainViewController.getScene().getWindow());
-        if (imagefile != null) {
+
+        File selectedFile = fileChooser.showOpenDialog(mainViewController.getScene().getWindow());
+
+        if (selectedFile != null) {
+            // Kiểm tra dung lượng NGAY LẬP TỨC trước khi làm bất cứ việc gì
+            if (selectedFile.length() > MAX_IMAGE_SIZE) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB để đảm bảo đường truyền mạng!");
+                return; // Thoát ngay, không lưu file này
+            }
+
+            // Nếu qua được vòng kiểm duyệt thì mới gán vào biến toàn cục và hiển thị lên UI
+            this.imagefile = selectedFile;
             System.out.println("[System]: Selected image file: " + imagefile.getName());
+
             Image image = new Image(imagefile.toURI().toString());
-            CropImage.cropImage(ca_image,image,720,480);
-        }
-        else return;
-        if (imagefile.length()>MAX_IMAGE_SIZE){
-            AlertHelper.showAlert(Alert.AlertType.ERROR,"Error","Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 5MB!");
-            return;
+            CropImage.cropImage(ca_image, image, 720, 480);
         }
     }
 

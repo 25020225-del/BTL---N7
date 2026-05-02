@@ -299,6 +299,14 @@ public class MultiThreadedServer {
                         System.out.println("[System]: /kickn must be followed by an integer.");
                     }
                 }
+                if (serverMessage.startsWith("/msg ")) {
+                    String data = serverMessage.substring(5);
+                    int firstIndexOfSpace = data.indexOf(" ");
+                    String receiver = data.substring(0, firstIndexOfSpace);
+                    String message = data.substring(firstIndexOfSpace + 1);
+                    ClientManager.privateMsg(receiver, message);
+                    continue;
+                }
                 if (serverMessage.startsWith("/clist")) {
                     ClientManager.getClientList();
                     continue;
