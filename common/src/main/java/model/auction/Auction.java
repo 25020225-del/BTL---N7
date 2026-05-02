@@ -93,12 +93,11 @@ public class Auction extends Entity {
      * @param durationMinutes The total active duration of the auction in minutes.
      * @return A newly initialized Auction instance.
      */
-    public static Auction createNewAuction(Item item, User seller, double bidIncrement, int durationMinutes) {
+    public static Auction createNewAuction(Item item, User seller, double bidIncrement, LocalDateTime startTime, int durationMinutes) {
         String newId = "AUC-" + System.currentTimeMillis();
-        LocalDateTime start = LocalDateTime.now();
-        LocalDateTime end = start.plusMinutes(durationMinutes);
+        LocalDateTime end = startTime.plusMinutes(durationMinutes);
 
-        Auction newAuction = new Auction(newId, item, seller, bidIncrement, start, end);
+        Auction newAuction = new Auction(newId, item, seller, bidIncrement, startTime, end);
 
         if (seller.isGood()) {
             newAuction.setStatus(STATUS_OPEN);

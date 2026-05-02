@@ -62,11 +62,10 @@ public class ClientUserController {
     @FXML private TextField ca_startPrice;
     @FXML private TextField ca_bidIncrement;
     @FXML private DatePicker ca_startDate;
-    @FXML private DatePicker ca_endDate;
     @FXML private TextField ca_startHour;
     @FXML private TextField ca_startMinute;
-    @FXML private TextField ca_endHour;
-    @FXML private TextField ca_endMinute;
+    @FXML private TextField ca_durationDays;
+    @FXML private TextField ca_durationHours;
     @FXML private ImageView ca_image;
 
     @FXML private Label accName;
@@ -265,6 +264,8 @@ public class ClientUserController {
 
     /**
      * Handles the submission of the Create Auction form.
+     * Validates inputs, processes dynamic start times (immediate vs scheduled),
+     * and calculates the end time based on the user-defined duration.
      */
     @FXML
     public void handleSubmitAuction(javafx.event.ActionEvent event) {
@@ -278,22 +279,42 @@ public class ClientUserController {
                 AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Fields", "Please fill in all required fields.");
                 return;
             }
-
-            if (ca_startDate.getValue() == null || ca_endDate.getValue() == null) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Date", "Please select both start and end dates.");
-                return;
-            }
-
-            LocalDateTime startDT = LocalDateTime.of(ca_startDate.getValue(), LocalTime.of(Integer.parseInt(ca_startHour.getText().trim()), Integer.parseInt(ca_startMinute.getText().trim())));
-            LocalDateTime endDT = LocalDateTime.of(ca_endDate.getValue(), LocalTime.of(Integer.parseInt(ca_endHour.getText().trim()), Integer.parseInt(ca_endMinute.getText().trim())));
-
-            long durationMinutes = java.time.Duration.between(startDT, endDT).toMinutes();
-            if (durationMinutes <= 0) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Time", "End time must be after start time.");
-                return;
-            }
             if (imagefile == null) {
                 AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Image", "Please select an image file.");
+                return;
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime startDT;
+
+            // Check if Start Time fields are completely empty
+            boolean isStartTimeEmpty = ca_startDate.getValue() == null ||
+                    ca_startHour.getText().trim().isEmpty() ||
+                    ca_startMinute.getText().trim().isEmpty();
+
+            if (isStartTimeEmpty) {
+                // If empty, default to current time (Server will dynamically update this upon Admin approval)
+                startDT = now;
+            } else {
+                startDT = LocalDateTime.of(
+                        ca_startDate.getValue(),
+                        LocalTime.of(Integer.parseInt(ca_startHour.getText().trim()), Integer.parseInt(ca_startMinute.getText().trim()))
+                );
+
+                // If user specifies a future date, it must be at least 24 hours from now to allow Admin review
+                if (startDT.isBefore(now.plusDays(1))) {
+                    AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Time", "Thời gian bắt đầu phải để trống (chờ duyệt xong chạy luôn) hoặc phải cách hiện tại ít nhất 1 ngày (24 giờ).");
+                    return;
+                }
+            }
+
+            int days = ca_durationDays.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationDays.getText().trim());
+            int hours = ca_durationHours.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationHours.getText().trim());
+            long durationMinutes = (days * 24L * 60L) + (hours * 60L);
+
+            // Constraint: Minimum 1 minute, Maximum 30 days (43200 minutes)
+            if (durationMinutes <= 0 || durationMinutes > 43200) {
+                AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Duration", "Thời lượng đấu giá phải từ 1 phút đến tối đa 30 ngày.");
                 return;
             }
 
@@ -307,30 +328,26 @@ public class ClientUserController {
             auction.getItem().setStartingPrice(Double.parseDouble(startPrice));
             auction.getItem().setFile(ImageCompressor.compressToBytes(imagefile, 0.05F));
             auction.setBidIncrement(Double.parseDouble(bidInc));
-            auction.setEndTime(endDT);
 
-//
-//            Map<String, String> auctionData = new HashMap<>();
-//            auctionData.put("itemName",        name);
-//            auctionData.put("description",     desc);
-//            auctionData.put("startingPrice",   startPrice);
-//            auctionData.put("bidIncrement",    bidInc);
-//            auctionData.put("durationMinutes", String.valueOf(durationMinutes));
+            // Set calculated times
+            auction.setStartTime(startDT);
+            auction.setEndTime(startDT.plusMinutes(durationMinutes));
 
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
 
+            // Reset UI
             ca_itemName.clear();       ca_description.clear();
             ca_startPrice.clear();     ca_bidIncrement.clear();
             ca_startHour.clear();      ca_startMinute.clear();
-            ca_endHour.clear();        ca_endMinute.clear();
-            ca_startDate.setValue(null); ca_endDate.setValue(null);
+            ca_startDate.setValue(null);
+            ca_durationDays.clear();   ca_durationHours.clear();
 
             if (marketplaceBtn != null) marketplaceBtn.fire();
 
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Price, hours, and minutes must be valid numbers.");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Giá tiền và thời lượng phải là số hợp lệ.");
         } catch (java.time.DateTimeException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Hour must be 0–23 and minute must be 0–59.");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Giờ bắt đầu phải từ 0–23 và phút từ 0–59.");
         } catch (Exception e) {
             e.printStackTrace();
         }
