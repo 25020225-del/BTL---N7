@@ -109,6 +109,13 @@ public class DatabaseManager {
                 // Columns already exist
             }
 
+            try {
+                stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;");
+                System.out.println("[Database]: " + GREEN + "Successfully upgraded auctions table" + RESET);
+            } catch (SQLException ignored) {
+                // Cột đã tồn tại
+            }
+
             // SEED DATA: Insert default admin user if not present
             String adminPass = BCrypt.hashpw("123456", BCrypt.gensalt(12));
             String insertAdmin = "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good, is_totp_enabled) " +
@@ -127,6 +134,7 @@ public class DatabaseManager {
                     "end_time TEXT NOT NULL, " +
                     "status TEXT NOT NULL, " +
                     "seller_id TEXT NOT NULL, " +
+                    "image_url TEXT, " +
                     "FOREIGN KEY (seller_id) REFERENCES users(id)" +
                     ");";
             stmt.execute(createAuctionsTable);

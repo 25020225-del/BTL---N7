@@ -1,6 +1,7 @@
 package utils;
 
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -80,6 +81,10 @@ public final class JacksonConfig {
         // Ignore unknown enum values — treat them as null instead of throwing.
         // Useful if an enum gets a new value added on the server side.
         mapper.configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, true);
+
+        // Remove null fields from JSON strings during compression (Serialize).
+        // Useful in reducing bandwidth when transmitting data.
+        mapper.setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
 
         return mapper;
     }

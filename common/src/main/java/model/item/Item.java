@@ -11,6 +11,8 @@ public class Item extends Entity {
     private String itemName;
     private String description;
     private double startingPrice;
+    private String imageUrl;
+    private byte[] file;
     private String approvalStatus;
 
     /**
@@ -50,6 +52,11 @@ public class Item extends Entity {
     public String getApprovalStatus() { return approvalStatus; }
     public void setApprovalStatus(String approvalStatus) { this.approvalStatus = approvalStatus; }
 
+    public byte[] getFile() { return file; }
+    public void setFile(byte[] file) { this.file = file; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     /**
      * Generates a formatted summary string containing the item's core details.
      *
