@@ -216,14 +216,15 @@ public class ClientUserController {
         fileChooser.setTitle("Choose an image");
         fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
         imagefile = fileChooser.showOpenDialog(mainViewController.getScene().getWindow());
-        if (imagefile.length()>MAX_IMAGE_SIZE){
-            AlertHelper.showAlert(Alert.AlertType.ERROR,"Error","Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 5MB!");
-            return;
-        }
         if (imagefile != null) {
             System.out.println("[System]: Selected image file: " + imagefile.getName());
             Image image = new Image(imagefile.toURI().toString());
             CropImage.cropImage(ca_image,image,720,480);
+        }
+        else return;
+        if (imagefile.length()>MAX_IMAGE_SIZE){
+            AlertHelper.showAlert(Alert.AlertType.ERROR,"Error","Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 5MB!");
+            return;
         }
     }
 
@@ -304,7 +305,7 @@ public class ClientUserController {
             auction.getItem().setItemName(name);
             auction.getItem().setDescription(desc);
             auction.getItem().setStartingPrice(Double.parseDouble(startPrice));
-            auction.getItem().setFile(ImageCompressor.compressToBytes(imagefile, 0.01F));
+            auction.getItem().setFile(ImageCompressor.compressToBytes(imagefile, 0.05F));
             auction.setBidIncrement(Double.parseDouble(bidInc));
             auction.setEndTime(endDT);
 
@@ -374,13 +375,16 @@ public class ClientUserController {
                         String id      = (String) data.get("id");
                         String name    = (String) data.get("itemName");
                         String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
+                        String imageUrl = (String) data.get("imageUrl");
                         long   endTime = ((Number) data.get("endTime")).longValue();
 
-                        MinimalItem item = new MinimalItem(id, name, price, endTime);
+                        MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTime);
                         item.getAuctionButton().setOnAction(e -> openItemDetail(data));
                         mainTilePane.getChildren().add(item);
                     }
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                    System.out.println("[ClientAuctionHandler]: FETCH_AUCTIONS_SUCCESS parse error: " + e.getMessage());
+                }
 
             } else if ("NEW_AUCTION_ADDED".equals(command)) {
                 try {
@@ -390,9 +394,10 @@ public class ClientUserController {
                     String id      = (String) data.get("id");
                     String name    = (String) data.get("itemName");
                     String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
+                    String imageUrl= (String) data.get("imageUrl");
                     long   endTime = ((Number) data.get("endTime")).longValue();
 
-                    MinimalItem newItem = new MinimalItem(id, name, price, endTime);
+                    MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTime);
                     newItem.getAuctionButton().setOnAction(e -> openItemDetail(data));
 
                     newItem.setOpacity(0);

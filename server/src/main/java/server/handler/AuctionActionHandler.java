@@ -10,6 +10,7 @@ import network.NetworkMessage;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
+import service.CloudinaryService;
 import utils.JacksonConfig;
 
 import java.time.LocalDateTime;
@@ -53,6 +54,7 @@ public class AuctionActionHandler implements CommandHandler {
 
             String itemName = auction.getItem().getItemName();
             String description = auction.getItem().getDescription();
+            String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
             double startingPrice = auction.getItem().getStartingPrice();
             double bidIncrement = auction.getBidIncrement();
             int durationMinutes = (int) java.time.Duration.between(LocalDateTime.now(),auction.getEndTime()).toMinutes();
@@ -65,6 +67,7 @@ public class AuctionActionHandler implements CommandHandler {
 
             // FACTORY PATTERN APPLIED: Dynamically create the item based on its generalized category
             Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
+            item.setImageUrl(imageUrl);
 
             // Forward the creation request to the Seller Controller
             controller.ServerSellerController sellerCtrl = new controller.ServerSellerController();

@@ -34,7 +34,7 @@ public class ServerSellerController {
         // Utilize the factory method to prepare the Auction object in RAM
         Auction newAuction = Auction.createNewAuction(item, currentUser, bidIncrement, durationMinutes);
 
-        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -49,6 +49,7 @@ public class ServerSellerController {
             pstmt.setString(8, newAuction.getEndTime().toString());
             pstmt.setString(9, newAuction.getStatus());
             pstmt.setString(10, currentUser.getId());
+            pstmt.setString(11, item.getImageUrl());
 
             pstmt.executeUpdate();
             System.out.println("[System]: User \"" + YELLOW + currentUser.getName() + RESET + "\" created auction: " + item.getItemName());
