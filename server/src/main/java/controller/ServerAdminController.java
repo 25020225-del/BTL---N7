@@ -1,19 +1,8 @@
 package controller;
 
-<<<<<<< HEAD
-import database.DatabaseManager;
 import model.user.Admin;
 import model.user.User;
 import model.auction.Auction;
-=======
-import model.user.Admin;
-import model.user.User;
-import model.auction.Auction;
->>>>>>> df73b5cfd21e32839620dec3b4e4f4bde75eecf1
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 
 import static utils.ConsoleColors.*;
 
@@ -37,22 +26,10 @@ public class ServerAdminController {
             return false;
         }
 
-        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        auction.setStatus(Auction.STATUS_OPEN);
+        System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has approved auction \"" + YELLOW + auction.getId() + RESET + "\"");
 
-            pstmt.setString(1, Auction.STATUS_OPEN);
-            pstmt.setString(2, auction.getId());
-
-            if (pstmt.executeUpdate() > 0) {
-                auction.setStatus(Auction.STATUS_OPEN);
-                System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has approved auction \"" + YELLOW + auction.getId() + RESET + "\"");
-                return true;
-            }
-        } catch (SQLException e) {
-            System.out.println("[Error]: DB Error during approval: " + RED + e.getMessage() + RESET);
-        }
-        return false;
+        return true;
     }
 
     /**
@@ -64,23 +41,8 @@ public class ServerAdminController {
      */
     public void verifySeller(Admin admin, User user) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
-<<<<<<< HEAD
-            String sql = "UPDATE users SET is_good = 1 WHERE id = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-                pstmt.setString(1, user.getId());
-                if (pstmt.executeUpdate() > 0) {
-                    user.setGood(true);
-                    System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has verified Seller \"" + YELLOW + seller.getName() + RESET + "\" as reputable");
-                }
-            } catch (SQLException e) {
-                System.out.println("[Error]: DB Error verifying seller: " + RED + e.getMessage() + RESET);
-            }
-=======
             user.setGood(true);
             System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has verified User \"" + YELLOW + user.getName() + RESET + "\" as reputable");
->>>>>>> df73b5cfd21e32839620dec3b4e4f4bde75eecf1
         }
     }
 
@@ -92,20 +54,8 @@ public class ServerAdminController {
      */
     public void rejectAuctionRequest(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
-            String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-                pstmt.setString(1, Auction.STATUS_CANCELED);
-                pstmt.setString(2, auction.getId());
-
-                if (pstmt.executeUpdate() > 0) {
-                    auction.setStatus(Auction.STATUS_CANCELED);
-                    System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has rejected the auction request for \"" + YELLOW + auction.getId() + RESET + "\"");
-                }
-            } catch (SQLException e) {
-                System.out.println("[Error]: DB Error rejecting auction: " + RED + e.getMessage() + RESET);
-            }
+            auction.setStatus(Auction.STATUS_CANCELED);
+            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has rejected the auction request for \"" + YELLOW + auction.getId() + RESET + "\"");
         }
     }
 
@@ -118,20 +68,8 @@ public class ServerAdminController {
      */
     public void forceDeleteAuction(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
-            String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-                pstmt.setString(1, Auction.STATUS_DELETED);
-                pstmt.setString(2, auction.getId());
-
-                if (pstmt.executeUpdate() > 0) {
-                    auction.setStatus(Auction.STATUS_DELETED);
-                    System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has permanently deleted auction \"" + YELLOW + auction.getId() + RESET + "\"");
-                }
-            } catch (SQLException e) {
-                System.out.println("[Error]: DB Error deleting auction: " + RED + e.getMessage() + RESET);
-            }
+            auction.setStatus(Auction.STATUS_DELETED);
+            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has permanently deleted auction \"" + YELLOW + auction.getId() + RESET + "\"");
         }
     }
 }
