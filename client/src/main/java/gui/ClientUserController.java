@@ -15,6 +15,8 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
+import model.auction.Auction;
+import model.item.Item;
 import model.user.User;
 import network.NetworkMessage;
 
@@ -265,14 +267,23 @@ public class ClientUserController {
             Double.parseDouble(startPrice);
             Double.parseDouble(bidInc);
 
-            Map<String, String> auctionData = new HashMap<>();
-            auctionData.put("itemName",        name);
-            auctionData.put("description",     desc);
-            auctionData.put("startingPrice",   startPrice);
-            auctionData.put("bidIncrement",    bidInc);
-            auctionData.put("durationMinutes", String.valueOf(durationMinutes));
+            Auction auction = new Auction();
+            auction.setItem(new Item());
+            auction.getItem().setItemName(name);
+            auction.getItem().setDescription(desc);
+            auction.getItem().setStartingPrice(Double.parseDouble(startPrice));
+            auction.setBidIncrement(Double.parseDouble(bidInc));
+            auction.setEndTime(endDT);
 
-            MainApplication.networkClient.sendMessage("CREATE_AUCTION", auctionData);
+//
+//            Map<String, String> auctionData = new HashMap<>();
+//            auctionData.put("itemName",        name);
+//            auctionData.put("description",     desc);
+//            auctionData.put("startingPrice",   startPrice);
+//            auctionData.put("bidIncrement",    bidInc);
+//            auctionData.put("durationMinutes", String.valueOf(durationMinutes));
+
+            MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
 
             ca_itemName.clear();       ca_description.clear();
             ca_startPrice.clear();     ca_bidIncrement.clear();

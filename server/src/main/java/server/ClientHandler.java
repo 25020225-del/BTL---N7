@@ -15,6 +15,7 @@ import javax.crypto.SecretKey;
 
 import utils.CryptoUtil;
 import model.user.User;
+import utils.JacksonConfig;
 
 import static utils.ConsoleColors.*;
 
@@ -42,8 +43,7 @@ public class ClientHandler {
     private static final CommandDispatcher dispatcher = new CommandDispatcher();
 
     // Ignore unknown JSON properties for robust parsing
-    private final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     private SecretKey sharedAesKey;
     private KeyPair rsaKeyPair;

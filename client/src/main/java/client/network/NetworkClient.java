@@ -15,6 +15,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import utils.CryptoUtil;
+import utils.JacksonConfig;
+
 import static utils.ConsoleColors.*;
 
 /**
@@ -34,8 +36,7 @@ public class NetworkClient {
     private AuctionWSClient wsClient;
 
     // Ignore unknown properties to prevent crashes on schema updates
-    private final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     private Consumer<NetworkMessage> onMessageReceived;
     private final ResponseDispatcher dispatcher = new ResponseDispatcher();
