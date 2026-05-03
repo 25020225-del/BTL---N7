@@ -13,7 +13,7 @@ public class TangibleItem extends Item {
 
     @Override
     public String getInfo() {
-        return    "[Tangible Asset]: "  + this.getItemName()
+        return "[Tangible Asset]: " + this.getItemName()
                 + " | Start Price: VND " + this.getStartingPrice();
     }
 }

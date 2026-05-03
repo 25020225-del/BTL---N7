@@ -1,10 +1,10 @@
 package service;
 
-import io.github.cdimascio.dotenv.Dotenv;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.cdimascio.dotenv.Dotenv;
 import utils.JacksonConfig;
 
 import java.net.URI;
@@ -14,7 +14,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RED;
+import static utils.ConsoleColors.RESET;
 
 public class PayPalService {
     private final String clientId;
@@ -33,7 +34,8 @@ public class PayPalService {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
-        this.mapper = JacksonConfig.mapper();;
+        this.mapper = JacksonConfig.mapper();
+        ;
     }
 
     /**
@@ -62,6 +64,7 @@ public class PayPalService {
 
     /**
      * Create a new trade (Order) based on the amount in VND
+     *
      * @return String[]: [0] = Order ID, [1] = Payment URL.
      */
     public String[] createOrder(double amountVND) throws Exception {

@@ -2,6 +2,7 @@ package model.finance;
 
 import model.base.Entity;
 import model.user.User;
+
 import java.time.LocalDateTime;
 
 /**
@@ -31,19 +32,34 @@ public class BidTransaction extends Entity {
      */
     public BidTransaction(String id, User bidder, double bidAmount) {
         super(id);
-        this.bidder    = bidder;
+        this.bidder = bidder;
         this.bidAmount = bidAmount;
         this.timestamp = LocalDateTime.now();
     }
 
-    public User getBidder() { return bidder; }
-    public void setBidder(User bidder) { this.bidder = bidder; }
+    public User getBidder() {
+        return bidder;
+    }
 
-    public double getBidAmount() { return bidAmount; }
-    public void setBidAmount(double bidAmount) { this.bidAmount = bidAmount; }
+    public void setBidder(User bidder) {
+        this.bidder = bidder;
+    }
 
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public double getBidAmount() {
+        return bidAmount;
+    }
+
+    public void setBidAmount(double bidAmount) {
+        this.bidAmount = bidAmount;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
 
     /**
      * Generates a formatted summary string of this bid transaction.

@@ -1,6 +1,7 @@
 package gui;
 
 import model.user.User;
+
 import java.io.IOException;
 
 /**

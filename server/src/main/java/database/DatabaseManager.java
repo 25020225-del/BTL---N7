@@ -3,12 +3,12 @@ package database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.mindrot.jbcrypt.BCrypt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-
-import static utils.ConsoleColors.*;
 
 /**
  * Manages database connectivity and lifecycle for the auction system.
@@ -17,10 +17,16 @@ import static utils.ConsoleColors.*;
  */
 public class DatabaseManager {
 
-    /** The JDBC connection URL for the SQLite database, configured with WAL mode. */
+    private static final Logger log = LoggerFactory.getLogger(DatabaseManager.class);
+
+    /**
+     * The JDBC connection URL for the SQLite database, configured with WAL mode.
+     */
     private static final String DB_URL = "jdbc:sqlite:auction_system.db?journal_mode=WAL";
 
-    /** The pooled data source instance used to provide database connections. */
+    /**
+     * The pooled data source instance used to provide database connections.
+     */
     private static final HikariDataSource dataSource;
 
     static {
@@ -104,14 +110,14 @@ public class DatabaseManager {
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
-                System.out.println("[Database]: " + GREEN + "Successfully upgraded user table" + RESET);
+                log.info("Successfully upgraded user table");
             } catch (SQLException ignored) {
                 // Columns already exist
             }
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;");
-                System.out.println("[Database]: " + GREEN + "Successfully upgraded auctions table" + RESET);
+                log.info("Successfully upgraded auctions table");
             } catch (SQLException ignored) {
                 // Cột đã tồn tại
             }
@@ -163,10 +169,10 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            System.out.println("[Database]:" + GREEN + " Successfully initialized" + RESET);
+            log.info("Successfully initialized");
 
         } catch (SQLException e) {
-            System.out.println("[Error]: Database initialization error: " + RED + e.getMessage() + RESET);
+            log.error("Database initialization error: {}", e.getMessage());
         }
     }
 }

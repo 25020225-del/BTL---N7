@@ -1,6 +1,5 @@
 package server.handler;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.user.User;
 import network.NetworkMessage;
@@ -17,7 +16,9 @@ import static utils.ConsoleColors.*;
  */
 public class AuthHandler implements CommandHandler {
 
-    /** Jackson object mapper used to convert generic network data into domain models. */
+    /**
+     * Jackson object mapper used to convert generic network data into domain models.
+     */
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
     /**
@@ -49,7 +50,7 @@ public class AuthHandler implements CommandHandler {
     private void processLogout(ClientHandler client) {
         String oldName = client.getClientName();
         client.setUser(null);
-        client.setClientName("#Guest"+ClientHandler.getcNC());
+        client.setClientName("#Guest" + ClientHandler.getcNC());
         ClientHandler.incrementcNC();
 
         System.out.println("[System]: \"" + YELLOW + oldName + RESET + "\" signed out and reverted to " + client.getClientName());

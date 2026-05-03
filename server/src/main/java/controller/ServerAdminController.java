@@ -1,8 +1,8 @@
 package controller;
 
+import model.auction.Auction;
 import model.user.Admin;
 import model.user.User;
-import model.auction.Auction;
 
 import static utils.ConsoleColors.*;
 

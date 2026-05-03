@@ -15,6 +15,7 @@ module org.example.demo {
     requires java.security.sasl;
     requires Java.WebSocket;
     requires jcommander;
+    requires org.slf4j;
 
     opens gui to javafx.fxml;
     exports gui;

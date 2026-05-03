@@ -1,7 +1,5 @@
 package model.item;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Factory class responsible for creating generalized categories of Items.
  * Implements the Factory Method Design Pattern to promote loose coupling
@@ -13,8 +11,8 @@ public class ItemFactory {
      * Constants representing the broad item categories.
      */
     public static final String TYPE_TANGIBLE = "TANGIBLE";
-    public static final String TYPE_DIGITAL  = "DIGITAL";
-    public static final String TYPE_SERVICE  = "SERVICE";
+    public static final String TYPE_DIGITAL = "DIGITAL";
+    public static final String TYPE_SERVICE = "SERVICE";
 
     /**
      * Creates an Item instance based on the specified generalized type.

@@ -34,29 +34,60 @@ public class Item extends Entity {
      */
     public Item(String id, String itemName, String description, double startingPrice) {
         super(id);
-        this.itemName       = itemName;
-        this.description    = description;
-        this.startingPrice  = startingPrice;
+        this.itemName = itemName;
+        this.description = description;
+        this.startingPrice = startingPrice;
         this.approvalStatus = "PENDING";
     }
 
-    public String getItemName() { return itemName; }
-    public void setItemName(String itemName) { this.itemName = itemName; }
+    public String getItemName() {
+        return itemName;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public void setItemName(String itemName) {
+        this.itemName = itemName;
+    }
 
-    public double getStartingPrice() { return startingPrice; }
-    public void setStartingPrice(double startingPrice) { this.startingPrice = startingPrice; }
+    public String getDescription() {
+        return description;
+    }
 
-    public String getApprovalStatus() { return approvalStatus; }
-    public void setApprovalStatus(String approvalStatus) { this.approvalStatus = approvalStatus; }
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-    public byte[] getFile() { return file; }
-    public void setFile(byte[] file) { this.file = file; }
+    public double getStartingPrice() {
+        return startingPrice;
+    }
 
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public void setStartingPrice(double startingPrice) {
+        this.startingPrice = startingPrice;
+    }
+
+    public String getApprovalStatus() {
+        return approvalStatus;
+    }
+
+    public void setApprovalStatus(String approvalStatus) {
+        this.approvalStatus = approvalStatus;
+    }
+
+    public byte[] getFile() {
+        return file;
+    }
+
+    public void setFile(byte[] file) {
+        this.file = file;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
     /**
      * Generates a formatted summary string containing the item's core details.
      *
@@ -64,9 +95,9 @@ public class Item extends Entity {
      */
     @Override
     public String getInfo() {
-        return       "Item ID: "            + this.getId()
-                + " | Name: "               + this.getItemName()
-                + " | Description: "        + description
+        return "Item ID: " + this.getId()
+                + " | Name: " + this.getItemName()
+                + " | Description: " + description
                 + " | Starting Price: VND " + startingPrice;
     }
 }

@@ -1,14 +1,15 @@
 package client.handler;
 
 import client.network.NetworkClient;
-import network.NetworkMessage;
 import javafx.application.Platform;
+import network.NetworkMessage;
 
-import java.awt.Desktop;
+import java.awt.*;
 import java.net.URI;
 import java.util.Map;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RESET;
+import static utils.ConsoleColors.YELLOW;
 
 /**
  * Handles system-level commands received from the server,
@@ -26,8 +27,7 @@ public class ClientSystemHandler implements ResponseHandler {
                 Desktop.getDesktop().browse(new URI(url));
                 System.out.println("[System]: Redirecting to: " + YELLOW + url + RESET);
             }
-        }
-        else if ("KICKED".equals(command)) {
+        } else if ("KICKED".equals(command)) {
             System.out.println("[System]:" + YELLOW + " You have been kicked. Reason: " + message.getData() + RESET);
 
             // Notify UI if applicable before shutting down
@@ -37,8 +37,7 @@ public class ClientSystemHandler implements ResponseHandler {
 
             Thread.sleep(1000);
             System.exit(0);
-        }
-        else if ("TIME_SYNC_ACK".equals(command)) {
+        } else if ("TIME_SYNC_ACK".equals(command)) {
             // Process the time synchronization response from the server
             @SuppressWarnings("unchecked")
             Map<String, Number> syncData = (Map<String, Number>) message.getData();

@@ -3,13 +3,16 @@ package gui;
 import client.network.NetworkClient;
 import gui.process.AlertHelper;
 import gui.process.QRCodeHelper;
-import model.user.User;
-import network.NetworkMessage;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import model.user.User;
+import network.NetworkMessage;
 
 import java.util.List;
 
@@ -21,12 +24,18 @@ import static utils.ConsoleColors.*;
  */
 public class RegisterController {
 
-    @FXML private TextField registerName;
-    @FXML private TextField registerAccountName;
-    @FXML private PasswordField registerPasswordAccount;
-    @FXML private PasswordField confirmPasswordAccount;
-    @FXML private Button registerButton;
-    @FXML private Button changeLoginScene;
+    @FXML
+    private TextField registerName;
+    @FXML
+    private TextField registerAccountName;
+    @FXML
+    private PasswordField registerPasswordAccount;
+    @FXML
+    private PasswordField confirmPasswordAccount;
+    @FXML
+    private Button registerButton;
+    @FXML
+    private Button changeLoginScene;
 
     private NetworkClient networkClient;
 
@@ -42,7 +51,7 @@ public class RegisterController {
     protected void onRegisterButtonClick() {
         System.out.println("[Log]: Registration process started");
 
-        String name     = registerName.getText().trim();
+        String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
         String confirmPass = (confirmPasswordAccount != null) ? confirmPasswordAccount.getText().trim() : "";
@@ -115,7 +124,7 @@ public class RegisterController {
                     @SuppressWarnings("unchecked")
                     List<String> dataList = (List<String>) data;
                     String secretKey = dataList.get(0);
-                    String qrUrl     = dataList.get(1);
+                    String qrUrl = dataList.get(1);
 
                     Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
 

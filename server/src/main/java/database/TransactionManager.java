@@ -21,7 +21,9 @@ public class TransactionManager {
      */
     private static final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
 
-    /** The single background thread dedicated to consuming and running database tasks. */
+    /**
+     * The single background thread dedicated to consuming and running database tasks.
+     */
     private static final Thread dbWorker;
 
     static {

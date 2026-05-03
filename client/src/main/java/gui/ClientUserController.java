@@ -1,8 +1,10 @@
 package gui;
 
 import client.handler.ResponseDispatcher;
-import com.beust.ah.A;
-import gui.process.*;
+import gui.process.AlertHelper;
+import gui.process.CropImage;
+import gui.process.ImageCompressor;
+import gui.process.Search;
 import gui.widget.IconButton;
 import gui.widget.MinimalItem;
 import javafx.animation.FadeTransition;
@@ -21,6 +23,8 @@ import model.auction.Auction;
 import model.item.Item;
 import model.user.User;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,7 +34,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RED;
+import static utils.ConsoleColors.RESET;
 
 /**
  * The unified primary controller for standard users.
@@ -38,6 +43,7 @@ import static utils.ConsoleColors.*;
  * capabilities, acting as the main dashboard for the application.
  */
 public class ClientUserController {
+    private static final Logger log = LoggerFactory.getLogger(ClientUserController.class);
 
     private Parent mainView;
     private Parent createAuctionView;
@@ -49,36 +55,58 @@ public class ClientUserController {
 
     private File imagefile;
 
-    @FXML private VBox mainDock;
-    @FXML private VBox mainViewController;
+    // FUN
+    private int dih = 0;
+    private long niggardly = 0;
 
-    @FXML private HBox searchBarContainer;
-    @FXML private TilePane mainTilePane;
-    @FXML private TextField searchField;
-    @FXML private Button searchButton;
+    @FXML
+    private VBox mainDock;
+    @FXML
+    private VBox mainViewController;
 
-    @FXML private TextField ca_itemName;
-    @FXML private TextArea ca_description;
-    @FXML private TextField ca_startPrice;
-    @FXML private TextField ca_bidIncrement;
-    @FXML private DatePicker ca_startDate;
-    @FXML private TextField ca_startHour;
-    @FXML private TextField ca_startMinute;
-    @FXML private TextField ca_durationDays;
-    @FXML private TextField ca_durationHours;
-    @FXML private ImageView ca_image;
+    @FXML
+    private HBox searchBarContainer;
+    @FXML
+    private TilePane mainTilePane;
+    @FXML
+    private TextField searchField;
+    @FXML
+    private Button searchButton;
 
-    @FXML private Label accName;
-    @FXML private Label accUsername;
+    @FXML
+    private TextField ca_itemName;
+    @FXML
+    private TextArea ca_description;
+    @FXML
+    private TextField ca_startPrice;
+    @FXML
+    private TextField ca_bidIncrement;
+    @FXML
+    private DatePicker ca_startDate;
+    @FXML
+    private TextField ca_startHour;
+    @FXML
+    private TextField ca_startMinute;
+    @FXML
+    private TextField ca_durationDays;
+    @FXML
+    private TextField ca_durationHours;
+    @FXML
+    private ImageView ca_image;
+
+    @FXML
+    private Label accName;
+    @FXML
+    private Label accUsername;
 
     private IconButton accountBtn;
-    private IconButton toggleList           = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
-    private IconButton toggleSearchButton   = new IconButton("mdi2f-file-find-outline",     "Search",                "Search",          "special-button");
-    private IconButton marketplaceBtn       = new IconButton("mdi2s-storefront-outline",    "Marketplace",           "Marketplace",     "special-button");
-    private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
-    private IconButton depositBtn           = new IconButton("mdi2c-cash-plus",             "Deposit 50k (Test)",    "Deposit",         "special-button");
-    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
-    private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private IconButton toggleSearchButton = new IconButton("mdi2f-file-find-outline", "Search", "Search", "special-button");
+    private IconButton marketplaceBtn = new IconButton("mdi2s-storefront-outline", "Marketplace", "Marketplace", "special-button");
+    private IconButton createAuctionBtn = new IconButton("mdi2a-archive-plus-outline", "Sell Item", "Create Auction", "special-button");
+    private IconButton depositBtn = new IconButton("mdi2c-cash-plus", "Deposit 50k (Test)", "Deposit", "special-button");
+    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug", "Create Bot (Test)", "Test Create", "special-button");
+    private IconButton settingsBtn = new IconButton("mdi2c-cog", "Settings", "Settings", "special-button");
 
     /**
      * Initializes the Unified User Controller and loads all required FXML layouts.
@@ -88,7 +116,7 @@ public class ClientUserController {
      */
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
-        this.accountBtn  = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
+        this.accountBtn = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
 
         FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainLoader.setController(this);
@@ -158,19 +186,40 @@ public class ClientUserController {
         testCreateAuctionBtn.setOnAction(event -> {
             String testItemName = "TEST_ITEM_" + (System.currentTimeMillis() % 10000);
             Map<String, String> dummyData = new HashMap<>();
-            dummyData.put("itemName",       testItemName);
-            dummyData.put("description",    "Test description");
-            dummyData.put("startingPrice",  "50000");
-            dummyData.put("bidIncrement",   "5000");
-            dummyData.put("durationMinutes","60");
+            dummyData.put("itemName", testItemName);
+            dummyData.put("description", "Test description");
+            dummyData.put("startingPrice", "50000");
+            dummyData.put("bidIncrement", "5000");
+            dummyData.put("durationMinutes", "60");
 
-            System.out.println("[Debug]: Sending CREATE_AUCTION for " + testItemName);
+            log.info("[Debug]: Sending CREATE_AUCTION for {}", testItemName);
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
         });
 
         accountBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(accountView);
+
+            // FUN
+            long skibidi_toilet = System.currentTimeMillis();
+            if (niggardly == 0 || (skibidi_toilet - niggardly > 30000)) {
+                dih = 1;
+                niggardly = skibidi_toilet;
+            } else dih++;
+
+            if (dih == 67) {
+                try {
+                    String troll = "https://www.tiktok.com/@rven6166/video/7615455293991963934";
+
+                    if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                        java.awt.Desktop.getDesktop().browse(new java.net.URI(troll));
+                    }
+                } catch (Exception e) {
+                    log.error("[System]: Error: " + RED + e.getMessage() + RESET);
+                }
+                dih = 0;
+                niggardly = 0;
+            }
         });
 
         settingsBtn.setOnAction(event -> {
@@ -209,7 +258,7 @@ public class ClientUserController {
      * Choose image from local storage.
      */
     @FXML
-    private void handleSelectImage(){
+    private void handleSelectImage() {
         // Hạ giới hạn xuống 1MB để bảo vệ RAM của Server khi mã hóa và parse JSON
         final int MAX_IMAGE_SIZE = 1 * 1024 * 1024;
 
@@ -278,10 +327,10 @@ public class ClientUserController {
     @FXML
     public void handleSubmitAuction(javafx.event.ActionEvent event) {
         try {
-            String name       = ca_itemName.getText().trim();
-            String desc       = ca_description.getText().trim();
+            String name = ca_itemName.getText().trim();
+            String desc = ca_description.getText().trim();
             String startPrice = ca_startPrice.getText().trim();
-            String bidInc     = ca_bidIncrement.getText().trim();
+            String bidInc = ca_bidIncrement.getText().trim();
 
             if (name.isEmpty() || desc.isEmpty() || startPrice.isEmpty() || bidInc.isEmpty()) {
                 AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Fields", "Please fill in all required fields.");
@@ -344,11 +393,15 @@ public class ClientUserController {
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
 
             // Reset UI
-            ca_itemName.clear();       ca_description.clear();
-            ca_startPrice.clear();     ca_bidIncrement.clear();
-            ca_startHour.clear();      ca_startMinute.clear();
+            ca_itemName.clear();
+            ca_description.clear();
+            ca_startPrice.clear();
+            ca_bidIncrement.clear();
+            ca_startHour.clear();
+            ca_startMinute.clear();
             ca_startDate.setValue(null);
-            ca_durationDays.clear();   ca_durationHours.clear();
+            ca_durationDays.clear();
+            ca_durationHours.clear();
 
             if (marketplaceBtn != null) marketplaceBtn.fire();
 
@@ -397,11 +450,11 @@ public class ClientUserController {
                     mainTilePane.getChildren().clear();
 
                     for (Map<String, Object> data : auctions) {
-                        String id      = (String) data.get("id");
-                        String name    = (String) data.get("itemName");
-                        String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
+                        String id = (String) data.get("id");
+                        String name = (String) data.get("itemName");
+                        String price = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
                         String imageUrl = (String) data.get("imageUrl");
-                        long   endTime = ((Number) data.get("endTime")).longValue();
+                        long endTime = ((Number) data.get("endTime")).longValue();
 
                         MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTime);
                         item.getAuctionButton().setOnAction(e -> openItemDetail(data));
@@ -416,11 +469,11 @@ public class ClientUserController {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> data = (Map<String, Object>) response.getData();
 
-                    String id      = (String) data.get("id");
-                    String name    = (String) data.get("itemName");
-                    String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
-                    String imageUrl= (String) data.get("imageUrl");
-                    long   endTime = ((Number) data.get("endTime")).longValue();
+                    String id = (String) data.get("id");
+                    String name = (String) data.get("itemName");
+                    String price = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
+                    String imageUrl = (String) data.get("imageUrl");
+                    long endTime = ((Number) data.get("endTime")).longValue();
 
                     MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTime);
                     newItem.getAuctionButton().setOnAction(e -> openItemDetail(data));
@@ -431,13 +484,15 @@ public class ClientUserController {
                     FadeTransition ft = new FadeTransition(Duration.millis(500), newItem);
                     ft.setToValue(1.0);
                     ft.play();
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                }
 
             } else if ("REMOVE_AUCTION".equals(command)) {
                 try {
                     String auctionIdToRemove = (String) response.getData();
                     mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                }
 
             } else {
                 new ResponseDispatcher().dispatch(response, MainApplication.networkClient);

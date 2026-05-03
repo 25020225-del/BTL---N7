@@ -6,7 +6,8 @@ import server.ClientHandler;
 import java.util.HashMap;
 import java.util.Map;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RED;
+import static utils.ConsoleColors.RESET;
 
 /**
  * The central command router for the server application.

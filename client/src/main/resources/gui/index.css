@@ -87,6 +87,7 @@
     -fx-border-color: #d1e2f2;
     -fx-background-radius: 4;
 }
+
 .combo-box .list-cell {
     -fx-text-fill: #2d3436;
     -fx-background-color: #ffffff;
@@ -133,18 +134,18 @@
     -fx-alignment: CENTER_LEFT;
     -fx-background-color: #d1e9ff; /* Màu nhạt riêng cho nút đặc biệt */
     -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.6), 10, 0, 4, 4),
-                    dropshadow(three-pass-box, rgba(255, 255, 255, 0.9), 10, 0, -4, -4);
+    dropshadow(three-pass-box, rgba(255, 255, 255, 0.9), 10, 0, -4, -4);
 }
 
 .special-button:hover {
     -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.8), 15, 0, 6, 6),
-                dropshadow(three-pass-box, rgba(255, 255, 255, 1.0), 15, 0, -6, -6);
+    dropshadow(three-pass-box, rgba(255, 255, 255, 1.0), 15, 0, -6, -6);
 }
 
 /* Hiệu ứng khi nhấn: Nút lún xuống (Inset shadow giả lập) */
 .special-button:pressed {
     -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.4), 5, 0, 1, 1),
-                dropshadow(three-pass-box, rgba(255, 255, 255, 0.6), 5, 0, -1, -1);
+    dropshadow(three-pass-box, rgba(255, 255, 255, 0.6), 5, 0, -1, -1);
     -fx-translate-y: 1; /* Di chuyển nhẹ để tạo cảm giác lún */
 }
 
@@ -152,6 +153,7 @@
     -fx-icon-size: 25px;
     -fx-icon-color: #2980b9;
 }
+
 .date-picker {
     -fx-background-color: transparent;
     -fx-border-color: #dcdcdc;
@@ -173,7 +175,7 @@
 .date-picker-popup {
     -fx-background-color: white;
     -fx-border-color: #2196F3;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.2), 10, 0, 0, 5);
 }
 
 /* 4. Đổi màu tiêu đề tháng/năm */
@@ -208,12 +210,13 @@
     -fx-border-color: #2196F3;
     -fx-border-width: 1;
 }
+
 .profile-popover {
     -fx-background-color: white;
     -fx-background-radius: 12;
     -fx-border-radius: 12;
     -fx-border-color: #e5e5e5;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 15, 0, 0, 8);
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.15), 15, 0, 0, 8);
 }
 
 .user-name-label {
@@ -221,7 +224,10 @@
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
-//nut dang xuất
+
+/
+/
+nut dang xuất
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;

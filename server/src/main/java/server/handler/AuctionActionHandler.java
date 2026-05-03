@@ -1,10 +1,9 @@
 package server.handler;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
-import model.auction.Auction;
 import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
@@ -50,7 +49,8 @@ public class AuctionActionHandler implements CommandHandler {
             }
 
             // Extract data from the incoming JSON payload
-            Auction auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {});
+            Auction auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {
+            });
 
             String itemName = auction.getItem().getItemName();
             String description = auction.getItem().getDescription();

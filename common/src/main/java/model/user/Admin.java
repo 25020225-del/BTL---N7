@@ -38,7 +38,7 @@ public class Admin extends User {
      */
     @Override
     public String getInfo() {
-        return    "[Admin] ID: " + this.getId()
+        return "[Admin] ID: " + this.getId()
                 + " | Name: " + this.getName() + " (System Administrator)";
     }
 }

@@ -1,10 +1,12 @@
 package client.handler;
 
 import client.network.NetworkClient;
-import network.NetworkMessage;
-import javafx.application.Platform;
 import gui.process.AlertHelper;
+import javafx.application.Platform;
 import javafx.scene.control.Alert.AlertType;
+import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -15,6 +17,7 @@ import static utils.ConsoleColors.*;
  * This handler processes incoming price changes, global broadcasts, and success notifications.
  */
 public class ClientAuctionHandler implements ResponseHandler {
+    private static final Logger log = LoggerFactory.getLogger(ClientAuctionHandler.class);
 
     // A static reference to the currently active detail controller.
     // This allows the network thread to push real-time updates directly to the active chart.
@@ -39,7 +42,7 @@ public class ClientAuctionHandler implements ResponseHandler {
             String winnerName = (String) data.get("winnerName");
 
             Platform.runLater(() -> {
-                System.out.println("[System]: Auction " + auctionId + " updated its price: " + newPrice);
+                log.info("Auction {} updated its price: {}", auctionId, newPrice);
 
                 // If the user is currently viewing this specific auction's detail page,
                 // trigger the real-time line chart and UI update.
@@ -47,21 +50,15 @@ public class ClientAuctionHandler implements ResponseHandler {
                     activeDetailController.updateRealTimePrice(newPrice, winnerName);
                 }
             });
-        }
-
-        else if ("CLI_BROADCAST".equals(command)) {
-            System.out.println(YELLOW + message.getData().toString() + RESET);
-        }
-
-        else if ("CREATE_SUCCESS".equals(command)) {
-            System.out.println("[System]: " + GREEN + message.getData() + RESET);
+        } else if ("CLI_BROADCAST".equals(command)) {
+            log.info(message.getData().toString());
+        } else if ("CREATE_SUCCESS".equals(command)) {
+            log.info(message.getData().toString());
             Platform.runLater(() -> {
                 AlertHelper.showAlert(AlertType.INFORMATION, "Success", message.getData().toString());
             });
-        }
-
-        else if ("CHAT".equals(command)) {
-            System.out.println(message.getData());
+        } else if ("CHAT".equals(command)) {
+            log.info(message.getData().toString());
         }
     }
 }

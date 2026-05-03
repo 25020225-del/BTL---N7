@@ -13,18 +13,28 @@ public final class ConsoleColors {
     private ConsoleColors() {
     }
 
-    /** Reset the text color and style to the console default. */
-    public static final String RESET  = "\u001B[0m";
+    /**
+     * Reset the text color and style to the console default.
+     */
+    public static final String RESET = "\u001B[0m";
 
-    /** Standard Red color code, typically used for errors or critical failures. */
-    public static final String RED    = "\u001B[31m";
+    /**
+     * Standard Red color code, typically used for errors or critical failures.
+     */
+    public static final String RED = "\u001B[31m";
 
-    /** Standard Green color code, typically used for success messages or confirmation. */
-    public static final String GREEN  = "\u001B[32m";
+    /**
+     * Standard Green color code, typically used for success messages or confirmation.
+     */
+    public static final String GREEN = "\u001B[32m";
 
-    /** Standard Yellow color code, typically used for warnings or system alerts. */
+    /**
+     * Standard Yellow color code, typically used for warnings or system alerts.
+     */
     public static final String YELLOW = "\u001B[33m";
 
-    /** Standard Blue color code, typically used for informational logs or secondary details. */
-    public static final String BLUE   = "\u001B[34m";
+    /**
+     * Standard Blue color code, typically used for informational logs or secondary details.
+     */
+    public static final String BLUE = "\u001B[34m";
 }
