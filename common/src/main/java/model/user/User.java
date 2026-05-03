@@ -41,8 +41,8 @@ public class User extends Entity {
         super(id);
         this.userName = userName;
         this.userPass = userPass;
-        this.name     = name;
-        this.role     = role;
+        this.name = name;
+        this.role = role;
     }
 
     /**
@@ -57,23 +57,48 @@ public class User extends Entity {
         super(id);
         this.userName = userName;
         this.userPass = userPass;
-        this.name     = name;
+        this.name = name;
     }
 
-    public String getUserName() { return userName; }
-    public void setUserName(String userName) { this.userName = userName; }
+    public String getUserName() {
+        return userName;
+    }
 
-    public String getUserPass() { return userPass; }
-    public void setUserPass(String userPass) { this.userPass = userPass; }
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getUserPass() {
+        return userPass;
+    }
 
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public void setUserPass(String userPass) {
+        this.userPass = userPass;
+    }
 
-    public boolean isGood() { return isGood; }
-    public void setGood(boolean good) { this.isGood = good; }
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public boolean isGood() {
+        return isGood;
+    }
+
+    public void setGood(boolean good) {
+        this.isGood = good;
+    }
 
     /**
      * Generates a formatted summary string containing the user's core details.
@@ -86,7 +111,7 @@ public class User extends Entity {
         String tag = this.isGood() ? "[TRUSTED] " : "";
         return tag + "ID: " + this.getId()
                 + " | Username: " + this.userName
-                + " | Name: "     + this.name
-                + " | Role: "     + this.role;
+                + " | Name: " + this.name
+                + " | Role: " + this.role;
     }
 }

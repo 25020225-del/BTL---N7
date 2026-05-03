@@ -14,7 +14,8 @@ public class NetworkMessage {
      * Default constructor.
      * Required by serialization libraries (e.g., Jackson) for JSON deserialization.
      */
-    public NetworkMessage() {}
+    public NetworkMessage() {
+    }
 
     /**
      * Constructs a new NetworkMessage with a specific command and data payload.
@@ -24,13 +25,23 @@ public class NetworkMessage {
      */
     public NetworkMessage(String command, Object data) {
         this.command = command;
-        this.data    = data;
+        this.data = data;
     }
 
-    public String getCommand() { return command; }
-    public void setCommand(String command) { this.command = command; }
+    public String getCommand() {
+        return command;
+    }
 
-    public Object getData() { return data; }
-    public void setData(Object data) { this.data = data; }
+    public void setCommand(String command) {
+        this.command = command;
+    }
+
+    public Object getData() {
+        return data;
+    }
+
+    public void setData(Object data) {
+        this.data = data;
+    }
 
 }

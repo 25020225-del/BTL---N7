@@ -1,12 +1,10 @@
 package controller;
 
 import database.DatabaseManager;
-import model.user.*;
+import model.user.Admin;
+import model.user.User;
 import org.mindrot.jbcrypt.BCrypt;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -22,7 +20,9 @@ import static utils.ConsoleColors.*;
  */
 public class UserController {
 
-    /** Service utility for handling 2FA secret key generation and QR URL construction. */
+    /**
+     * Service utility for handling 2FA secret key generation and QR URL construction.
+     */
     private final service.TOTPService totpService = new service.TOTPService();
 
     /**
@@ -36,7 +36,7 @@ public class UserController {
      * @param name     The display name of the user.
      * @param role     The requested system role (e.g., "USER", "BIDDER", "SELLER").
      * @return A status string. On success, returns "SUCCESS" appended with the 2FA secret
-     *         and QR URL. On failure, returns an error message.
+     * and QR URL. On failure, returns an error message.
      */
     public synchronized String register(String userName, String password, String name, String role) {
         // Security check: Prevent self-registration as an Administrator
@@ -49,7 +49,7 @@ public class UserController {
             return "[Error]: Invalid role";
         }
 
-        String checkSql  = "SELECT 1 FROM users WHERE username = ?";
+        String checkSql = "SELECT 1 FROM users WHERE username = ?";
         String insertSql = "INSERT INTO users (id, username, password, name, role, is_good, totp_secret, is_totp_enabled) VALUES (?, ?, ?, ?, ?, 0, ?, 1)";
         String insertWalletSql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
 
@@ -118,7 +118,7 @@ public class UserController {
      * @param userName The username provided during login.
      * @param password The plain-text password to be verified against the stored hash.
      * @return A specific {@link User} subclass (User or Admin) if authentication succeeds;
-     *         {@code null} otherwise.
+     * {@code null} otherwise.
      */
     public User login(String userName, String password) {
         String sql = "SELECT * FROM users WHERE username = ?";
@@ -134,9 +134,9 @@ public class UserController {
 
                 // Validate password hash using BCrypt
                 if (BCrypt.checkpw(password, dbHash)) {
-                    String id      = rs.getString("id");
-                    String name    = rs.getString("name");
-                    String role    = rs.getString("role");
+                    String id = rs.getString("id");
+                    String name = rs.getString("name");
+                    String role = rs.getString("role");
                     boolean isGood = rs.getInt("is_good") == 1;
 
                     System.out.println("[System]: \"" + YELLOW + name + RESET + "\" (" + YELLOW + role + RESET + ") has logged in.");

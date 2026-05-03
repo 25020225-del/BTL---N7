@@ -17,7 +17,6 @@ import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
@@ -28,20 +27,32 @@ import java.util.Map;
  */
 public class ItemDetailController {
 
-    @FXML private ImageView imgLarge;
-    @FXML private Label lblDetailTitle;
-    @FXML private Label lblStartPrice;
-    @FXML private Label lblCurrentPrice;
-    @FXML private Label lblLeader;
-    @FXML private Label lblTimeLeft;
-    @FXML private TextField txtBidAmount;
-    @FXML private Button btnPlaceBid;
-    @FXML private TextArea txtDescription;
+    @FXML
+    private ImageView imgLarge;
+    @FXML
+    private Label lblDetailTitle;
+    @FXML
+    private Label lblStartPrice;
+    @FXML
+    private Label lblCurrentPrice;
+    @FXML
+    private Label lblLeader;
+    @FXML
+    private Label lblTimeLeft;
+    @FXML
+    private TextField txtBidAmount;
+    @FXML
+    private Button btnPlaceBid;
+    @FXML
+    private TextArea txtDescription;
 
     // --- Chart Components ---
-    @FXML private LineChart<String, Number> bidHistoryChart;
-    @FXML private CategoryAxis xAxisTime;
-    @FXML private NumberAxis yAxisPrice;
+    @FXML
+    private LineChart<String, Number> bidHistoryChart;
+    @FXML
+    private CategoryAxis xAxisTime;
+    @FXML
+    private NumberAxis yAxisPrice;
     private XYChart.Series<String, Number> priceSeries;
     private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
 
@@ -84,12 +95,14 @@ public class ItemDetailController {
         double currentPrice = ((Number) auctionData.get("currentPrice")).doubleValue();
         this.endTimeMillis = ((Number) auctionData.get("endTime")).longValue();
 
-        if(imageUrl == null) { imageUrl = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg"; }
-        Image image = new Image(imageUrl,true);
+        if (imageUrl == null) {
+            imageUrl = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
+        }
+        Image image = new Image(imageUrl, true);
         image.progressProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue.doubleValue() == 1.0 && !image.isError()) {
                 Platform.runLater(() -> {
-                    CropImage.cropImage(imgLarge,image,300,300);
+                    CropImage.cropImage(imgLarge, image, 300, 300);
                 });
             }
         });

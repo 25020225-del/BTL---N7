@@ -21,13 +21,13 @@ import static utils.ConsoleColors.*;
 public class Auction extends Entity {
 
     // Auction lifecycle states
-    public static final String STATUS_PENDING  = "PENDING_APPROVAL";
-    public static final String STATUS_OPEN     = "OPEN";
-    public static final String STATUS_RUNNING  = "RUNNING";
+    public static final String STATUS_PENDING = "PENDING_APPROVAL";
+    public static final String STATUS_OPEN = "OPEN";
+    public static final String STATUS_RUNNING = "RUNNING";
     public static final String STATUS_FINISHED = "FINISHED";
-    public static final String STATUS_PAID     = "PAID";
+    public static final String STATUS_PAID = "PAID";
     public static final String STATUS_CANCELED = "CANCELED";
-    public static final String STATUS_DELETED  = "DELETED";
+    public static final String STATUS_DELETED = "DELETED";
 
     private Item item;
     private User seller;
@@ -110,37 +110,89 @@ public class Auction extends Entity {
 
     // --- GETTERS & SETTERS ---
 
-    public Item getItem() { return item; }
-    public void setItem(Item item) { this.item = item; }
+    public Item getItem() {
+        return item;
+    }
 
-    public User getSeller() { return seller; }
-    public void setSeller(User seller) { this.seller = seller; }
+    public void setItem(Item item) {
+        this.item = item;
+    }
 
-    public double getCurrentPrice() { return currentPrice; }
-    public void setCurrentPrice(double currentPrice) { this.currentPrice = currentPrice; }
+    public User getSeller() {
+        return seller;
+    }
 
-    public double getHighestMaxBid() { return highestMaxBid; }
-    public void setHighestMaxBid(double highestMaxBid) { this.highestMaxBid = highestMaxBid; }
+    public void setSeller(User seller) {
+        this.seller = seller;
+    }
 
-    public double getBidIncrement() { return bidIncrement; }
-    public void setBidIncrement(double bidIncrement) { this.bidIncrement = bidIncrement; }
+    public double getCurrentPrice() {
+        return currentPrice;
+    }
 
-    public User getWinningBidder() { return winningBidder; }
-    public void setWinningBidder(User winningBidder) { this.winningBidder = winningBidder; }
+    public void setCurrentPrice(double currentPrice) {
+        this.currentPrice = currentPrice;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public double getHighestMaxBid() {
+        return highestMaxBid;
+    }
 
-    public LocalDateTime getEndTime() { return endTime; }
-    public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
+    public void setHighestMaxBid(double highestMaxBid) {
+        this.highestMaxBid = highestMaxBid;
+    }
 
-    public List<BidTransaction> getBidHistory() { return bidHistory; }
-    public void setBidHistory(List<BidTransaction> bidHistory) { this.bidHistory = bidHistory; }
+    public double getBidIncrement() {
+        return bidIncrement;
+    }
 
-    public LocalDateTime getStartTime() { return startTime; }
-    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
+    public void setBidIncrement(double bidIncrement) {
+        this.bidIncrement = bidIncrement;
+    }
 
-    public PriorityQueue<AutoBid> getActiveAutoBids() { return activeAutoBids; }
+    public User getWinningBidder() {
+        return winningBidder;
+    }
+
+    public void setWinningBidder(User winningBidder) {
+        this.winningBidder = winningBidder;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
+
+    public List<BidTransaction> getBidHistory() {
+        return bidHistory;
+    }
+
+    public void setBidHistory(List<BidTransaction> bidHistory) {
+        this.bidHistory = bidHistory;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public PriorityQueue<AutoBid> getActiveAutoBids() {
+        return activeAutoBids;
+    }
 
     // --- BUSINESS LOGIC METHODS ---
 

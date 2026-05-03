@@ -3,6 +3,7 @@ package controller;
 import database.DatabaseManager;
 import database.TransactionManager;
 import model.user.User;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -23,9 +24,9 @@ public class ServerPaymentController {
      * Processes a successful deposit notification from a payment gateway (e.g., PayPal).
      * Encapsulates the balance update and history logging into a single ACID transaction.
      *
-     * @param user           The user whose wallet will be credited.
-     * @param amountVND      The numerical value of the deposit in VND.
-     * @param payPalOrderId  The external order identifier provided by PayPal for tracking.
+     * @param user          The user whose wallet will be credited.
+     * @param amountVND     The numerical value of the deposit in VND.
+     * @param payPalOrderId The external order identifier provided by PayPal for tracking.
      * @return A {@link CompletableFuture} resolving to true if the transaction succeeds.
      */
     public CompletableFuture<Boolean> processDepositSuccess(User user, double amountVND, String payPalOrderId) {

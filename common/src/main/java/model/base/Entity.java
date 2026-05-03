@@ -12,7 +12,8 @@ public abstract class Entity {
     /**
      * Default constructor.
      */
-    public Entity() {}
+    public Entity() {
+    }
 
     /**
      * Constructs an Entity with a specified unique identifier.

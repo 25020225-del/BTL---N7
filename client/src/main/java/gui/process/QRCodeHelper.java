@@ -1,13 +1,14 @@
 package gui.process;
 
 import com.google.zxing.BarcodeFormat;
-import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RED;
+import static utils.ConsoleColors.RESET;
 
 /**
  * A utility class for generating Quick Response (QR) codes.
@@ -19,7 +20,8 @@ public final class QRCodeHelper {
     /**
      * Private constructor to prevent instantiation of this utility class.
      */
-    private QRCodeHelper() {}
+    private QRCodeHelper() {
+    }
 
     /**
      * Generates a JavaFX Image containing a QR code representing the provided text.

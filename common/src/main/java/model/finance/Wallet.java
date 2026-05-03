@@ -12,7 +12,8 @@ public class Wallet {
     /**
      * Default constructor.
      */
-    public Wallet() {}
+    public Wallet() {
+    }
 
     /**
      * Constructs a new Wallet with the specified user ID and initial balance.
@@ -25,11 +26,21 @@ public class Wallet {
         this.balance = balance;
     }
 
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
+    public String getUserId() {
+        return userId;
+    }
 
-    public double getBalance() { return balance; }
-    public void setBalance(double balance) { this.balance = balance; }
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public double getBalance() {
+        return balance;
+    }
+
+    public void setBalance(double balance) {
+        this.balance = balance;
+    }
 
     /**
      * Safely checks whether the wallet contains sufficient funds to cover a specified amount.

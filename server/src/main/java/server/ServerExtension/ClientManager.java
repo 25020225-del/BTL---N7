@@ -24,7 +24,9 @@ public class ClientManager {
      */
     private static final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
 
-    /** The maximum number of threads dedicated to processing broadcast tasks. */
+    /**
+     * The maximum number of threads dedicated to processing broadcast tasks.
+     */
     private static final int MAX_BROADCASTPOOL_SIZE = 200;
 
     /**

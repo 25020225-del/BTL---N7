@@ -1,9 +1,11 @@
 package service;
 
 import com.warrenstrange.googleauth.GoogleAuthenticator;
+
 import java.net.URLEncoder;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RED;
+import static utils.ConsoleColors.RESET;
 
 /**
  * Service responsible for managing Time-based One-Time Password (TOTP) security.
@@ -13,7 +15,9 @@ import static utils.ConsoleColors.*;
  */
 public class TOTPService {
 
-    /** Internal library instance used for core TOTP logic and key generation. */
+    /**
+     * Internal library instance used for core TOTP logic and key generation.
+     */
     private final GoogleAuthenticator gAuth = new GoogleAuthenticator();
 
     /**

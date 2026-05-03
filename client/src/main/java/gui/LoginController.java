@@ -1,8 +1,8 @@
 package gui;
 
 import client.network.NetworkClient;
-import gui.process.AlertHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -11,10 +11,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import model.user.User;
 import network.NetworkMessage;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import utils.JacksonConfig;
-
-import java.io.IOException;
 
 import static utils.ConsoleColors.*;
 
@@ -25,9 +22,12 @@ import static utils.ConsoleColors.*;
  */
 public class LoginController {
 
-    @FXML private TextField loginAccountName;
-    @FXML private PasswordField loginPasswordAccount;
-    @FXML private Button loginButton;
+    @FXML
+    private TextField loginAccountName;
+    @FXML
+    private PasswordField loginPasswordAccount;
+    @FXML
+    private Button loginButton;
 
     private NetworkClient networkClient;
 

@@ -15,16 +15,20 @@ import static utils.ConsoleColors.*;
  * The core engine responsible for managing and executing automated bidding logic.
  * It processes registered bots asynchronously using a priority-based approach
  * (First-In, First-Out by registration time) to ensure fairness and prevent thread starvation.
- *
+ * <p>
  * Part of the Auction System project.
  */
 public class AutoBidEngine {
 
-    /** Fixed thread pool for managing concurrent bot execution. */
+    /**
+     * Fixed thread pool for managing concurrent bot execution.
+     */
     private static final int MAX_BOTPOOL_SIZE = 50;
     private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
 
-    /** Controller used to handle the actual bid placement and wallet transactions. */
+    /**
+     * Controller used to handle the actual bid placement and wallet transactions.
+     */
     private static final ServerBidderController bidderCtrl = new ServerBidderController();
 
     /**

@@ -40,7 +40,7 @@ public class ServerBidderController {
      * @param newMaxBid   The maximum amount the user is offering.
      * @param isBot       Indicates if the bid was placed by the {@link AutoBidEngine}.
      * @return A {@link CompletableFuture} that resolves to {@code true} if the bid
-     *         was successfully placed; {@code false} otherwise.
+     * was successfully placed; {@code false} otherwise.
      */
     public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, double newMaxBid, boolean isBot) {
 

@@ -23,10 +23,14 @@ import static utils.ConsoleColors.*;
  */
 public class PaymentHandler implements CommandHandler {
 
-    /** Service for interacting with the PayPal REST API. */
+    /**
+     * Service for interacting with the PayPal REST API.
+     */
     private final PayPalService payPalService;
 
-    /** Controller for persisting financial changes and wallet updates in the database. */
+    /**
+     * Controller for persisting financial changes and wallet updates in the database.
+     */
     private final ServerPaymentController paymentController;
 
     /**
@@ -35,10 +39,14 @@ public class PaymentHandler implements CommandHandler {
      */
     private final Map<String, DepositInfo> pendingDeposits = new ConcurrentHashMap<>();
 
-    /** Scheduler to periodically remove expired transactions from memory. */
+    /**
+     * Scheduler to periodically remove expired transactions from memory.
+     */
     private final ScheduledExecutorService cleanupScheduler = Executors.newSingleThreadScheduledExecutor();
 
-    /** Maximum time (15 minutes) a pending deposit is allowed to stay in memory before expiration. */
+    /**
+     * Maximum time (15 minutes) a pending deposit is allowed to stay in memory before expiration.
+     */
     private static final long EXPIRATION_TIME_MS = 15 * 60 * 1000;
 
     /**
@@ -210,7 +218,12 @@ public class PaymentHandler implements CommandHandler {
             this.createdAt = createdAt;
         }
 
-        public double getAmountVND() { return amountVND; }
-        public long getCreatedAt() { return createdAt; }
+        public double getAmountVND() {
+            return amountVND;
+        }
+
+        public long getCreatedAt() {
+            return createdAt;
+        }
     }
 }

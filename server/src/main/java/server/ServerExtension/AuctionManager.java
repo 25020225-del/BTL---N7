@@ -1,6 +1,7 @@
 package server.ServerExtension;
 
 import model.auction.Auction;
+
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -44,7 +45,7 @@ public class AuctionManager {
      *
      * @param auctionId The unique identifier of the auction to clean up.
      */
-    public static void removeAuctionLock(String auctionId){
+    public static void removeAuctionLock(String auctionId) {
         auctionLocks.remove(auctionId);
     }
 
