@@ -5,6 +5,7 @@ import database.TransactionManager;
 import database.dao.BidDAO;
 import model.auction.Auction;
 import model.user.User;
+import server.ServerExtension.AuctionManager;
 import service.AutoBidEngine;
 
 import java.sql.Connection;
@@ -51,69 +52,79 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        // Encapsulate the transaction logic into a task for the database worker thread
-        Callable<Boolean> bidTask = () -> {
+        // Apply Striped Locking to prevent Race Conditions.
+        // This ensures that for any single auction, only one bid is validated in RAM
+        // and pushed to the database transaction queue at a time.
+        synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+
             User previousWinner = auction.getWinningBidder();
             double amountToRefund = auction.getHighestMaxBid();
 
             // Validate auction logic in RAM before hitting the database
             boolean isRamSuccess = auction.placeBid(currentUser, newMaxBid);
             if (!isRamSuccess) {
-                return false; // Bid is invalid (e.g., too low, auction closed)
+                return CompletableFuture.completedFuture(false); // Bid is invalid (e.g., too low, auction closed)
             }
 
-            try (Connection conn = DatabaseManager.getConnection()) {
-                conn.setAutoCommit(false); // Begin ACID transaction
+            // Encapsulate the transaction logic into a task for the database worker thread
+            Callable<Boolean> bidTask = () -> {
+                try (Connection conn = DatabaseManager.getConnection()) {
+                    conn.setAutoCommit(false); // Begin ACID transaction
 
-                try {
-                    boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, auction, newMaxBid, previousWinner, amountToRefund);
+                    try {
+                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, auction, newMaxBid, previousWinner, amountToRefund);
 
-                    if (isDbSuccess) {
-                        conn.commit(); // Finalize all changes
-                        System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
-                        return true;
-                    } else {
-                        System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
+                        if (isDbSuccess) {
+                            conn.commit(); // Finalize all changes
+                            System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+                            return true;
+                        } else {
+                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
+                            conn.rollback();
+                            // Revert the bid placement in RAM as the DB transaction failed
+                            auction.revertLastBid(previousWinner, amountToRefund);
+                            return false;
+                        }
+
+                    } catch (SQLException e) {
                         conn.rollback();
                         // Revert the bid placement in RAM as the DB transaction failed
                         auction.revertLastBid(previousWinner, amountToRefund);
+                        System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
                         return false;
                     }
-
                 } catch (SQLException e) {
-                    conn.rollback();
-                    // Revert the bid placement in RAM as the DB transaction failed
+                    System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+                    // Revert the bid placement in RAM as the DB connection failed
                     auction.revertLastBid(previousWinner, amountToRefund);
-                    System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
                     return false;
                 }
-            } catch (SQLException e) {
-                System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
-                return false;
-            }
-        };
+            };
 
-        // Submit task to TransactionManager to avoid blocking the NIO network thread
-        return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
-            if (finalResult) {
-                // Broadcast price update to all connected clients
-                Map<String, Object> updateData = new HashMap<>();
-                updateData.put("auctionId", auction.getId());
-                updateData.put("newPrice", auction.getCurrentPrice());
-                updateData.put("winnerName", currentUser.getUserName());
+            // Submit task to TransactionManager to avoid blocking the NIO network thread
+            return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
+                if (finalResult) {
+                    // Broadcast price update to all connected clients
+                    Map<String, Object> updateData = new HashMap<>();
+                    updateData.put("auctionId", auction.getId());
+                    updateData.put("newPrice", auction.getCurrentPrice());
+                    updateData.put("winnerName", currentUser.getUserName());
 
-                server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
+                    server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
 
-                // Trigger the auto-bid engine scan if this was a manual bid
-                if (!isBot) {
-                    AutoBidEngine.triggerBotScan(auction);
+                    // Trigger the auto-bid engine scan if this was a manual bid
+                    if (!isBot) {
+                        AutoBidEngine.triggerBotScan(auction);
+                    }
                 }
-            }
-            return finalResult;
-        }).exceptionally(ex -> {
-            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
-            return false;
-        });
+                return finalResult;
+            }).exceptionally(ex -> {
+                System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
+                // Revert the bid placement in RAM as the task execution entirely failed
+                auction.revertLastBid(previousWinner, amountToRefund);
+                return false;
+            });
+        }
     }
 
     /**
@@ -132,31 +143,34 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        // Register bot in RAM first
-        boolean isSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
+        // Apply Striped Locking here as well to ensure atomic bot registration relative to bid processing
+        synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+            // Register bot in RAM first
+            boolean isSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
 
-        if (isSuccess) {
-            Callable<Boolean> saveAutoBidTask = () -> {
-                try {
-                    return bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
-                } catch (SQLException e) {
-                    System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
+            if (isSuccess) {
+                Callable<Boolean> saveAutoBidTask = () -> {
+                    try {
+                        return bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
+                    } catch (SQLException e) {
+                        System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
+                        return false;
+                    }
+                };
+
+                return TransactionManager.submitTask(saveAutoBidTask).thenApply(saved -> {
+                    if (saved) {
+                        System.out.println("[System]: Auto-Bid Configuration for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved.");
+                        // Immediately trigger a scan to see if the new bot should place a bid
+                        AutoBidEngine.triggerBotScan(auction);
+                    }
+                    return saved;
+                }).exceptionally(ex -> {
+                    System.out.println("[System]: Execution error while saving auto-bid: " + RED + ex.getMessage() + RESET);
                     return false;
-                }
-            };
-
-            return TransactionManager.submitTask(saveAutoBidTask).thenApply(saved -> {
-                if (saved) {
-                    System.out.println("[System]: Auto-Bid Configuration for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved.");
-                    // Immediately trigger a scan to see if the new bot should place a bid
-                    AutoBidEngine.triggerBotScan(auction);
-                }
-                return saved;
-            }).exceptionally(ex -> {
-                System.out.println("[System]: Execution error while saving auto-bid: " + RED + ex.getMessage() + RESET);
-                return false;
-            });
+                });
+            }
+            return CompletableFuture.completedFuture(false);
         }
-        return CompletableFuture.completedFuture(false);
     }
 }
