@@ -2,18 +2,32 @@ package server.handler;
 
 import database.DatabaseManager;
 import database.TransactionManager;
-import model.User;
+import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Handles administrative commands sent by clients.
+ * This handler manages the approval and rejection of auction requests,
+ * ensuring that only users with the "ADMIN" role can execute these operations.
+ */
 public class AdminActionHandler implements CommandHandler {
 
+    /**
+     * Entry point for handling administrative network messages.
+     * Performs a security check to verify the user's role before dispatching the command
+     * to the appropriate processing logic.
+     *
+     * @param message The network message containing the command and the target auction ID.
+     * @param client  The handler for the specific client connection.
+     */
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
         String command = message.getCommand();
@@ -25,6 +39,7 @@ public class AdminActionHandler implements CommandHandler {
             return;
         }
 
+        // The data payload is expected to be the unique ID of the auction
         String auctionId = (String) message.getData();
 
         if ("APPROVE_AUCTION".equals(command)) {
@@ -34,23 +49,67 @@ public class AdminActionHandler implements CommandHandler {
         }
     }
 
+    /**
+     * Processes the status change of an auction in the database.
+     * Calculates dynamic start and end times upon approval to ensure auctions
+     * configured to "start immediately" begin exactly when the Admin approves them.
+     *
+     * @param auctionId The unique identifier of the auction to update.
+     * @param newStatus The target status (e.g., "OPEN" for approval, "CANCELED" for rejection).
+     * @param client    The client handler used to send success or error feedback.
+     */
     private void processApproval(String auctionId, String newStatus, ClientHandler client) {
         Callable<Boolean> updateTask = () -> {
-            String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, newStatus);
-                pstmt.setString(2, auctionId);
-                int rows = pstmt.executeUpdate();
-                return rows > 0;
+            String selectSql = "SELECT start_time, end_time FROM auctions WHERE id = ?";
+            String updateSql = "UPDATE auctions SET status = ?, start_time = ?, end_time = ? WHERE id = ?";
+
+            try (Connection conn = DatabaseManager.getConnection()) {
+                LocalDateTime oldStart = null;
+                LocalDateTime oldEnd = null;
+
+                // Fetch the original times saved during creation
+                try (PreparedStatement pstmt = conn.prepareStatement(selectSql)) {
+                    pstmt.setString(1, auctionId);
+                    java.sql.ResultSet rs = pstmt.executeQuery();
+                    if (rs.next()) {
+                        oldStart = LocalDateTime.parse(rs.getString("start_time"));
+                        oldEnd = LocalDateTime.parse(rs.getString("end_time"));
+                    } else {
+                        return false;
+                    }
+                }
+
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime newStart = oldStart;
+                LocalDateTime newEnd = oldEnd;
+
+                if (newStatus.equals("OPEN")) {
+                    // DYNAMIC RECALCULATION:
+                    // If the scheduled start time is in the past (meaning it was set to "start immediately upon approval"
+                    // OR it was scheduled for the future but the Admin was too slow to approve it in time).
+                    if (oldStart.isBefore(now) || oldStart.isEqual(now)) {
+                        long duration = java.time.Duration.between(oldStart, oldEnd).toMinutes();
+                        newStart = now;
+                        newEnd = now.plusMinutes(duration);
+                    }
+                }
+
+                // Update the database with the adjusted times
+                try (PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
+                    pstmt.setString(1, newStatus);
+                    pstmt.setString(2, newStart.toString());
+                    pstmt.setString(3, newEnd.toString());
+                    pstmt.setString(4, auctionId);
+                    int rows = pstmt.executeUpdate();
+                    return rows > 0;
+                }
             } catch (Exception e) {
                 System.out.println("[System](AdminActionHandler): Updating approval status failed: " + RED + e.getMessage() + RESET);
                 return false;
             }
         };
 
-        try {
-            boolean success = TransactionManager.submitTask(updateTask).get();
+        TransactionManager.submitTask(updateTask).thenAccept(success -> {
             if (success) {
                 String msg = newStatus.equals("OPEN") ? "Auction approved" : "Auction declined";
                 client.sendResponse("ADMIN_ACTION_SUCCESS", msg);
@@ -58,8 +117,10 @@ public class AdminActionHandler implements CommandHandler {
             } else {
                 client.sendResponse("ERROR", "Cannot find this auction in database.");
             }
-        } catch (Exception e) {
+        }).exceptionally(ex -> {
+            // Error handling fallback
             client.sendResponse("ERROR", "Server error.");
-        }
+            return null;
+        });
     }
 }

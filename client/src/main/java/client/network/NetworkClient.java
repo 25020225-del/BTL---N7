@@ -1,21 +1,21 @@
 package client.network;
 
 import client.handler.ResponseDispatcher;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import network.NetworkMessage;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import utils.CryptoUtil;
+import utils.JacksonConfig;
 
 import javax.crypto.SecretKey;
 import java.net.URI;
 import java.security.PublicKey;
-import java.util.function.Consumer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
-import utils.CryptoUtil;
-import static utils.ConsoleColors.*;
+import java.util.function.Consumer;
 
 /**
  * The core networking component for the client application.
@@ -30,12 +30,12 @@ import static utils.ConsoleColors.*;
  * </ul>
  */
 public class NetworkClient {
+    private static final Logger log = LoggerFactory.getLogger(NetworkClient.class);
 
     private AuctionWSClient wsClient;
 
     // Ignore unknown properties to prevent crashes on schema updates
-    private final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     private Consumer<NetworkMessage> onMessageReceived;
     private final ResponseDispatcher dispatcher = new ResponseDispatcher();
@@ -55,8 +55,7 @@ public class NetworkClient {
      * @param fullWsUrl The complete WebSocket URL (e.g., "wss://domain.com:443" or "ws://localhost:6969").
      */
     public NetworkClient(String fullWsUrl) {
-        System.out.println("===========================================");
-        System.out.println("[System]: Connecting to server...");
+        log.info("Connecting to server...");
 
         for (int i = 0; i < 5; i++) {
             try {
@@ -73,22 +72,22 @@ public class NetworkClient {
                     boolean isHandshakeDone = handshakeLatch.await(3, TimeUnit.SECONDS);
 
                     if (isHandshakeDone && isAesKeyEstablished) {
-                        System.out.println("[System]:" + GREEN + " Successfully connected." + RESET);
+                        log.info("Successfully connected.");
 
                         // TIME SYNC INITIATION: Ping the server to synchronize clocks securely
                         this.sendMessage("TIME_SYNC", System.currentTimeMillis());
 
                         return;
                     } else {
-                        System.out.println("[System]:" + YELLOW + " Failed at try " + (i+1) + " - Handshake timeout" + RESET);
+                        log.warn("Failed at try {} - Handshake timeout", (i + 1));
                         wsClient.close();
                     }
                 } else {
                     // Handle failed connectBlocking() (server offline)
-                    System.out.println("[System]: " + YELLOW + "Failed at try " + (i + 1) + " - Connection refused by server." + RESET);
+                    log.warn("Failed at try {} - Connection refused by server.", (i + 1));
                 }
             } catch (Exception e) {
-                System.out.println("[System]:" + YELLOW + " Failed at try " + (i + 1) + " - " + e.getMessage() + RESET);
+                log.error("Failed at try {} - ", e.getMessage());
             }
 
             if (i < 4) {
@@ -99,7 +98,7 @@ public class NetworkClient {
                 }
             }
         }
-        System.out.println("[System]:" + RED + " Failed after 5 tries to connect to " + fullWsUrl + RESET);
+        log.debug("Failed after 5 tries to connect to {}", fullWsUrl);
     }
 
     /**
@@ -127,7 +126,7 @@ public class NetworkClient {
      */
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
-            System.out.println("[System]: Cannot send command: \"" + YELLOW + command + RESET + "\" due to" + RED + " not being fully connected." + RESET);
+            log.warn("Cannot send command: \"{}\" due to not being fully connected.", command);
             return;
         }
 
@@ -140,7 +139,7 @@ public class NetworkClient {
             wsClient.send(encryptedPayload);
 
         } catch (Exception e) {
-            System.out.println("[System]: JSON package error: " + RED + e.getMessage() + RESET);
+            log.error("JSON package error: {}", e.getMessage());
         }
     }
 
@@ -175,7 +174,7 @@ public class NetworkClient {
 
                     isAesKeyEstablished = true;
                 } catch (Exception e) {
-                    System.out.println("[System]: Handshake failed: " + RED + e.getMessage() + RESET);
+                    log.error("Handshake failed: {}", e.getMessage());
                 } finally {
                     // Always release the main thread block, regardless of success or failure
                     if (handshakeLatch != null) {
@@ -193,19 +192,19 @@ public class NetworkClient {
                 dispatcher.dispatch(response, NetworkClient.this);
 
             } catch (Exception e) {
-                System.out.println("[Warning]: Ignore invalid data package: " + YELLOW + e.getMessage() + RESET);
+                log.warn("Ignore invalid data package: {}", e.getMessage());
             }
         }
 
         @Override
         public void onClose(int code, String reason, boolean remote) {
             isAesKeyEstablished = false; // Revoke security clearance
-            System.out.println("[System]: Connection closed. Reason: " + YELLOW + reason + RESET);
+            log.debug("Connection closed. Reason: {}", reason);
         }
 
         @Override
         public void onError(Exception ex) {
-            System.out.println("[System]: WebSocket Error: " + RED + ex.getMessage() + RESET);
+            log.error("WebSocket Error: {}", ex.getMessage());
         }
     }
 }

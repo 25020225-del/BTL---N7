@@ -1,4 +1,4 @@
-package model;
+package model.item;
 
 /**
  * Represents a service or experience in the auction system.
@@ -13,7 +13,7 @@ public class ServicePackage extends Item {
 
     @Override
     public String getInfo() {
-        return    "[Service Package]: " + this.getItemName()
+        return "[Service Package]: " + this.getItemName()
                 + " | Start Price: VND " + this.getStartingPrice();
     }
 }

@@ -1,32 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
+
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css"
+           xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.RegisterController">
+    <children>
+        <VBox alignment="CENTER" fillWidth="false" maxWidth="500.0" spacing="20.0" styleClass="auth-card">
+            <children>
+                <Text styleClass="auth-title" text="CREATE ACCOUNT"/>
 
-<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.RegisterController">
-   <children>
-      <VBox alignment="CENTER" fillWidth="false" maxWidth="500.0" spacing="20.0" styleClass="auth-card">
-         <children>
-            <Text styleClass="auth-title" text="CREATE ACCOUNT" />
+                <VBox spacing="15.0" prefWidth="380.0">
+                    <children>
+                        <TextField fx:id="registerName" promptText="Full Name"/>
+                        <TextField fx:id="registerAccountName" promptText="Username"/>
+                        <PasswordField fx:id="registerPasswordAccount" promptText="Password"/>
+                        <PasswordField fx:id="confirmPasswordAccount" promptText="Confirm Password"/>
+                        <!--<ComboBox fx:id="registerRole" maxWidth="Infinity" promptText="Select Role" />-->
+                    </children>
+                </VBox>
 
-            <VBox spacing="15.0" prefWidth="380.0">
-               <children>
-                  <TextField fx:id="registerName" promptText="Full Name" />
-                  <TextField fx:id="registerAccountName" promptText="Username" />
-                  <PasswordField fx:id="registerPasswordAccount" promptText="Password" />
-                  <PasswordField fx:id="confirmPasswordAccount" promptText="Confirm Password" />
-                  <!--<ComboBox fx:id="registerRole" maxWidth="Infinity" promptText="Select Role" />-->
-               </children>
-            </VBox>
+                <Button fx:id="registerButton" onAction="#onRegisterButtonClick" prefHeight="40.0" prefWidth="380.0"
+                        text="REGISTER"/>
 
-            <Button fx:id="registerButton" onAction="#onRegisterButtonClick" prefHeight="40.0" prefWidth="380.0" text="REGISTER" />
-
-            <Button fx:id="changeLoginScene" onAction="#onLoginViewButtonClick" styleClass="auth-link" text="Already have an account? Login" />
-         </children>
-         <padding>
-            <Insets bottom="40" left="40" right="40" top="40" />
-         </padding>
-      </VBox>
-   </children>
+                <Button fx:id="changeLoginScene" onAction="#onLoginViewButtonClick" styleClass="auth-link"
+                        text="Already have an account? Login"/>
+            </children>
+            <padding>
+                <Insets bottom="40" left="40" right="40" top="40"/>
+            </padding>
+        </VBox>
+    </children>
 </StackPane>

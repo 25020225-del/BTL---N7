@@ -8,7 +8,8 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 import java.util.Base64;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RED;
+import static utils.ConsoleColors.RESET;
 
 /**
  * Utility class for cryptographic operations.
@@ -141,6 +142,7 @@ public class CryptoUtil {
             throw new RuntimeException("Decrypting AES error", e);
         }
     }
+
     // Reconstruct the PublicKey from a Base64 string (used by the client to read the server's key)
     public static PublicKey getPublicKeyFromBase64(String base64Key) {
         try {

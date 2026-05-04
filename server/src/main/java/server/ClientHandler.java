@@ -1,21 +1,20 @@
 package server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-
 import controller.UserController;
+import model.user.User;
 import network.NetworkMessage;
 import org.java_websocket.WebSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ServerExtension.ClientManager;
-import server.handler.*;
+import server.handler.CommandDispatcher;
+import utils.CryptoUtil;
+import utils.JacksonConfig;
 
+import javax.crypto.SecretKey;
 import java.security.KeyPair;
 import java.util.Base64;
-import javax.crypto.SecretKey;
-
-import utils.CryptoUtil;
-
-import static utils.ConsoleColors.*;
 
 /**
  * Handles individual client WebSocket connections.
@@ -32,17 +31,18 @@ import static utils.ConsoleColors.*;
  */
 public class ClientHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
+
     private final WebSocket conn;
     private static int cNC = 0;
-    private String clientName = "Guest" + (cNC++);
-    private model.User user;
+    private String clientName = "#Guest" + (cNC++);
+    private User user;
 
     private final UserController userController;
     private static final CommandDispatcher dispatcher = new CommandDispatcher();
 
     // Ignore unknown JSON properties for robust parsing
-    private final ObjectMapper mapper = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     private SecretKey sharedAesKey;
     private KeyPair rsaKeyPair;
@@ -71,7 +71,7 @@ public class ClientHandler {
             String publicKeyBase64 = Base64.getEncoder().encodeToString(rsaKeyPair.getPublic().getEncoded());
             conn.send(publicKeyBase64);
         } catch (Exception e) {
-            System.out.println("[Error]: RSA Key generation failed in ClientHandler: " + RED + e.getMessage() + RESET);
+            log.error("RSA Key generation failed in ClientHandler: {}", e.getMessage());
         }
     }
 
@@ -90,9 +90,9 @@ public class ClientHandler {
             try {
                 sharedAesKey = CryptoUtil.decryptAESKeyWithRSA(message, rsaKeyPair.getPrivate());
                 isAesKeyEstablished = true;
-                System.out.println("[Security]: Handshake success with \"" + YELLOW + clientName + RESET + "\". AES Channel established.");
+                log.info("Handshake success with \"{}\". AES Channel established.", clientName);
             } catch (Exception e) {
-                System.out.println("[Security]: Handshake failed with " + YELLOW + clientName + RESET);
+                log.warn("Handshake failed with {}", clientName);
                 closeConnection();
             }
             return;
@@ -101,12 +101,12 @@ public class ClientHandler {
         // Phase 2: Standard Command Processing
         try {
             String jsonMessage = CryptoUtil.decryptAES(message, sharedAesKey);
-            System.out.println("[System]: Decrypted JSON from Client: " + YELLOW + jsonMessage + RESET);
+            log.debug("Decrypted JSON from Client: {}", jsonMessage);
 
             NetworkMessage netMsg = mapper.readValue(jsonMessage, NetworkMessage.class);
 
             if (netMsg.getCommand() == null) {
-                System.out.println("[System](ClientHandler): \"" + YELLOW + clientName + RESET + "\" sent a null command.");
+                log.warn("\"{}\" sent a null command.", clientName);
                 sendResponse("ERROR", "Command cannot be null");
                 return;
             }
@@ -114,7 +114,7 @@ public class ClientHandler {
             dispatcher.dispatch(netMsg, this);
 
         } catch (Exception e) {
-            System.out.println("[System](ClientHandler): Invalid JSON format or Decryption error: " + RED + e.getMessage() + RESET);
+            log.error("Invalid JSON format or Decryption error: {}", e.getMessage());
             sendResponse("ERROR", "Invalid JSON format");
         }
     }
@@ -138,7 +138,7 @@ public class ClientHandler {
             conn.send(encryptedPayload);
 
         } catch (Exception e) {
-            System.out.println("[System](ClientHandler): JSON serialization error: " + RED + e.getMessage() + RESET);
+            log.error("JSON serialization error: {}", e.getMessage());
         }
     }
 
@@ -156,7 +156,7 @@ public class ClientHandler {
      */
     public void closeConnection() {
         ClientManager.removeClient(this);
-        System.out.println("[System]: \"" + YELLOW + clientName + RESET + "\" has disconnected.");
+        log.info("\"{}\" has disconnected.", clientName);
         if (conn != null && conn.isOpen()) {
             conn.close();
         }
@@ -190,6 +190,7 @@ public class ClientHandler {
     public String getClientName() {
         return clientName;
     }
+
     public void setClientName(String clientName) {
         this.clientName = clientName;
     }
@@ -198,6 +199,19 @@ public class ClientHandler {
         return userController;
     }
 
-    public model.User getUser() {return user;}
-    public void setUser(model.User user) {this.user = user;}
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public static int getcNC() {
+        return cNC;
+    }
+
+    public static void incrementcNC() {
+        cNC++;
+    }
 }

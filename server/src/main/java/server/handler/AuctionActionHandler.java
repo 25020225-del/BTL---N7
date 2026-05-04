@@ -1,12 +1,18 @@
 package server.handler;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import model.ItemFactory;
+import model.auction.Auction;
+import model.item.Item;
+import model.item.ItemFactory;
+import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
+import service.CloudinaryService;
+import utils.JacksonConfig;
+
+import java.time.LocalDateTime;
 
 import static utils.ConsoleColors.*;
 
@@ -15,7 +21,7 @@ import static utils.ConsoleColors.*;
  */
 public class AuctionActionHandler implements CommandHandler {
 
-    private final ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
@@ -34,7 +40,7 @@ public class AuctionActionHandler implements CommandHandler {
     private void processCreateAuction(Object data, ClientHandler client) {
         try {
             // Retrieve user identification from the active login session
-            model.User authenticatedUser = client.getUser();
+            User authenticatedUser = client.getUser();
 
             // Security check: Reject if the user is not authenticated
             if (authenticatedUser == null) {
@@ -43,28 +49,63 @@ public class AuctionActionHandler implements CommandHandler {
             }
 
             // Extract data from the incoming JSON payload
-            java.util.Map<String, String> map = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
+            Auction auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {
+            });
 
-            String itemName = map.get("itemName");
-            String description = map.get("description");
-            double startingPrice = Double.parseDouble(map.get("startingPrice"));
-            double bidIncrement = Double.parseDouble(map.get("bidIncrement"));
-            int durationMinutes = Integer.parseInt(map.get("durationMinutes"));
+            String itemName = auction.getItem().getItemName();
+            String description = auction.getItem().getDescription();
+            String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
+            double startingPrice = auction.getItem().getStartingPrice();
+            double bidIncrement = auction.getBidIncrement();
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime reqStart = auction.getStartTime();
+            LocalDateTime reqEnd = auction.getEndTime();
+
+            if (reqStart == null || reqEnd == null) {
+                client.sendResponse("ERROR", "Invalid time format.");
+                return;
+            }
+
+            // Calculate the requested duration explicitly sent by the client
+            long durationMinutes = java.time.Duration.between(reqStart, reqEnd).toMinutes();
+            final long MAX_DURATION_MINUTES = 43200; // 30 days
+
+            if (durationMinutes <= 0) {
+                client.sendResponse("ERROR", "Invalid duration.");
+                return;
+            }
+            if (durationMinutes > MAX_DURATION_MINUTES) {
+                durationMinutes = MAX_DURATION_MINUTES; // Clamp to 30 days securely
+            }
+
+            // Validate Start Time constraints
+            // Allowing a 5-minute leeway to account for network delay between Client's 'now' and Server's 'now'
+            if (reqStart.isAfter(now.plusMinutes(5)) && reqStart.isBefore(now.plusDays(1).minusMinutes(5))) {
+                client.sendResponse("ERROR", "Pre-set time must be 24 hours behind current time.");
+                return;
+            }
+            //If the start time is in the past (or exactly 'now' from client), normalize it to server's exact 'now'
+            if (reqStart.isBefore(now.plusMinutes(5))) reqStart = now;
+
+            //-----------------------------------------------------------------------------------------------------
 
             // Extract item type if provided by the GUI dropdown, otherwise default to TANGIBLE
-            String itemType = map.containsKey("itemType") ? map.get("itemType") : ItemFactory.TYPE_TANGIBLE;
+            //String itemType = map.containsKey("itemType") ? map.get("itemType") : ItemFactory.TYPE_TANGIBLE;
+            String itemType = ItemFactory.TYPE_TANGIBLE;
 
             String newItemId = "ITM-" + System.currentTimeMillis();
 
             // FACTORY PATTERN APPLIED: Dynamically create the item based on its generalized category
-            model.Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
+            Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
+            item.setImageUrl(imageUrl);
 
             // Forward the creation request to the Seller Controller
             controller.ServerSellerController sellerCtrl = new controller.ServerSellerController();
-            model.Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, durationMinutes);
+            Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, reqStart, (int) durationMinutes);
 
             if (newAuction != null) {
-                newAuction.setStatus(model.Auction.STATUS_RUNNING);
+                newAuction.setStatus(Auction.STATUS_RUNNING);
                 AuctionManager.addAuctionToMonitor(newAuction);
 
                 System.out.println("[System]: Seller \"" + YELLOW + authenticatedUser.getName() + RESET + "\" has created an auction.");

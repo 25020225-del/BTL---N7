@@ -7,9 +7,12 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.Separator;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.*;
-import model.User;
+import model.user.User;
 
 import java.io.IOException;
 
@@ -25,18 +28,24 @@ public class ClientAdminController {
     private Parent tableView;
     private User currentAdmin;
 
-    @FXML private VBox mainDock;
-    @FXML private VBox mainViewController;
+    @FXML
+    private VBox mainDock;
+    @FXML
+    private VBox mainViewController;
 
-    @FXML private HBox searchBarContainer;
-    @FXML private TilePane mainTilePane;
-    @FXML private TextField searchField;
-    @FXML private Button searchButton;
+    @FXML
+    private HBox searchBarContainer;
+    @FXML
+    private TilePane mainTilePane;
+    @FXML
+    private TextField searchField;
+    @FXML
+    private Button searchButton;
 
-    private IconButton account     = new IconButton("mdi2a-account", "Hello Admin", "Account", "special-button");
-    private IconButton toggleList  = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private IconButton account = new IconButton("mdi2a-account", "Hello Admin", "Account", "special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
     private IconButton accountList = new IconButton("mdi2a-account-box-multiple-outline", "Accounts", "Manage Accounts", "special-button");
-    private IconButton itemList    = new IconButton("mdi2a-archive-settings-outline", "Items", "Manage Items", "special-button");
+    private IconButton itemList = new IconButton("mdi2a-archive-settings-outline", "Items", "Manage Items", "special-button");
 
     /**
      * Initializes the Admin Controller and loads the required FXML layouts.
@@ -69,7 +78,7 @@ public class ClientAdminController {
      */
     private void setMainDock() {
         Region region = new Region();
-        Separator separator  = new Separator();
+        Separator separator = new Separator();
         VBox.setVgrow(region, Priority.ALWAYS);
         mainDock.getChildren().addAll(
                 toggleList,
@@ -82,13 +91,12 @@ public class ClientAdminController {
 
         toggleList.setUserData(true);
         toggleList.setOnAction(event -> {
-            for(Node k : mainDock.getChildren()) {
+            for (Node k : mainDock.getChildren()) {
                 if (k instanceof Button) {
                     Button b = (Button) k;
-                    if ((boolean)  toggleList.getUserData()) {
+                    if ((boolean) toggleList.getUserData()) {
                         b.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-                    }
-                    else {
+                    } else {
                         b.setContentDisplay(ContentDisplay.LEFT);
                     }
                 }
@@ -133,8 +141,7 @@ public class ClientAdminController {
                     AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.INFORMATION, "Success", response.getData().toString());
                     // Automatically reload the pending list after an action
                     itemList.getOnAction().handle(null);
-                }
-                else {
+                } else {
                     // Forward unhandled commands to the centralized ResponseDispatcher
                     new client.handler.ResponseDispatcher().dispatch(response, gui.MainApplication.networkClient);
                 }

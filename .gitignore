@@ -44,9 +44,12 @@ build/
 *.log
 
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 dependency-reduced-pom.xml
 *.mv.db
 *secret.properties
 .env
+checkstyle.cache
