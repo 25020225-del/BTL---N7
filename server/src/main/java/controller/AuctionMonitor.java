@@ -2,6 +2,7 @@ package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
+import database.dao.AuctionDAO;
 import model.auction.Auction;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
@@ -27,6 +28,7 @@ public class AuctionMonitor {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
+    private final AuctionDAO auctionDAO = new AuctionDAO(); // Instantiate AuctionDAO
 
     /**
      * Constructs the monitor with a reference to the global active auction list in RAM.
@@ -76,13 +78,8 @@ public class AuctionMonitor {
 
                     // Asynchronously update the database to persist the new state
                     Callable<Boolean> dbUpdateTask = () -> {
-                        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-                        try (Connection conn = DatabaseManager.getConnection();
-                             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                            pstmt.setString(1, Auction.STATUS_RUNNING);
-                            pstmt.setString(2, auction.getId());
-                            pstmt.executeUpdate();
-                            return true;
+                        try {
+                            return auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_RUNNING);
                         } catch (Exception e) {
                             System.out.println("[Database]: Failed to update auction to RUNNING: " + RED + e.getMessage() + RESET);
                             return false;
@@ -108,13 +105,8 @@ public class AuctionMonitor {
 
                 // Persist the closed status to the SQLite Database asynchronously
                 Callable<Boolean> dbUpdateTask = () -> {
-                    String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-                    try (Connection conn = DatabaseManager.getConnection();
-                         PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                        pstmt.setString(1, status);
-                        pstmt.setString(2, auction.getId());
-                        pstmt.executeUpdate();
-                        return true;
+                    try {
+                        return auctionDAO.updateAuctionStatus(auction.getId(), status);
                     } catch (Exception e) {
                         return false;
                     }
@@ -146,42 +138,11 @@ public class AuctionMonitor {
      */
     private void sweepDatabaseForOrphans() {
         Callable<Boolean> dbSweepTask = () -> {
-            String selectSql = "SELECT id, end_time, current_price, starting_price, start_time FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
-            String updateSql = "UPDATE auctions SET status = ? WHERE id = ?";
-
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement selectStmt = conn.prepareStatement(selectSql);
-                 ResultSet rs = selectStmt.executeQuery()) {
-
-                while (rs.next()) {
-                    String id = rs.getString("id");
-                    LocalDateTime endTime = LocalDateTime.parse(rs.getString("end_time"));
-                    LocalDateTime startTime = LocalDateTime.parse(rs.getString("start_time"));
-                    LocalDateTime now = LocalDateTime.now();
-
-                    // Case 1: The auction's end time has passed.
-                    if (now.isAfter(endTime)) {
-                        double currentPrice = rs.getDouble("current_price");
-                        double startPrice = rs.getDouble("starting_price");
-                        String newStatus = (currentPrice > startPrice) ? "FINISHED" : "CANCELED";
-
-                        try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-                            updateStmt.setString(1, newStatus);
-                            updateStmt.setString(2, id);
-                            updateStmt.executeUpdate();
-                        }
-                        ClientManager.broadcast("REMOVE_AUCTION", id, null);
-                        System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
-                    }
-                    // Case 2: The auction should be running but is not in RAM.
-                    else if (now.isAfter(startTime)) {
-                         try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-                            updateStmt.setString(1, Auction.STATUS_RUNNING);
-                            updateStmt.setString(2, id);
-                            updateStmt.executeUpdate();
-                        }
-                        System.out.println("[System]: " + BLUE + "Swept and started orphaned database auction: " + YELLOW + id + RESET);
-                    }
+            try {
+                List<String> updatedIds = auctionDAO.sweepOrphanAuctions();
+                for (String id : updatedIds) {
+                    // Force clients to remove the ghost item from their UI
+                    ClientManager.broadcast("REMOVE_AUCTION", id, null);
                 }
                 return true;
             } catch (Exception e) {
