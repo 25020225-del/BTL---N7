@@ -46,7 +46,7 @@
             <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
                <children>
                   <Label prefWidth="126.0" text="Choose file" />
-                  <Button fx:id="chooseFile" mnemonicParsing="false" text="Button" />
+                  <Button fx:id="chooseFile" mnemonicParsing="false" text="Files" />
                   <Label fx:id="fileLinkChoosen" />
                </children>
             </HBox>
@@ -83,7 +83,7 @@
             </HBox>
             <HBox alignment="CENTER" prefHeight="100.0">
                <children>
-                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" text="Create" />
+                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" stylesheets="@index.css" text="Create" />
                </children>
             </HBox>
          </children>
