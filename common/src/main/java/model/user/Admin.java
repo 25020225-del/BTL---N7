@@ -13,11 +13,11 @@ public class Admin extends User {
      *
      * @param id       The unique identifier for the administrator.
      * @param userName The login username.
-     * @param userPass The encrypted password.
+     * @param password The encrypted password.
      * @param name     The real name or display name of the administrator.
      */
-    public Admin(String id, String userName, String userPass, String name) {
-        super(id, userName, userPass, name, "Admin");
+    public Admin(String id, String userName, String password, String name) {
+        super(id, userName, password, name, "Admin");
     }
 
     /**
@@ -27,7 +27,7 @@ public class Admin extends User {
      * @param admin The existing User object to be elevated to an administrator.
      */
     public Admin(User admin) {
-        super(admin.getId(), admin.getUserName(), admin.getUserPass(), admin.getName(), "Admin");
+        super(admin.getId(), admin.getUserName(), admin.getPassword(), admin.getName(), "Admin");
     }
 
     /**

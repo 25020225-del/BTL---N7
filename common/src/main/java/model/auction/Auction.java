@@ -310,6 +310,30 @@ public class Auction extends Entity {
     }
 
     /**
+     * Reverts the last placed bid. This is typically used to roll back the in-memory
+     * state if the corresponding database transaction fails.
+     *
+     * @param previousWinner The user who was winning before the failed bid.
+     * @param previousHighestMaxBid The highest max bid before the failed bid.
+     */
+    public synchronized void revertLastBid(User previousWinner, double previousHighestMaxBid) {
+        if (!bidHistory.isEmpty()) {
+            bidHistory.remove(bidHistory.size() - 1);
+        }
+        
+        this.winningBidder = previousWinner;
+        this.highestMaxBid = previousHighestMaxBid;
+        
+        if (previousWinner == null) {
+            this.currentPrice = item.getStartingPrice();
+        } else if (!bidHistory.isEmpty()) {
+            this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
+        } else {
+            this.currentPrice = item.getStartingPrice();
+        }
+    }
+
+    /**
      * Returns a summary string containing the core details of this auction session.
      *
      * @return Formatted information string.

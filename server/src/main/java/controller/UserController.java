@@ -1,13 +1,13 @@
 package controller;
 
 import database.DatabaseManager;
+import database.dao.UserDAO;
 import model.user.Admin;
 import model.user.User;
 import org.mindrot.jbcrypt.BCrypt;
+import service.TOTPService;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import static utils.ConsoleColors.*;
@@ -20,10 +20,8 @@ import static utils.ConsoleColors.*;
  */
 public class UserController {
 
-    /**
-     * Service utility for handling 2FA secret key generation and QR URL construction.
-     */
-    private final service.TOTPService totpService = new service.TOTPService();
+    private final TOTPService totpService = new TOTPService();
+    private final UserDAO userDAO = new UserDAO();
 
     /**
      * Registers a new user in the system and initializes their digital wallet.
@@ -49,59 +47,28 @@ public class UserController {
             return "[Error]: Invalid role";
         }
 
-        String checkSql = "SELECT 1 FROM users WHERE username = ?";
-        String insertSql = "INSERT INTO users (id, username, password, name, role, is_good, totp_secret, is_totp_enabled) VALUES (?, ?, ?, ?, ?, 0, ?, 1)";
-        String insertWalletSql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
-
         try (Connection conn = DatabaseManager.getConnection()) {
-            // Disable auto-commit to manage User and Wallet creation as a single atomic unit
             conn.setAutoCommit(false);
 
             try {
-                // Verify username uniqueness
-                try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-                    checkStmt.setString(1, userName);
-                    ResultSet rs = checkStmt.executeQuery();
-                    if (rs.next()) {
-                        System.out.println("[System](UserController): Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
-                        return "[Error]: Username \"" + userName + "\" already exists.";
-                    }
+                if (userDAO.isUsernameExists(conn, userName)) {
+                    System.out.println("[System](UserController): Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
+                    return "[Error]: Username \"" + userName + "\" already exists.";
                 }
 
                 String newId = "U-" + System.currentTimeMillis();
-
-                // Securely hash the password using BCrypt with a workload factor of 12
                 String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
-
-                // Initialize 2FA components
                 String secretKey = totpService.createSecretKey();
-                String qrUrl = totpService.getQRUrl(userName, secretKey);
 
-                // Insert the User record
-                try (PreparedStatement insertUserStmt = conn.prepareStatement(insertSql)) {
-                    insertUserStmt.setString(1, newId);
-                    insertUserStmt.setString(2, userName);
-                    insertUserStmt.setString(3, hashedPassword);
-                    insertUserStmt.setString(4, name);
-                    insertUserStmt.setString(5, role.toUpperCase());
-                    insertUserStmt.setString(6, secretKey);
+                userDAO.createUserAndWallet(conn, newId, userName, hashedPassword, name, role, secretKey);
 
-                    insertUserStmt.executeUpdate();
-                }
-
-                // Initialize the User's digital wallet with a 0.0 balance
-                try (PreparedStatement insertWalletStmt = conn.prepareStatement(insertWalletSql)) {
-                    insertWalletStmt.setString(1, newId);
-                    insertWalletStmt.executeUpdate();
-                }
-
-                // Finalize the transaction
                 conn.commit();
 
+                String qrUrl = totpService.getQRUrl(userName, secretKey);
                 System.out.println("[System]: \"" + YELLOW + userName + RESET + "\" has just created an account. 2FA Enabled.");
                 return "SUCCESS|" + secretKey + "|" + qrUrl;
+
             } catch (SQLException e) {
-                // Revert all changes if any part of the registration fails
                 conn.rollback();
                 throw e;
             }
@@ -121,34 +88,16 @@ public class UserController {
      * {@code null} otherwise.
      */
     public User login(String userName, String password) {
-        String sql = "SELECT * FROM users WHERE username = ?";
+        try {
+            User user = userDAO.findUserByUsername(userName);
 
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            if (user != null && BCrypt.checkpw(password, user.getPassword())) {
+                System.out.println("[System]: \"" + YELLOW + user.getName() + RESET + "\" (" + YELLOW + user.getRole() + RESET + ") has logged in.");
 
-            pstmt.setString(1, userName);
-            ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                String dbHash = rs.getString("password");
-
-                // Validate password hash using BCrypt
-                if (BCrypt.checkpw(password, dbHash)) {
-                    String id = rs.getString("id");
-                    String name = rs.getString("name");
-                    String role = rs.getString("role");
-                    boolean isGood = rs.getInt("is_good") == 1;
-
-                    System.out.println("[System]: \"" + YELLOW + name + RESET + "\" (" + YELLOW + role + RESET + ") has logged in.");
-
-                    // Instantiate the appropriate object type based on the assigned system role
-                    if (role.equalsIgnoreCase("ADMIN")) {
-                        return new Admin(id, userName, password, name);
-                    } else {
-                        User user = new User(id, userName, password, name, role);
-                        user.setGood(isGood);
-                        return user;
-                    }
+                if (user.getRole().equalsIgnoreCase("ADMIN")) {
+                    return new Admin(user.getId(), user.getUserName(), user.getPassword(), user.getName());
+                } else {
+                    return user;
                 }
             }
         } catch (SQLException e) {

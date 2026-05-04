@@ -1,6 +1,6 @@
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\module-info.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\module-info.java ///
 ======================================================================
 
 module org.example.demo {
@@ -32,7 +32,7 @@ module org.example.demo {
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\client\handler\ClientAuctionHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\client\handler\ClientAuctionHandler.java ///
 ======================================================================
 
 package client.handler;
@@ -101,7 +101,7 @@ public class ClientAuctionHandler implements ResponseHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\client\handler\ClientPaymentHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\client\handler\ClientPaymentHandler.java ///
 ======================================================================
 
 package client.handler;
@@ -161,7 +161,7 @@ public class ClientPaymentHandler implements ResponseHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\client\handler\ClientSystemHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\client\handler\ClientSystemHandler.java ///
 ======================================================================
 
 package client.handler;
@@ -220,7 +220,7 @@ public class ClientSystemHandler implements ResponseHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\client\handler\ResponseDispatcher.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\client\handler\ResponseDispatcher.java ///
 ======================================================================
 
 package client.handler;
@@ -281,7 +281,7 @@ public class ResponseDispatcher {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\client\handler\ResponseHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\client\handler\ResponseHandler.java ///
 ======================================================================
 
 package client.handler;
@@ -309,7 +309,7 @@ public interface ResponseHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\client\network\NetworkClient.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\client\network\NetworkClient.java ///
 ======================================================================
 
 package client.network;
@@ -524,7 +524,7 @@ public class NetworkClient {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\client\network\ServerDiscovery.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\client\network\ServerDiscovery.java ///
 ======================================================================
 
 package client.network;
@@ -646,7 +646,7 @@ public class ServerDiscovery {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\ClientAdminController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\ClientAdminController.java ///
 ======================================================================
 
 package gui;
@@ -811,7 +811,7 @@ public class ClientAdminController {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\ClientUserController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\ClientUserController.java ///
 ======================================================================
 
 package gui;
@@ -1329,7 +1329,7 @@ public class ClientUserController {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\CreateAuction.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\CreateAuction.java ///
 ======================================================================
 
 package gui;
@@ -1339,7 +1339,7 @@ public class CreateAuction {
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\ItemDetailController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\ItemDetailController.java ///
 ======================================================================
 
 package gui;
@@ -1574,7 +1574,7 @@ public class ItemDetailController {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\Launcher.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\Launcher.java ///
 ======================================================================
 
 package gui;
@@ -1616,7 +1616,7 @@ public class Launcher {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\LoginController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\LoginController.java ///
 ======================================================================
 
 package gui;
@@ -1757,7 +1757,7 @@ public class LoginController {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\MainApplication.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\MainApplication.java ///
 ======================================================================
 
 package gui;
@@ -1936,7 +1936,7 @@ public class MainApplication extends Application {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\MainController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\MainController.java ///
 ======================================================================
 
 package gui;
@@ -1979,7 +1979,7 @@ public class MainController {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\RegisterController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\RegisterController.java ///
 ======================================================================
 
 package gui;
@@ -2155,7 +2155,7 @@ public class RegisterController {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\process\AlertHelper.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\process\AlertHelper.java ///
 ======================================================================
 
 package gui.process;
@@ -2187,7 +2187,7 @@ public class AlertHelper {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\process\AnimateEffect.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\process\AnimateEffect.java ///
 ======================================================================
 
 package gui.process;
@@ -2292,7 +2292,7 @@ public class AnimateEffect {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\process\CropImage.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\process\CropImage.java ///
 ======================================================================
 
 package gui.process;
@@ -2337,7 +2337,7 @@ public class CropImage {
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\process\ImageCompressor.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\process\ImageCompressor.java ///
 ======================================================================
 
 package gui.process;
@@ -2413,7 +2413,7 @@ public class ImageCompressor {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\process\ImageUtil.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\process\ImageUtil.java ///
 ======================================================================
 
 package gui.process;
@@ -2486,7 +2486,7 @@ public class ImageUtil {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\process\QRCodeHelper.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\process\QRCodeHelper.java ///
 ======================================================================
 
 package gui.process;
@@ -2547,7 +2547,7 @@ public final class QRCodeHelper {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\process\Search.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\process\Search.java ///
 ======================================================================
 
 package gui.process;
@@ -2583,7 +2583,7 @@ public class Search {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\widget\AdminAuctionItem.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\widget\AdminAuctionItem.java ///
 ======================================================================
 
 package gui.widget;
@@ -2638,7 +2638,7 @@ public class AdminAuctionItem extends VBox {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\widget\CountdownClock.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\widget\CountdownClock.java ///
 ======================================================================
 
 package gui.widget;
@@ -2744,7 +2744,7 @@ public class CountdownClock extends Label {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\widget\IconButton.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\widget\IconButton.java ///
 ======================================================================
 
 package gui.widget;
@@ -2815,7 +2815,7 @@ public class IconButton extends Button {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\widget\MinimalItem.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\widget\MinimalItem.java ///
 ======================================================================
 
 package gui.widget;
@@ -2904,7 +2904,7 @@ public class MinimalItem extends VBox {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\AccountReview.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\AccountReview.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -2972,7 +2972,7 @@ public class MinimalItem extends VBox {
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\AccountView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\AccountView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -3007,7 +3007,7 @@ public class MinimalItem extends VBox {
 </VBox>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\AdminView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\AdminView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -3110,7 +3110,7 @@ public class MinimalItem extends VBox {
 </BorderPane>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\CreateAuction.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\CreateAuction.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -3121,92 +3121,88 @@ public class MinimalItem extends VBox {
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
-<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25"
-            xmlns:fx="http://javafx.com/fxml/1">
-    <content>
-        <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity"
-              minWidth="-Infinity" spacing="10.0">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-            </padding>
-            <children>
-                <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
-                    <font>
-                        <Font name="System Bold" size="14.0"/>
-                    </font>
-                </Text>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Item name"/>
-                        <TextField fx:id="ca_itemName"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Starting price"/>
-                        <TextField fx:id="ca_startPrice"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Bid Increment"/>
-                        <TextField fx:id="ca_bidIncrement"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Choose file"/>
-                        <Button fx:id="chooseFile" mnemonicParsing="false" onAction="#handleSelectImage" text="Button"/>
-                        <Label fx:id="fileLinkChoosen"/>
-                    </children>
-                </HBox>
-                <HBox>
-                    <children>
-                        <ImageView fx:id="ca_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true"/>
-                    </children>
-                </HBox>
-                <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0"
-                      VBox.vgrow="ALWAYS">
-                    <children>
-                        <Label text="Description"/>
-                        <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0"
-                                  HBox.hgrow="ALWAYS"/>
-                    </children>
-                </HBox>
-                <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Starting time"/>
-                        <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity"
-                                    minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0"/>
-                        <TextField fx:id="ca_startHour" prefWidth="30.0"/>
-                        <Label text="Hour"/>
-                        <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0"/>
-                        <Label text="Minute"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Duration (Max 30 days)"/>
-                        <TextField fx:id="ca_durationDays" prefHeight="27.0" prefWidth="60.0" promptText="Days"/>
-                        <Label text="Days"/>
-                        <TextField fx:id="ca_durationHours" prefHeight="27.0" prefWidth="60.0" promptText="Hours"/>
-                        <Label text="Hours"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER" prefHeight="100.0">
-                    <children>
-                        <Button fx:id="ca_createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction"
-                                text="Create"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
-    </content>
+
+<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+   <content>
+      <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" spacing="10.0">
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+         <children>
+            <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
+               <font>
+                  <Font name="System Bold" size="14.0" />
+               </font>
+            </Text>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Item name" />
+                  <TextField fx:id="ca_itemName" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Starting price" />
+                  <TextField fx:id="ca_startPrice" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Bid Increment" />
+                  <TextField fx:id="ca_bidIncrement" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Choose file" />
+                  <Button fx:id="chooseFile" mnemonicParsing="false" text="Files" />
+                  <Label fx:id="fileLinkChoosen" />
+               </children>
+            </HBox>
+            <HBox>
+               <children>
+                  <ImageView fx:id="sellerCreateAuction_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
+               </children>
+            </HBox>
+            <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0" VBox.vgrow="ALWAYS">
+               <children>
+                  <Label text="Description" />
+                  <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0" HBox.hgrow="ALWAYS" />
+               </children>
+            </HBox>
+            <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Starting time" />
+                  <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_startHour" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Ending time" />
+                  <DatePicker fx:id="ca_endDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_endHour" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_endMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" prefHeight="100.0">
+               <children>
+                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" stylesheets="@index.css" text="Create" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </content>
 </ScrollPane>
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\index.css ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\index.css ///
 ======================================================================
 
 /* Tổng thể: Trắng, font hệ thống */
@@ -3453,7 +3449,7 @@ nut dang xuất
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\Login.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\Login.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -3496,7 +3492,7 @@ nut dang xuất
 </StackPane>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\MainView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\MainView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -3552,7 +3548,7 @@ nut dang xuất
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\Productdetail.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\Productdetail.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -3696,7 +3692,7 @@ nut dang xuất
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\ProductItem.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\ProductItem.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -3732,7 +3728,7 @@ nut dang xuất
 </VBox>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\Register.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\Register.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -3773,7 +3769,7 @@ nut dang xuất
 </StackPane>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\SettingsView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\SettingsView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -3814,7 +3810,7 @@ nut dang xuất
 </VBox>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\Stylist.css ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\Stylist.css ///
 ======================================================================
 
 /* Tổng thể nền ứng dụng */
@@ -3984,7 +3980,7 @@ nut dang xuất
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\TableView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\TableView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4019,7 +4015,7 @@ nut dang xuất
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\AccountReview.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\AccountReview.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4087,7 +4083,7 @@ nut dang xuất
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\AccountView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\AccountView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4122,7 +4118,7 @@ nut dang xuất
 </VBox>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\AdminView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\AdminView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4225,7 +4221,7 @@ nut dang xuất
 </BorderPane>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\CreateAuction.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\CreateAuction.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4236,92 +4232,88 @@ nut dang xuất
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
-<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25"
-            xmlns:fx="http://javafx.com/fxml/1">
-    <content>
-        <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity"
-              minWidth="-Infinity" spacing="10.0">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-            </padding>
-            <children>
-                <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
-                    <font>
-                        <Font name="System Bold" size="14.0"/>
-                    </font>
-                </Text>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Item name"/>
-                        <TextField fx:id="ca_itemName"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Starting price"/>
-                        <TextField fx:id="ca_startPrice"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Bid Increment"/>
-                        <TextField fx:id="ca_bidIncrement"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Choose file"/>
-                        <Button fx:id="chooseFile" mnemonicParsing="false" onAction="#handleSelectImage" text="Button"/>
-                        <Label fx:id="fileLinkChoosen"/>
-                    </children>
-                </HBox>
-                <HBox>
-                    <children>
-                        <ImageView fx:id="ca_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true"/>
-                    </children>
-                </HBox>
-                <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0"
-                      VBox.vgrow="ALWAYS">
-                    <children>
-                        <Label text="Description"/>
-                        <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0"
-                                  HBox.hgrow="ALWAYS"/>
-                    </children>
-                </HBox>
-                <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Starting time"/>
-                        <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity"
-                                    minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0"/>
-                        <TextField fx:id="ca_startHour" prefWidth="30.0"/>
-                        <Label text="Hour"/>
-                        <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0"/>
-                        <Label text="Minute"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Duration (Max 30 days)"/>
-                        <TextField fx:id="ca_durationDays" prefHeight="27.0" prefWidth="60.0" promptText="Days"/>
-                        <Label text="Days"/>
-                        <TextField fx:id="ca_durationHours" prefHeight="27.0" prefWidth="60.0" promptText="Hours"/>
-                        <Label text="Hours"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER" prefHeight="100.0">
-                    <children>
-                        <Button fx:id="ca_createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction"
-                                text="Create"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
-    </content>
+
+<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+   <content>
+      <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" spacing="10.0">
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+         <children>
+            <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
+               <font>
+                  <Font name="System Bold" size="14.0" />
+               </font>
+            </Text>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Item name" />
+                  <TextField fx:id="ca_itemName" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Starting price" />
+                  <TextField fx:id="ca_startPrice" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Bid Increment" />
+                  <TextField fx:id="ca_bidIncrement" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Choose file" />
+                  <Button fx:id="chooseFile" mnemonicParsing="false" text="Files" />
+                  <Label fx:id="fileLinkChoosen" />
+               </children>
+            </HBox>
+            <HBox>
+               <children>
+                  <ImageView fx:id="sellerCreateAuction_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
+               </children>
+            </HBox>
+            <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0" VBox.vgrow="ALWAYS">
+               <children>
+                  <Label text="Description" />
+                  <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0" HBox.hgrow="ALWAYS" />
+               </children>
+            </HBox>
+            <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Starting time" />
+                  <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_startHour" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Ending time" />
+                  <DatePicker fx:id="ca_endDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_endHour" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_endMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" prefHeight="100.0">
+               <children>
+                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" stylesheets="@index.css" text="Create" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </content>
 </ScrollPane>
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\index.css ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\index.css ///
 ======================================================================
 
 /* Tổng thể: Trắng, font hệ thống */
@@ -4568,7 +4560,7 @@ nut dang xuất
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\Login.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\Login.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4611,7 +4603,7 @@ nut dang xuất
 </StackPane>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\MainView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\MainView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4667,7 +4659,7 @@ nut dang xuất
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\Productdetail.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\Productdetail.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4811,7 +4803,7 @@ nut dang xuất
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\ProductItem.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\ProductItem.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4847,7 +4839,7 @@ nut dang xuất
 </VBox>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\Register.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\Register.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4888,7 +4880,7 @@ nut dang xuất
 </StackPane>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\SettingsView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\SettingsView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -4929,7 +4921,7 @@ nut dang xuất
 </VBox>
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\Stylist.css ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\Stylist.css ///
 ======================================================================
 
 /* Tổng thể nền ứng dụng */
@@ -5099,7 +5091,7 @@ nut dang xuất
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\TableView.fxml ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\target\classes\gui\TableView.fxml ///
 ======================================================================
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -5134,1122 +5126,7 @@ nut dang xuất
 
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\AccountReview.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-<VBox alignment="TOP_CENTER" prefWidth="250.0" spacing="12.0" styleClass="profile-popover" stylesheets="@index.css"
-      xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
-    <children>
-        <HBox alignment="CENTER_LEFT" spacing="12.0">
-            <children>
-                <ImageView fx:id="imgAvatar" fitHeight="45.0" fitWidth="45.0" pickOnBounds="true" preserveRatio="true">
-                    <image>
-                        <Image url="@images/logo2.png"/>
-                    </image>
-                </ImageView>
-                <VBox alignment="CENTER_LEFT">
-                    <children>
-                        <Label fx:id="lblFullname" styleClass="user-name-label" text="lmaolmao"/>
-                        <Label fx:id="lblRole" text="Bidder &amp; Seller" textFill="#777777">
-                            <font>
-                                <Font size="12.0"/>
-                            </font>
-                        </Label>
-                    </children>
-                </VBox>
-            </children>
-        </HBox>
-
-        <Separator/>
-
-        <VBox spacing="8.0">
-            <children>
-                <HBox alignment="CENTER_LEFT" spacing="10.0">
-                    <children>
-                        <Label text="Số dư ví:" textFill="#555"/>
-                        <Label fx:id="lblBalance" style="-fx-font-weight: bold;" text="\$67.67"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" spacing="10.0">
-                    <children>
-                        <Label text="Đang đấu giá:" textFill="#555"/>
-                        <Label fx:id="lblActiveBids" text="67"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
-
-        <Separator/>
-
-        <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: transparent;"
-                text="Cài đặt tài khoản" textAlignment="LEFT"/>
-
-        <Button fx:id="btnLogout" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="button-logout"
-                text="Đăng xuất"/>
-    </children>
-    <padding>
-        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0"/>
-    </padding>
-</VBox>
-
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\AccountView.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
-<VBox prefHeight="600.0" prefWidth="800.0" spacing="20.0"
-      style="-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-radius: 10;"
-      stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
-    <children>
-        <Button mnemonicParsing="false" onAction="#handleBackToMarketplace" styleClass="button-ebay"
-                text="&lt;- Back to Marketplace"/>
-
-        <Label text="Account Profile">
-            <font>
-                <Font name="System Bold" size="28.0"/>
-            </font>
-            <style>
-                -fx-text-fill: #3665f3;
-            </style>
-            <VBox.margin>
-                <Insets top="10.0"/>
-            </VBox.margin>
-        </Label>
-
-        <Label fx:id="accName" style="-fx-font-size: 18px;" text="Full Name: "/>
-        <Label fx:id="accUsername" style="-fx-font-size: 18px;" text="Username: "/>
-    </children>
-</VBox>
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\AdminView.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-<BorderPane prefHeight="600.0" prefWidth="900.0" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25"
-            xmlns:fx="http://javafx.com/fxml/1">
-
-    <top>
-        <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0"
-              style="-fx-background-color: white; -fx-border-color: #e5e5e5; -fx-border-width: 0 0 1 0;">
-            <children>
-                <Label text="MAIN VIEW" textFill="#3665f3">
-                    <font>
-                        <Font name="System Bold" size="24.0"/>
-                    </font>
-                </Label>
-                <Label style="-fx-background-color: #333; -fx-text-fill: white; -fx-padding: 2 8; -fx-background-radius: 4;"
-                       text="ADMIN"/>
-                <Region HBox.hgrow="ALWAYS"/>
-                <TextField prefWidth="300.0" promptText="Search system..." styleClass="search-field"/>
-                <Label fx:id="lblAdminMenu" style="-fx-cursor: hand;" text="Admin Account ▼">
-                    <font>
-                        <Font name="System Semibold" size="14.0"/>
-                    </font>
-                </Label>
-            </children>
-            <padding>
-                <Insets left="20.0" right="20.0"/>
-            </padding>
-        </HBox>
-    </top>
-
-    <center>
-        <VBox spacing="20.0">
-            <children>
-                <HBox spacing="15.0">
-                    <children>
-                        <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
-                            <children>
-                                <Label text="Total Items" textFill="#777"/>
-                                <Label style="-fx-font-size: 24; -fx-font-weight: bold;" text="177013"/>
-                            </children>
-                        </VBox>
-                        <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
-                            <children>
-                                <Label text="Active Auctions" textFill="#777"/>
-                                <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #3665f3;"
-                                       text="67"/>
-                            </children>
-                        </VBox>
-                        <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
-                            <children>
-                                <Label text="New Users" textFill="#777"/>
-                                <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #28a745;"
-                                       text="+67"/>
-                            </children>
-                        </VBox>
-                    </children>
-                </HBox>
-
-                <VBox spacing="10.0" styleClass="product-card" VBox.vgrow="ALWAYS">
-                    <children>
-                        <HBox alignment="CENTER_LEFT">
-                            <children>
-                                <Label text="Auction Management">
-                                    <font>
-                                        <Font name="System Bold" size="18.0"/>
-                                    </font>
-                                </Label>
-                                <Region HBox.hgrow="ALWAYS"/>
-                                <Button styleClass="button-ebay" text="+ Add Item"/>
-                            </children>
-                        </HBox>
-
-                        <TableView fx:id="tableAuctions" VBox.vgrow="ALWAYS">
-                            <columns>
-                                <TableColumn fx:id="colId" prefWidth="60.0" text="ID"/>
-                                <TableColumn fx:id="colName" prefWidth="250.0" text="Item Name"/>
-                                <TableColumn fx:id="colSeller" prefWidth="120.0" text="Seller"/>
-                                <TableColumn fx:id="colPrice" prefWidth="120.0" text="Current Price"/>
-                                <TableColumn fx:id="colStatus" prefWidth="100.0" text="Status"/>
-                                <TableColumn fx:id="colAction" prefWidth="150.0" text="Action"/>
-                            </columns>
-                        </TableView>
-                    </children>
-                    <padding>
-                        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0"/>
-                    </padding>
-                </VBox>
-            </children>
-            <padding>
-                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
-            </padding>
-        </VBox>
-    </center>
-</BorderPane>
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\CreateAuction.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-<?import javafx.scene.text.Text?>
-<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25"
-            xmlns:fx="http://javafx.com/fxml/1">
-    <content>
-        <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity"
-              minWidth="-Infinity" spacing="10.0">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-            </padding>
-            <children>
-                <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
-                    <font>
-                        <Font name="System Bold" size="14.0"/>
-                    </font>
-                </Text>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Item name"/>
-                        <TextField fx:id="ca_itemName"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Starting price"/>
-                        <TextField fx:id="ca_startPrice"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Bid Increment"/>
-                        <TextField fx:id="ca_bidIncrement"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Choose file"/>
-                        <Button fx:id="chooseFile" mnemonicParsing="false" onAction="#handleSelectImage" text="Button"/>
-                        <Label fx:id="fileLinkChoosen"/>
-                    </children>
-                </HBox>
-                <HBox>
-                    <children>
-                        <ImageView fx:id="ca_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true"/>
-                    </children>
-                </HBox>
-                <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0"
-                      VBox.vgrow="ALWAYS">
-                    <children>
-                        <Label text="Description"/>
-                        <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0"
-                                  HBox.hgrow="ALWAYS"/>
-                    </children>
-                </HBox>
-                <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Starting time"/>
-                        <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity"
-                                    minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0"/>
-                        <TextField fx:id="ca_startHour" prefWidth="30.0"/>
-                        <Label text="Hour"/>
-                        <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0"/>
-                        <Label text="Minute"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Duration (Max 30 days)"/>
-                        <TextField fx:id="ca_durationDays" prefHeight="27.0" prefWidth="60.0" promptText="Days"/>
-                        <Label text="Days"/>
-                        <TextField fx:id="ca_durationHours" prefHeight="27.0" prefWidth="60.0" promptText="Hours"/>
-                        <Label text="Hours"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER" prefHeight="100.0">
-                    <children>
-                        <Button fx:id="ca_createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction"
-                                text="Create"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
-    </content>
-</ScrollPane>
-
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\index.css ///
-======================================================================
-
-/* Tổng thể: Trắng, font hệ thống */
-.root {
-    -fx-font-family: "Segoe UI", Arial;
-    -fx-background-color: #ffffff;
-    -fx-text-fill: #2d3436;
-}
-
-/* Nền màn hình: Xanh dương cực nhạt (Alice Blue) */
-.auth-root, .main-view-root {
-    -fx-background-color: #f0f7ff;
-}
-
-/* Khung nội dung: Bo góc, đổ bóng xanh dương nhạt */
-.auth-card {
-    -fx-background-color: #ffffff;
-    -fx-background-radius: 12;
-    -fx-border-color: #d1e2f2;
-    -fx-border-width: 1;
-    /* Đổ bóng tông xanh dương để đồng bộ */
-    -fx-effect: dropshadow(three-pass-box, rgba(41, 128, 185, 0.08), 20, 0, 0, 8);
-}
-
-/* Tiêu đề: Xanh dương đậm (Royal Blue) */
-.auth-title {
-    -fx-fill: #2980b9;
-    -fx-font-size: 32px;
-    -fx-font-weight: bold;
-}
-
-/* Ô nhập liệu: Viền xanh dương nhạt */
-.text-field, .password-field {
-    -fx-background-color: #ffffff;
-    -fx-text-fill: #2d3436;
-    -fx-prompt-text-fill: #a2b4bc;
-    -fx-border-color: #d1e2f2;
-    -fx-border-width: 0 0 2 0;
-    -fx-background-radius: 0;
-}
-
-/* Khi click vào ô nhập: Hiện viền xanh dương sáng */
-.text-field:focused, .password-field:focused {
-    -fx-background-color: #f7fbff;
-    -fx-border-color: #3498db;
-}
-
-/* Nút bấm chính: Màu xanh dương nhạt (Soft/Sky Blue) */
-.button {
-    -fx-max-width: infinity;
-    -fx-background-color: #a2d2ff; /* Màu xanh nhạt bạn yêu cầu */
-    -fx-text-fill: #2c3e50; /* Chữ đậm hơn tí cho dễ đọc trên nền nhạt */
-    -fx-background-radius: 6;
-    -fx-cursor: hand;
-    -fx-font-weight: bold;
-    -fx-padding: 8 8 8 8;
-}
-
-.button:hover {
-    -fx-background-color: #85c1f5; /* Đậm hơn một chút khi hover */
-}
-
-/* Link chuyển cảnh */
-.auth-link {
-    -fx-background-color: transparent;
-    -fx-text-fill: #2980b9;
-    -fx-font-weight: bold;
-}
-
-/* Sidebar: Xanh dương xám nhạt */
-#mainDock {
-    -fx-background-radius: 30;
-    -fx-background-color: #ebf2f8;
-    -fx-border-color: transparent #d6e4f0 transparent transparent;
-}
-
-/* Thanh tìm kiếm */
-.top-search-bar {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #d1e2f2;
-    -fx-background-radius: 25;
-    -fx-border-radius: 25;
-    -fx-padding: 8 15 8 15;
-}
-
-/* ComboBox */
-.combo-box {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #d1e2f2;
-    -fx-background-radius: 4;
-}
-
-.combo-box .list-cell {
-    -fx-text-fill: #2d3436;
-    -fx-background-color: #ffffff;
-}
-
-/* ScrollPane Trắng Xanh Dương */
-.scroll-pane {
-    -fx-background-color: #ffffff;
-    -fx-background: #ffffff;
-    -fx-border-color: #d6e4f0;
-}
-
-/* Thanh cuộn (Scroll Bar) */
-.scroll-pane .scroll-bar .thumb {
-    -fx-background-color: #adcde7; /* Xanh dương nhạt */
-    -fx-background-radius: 10;
-}
-
-.scroll-pane .scroll-bar .thumb:hover {
-    -fx-background-color: #85b3d9;
-}
-
-/* --- ICON SECTION --- */
-
-/* Màu mặc định cho tất cả icon: Xanh dương */
-.ikonli-font-icon {
-    -fx-icon-color: #2980b9;
-    -fx-icon-size: 35px;
-}
-
-/* Icon trên nút bấm (Vì nền nút nhạt nên icon để màu xanh đậm sẽ đẹp hơn) */
-.button .ikonli-font-icon {
-    -fx-icon-color: #2c3e50;
-}
-
-/* Icon khi hover */
-.menu-item:hover .ikonli-font-icon {
-    -fx-icon-color: #3498db;
-}
-
-.special-button {
-    -fx-background-radius: 30;
-    -fx-padding: 10 10 10 10; /* Tăng lề trái cho icon */
-    -fx-alignment: CENTER_LEFT;
-    -fx-background-color: #d1e9ff; /* Màu nhạt riêng cho nút đặc biệt */
-    -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.6), 10, 0, 4, 4),
-    dropshadow(three-pass-box, rgba(255, 255, 255, 0.9), 10, 0, -4, -4);
-}
-
-.special-button:hover {
-    -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.8), 15, 0, 6, 6),
-    dropshadow(three-pass-box, rgba(255, 255, 255, 1.0), 15, 0, -6, -6);
-}
-
-/* Hiệu ứng khi nhấn: Nút lún xuống (Inset shadow giả lập) */
-.special-button:pressed {
-    -fx-effect: dropshadow(three-pass-box, rgba(162, 210, 255, 0.4), 5, 0, 1, 1),
-    dropshadow(three-pass-box, rgba(255, 255, 255, 0.6), 5, 0, -1, -1);
-    -fx-translate-y: 1; /* Di chuyển nhẹ để tạo cảm giác lún */
-}
-
-.special-button .ikonli-font-icon {
-    -fx-icon-size: 25px;
-    -fx-icon-color: #2980b9;
-}
-
-.date-picker {
-    -fx-background-color: transparent;
-    -fx-border-color: #dcdcdc;
-    -fx-border-radius: 5;
-    -fx-padding: 1;
-}
-
-/* 2. Thay đổi màu icon lịch */
-.date-picker .arrow-button {
-    -fx-background-color: #2196F3; /* Màu xanh chủ đạo */
-    -fx-background-radius: 5;
-}
-
-.date-picker .arrow-button .arrow {
-    -fx-background-color: white; /* Màu mũi tên bên trong icon */
-}
-
-/* 3. Tùy chỉnh bảng lịch (Popup) */
-.date-picker-popup {
-    -fx-background-color: white;
-    -fx-border-color: #2196F3;
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.2), 10, 0, 0, 5);
-}
-
-/* 4. Đổi màu tiêu đề tháng/năm */
-.date-picker-popup .month-year-pane {
-    -fx-background-color: #2196F3;
-}
-
-.date-picker-popup .label {
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-}
-
-/* 5. Đổi màu các ngày trong tháng */
-.date-picker-popup .day-cell {
-    -fx-padding: 5;
-}
-
-/* Ngày đang chọn */
-.date-picker-popup .day-cell:selected {
-    -fx-background-color: #2196F3;
-    -fx-text-fill: white;
-}
-
-/* Khi di chuột qua các ngày */
-.date-picker-popup .day-cell:hover {
-    -fx-background-color: #e3f2fd;
-    -fx-text-fill: #2196F3;
-}
-
-/* Ngày hôm nay */
-.date-picker-popup .today {
-    -fx-border-color: #2196F3;
-    -fx-border-width: 1;
-}
-
-.profile-popover {
-    -fx-background-color: white;
-    -fx-background-radius: 12;
-    -fx-border-radius: 12;
-    -fx-border-color: #e5e5e5;
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.15), 15, 0, 0, 8);
-}
-
-.user-name-label {
-    -fx-font-size: 16px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #111820;
-}
-
-/
-/
-nut dang xuất
-.button-logout {
-    -fx-background-color: transparent;
-    -fx-text-fill: #dd1e31;
-    -fx-font-weight: bold;
-    -fx-border-color: #dd1e31;
-    -fx-border-radius: 20;
-    -fx-padding: 5 15;
-}
-
-.button-logout:hover {
-    -fx-background-color: #fff1f1;
-}
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\Login.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.PasswordField?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Text?>
-<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css"
-           xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.LoginController">
-    <children>
-        <VBox alignment="CENTER" fillWidth="false" maxWidth="400.0" prefWidth="400.0" spacing="25.0"
-              styleClass="auth-card">
-            <children>
-                <Text styleClass="auth-title" text="Member Login"/>
-
-                <VBox spacing="15.0" prefWidth="320.0">
-                    <children>
-                        <TextField fx:id="loginAccountName" prefHeight="40.0" promptText="Username"
-                                   styleClass="auth-input"/>
-                        <PasswordField fx:id="loginPasswordAccount" prefHeight="40.0" promptText="Password"
-                                       styleClass="auth-input"/>
-                    </children>
-                </VBox>
-
-                <Button fx:id="loginButton" mnemonicParsing="false" onAction="#onMainViewButtonClick" prefHeight="40.0"
-                        prefWidth="320.0" styleClass="auth-btn-primary" text="SIGN IN"/>
-
-                <Button mnemonicParsing="false" onAction="#onRegisterViewButtonClick" styleClass="auth-link"
-                        style="-fx-background-color: transparent;" text="Don't have an account? Register"/>
-            </children>
-            <padding>
-                <javafx.geometry.Insets top="40" bottom="40" left="30" right="30"/>
-            </padding>
-        </VBox>
-    </children>
-</StackPane>
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\MainView.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-<?import javafx.scene.text.Text?>
-<VBox prefHeight="720.0" prefWidth="1280.0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25"
-      xmlns:fx="http://javafx.com/fxml/1">
-    <children>
-        <HBox alignment="CENTER" prefWidth="200.0" spacing="20.0">
-            <padding>
-                <Insets left="10.0" right="10.0" top="10.0"/>
-            </padding>
-            <children>
-                <ImageView fitHeight="57.0" fitWidth="70.0" pickOnBounds="true" preserveRatio="true">
-                    <image>
-                        <Image url="@images/logo2.png"/>
-                    </image>
-                </ImageView>
-                <Text fill="#36555c" fontSmoothingType="LCD" strokeType="OUTSIDE" strokeWidth="0.0"
-                      text="ONLINE AUCTION SERVICE">
-                    <font>
-                        <Font name="System Bold" size="39.0"/>
-                    </font>
-                </Text>
-            </children>
-        </HBox>
-        <HBox spacing="10.0" stylesheets="@index.css" VBox.vgrow="ALWAYS">
-            <children>
-                <VBox fx:id="mainDock" alignment="TOP_CENTER" maxWidth="-Infinity" minWidth="-Infinity" spacing="20.0"
-                      styleClass="side-bar-dock">
-                    <padding>
-                        <Insets bottom="20.0" left="10.0" right="10.0" top="20.0"/>
-                    </padding>
-                    <HBox.margin>
-                        <Insets/>
-                    </HBox.margin>
-                </VBox>
-
-                <VBox fx:id="mainViewController" prefHeight="680.0" prefWidth="1150.0" spacing="15.0"
-                      HBox.hgrow="ALWAYS"/>
-            </children>
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-            </padding>
-        </HBox>
-    </children>
-</VBox>
-
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\Productdetail.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.chart.CategoryAxis?>
-<?import javafx.scene.chart.LineChart?>
-<?import javafx.scene.chart.NumberAxis?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
-<ScrollPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="gui.ItemDetailController">
-    <content>
-        <VBox>
-            <children>
-                <!-- Top Section: Image and Bidding Controls -->
-                <HBox spacing="20.0" style="-fx-background-color: white;" stylesheets="@Stylist.css">
-                    <padding>
-                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
-                    </padding>
-                    <children>
-                        <VBox alignment="CENTER" style="-fx-border-color: #eee;">
-                            <children>
-                                <ImageView fx:id="imgLarge" fitHeight="300.0" fitWidth="300.0" pickOnBounds="true"
-                                           preserveRatio="true"/>
-                            </children>
-                        </VBox>
-                        <VBox spacing="15.0" HBox.hgrow="ALWAYS">
-                            <children>
-                                <HBox>
-                                    <children>
-                                        <Label fx:id="lblDetailTitle" prefHeight="32.0" text="Item Name"
-                                               wrapText="true">
-                                            <font>
-                                                <Font name="System Bold" size="22.0"/>
-                                            </font>
-                                        </Label>
-                                    </children>
-                                </HBox>
-                                <Separator prefHeight="1.0"/>
-                                <VBox>
-                                    <children>
-                                        <HBox>
-                                            <children>
-                                                <Label prefHeight="21.0" prefWidth="110.0" text="Starting Price:"/>
-                                                <Label fx:id="lblStartPrice" styleClass="price-text" text="\$0.00"
-                                                       textFill="#e53238">
-                                                    <font>
-                                                        <Font name="System Bold" size="20.0"/>
-                                                    </font>
-                                                </Label>
-                                            </children>
-                                        </HBox>
-                                        <HBox spacing="10.0">
-                                            <children>
-                                                <Label prefHeight="30.0" prefWidth="110.0" text="Current Price:"/>
-                                                <Label fx:id="lblCurrentPrice" prefHeight="24.0" styleClass="price-text"
-                                                       text="\$0.00" textFill="#e53238">
-                                                    <font>
-                                                        <Font name="System Bold" size="20.0"/>
-                                                    </font>
-                                                </Label>
-                                            </children>
-                                        </HBox>
-                                        <HBox spacing="10.0">
-                                            <children>
-                                                <Label prefHeight="30.0" prefWidth="110.0" text="Leading Bidder:"/>
-                                                <Label fx:id="lblLeader" prefHeight="24.0" text="None"
-                                                       textFill="#3665f3">
-                                                    <font>
-                                                        <Font name="System Bold" size="16.0"/>
-                                                    </font>
-                                                </Label>
-                                            </children>
-                                        </HBox>
-                                    </children>
-                                </VBox>
-
-                                <!-- Bidding Controls -->
-                                <VBox spacing="5.0"
-                                      style="-fx-background-color: #f8f8f8; -fx-padding: 10; -fx-border-radius: 5; -fx-background-radius: 5;">
-                                    <children>
-                                        <Label text="Bidding amount:"/>
-                                        <HBox spacing="10.0">
-                                            <TextField fx:id="txtBidAmount" promptText="Enter amount..."
-                                                       HBox.hgrow="ALWAYS"/>
-                                            <Button fx:id="btnPlaceBid" mnemonicParsing="false"
-                                                    style="-fx-background-color: #3665f3;" text="PLACE BID"
-                                                    textFill="WHITE">
-                                                <font>
-                                                    <Font name="System Bold" size="14.0"/>
-                                                </font>
-                                            </Button>
-                                        </HBox>
-                                    </children>
-                                </VBox>
-                                <Label fx:id="lblTimeLeft" styleClass="timer-text" text="Remaining time: 00:00:00"/>
-                            </children>
-                        </VBox>
-                    </children>
-                </HBox>
-                <!-- Description Area -->
-                <VBox maxHeight="600.0" minHeight="200.0">
-                    <Label text="Item Information">
-                        <font>
-                            <Font name="System Bold" size="16.0"/>
-                        </font>
-                        <padding>
-                            <Insets bottom="5.0"/>
-                        </padding>
-                    </Label>
-                    <TextArea fx:id="txtDescription" editable="false" wrapText="true" VBox.vgrow="ALWAYS"/>
-                    <padding>
-                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-                    </padding>
-                </VBox>
-
-                <!-- Real-time Bid History Chart -->
-                <VBox style="-fx-border-color: #ddd; -fx-background-color: white; -fx-padding: 10;">
-                    <Label text="Bid History (Real-time)">
-                        <font>
-                            <Font name="System Bold" size="16.0"/>
-                        </font>
-                    </Label>
-                    <LineChart fx:id="bidHistoryChart" animated="true" legendVisible="false" VBox.vgrow="ALWAYS">
-                        <xAxis>
-                            <CategoryAxis label="Time" side="BOTTOM" fx:id="xAxisTime"/>
-                        </xAxis>
-                        <yAxis>
-                            <NumberAxis fx:id="yAxisPrice" forceZeroInRange="false" label="Price (VND)" side="LEFT"/>
-                        </yAxis>
-                    </LineChart>
-                </VBox>
-            </children>
-        </VBox>
-    </content>
-</ScrollPane>
-
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\ProductItem.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.VBox?>
-<VBox alignment="TOP_CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity"
-      prefWidth="200.0" spacing="10.0"
-      style="-fx-border-color: #dddddd; -fx-border-radius: 10; -fx-background-color: white;" styleClass="product-card"
-      stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
-    <children>
-        <ImageView fx:id="imgProduct" fitHeight="150.0" fitWidth="180.0" pickOnBounds="true" preserveRatio="true"/>
-        <VBox spacing="5.0">
-            <children>
-                <Label fx:id="lblTitle" style="-fx-font-weight: bold;" text="Sample Item" wrapText="true"/>
-                <Label fx:id="lblPrice" style="-fx-text-fill: #e53238; -fx-font-size: 16;" styleClass="price-text"
-                       stylesheets="@Stylist.css" text="\$100.00"/>
-                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false"
-                        style="-fx-background-color: #3665f3; -fx-text-fill: white;" styleClass="button-ebay"
-                        text="Place Bid"/>
-            </children>
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0"/>
-            </padding>
-        </VBox>
-    </children>
-    <padding>
-        <Insets top="10.0"/>
-    </padding>
-</VBox>
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\Register.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Text?>
-<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css"
-           xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.RegisterController">
-    <children>
-        <VBox alignment="CENTER" fillWidth="false" maxWidth="500.0" spacing="20.0" styleClass="auth-card">
-            <children>
-                <Text styleClass="auth-title" text="CREATE ACCOUNT"/>
-
-                <VBox spacing="15.0" prefWidth="380.0">
-                    <children>
-                        <TextField fx:id="registerName" promptText="Full Name"/>
-                        <TextField fx:id="registerAccountName" promptText="Username"/>
-                        <PasswordField fx:id="registerPasswordAccount" promptText="Password"/>
-                        <PasswordField fx:id="confirmPasswordAccount" promptText="Confirm Password"/>
-                        <!--<ComboBox fx:id="registerRole" maxWidth="Infinity" promptText="Select Role" />-->
-                    </children>
-                </VBox>
-
-                <Button fx:id="registerButton" onAction="#onRegisterButtonClick" prefHeight="40.0" prefWidth="380.0"
-                        text="REGISTER"/>
-
-                <Button fx:id="changeLoginScene" onAction="#onLoginViewButtonClick" styleClass="auth-link"
-                        text="Already have an account? Login"/>
-            </children>
-            <padding>
-                <Insets bottom="40" left="40" right="40" top="40"/>
-            </padding>
-        </VBox>
-    </children>
-</StackPane>
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\SettingsView.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.Region?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
-<VBox prefHeight="600.0" prefWidth="800.0" spacing="20.0"
-      style="-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-radius: 10;"
-      stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
-    <children>
-        <Button mnemonicParsing="false" onAction="#handleBackToMarketplace" styleClass="button-ebay"
-                text="&lt;- Back to Marketplace"/>
-
-        <Label text="App Settings">
-            <font>
-                <Font name="System Bold" size="28.0"/>
-            </font>
-            <style>
-                -fx-text-fill: #3665f3;
-            </style>
-            <VBox.margin>
-                <Insets top="10.0"/>
-            </VBox.margin>
-        </Label>
-
-        <Label style="-fx-font-size: 16px;" text="• Notifications: Enabled"/>
-        <Label style="-fx-font-size: 16px;" text="• Display Theme: Light Mode"/>
-
-        <Region VBox.vgrow="ALWAYS"/>
-
-        <Button mnemonicParsing="false" onAction="#handleSignOut"
-                style="-fx-background-color: #dd1e31; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 30; -fx-background-radius: 5;"
-                text="SIGN OUT"/>
-    </children>
-</VBox>
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\Stylist.css ///
-======================================================================
-
-/* Tổng thể nền ứng dụng */
-.root {
-    -fx-background-color: #f7f7f7;
-    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
-}
-
-/* Kiểu dáng cho từng ô sản phẩm (Product Card) */
-.product-card {
-    -fx-background-color: white;
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
-    -fx-border-color: #e5e5e5;
-    -fx-border-width: 1;
-    /* Đổ bóng nhẹ cho chuyên nghiệp */
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 10, 0, 0, 4);
-}
-
-/* Hiệu ứng khi di chuột qua ô sản phẩm */
-.product-card:hover {
-    -fx-border-color: #3665f3;
-    -fx-cursor: hand;
-    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.2), 15, 0, 0, 5);
-}
-
-/* Nút bấm kiểu eBay (Xanh dương) */
-.button-ebay {
-    -fx-background-color: #3665f3;
-    -fx-text-fill: white;
-    -fx-background-radius: 20;
-    -fx-font-weight: bold;
-    -fx-padding: 8 20;
-}
-
-.button-ebay:hover {
-    -fx-background-color: #2b50c7;
-}
-
-/* Ô tìm kiếm */
-.search-field {
-    -fx-background-radius: 20;
-    -fx-border-radius: 20;
-    -fx-border-color: #333333;
-    -fx-background-color: white;
-    -fx-padding: 5 15;
-}
-
-.search-field:focused {
-    -fx-border-color: #3665f3;
-    -fx-border-width: 2;
-}
-
-/* Giá tiền */
-.price-text {
-    -fx-font-size: 18px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #111820;
-}
-
-/* Đồng hồ đếm ngược */
-.timer-text {
-    -fx-text-fill: #dd1e31;
-    -fx-font-weight: bold;
-}
-
-/* Trang trí hộp menu nhỏ */
-/* Thu nhỏ tổng thể cái hộp */
-.context-menu {
-    -fx-background-color: white;
-    -fx-padding: 2; /* Giảm khoảng cách từ viền hộp đến nội dung */
-    -fx-background-radius: 4;
-    -fx-border-radius: 4;
-    -fx-border-color: #dcdcdc;
-    -fx-border-width: 0.5; /* Viền mỏng thôi cho tinh tế */
-}
-
-/* Thu nhỏ từng dòng (Logout, Profile) */
-.menu-item {
-    -fx-padding: 4 10 4 10; /* Trên - Phải - Dưới - Trái. Giảm số 4 xuống nếu muốn mỏng hơn nữa */
-}
-
-/* Thu nhỏ chữ trong menu */
-.menu-item .label {
-    -fx-font-size: 12px; /* Chỉnh chữ nhỏ lại một chút */
-    -fx-text-fill: #333333;
-}
-
-.menu-item .label {
-    -fx-text-fill: #333;
-}
-
-.menu-item:focused {
-    -fx-background-color: #f4f4f4; /* Màu khi rê chuột qua dòng đó */
-}
-
-/* --- ADMIN DASHBOARD STYLES --- */
-
-/* Style cho TableView kiểu sạch sẽ */
-.table-view {
-    -fx-background-color: transparent;
-    -fx-border-color: #e5e5e5;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-}
-
-.table-view .column-header-background {
-    -fx-background-color: #f7f7f7; /* Nền xám nhạt cho tiêu đề bảng */
-    -fx-background-radius: 8 8 0 0;
-}
-
-.table-view .column-header {
-    -fx-background-color: transparent;
-    -fx-size: 40;
-}
-
-.table-view .table-row-cell:odd {
-    -fx-background-color: #fafafa;
-}
-
-.table-view .table-row-cell:hover {
-    -fx-background-color: #f0f5ff; /* Màu xanh cực nhạt khi di chuột qua dòng */
-}
-
-/* Nút xóa/chặn (Danger Action) */
-.button-danger {
-    -fx-background-color: white;
-    -fx-text-fill: #dd1e31;
-    -fx-border-color: #dd1e31;
-    -fx-border-radius: 20;
-    -fx-background-radius: 20;
-}
-
-.button-danger:hover {
-    -fx-background-color: #dd1e31;
-    -fx-text-fill: white;
-}
-
-/* Sidebar hoặc Thẻ thống kê nhanh */
-.stat-card {
-    -fx-background-color: white;
-    -fx-padding: 15;
-    -fx-background-radius: 10;
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 5, 0, 0, 2);
-}
-
-/* Nút Bán hàng
-.button-sell {
-    -fx-background-color: transparent;
-    -fx-border-color: #3665f3;
-    -fx-border-radius: 20;
-    -fx-text-fill: #3665f3;
-    -fx-font-weight: bold;
-    -fx-padding: 5 20;
-}
-
-.button-sell:hover {
-    -fx-background-color: #f0f5ff;
-}
-
-/* Form nhập liệu */
-.form-container {
-    -fx-background-color: white;
-    -fx-padding: 30;
-    -fx-background-radius: 10;
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.1), 10, 0, 0, 5);
-}
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\TableView.fxml ///
-======================================================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.*?>
-<?import org.kordamp.ikonli.javafx.FontIcon?>
-<VBox prefHeight="700.0" prefWidth="1000.0" spacing="0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25"
-      xmlns:fx="http://javafx.com/fxml/1">
-    <children>
-        <HBox fx:id="searchBarContainer" alignment="CENTER_LEFT" spacing="20.0"
-              style="-fx-background-color: white; -fx-border-color: #ddd; -fx-border-width: 0 0 1 0;">
-            <padding>
-                <Insets bottom="15" left="25" right="25" top="15"/>
-            </padding>
-            <FontIcon iconLiteral="mdi2n-note-search"/>
-            <TextField fx:id="searchField" promptText="Search securities, stocks, or bidders..."
-                       styleClass="search-field" HBox.hgrow="ALWAYS"/>
-            <Button fx:id="searchButton" mnemonicParsing="false" text="Search"/>
-        </HBox>
-
-        <ScrollPane fx:id="scrollPane" hbarPolicy="NEVER" VBox.vgrow="ALWAYS">
-            <content>
-                <TilePane fx:id="mainTilePane" hgap="5.0" nodeOrientation="LEFT_TO_RIGHT" vgap="5.0"/>
-            </content>
-        </ScrollPane>
-    </children>
-</VBox>
-
-
-======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\module-info.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\module-info.java ///
 ======================================================================
 
 module common {
@@ -6267,7 +5144,7 @@ module common {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\auction\Auction.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\auction\Auction.java ///
 ======================================================================
 
 package model.auction;
@@ -6582,6 +5459,30 @@ public class Auction extends Entity {
     }
 
     /**
+     * Reverts the last placed bid. This is typically used to roll back the in-memory
+     * state if the corresponding database transaction fails.
+     *
+     * @param previousWinner The user who was winning before the failed bid.
+     * @param previousHighestMaxBid The highest max bid before the failed bid.
+     */
+    public synchronized void revertLastBid(User previousWinner, double previousHighestMaxBid) {
+        if (!bidHistory.isEmpty()) {
+            bidHistory.remove(bidHistory.size() - 1);
+        }
+        
+        this.winningBidder = previousWinner;
+        this.highestMaxBid = previousHighestMaxBid;
+        
+        if (previousWinner == null) {
+            this.currentPrice = item.getStartingPrice();
+        } else if (!bidHistory.isEmpty()) {
+            this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
+        } else {
+            this.currentPrice = item.getStartingPrice();
+        }
+    }
+
+    /**
      * Returns a summary string containing the core details of this auction session.
      *
      * @return Formatted information string.
@@ -6598,7 +5499,7 @@ public class Auction extends Entity {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\auction\AutoBid.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\auction\AutoBid.java ///
 ======================================================================
 
 package model.auction;
@@ -6674,7 +5575,7 @@ public class AutoBid {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\base\Entity.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\base\Entity.java ///
 ======================================================================
 
 package model.base;
@@ -6732,7 +5633,7 @@ public abstract class Entity {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\finance\BidTransaction.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\finance\BidTransaction.java ///
 ======================================================================
 
 package model.finance;
@@ -6811,7 +5712,7 @@ public class BidTransaction extends Entity {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\finance\Wallet.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\finance\Wallet.java ///
 ======================================================================
 
 package model.finance;
@@ -6871,7 +5772,7 @@ public class Wallet {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\finance\WalletTransaction.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\finance\WalletTransaction.java ///
 ======================================================================
 
 package model.finance;
@@ -6962,7 +5863,7 @@ public class WalletTransaction extends Entity {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\DigitalItem.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\item\DigitalItem.java ///
 ======================================================================
 
 package model.item;
@@ -6986,7 +5887,7 @@ public class DigitalItem extends Item {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\Item.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\item\Item.java ///
 ======================================================================
 
 package model.item;
@@ -7094,7 +5995,7 @@ public class Item extends Entity {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\ItemFactory.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\item\ItemFactory.java ///
 ======================================================================
 
 package model.item;
@@ -7145,7 +6046,7 @@ public class ItemFactory {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\ServicePackage.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\item\ServicePackage.java ///
 ======================================================================
 
 package model.item;
@@ -7169,7 +6070,7 @@ public class ServicePackage extends Item {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\item\TangibleItem.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\item\TangibleItem.java ///
 ======================================================================
 
 package model.item;
@@ -7193,7 +6094,7 @@ public class TangibleItem extends Item {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\user\Admin.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\user\Admin.java ///
 ======================================================================
 
 package model.user;
@@ -7211,11 +6112,11 @@ public class Admin extends User {
      *
      * @param id       The unique identifier for the administrator.
      * @param userName The login username.
-     * @param userPass The encrypted password.
+     * @param password The encrypted password.
      * @param name     The real name or display name of the administrator.
      */
-    public Admin(String id, String userName, String userPass, String name) {
-        super(id, userName, userPass, name, "Admin");
+    public Admin(String id, String userName, String password, String name) {
+        super(id, userName, password, name, "Admin");
     }
 
     /**
@@ -7225,7 +6126,7 @@ public class Admin extends User {
      * @param admin The existing User object to be elevated to an administrator.
      */
     public Admin(User admin) {
-        super(admin.getId(), admin.getUserName(), admin.getUserPass(), admin.getName(), "Admin");
+        super(admin.getId(), admin.getUserName(), admin.getPassword(), admin.getName(), "Admin");
     }
 
     /**
@@ -7242,7 +6143,7 @@ public class Admin extends User {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\model\user\User.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\model\user\User.java ///
 ======================================================================
 
 package model.user;
@@ -7257,7 +6158,7 @@ import model.base.Entity;
 public class User extends Entity {
 
     private String userName;
-    private String userPass;
+    private String password; // Renamed from userPass
     private String name;
     private String role;
 
@@ -7280,14 +6181,14 @@ public class User extends Entity {
      *
      * @param id       The unique identifier for the user.
      * @param userName The login username.
-     * @param userPass The user's encrypted password.
+     * @param password The user's encrypted password.
      * @param name     The display name or real name of the user.
      * @param role     The system role assigned to the user (e.g., "USER", "ADMIN").
      */
-    public User(String id, String userName, String userPass, String name, String role) {
+    public User(String id, String userName, String password, String name, String role) {
         super(id);
         this.userName = userName;
-        this.userPass = userPass;
+        this.password = password;
         this.name = name;
         this.role = role;
     }
@@ -7297,13 +6198,13 @@ public class User extends Entity {
      *
      * @param id       The unique identifier for the user.
      * @param userName The login username.
-     * @param userPass The user's encrypted password.
+     * @param password The user's encrypted password.
      * @param name     The display name or real name of the user.
      */
-    public User(String id, String userName, String userPass, String name) {
+    public User(String id, String userName, String password, String name) {
         super(id);
         this.userName = userName;
-        this.userPass = userPass;
+        this.password = password;
         this.name = name;
     }
 
@@ -7315,12 +6216,14 @@ public class User extends Entity {
         this.userName = userName;
     }
 
-    public String getUserPass() {
-        return userPass;
+    // Getter for password
+    public String getPassword() {
+        return password;
     }
 
-    public void setUserPass(String userPass) {
-        this.userPass = userPass;
+    // Setter for password
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getName() {
@@ -7364,7 +6267,7 @@ public class User extends Entity {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\network\NetworkMessage.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\network\NetworkMessage.java ///
 ======================================================================
 
 package network;
@@ -7416,7 +6319,7 @@ public class NetworkMessage {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\utils\ConsoleColors.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\utils\ConsoleColors.java ///
 ======================================================================
 
 package utils;
@@ -7461,7 +6364,7 @@ public final class ConsoleColors {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\utils\CryptoUtil.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\utils\CryptoUtil.java ///
 ======================================================================
 
 package utils;
@@ -7624,7 +6527,7 @@ public class CryptoUtil {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\utils\JacksonConfig.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\utils\JacksonConfig.java ///
 ======================================================================
 
 package utils;
@@ -7720,7 +6623,7 @@ public final class JacksonConfig {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\utils\TimeUtil.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\common\src\main\java\utils\TimeUtil.java ///
 ======================================================================
 
 package utils;
@@ -7768,7 +6671,7 @@ public class TimeUtil {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\controller\AuctionMonitor.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\controller\AuctionMonitor.java ///
 ======================================================================
 
 package controller;
@@ -7837,7 +6740,33 @@ public class AuctionMonitor {
      * Iterates through the in-memory auction list, finalizing those whose time has expired.
      */
     private void processRamAuctions() {
-        for (Auction auction : allAuctions) {
+        // Use a safe copy to iterate, preventing ConcurrentModificationException
+        for (Auction auction : List.copyOf(allAuctions)) {
+
+            // Automatically start auctions that are OPEN and have reached their start time.
+            if (auction.getStatus().equals(Auction.STATUS_OPEN) && LocalDateTime.now().isAfter(auction.getStartTime())) {
+                // Ensure the auction has not already ended
+                if (LocalDateTime.now().isBefore(auction.getEndTime())) {
+                    auction.setStatus(Auction.STATUS_RUNNING);
+                    System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " has started and is now " + GREEN + "RUNNING." + RESET);
+
+                    // Asynchronously update the database to persist the new state
+                    Callable<Boolean> dbUpdateTask = () -> {
+                        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
+                        try (Connection conn = DatabaseManager.getConnection();
+                             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                            pstmt.setString(1, Auction.STATUS_RUNNING);
+                            pstmt.setString(2, auction.getId());
+                            pstmt.executeUpdate();
+                            return true;
+                        } catch (Exception e) {
+                            System.out.println("[Database]: Failed to update auction to RUNNING: " + RED + e.getMessage() + RESET);
+                            return false;
+                        }
+                    };
+                    TransactionManager.submitTask(dbUpdateTask);
+                }
+            }
 
             // Check both RUNNING and OPEN statuses to handle auctions with zero bids
             if (auction.getStatus().equals(Auction.STATUS_RUNNING) || auction.getStatus().equals(Auction.STATUS_OPEN)) {
@@ -7893,7 +6822,7 @@ public class AuctionMonitor {
      */
     private void sweepDatabaseForOrphans() {
         Callable<Boolean> dbSweepTask = () -> {
-            String selectSql = "SELECT id, end_time, current_price, starting_price FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
+            String selectSql = "SELECT id, end_time, current_price, starting_price, start_time FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
             String updateSql = "UPDATE auctions SET status = ? WHERE id = ?";
 
             try (Connection conn = DatabaseManager.getConnection();
@@ -7902,28 +6831,32 @@ public class AuctionMonitor {
 
                 while (rs.next()) {
                     String id = rs.getString("id");
-                    String endTimeStr = rs.getString("end_time");
-                    double currentPrice = rs.getDouble("current_price");
-                    double startPrice = rs.getDouble("starting_price");
+                    LocalDateTime endTime = LocalDateTime.parse(rs.getString("end_time"));
+                    LocalDateTime startTime = LocalDateTime.parse(rs.getString("start_time"));
+                    LocalDateTime now = LocalDateTime.now();
 
-                    LocalDateTime endTime = LocalDateTime.parse(endTimeStr);
-
-                    // Verify if the database auction's deadline has passed
-                    if (LocalDateTime.now().isAfter(endTime)) {
-
-                        // Determine if it was sold or canceled based on price progression
+                    // Case 1: The auction's end time has passed.
+                    if (now.isAfter(endTime)) {
+                        double currentPrice = rs.getDouble("current_price");
+                        double startPrice = rs.getDouble("starting_price");
                         String newStatus = (currentPrice > startPrice) ? "FINISHED" : "CANCELED";
 
-                        // Execute atomic update directly to the Database
                         try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
                             updateStmt.setString(1, newStatus);
                             updateStmt.setString(2, id);
                             updateStmt.executeUpdate();
                         }
-
-                        // Force clients to remove the ghost item from their UI
                         ClientManager.broadcast("REMOVE_AUCTION", id, null);
                         System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
+                    }
+                    // Case 2: The auction should be running but is not in RAM.
+                    else if (now.isAfter(startTime)) {
+                         try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+                            updateStmt.setString(1, Auction.STATUS_RUNNING);
+                            updateStmt.setString(2, id);
+                            updateStmt.executeUpdate();
+                        }
+                        System.out.println("[System]: " + BLUE + "Swept and started orphaned database auction: " + YELLOW + id + RESET);
                     }
                 }
                 return true;
@@ -7947,7 +6880,7 @@ public class AuctionMonitor {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\controller\ServerAdminController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\controller\ServerAdminController.java ///
 ======================================================================
 
 package controller;
@@ -8027,21 +6960,20 @@ public class ServerAdminController {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\controller\ServerBidderController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\controller\ServerBidderController.java ///
 ======================================================================
 
 package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
+import database.dao.BidDAO;
 import model.auction.Auction;
 import model.user.User;
 import service.AutoBidEngine;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -8056,6 +6988,8 @@ import static utils.ConsoleColors.*;
  * atomically and asynchronously.
  */
 public class ServerBidderController {
+
+    private final BidDAO bidDAO = new BidDAO();
 
     /**
      * Processes a bid placement attempt for a specific auction.
@@ -8087,94 +7021,34 @@ public class ServerBidderController {
             User previousWinner = auction.getWinningBidder();
             double amountToRefund = auction.getHighestMaxBid();
 
+            // Validate auction logic in RAM before hitting the database
+            boolean isRamSuccess = auction.placeBid(currentUser, newMaxBid);
+            if (!isRamSuccess) {
+                return false; // Bid is invalid (e.g., too low, auction closed)
+            }
+
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false); // Begin ACID transaction
 
                 try {
-                    // STEP 1: Atomic wallet deduction with balance check
-                    String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+                    boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, auction, newMaxBid, previousWinner, amountToRefund);
 
-                    try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
-                        pstmt.setDouble(1, newMaxBid);
-                        pstmt.setString(2, currentUser.getId());
-                        pstmt.setDouble(3, newMaxBid);
-
-                        int rowsAffected = pstmt.executeUpdate();
-
-                        if (rowsAffected == 0) {
-                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
-                            conn.rollback();
-                            return false;
-                        }
-                    }
-
-                    // STEP 2: Validate auction logic in RAM
-                    boolean isSuccess = auction.placeBid(currentUser, newMaxBid);
-
-                    if (isSuccess) {
-                        String now = LocalDateTime.now().toString();
-                        String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
-
-                        // Log the withdrawal transaction
-                        try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                            pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
-                            pstmt.setString(2, currentUser.getId());
-                            pstmt.setDouble(3, -newMaxBid);
-                            pstmt.setString(4, "Auction bid placed for session: " + auction.getId());
-                            pstmt.setString(5, now);
-                            pstmt.executeUpdate();
-                        }
-
-                        // STEP 3: Refund the previous winner (if not the same user)
-                        if (previousWinner != null && !previousWinner.getId().equals(currentUser.getId())) {
-                            String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
-
-                            try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
-                                pstmt.setDouble(1, amountToRefund);
-                                pstmt.setString(2, previousWinner.getId());
-                                pstmt.executeUpdate();
-                            }
-
-                            // Log the refund transaction
-                            try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                                pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
-                                pstmt.setString(2, previousWinner.getId());
-                                pstmt.setDouble(3, amountToRefund);
-                                pstmt.setString(4, "Refund for price overrun during session: " + auction.getId());
-                                pstmt.setString(5, now);
-                                pstmt.executeUpdate();
-                            }
-                        }
-
-                        // STEP 4: Record the bid history and update auction current price
-                        String bidLogSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
-                        try (PreparedStatement pstmt = conn.prepareStatement(bidLogSql)) {
-                            pstmt.setString(1, "BID-" + System.currentTimeMillis());
-                            pstmt.setString(2, auction.getId());
-                            pstmt.setString(3, currentUser.getId());
-                            pstmt.setDouble(4, auction.getCurrentPrice());
-                            pstmt.setString(5, now);
-                            pstmt.executeUpdate();
-                        }
-
-                        String updateAuctionSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
-                        try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
-                            pstmt.setDouble(1, auction.getCurrentPrice());
-                            pstmt.setString(2, auction.getId());
-                            pstmt.executeUpdate();
-                        }
-
+                    if (isDbSuccess) {
                         conn.commit(); // Finalize all changes
                         System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                         return true;
-
                     } else {
+                        System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
                         conn.rollback();
+                        // Revert the bid placement in RAM as the DB transaction failed
+                        auction.revertLastBid(previousWinner, amountToRefund);
                         return false;
                     }
 
                 } catch (SQLException e) {
                     conn.rollback();
+                    // Revert the bid placement in RAM as the DB transaction failed
+                    auction.revertLastBid(previousWinner, amountToRefund);
                     System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
                     return false;
                 }
@@ -8228,19 +7102,8 @@ public class ServerBidderController {
 
         if (isSuccess) {
             Callable<Boolean> saveAutoBidTask = () -> {
-                String sql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
-
-                try (Connection conn = DatabaseManager.getConnection();
-                     PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-                    pstmt.setString(1, "AB-" + System.currentTimeMillis());
-                    pstmt.setString(2, auction.getId());
-                    pstmt.setString(3, currentUser.getId());
-                    pstmt.setDouble(4, maxBid);
-                    pstmt.setDouble(5, increment);
-
-                    pstmt.executeUpdate();
-                    return true;
+                try {
+                    return bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
                 } catch (SQLException e) {
                     System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
                     return false;
@@ -8263,8 +7126,9 @@ public class ServerBidderController {
     }
 }
 
+
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\controller\ServerPaymentController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\controller\ServerPaymentController.java ///
 ======================================================================
 
 package controller;
@@ -8348,18 +7212,16 @@ public class ServerPaymentController {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\controller\ServerSellerController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\controller\ServerSellerController.java ///
 ======================================================================
 
 package controller;
 
-import database.DatabaseManager;
+import database.dao.AuctionDAO;
 import model.auction.Auction;
 import model.item.Item;
 import model.user.User;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
@@ -8371,6 +7233,8 @@ import static utils.ConsoleColors.*;
  * conditions, and handle the deletion/removal of auction sessions from the active database.
  */
 public class ServerSellerController {
+
+    private final AuctionDAO auctionDAO = new AuctionDAO();
 
     /**
      * Creates and persists a new auction session in the database.
@@ -8387,31 +7251,15 @@ public class ServerSellerController {
         // Utilize the factory method to prepare the Auction object in RAM
         Auction newAuction = Auction.createNewAuction(item, currentUser, bidIncrement, startTime, durationMinutes);
 
-        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, newAuction.getId());
-            pstmt.setString(2, item.getItemName());
-            pstmt.setString(3, item.getDescription());
-            pstmt.setDouble(4, item.getStartingPrice());
-            pstmt.setDouble(5, newAuction.getCurrentPrice());
-            pstmt.setDouble(6, bidIncrement);
-            pstmt.setString(7, newAuction.getStartTime().toString());
-            pstmt.setString(8, newAuction.getEndTime().toString());
-            pstmt.setString(9, newAuction.getStatus());
-            pstmt.setString(10, currentUser.getId());
-            pstmt.setString(11, item.getImageUrl());
-
-            pstmt.executeUpdate();
-            System.out.println("[System]: User \"" + YELLOW + currentUser.getName() + RESET + "\" created auction: " + item.getItemName());
-
+        try {
+            if (auctionDAO.addAuction(newAuction)) {
+                System.out.println("[System]: User \"" + YELLOW + currentUser.getName() + RESET + "\" created auction: " + item.getItemName());
+                return newAuction;
+            }
         } catch (SQLException e) {
             System.out.println("[Error]: Database error during addAuction: " + utils.ConsoleColors.RED + e.getMessage() + utils.ConsoleColors.RESET);
-            return null;
         }
-
-        return newAuction;
+        return null;
     }
 
     /**
@@ -8445,22 +7293,9 @@ public class ServerSellerController {
 
         // If an auction was previously canceled, editing it resets it to PENDING for re-approval
         String newStatus = auction.getStatus().equals(Auction.STATUS_CANCELED) ? Auction.STATUS_PENDING : auction.getStatus();
-        String sql = "UPDATE auctions SET item_name = ?, description = ?, starting_price = ?, current_price = ?, start_time = ?, end_time = ?, status = ? WHERE id = ?";
 
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, newName);
-            pstmt.setString(2, newDesc);
-            pstmt.setDouble(3, newStartPrice);
-            pstmt.setDouble(4, newStartPrice);
-            pstmt.setString(5, newStartTime.toString());
-            pstmt.setString(6, newEndTime.toString());
-            pstmt.setString(7, newStatus);
-            pstmt.setString(8, auction.getId());
-
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
+        try {
+            if (auctionDAO.updateAuction(auction, newName, newDesc, newStartPrice, newStartTime, newEndTime, newStatus)) {
                 // Synchronize the RAM object with the Database updates
                 auction.getItem().setItemName(newName);
                 auction.getItem().setDescription(newDesc);
@@ -8494,16 +7329,8 @@ public class ServerSellerController {
             return false;
         }
 
-        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, Auction.STATUS_DELETED);
-            pstmt.setString(2, auction.getId());
-
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
+        try {
+            if (auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_DELETED)) {
                 auction.setStatus(Auction.STATUS_DELETED);
                 System.out.println("[System]: Auction \"" + YELLOW + auction.getId() + RESET + "\" has been deleted by " + YELLOW + currentUser.getName() + RESET);
                 return true;
@@ -8515,20 +7342,21 @@ public class ServerSellerController {
     }
 }
 
+
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\controller\UserController.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\controller\UserController.java ///
 ======================================================================
 
 package controller;
 
 import database.DatabaseManager;
+import database.dao.UserDAO;
 import model.user.Admin;
 import model.user.User;
 import org.mindrot.jbcrypt.BCrypt;
+import service.TOTPService;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import static utils.ConsoleColors.*;
@@ -8541,10 +7369,8 @@ import static utils.ConsoleColors.*;
  */
 public class UserController {
 
-    /**
-     * Service utility for handling 2FA secret key generation and QR URL construction.
-     */
-    private final service.TOTPService totpService = new service.TOTPService();
+    private final TOTPService totpService = new TOTPService();
+    private final UserDAO userDAO = new UserDAO();
 
     /**
      * Registers a new user in the system and initializes their digital wallet.
@@ -8570,59 +7396,28 @@ public class UserController {
             return "[Error]: Invalid role";
         }
 
-        String checkSql = "SELECT 1 FROM users WHERE username = ?";
-        String insertSql = "INSERT INTO users (id, username, password, name, role, is_good, totp_secret, is_totp_enabled) VALUES (?, ?, ?, ?, ?, 0, ?, 1)";
-        String insertWalletSql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
-
         try (Connection conn = DatabaseManager.getConnection()) {
-            // Disable auto-commit to manage User and Wallet creation as a single atomic unit
             conn.setAutoCommit(false);
 
             try {
-                // Verify username uniqueness
-                try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-                    checkStmt.setString(1, userName);
-                    ResultSet rs = checkStmt.executeQuery();
-                    if (rs.next()) {
-                        System.out.println("[System](UserController): Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
-                        return "[Error]: Username \"" + userName + "\" already exists.";
-                    }
+                if (userDAO.isUsernameExists(conn, userName)) {
+                    System.out.println("[System](UserController): Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
+                    return "[Error]: Username \"" + userName + "\" already exists.";
                 }
 
                 String newId = "U-" + System.currentTimeMillis();
-
-                // Securely hash the password using BCrypt with a workload factor of 12
                 String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
-
-                // Initialize 2FA components
                 String secretKey = totpService.createSecretKey();
-                String qrUrl = totpService.getQRUrl(userName, secretKey);
 
-                // Insert the User record
-                try (PreparedStatement insertUserStmt = conn.prepareStatement(insertSql)) {
-                    insertUserStmt.setString(1, newId);
-                    insertUserStmt.setString(2, userName);
-                    insertUserStmt.setString(3, hashedPassword);
-                    insertUserStmt.setString(4, name);
-                    insertUserStmt.setString(5, role.toUpperCase());
-                    insertUserStmt.setString(6, secretKey);
+                userDAO.createUserAndWallet(conn, newId, userName, hashedPassword, name, role, secretKey);
 
-                    insertUserStmt.executeUpdate();
-                }
-
-                // Initialize the User's digital wallet with a 0.0 balance
-                try (PreparedStatement insertWalletStmt = conn.prepareStatement(insertWalletSql)) {
-                    insertWalletStmt.setString(1, newId);
-                    insertWalletStmt.executeUpdate();
-                }
-
-                // Finalize the transaction
                 conn.commit();
 
+                String qrUrl = totpService.getQRUrl(userName, secretKey);
                 System.out.println("[System]: \"" + YELLOW + userName + RESET + "\" has just created an account. 2FA Enabled.");
                 return "SUCCESS|" + secretKey + "|" + qrUrl;
+
             } catch (SQLException e) {
-                // Revert all changes if any part of the registration fails
                 conn.rollback();
                 throw e;
             }
@@ -8642,34 +7437,16 @@ public class UserController {
      * {@code null} otherwise.
      */
     public User login(String userName, String password) {
-        String sql = "SELECT * FROM users WHERE username = ?";
+        try {
+            User user = userDAO.findUserByUsername(userName);
 
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            if (user != null && BCrypt.checkpw(password, user.getPassword())) {
+                System.out.println("[System]: \"" + YELLOW + user.getName() + RESET + "\" (" + YELLOW + user.getRole() + RESET + ") has logged in.");
 
-            pstmt.setString(1, userName);
-            ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                String dbHash = rs.getString("password");
-
-                // Validate password hash using BCrypt
-                if (BCrypt.checkpw(password, dbHash)) {
-                    String id = rs.getString("id");
-                    String name = rs.getString("name");
-                    String role = rs.getString("role");
-                    boolean isGood = rs.getInt("is_good") == 1;
-
-                    System.out.println("[System]: \"" + YELLOW + name + RESET + "\" (" + YELLOW + role + RESET + ") has logged in.");
-
-                    // Instantiate the appropriate object type based on the assigned system role
-                    if (role.equalsIgnoreCase("ADMIN")) {
-                        return new Admin(id, userName, password, name);
-                    } else {
-                        User user = new User(id, userName, password, name, role);
-                        user.setGood(isGood);
-                        return user;
-                    }
+                if (user.getRole().equalsIgnoreCase("ADMIN")) {
+                    return new Admin(user.getId(), user.getUserName(), user.getPassword(), user.getName());
+                } else {
+                    return user;
                 }
             }
         } catch (SQLException e) {
@@ -8681,8 +7458,9 @@ public class UserController {
     }
 }
 
+
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\database\DatabaseManager.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\database\DatabaseManager.java ///
 ======================================================================
 
 package database;
@@ -8690,12 +7468,12 @@ package database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.mindrot.jbcrypt.BCrypt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-
-import static utils.ConsoleColors.*;
 
 /**
  * Manages database connectivity and lifecycle for the auction system.
@@ -8703,6 +7481,8 @@ import static utils.ConsoleColors.*;
  * the initial creation and migration of SQLite database tables.
  */
 public class DatabaseManager {
+
+    private static final Logger log = LoggerFactory.getLogger(DatabaseManager.class);
 
     /**
      * The JDBC connection URL for the SQLite database, configured with WAL mode.
@@ -8795,14 +7575,14 @@ public class DatabaseManager {
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
-                System.out.println("[Database]: " + GREEN + "Successfully upgraded user table" + RESET);
+                log.info("Successfully upgraded user table");
             } catch (SQLException ignored) {
                 // Columns already exist
             }
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;");
-                System.out.println("[Database]: " + GREEN + "Successfully upgraded auctions table" + RESET);
+                log.info("Successfully upgraded auctions table");
             } catch (SQLException ignored) {
                 // Cột đã tồn tại
             }
@@ -8854,16 +7634,16 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            System.out.println("[Database]:" + GREEN + " Successfully initialized" + RESET);
+            log.info("Successfully initialized");
 
         } catch (SQLException e) {
-            System.out.println("[Error]: Database initialization error: " + RED + e.getMessage() + RESET);
+            log.error("Database initialization error: {}", e.getMessage());
         }
     }
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\database\TransactionManager.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\database\TransactionManager.java ///
 ======================================================================
 
 package database;
@@ -8949,7 +7729,245 @@ public class TransactionManager {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ClientHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\database\dao\AuctionDAO.java ///
+======================================================================
+
+package database.dao;
+
+import database.DatabaseManager;
+import model.auction.Auction;
+import model.item.Item;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+
+public class AuctionDAO {
+
+    public boolean addAuction(Auction auction) throws SQLException {
+        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            Item item = auction.getItem();
+            pstmt.setString(1, auction.getId());
+            pstmt.setString(2, item.getItemName());
+            pstmt.setString(3, item.getDescription());
+            pstmt.setDouble(4, item.getStartingPrice());
+            pstmt.setDouble(5, auction.getCurrentPrice());
+            pstmt.setDouble(6, auction.getBidIncrement());
+            pstmt.setString(7, auction.getStartTime().toString());
+            pstmt.setString(8, auction.getEndTime().toString());
+            pstmt.setString(9, auction.getStatus());
+            pstmt.setString(10, auction.getSeller().getId());
+            pstmt.setString(11, item.getImageUrl());
+
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    public boolean updateAuction(Auction auction, String newName, String newDesc, double newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime, String newStatus) throws SQLException {
+        String sql = "UPDATE auctions SET item_name = ?, description = ?, starting_price = ?, current_price = ?, start_time = ?, end_time = ?, status = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newName);
+            pstmt.setString(2, newDesc);
+            pstmt.setDouble(3, newStartPrice);
+            pstmt.setDouble(4, newStartPrice);
+            pstmt.setString(5, newStartTime.toString());
+            pstmt.setString(6, newEndTime.toString());
+            pstmt.setString(7, newStatus);
+            pstmt.setString(8, auction.getId());
+
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    public boolean updateAuctionStatus(String auctionId, String status) throws SQLException {
+        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, status);
+            pstmt.setString(2, auctionId);
+
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+}
+
+
+======================================================================
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\database\dao\BidDAO.java ///
+======================================================================
+
+package database.dao;
+
+import model.auction.Auction;
+import model.user.User;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+
+public class BidDAO {
+
+    public boolean executeBidTransaction(Connection conn, User currentUser, Auction auction, double newMaxBid, User previousWinner, double amountToRefund) throws SQLException {
+        // STEP 1: Atomic wallet deduction with balance check
+        String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
+            pstmt.setDouble(1, newMaxBid);
+            pstmt.setString(2, currentUser.getId());
+            pstmt.setDouble(3, newMaxBid);
+            if (pstmt.executeUpdate() == 0) {
+                return false; // Insufficient balance
+            }
+        }
+
+        // STEP 2: Log the withdrawal transaction
+        String now = LocalDateTime.now().toString();
+        String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+            pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
+            pstmt.setString(2, currentUser.getId());
+            pstmt.setDouble(3, -newMaxBid);
+            pstmt.setString(4, "Auction bid placed for session: " + auction.getId());
+            pstmt.setString(5, now);
+            pstmt.executeUpdate();
+        }
+
+        // STEP 3: Refund the previous winner (if not the same user)
+        if (previousWinner != null && !previousWinner.getId().equals(currentUser.getId())) {
+            String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
+                pstmt.setDouble(1, amountToRefund);
+                pstmt.setString(2, previousWinner.getId());
+                pstmt.executeUpdate();
+            }
+
+            // Log the refund transaction
+            try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+                pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
+                pstmt.setString(2, previousWinner.getId());
+                pstmt.setDouble(3, amountToRefund);
+                pstmt.setString(4, "Refund for price overrun during session: " + auction.getId());
+                pstmt.setString(5, now);
+                pstmt.executeUpdate();
+            }
+        }
+
+        // STEP 4: Record the bid history
+        String bidLogSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(bidLogSql)) {
+            pstmt.setString(1, "BID-" + System.currentTimeMillis());
+            pstmt.setString(2, auction.getId());
+            pstmt.setString(3, currentUser.getId());
+            pstmt.setDouble(4, auction.getCurrentPrice());
+            pstmt.setString(5, now);
+            pstmt.executeUpdate();
+        }
+
+        // STEP 5: Update auction current price
+        String updateAuctionSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
+            pstmt.setDouble(1, auction.getCurrentPrice());
+            pstmt.setString(2, auction.getId());
+            pstmt.executeUpdate();
+        }
+
+        return true;
+    }
+
+    public boolean saveAutoBid(User currentUser, Auction auction, double maxBid, double increment) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
+        try (Connection conn = database.DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, "AB-" + System.currentTimeMillis());
+            pstmt.setString(2, auction.getId());
+            pstmt.setString(3, currentUser.getId());
+            pstmt.setDouble(4, maxBid);
+            pstmt.setDouble(5, increment);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+}
+
+
+======================================================================
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\database\dao\UserDAO.java ///
+======================================================================
+
+package database.dao;
+
+import database.DatabaseManager;
+import model.user.User;
+import org.mindrot.jbcrypt.BCrypt;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class UserDAO {
+
+    public boolean isUsernameExists(Connection conn, String userName) throws SQLException {
+        String checkSql = "SELECT 1 FROM users WHERE username = ?";
+        try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+            checkStmt.setString(1, userName);
+            ResultSet rs = checkStmt.executeQuery();
+            return rs.next();
+        }
+    }
+
+    public void createUserAndWallet(Connection conn, String userId, String userName, String hashedPassword, String name, String role, String secretKey) throws SQLException {
+        String insertUserSql = "INSERT INTO users (id, username, password, name, role, is_good, totp_secret, is_totp_enabled) VALUES (?, ?, ?, ?, ?, 0, ?, 1)";
+        try (PreparedStatement insertUserStmt = conn.prepareStatement(insertUserSql)) {
+            insertUserStmt.setString(1, userId);
+            insertUserStmt.setString(2, userName);
+            insertUserStmt.setString(3, hashedPassword);
+            insertUserStmt.setString(4, name);
+            insertUserStmt.setString(5, role.toUpperCase());
+            insertUserStmt.setString(6, secretKey);
+            insertUserStmt.executeUpdate();
+        }
+
+        String insertWalletSql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
+        try (PreparedStatement insertWalletStmt = conn.prepareStatement(insertWalletSql)) {
+            insertWalletStmt.setString(1, userId);
+            insertWalletStmt.executeUpdate();
+        }
+    }
+
+    public User findUserByUsername(String userName) throws SQLException {
+        String sql = "SELECT * FROM users WHERE username = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, userName);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                User user = new User(
+                        rs.getString("id"),
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getString("name"),
+                        rs.getString("role")
+                );
+                user.setGood(rs.getInt("is_good") == 1);
+                return user;
+            }
+        }
+        return null;
+    }
+}
+
+
+======================================================================
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\ClientHandler.java ///
 ======================================================================
 
 package server;
@@ -8959,6 +7977,8 @@ import controller.UserController;
 import model.user.User;
 import network.NetworkMessage;
 import org.java_websocket.WebSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ServerExtension.ClientManager;
 import server.handler.CommandDispatcher;
 import utils.CryptoUtil;
@@ -8967,8 +7987,6 @@ import utils.JacksonConfig;
 import javax.crypto.SecretKey;
 import java.security.KeyPair;
 import java.util.Base64;
-
-import static utils.ConsoleColors.*;
 
 /**
  * Handles individual client WebSocket connections.
@@ -8984,6 +8002,8 @@ import static utils.ConsoleColors.*;
  * does not monopolize a dedicated thread.
  */
 public class ClientHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
 
     private final WebSocket conn;
     private static int cNC = 0;
@@ -9023,7 +8043,7 @@ public class ClientHandler {
             String publicKeyBase64 = Base64.getEncoder().encodeToString(rsaKeyPair.getPublic().getEncoded());
             conn.send(publicKeyBase64);
         } catch (Exception e) {
-            System.out.println("[Error]: RSA Key generation failed in ClientHandler: " + RED + e.getMessage() + RESET);
+            log.error("RSA Key generation failed in ClientHandler: {}", e.getMessage());
         }
     }
 
@@ -9042,9 +8062,9 @@ public class ClientHandler {
             try {
                 sharedAesKey = CryptoUtil.decryptAESKeyWithRSA(message, rsaKeyPair.getPrivate());
                 isAesKeyEstablished = true;
-                System.out.println("[Security]: Handshake success with \"" + YELLOW + clientName + RESET + "\". AES Channel established.");
+                log.info("Handshake success with \"{}\". AES Channel established.", clientName);
             } catch (Exception e) {
-                System.out.println("[Security]: Handshake failed with " + YELLOW + clientName + RESET);
+                log.warn("Handshake failed with {}", clientName);
                 closeConnection();
             }
             return;
@@ -9053,12 +8073,12 @@ public class ClientHandler {
         // Phase 2: Standard Command Processing
         try {
             String jsonMessage = CryptoUtil.decryptAES(message, sharedAesKey);
-            System.out.println("[System]: Decrypted JSON from Client: " + YELLOW + jsonMessage + RESET);
+            log.debug("Decrypted JSON from Client: {}", jsonMessage);
 
             NetworkMessage netMsg = mapper.readValue(jsonMessage, NetworkMessage.class);
 
             if (netMsg.getCommand() == null) {
-                System.out.println("[System](ClientHandler): \"" + YELLOW + clientName + RESET + "\" sent a null command.");
+                log.warn("\"{}\" sent a null command.", clientName);
                 sendResponse("ERROR", "Command cannot be null");
                 return;
             }
@@ -9066,7 +8086,7 @@ public class ClientHandler {
             dispatcher.dispatch(netMsg, this);
 
         } catch (Exception e) {
-            System.out.println("[System](ClientHandler): Invalid JSON format or Decryption error: " + RED + e.getMessage() + RESET);
+            log.error("Invalid JSON format or Decryption error: {}", e.getMessage());
             sendResponse("ERROR", "Invalid JSON format");
         }
     }
@@ -9090,7 +8110,7 @@ public class ClientHandler {
             conn.send(encryptedPayload);
 
         } catch (Exception e) {
-            System.out.println("[System](ClientHandler): JSON serialization error: " + RED + e.getMessage() + RESET);
+            log.error("JSON serialization error: {}", e.getMessage());
         }
     }
 
@@ -9108,7 +8128,7 @@ public class ClientHandler {
      */
     public void closeConnection() {
         ClientManager.removeClient(this);
-        System.out.println("[System]: \"" + YELLOW + clientName + RESET + "\" has disconnected.");
+        log.info("\"{}\" has disconnected.", clientName);
         if (conn != null && conn.isOpen()) {
             conn.close();
         }
@@ -9169,7 +8189,7 @@ public class ClientHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\MultiThreadedServer.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\MultiThreadedServer.java ///
 ======================================================================
 
 package server;
@@ -9180,6 +8200,8 @@ import io.github.cdimascio.dotenv.Dotenv;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
@@ -9212,6 +8234,8 @@ import static utils.ConsoleColors.*;
  * </ul>
  */
 public class MultiThreadedServer {
+    private static final Logger log = LoggerFactory.getLogger(MultiThreadedServer.class);
+
     // Scheduler for periodic IP/Port updates
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
@@ -9264,12 +8288,12 @@ public class MultiThreadedServer {
 
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
-                System.out.println("[JSONBin]: New IP - Port synced: " + YELLOW + currentIp + ":" + currentPort + RESET);
+                log.debug("New IP - Port (JSON-Bin) synced: {}:{}", currentIp, currentPort);
             } else {
-                System.err.println("[JSONBin]: Error: " + RED + responseCode + RESET);
+                log.error(""+responseCode);
             }
         } catch (Exception e) {
-            System.out.println("[JSONBin]: Connection Error: " + RED + e.getMessage() + RESET);
+            log.error("Connection error: {}", e.getMessage());
         }
     }
 
@@ -9317,7 +8341,7 @@ public class MultiThreadedServer {
 
             if (!ip.isEmpty() && !port.isEmpty()) return new String[]{ip, port};
         } catch (Exception e) {
-            System.out.println("[System]: Localtonet API Error: " + RED + e.getMessage() + RESET);
+            log.error("Localtonet API Error: {}", e.getMessage());
         }
         return null;
     }
@@ -9344,7 +8368,7 @@ public class MultiThreadedServer {
          */
         @Override
         public void onOpen(WebSocket conn, ClientHandshake handshake) {
-            System.out.println("[System]: New WebSocket client connected from: " + YELLOW + conn.getRemoteSocketAddress().getAddress().getHostAddress() + RESET);
+            log.info("New client connected from: {}", conn.getRemoteSocketAddress().getAddress().getHostAddress());
 
             // Initialize ClientHandler with the new WebSocket connection
             ClientHandler clientHandler = new ClientHandler(conn, userController);
@@ -9385,12 +8409,12 @@ public class MultiThreadedServer {
 
         @Override
         public void onError(WebSocket conn, Exception ex) {
-            System.out.println("[System]: WebSocket Error: " + RED + ex.getMessage() + RESET);
+            log.error("WebSocket Error: {}", ex.getMessage());
         }
 
         @Override
         public void onStart() {
-            System.out.println("[System]: Server is running on port " + YELLOW + getPort() + RESET);
+            log.info("Server is running on port {}", getPort());
         }
     }
 
@@ -9414,17 +8438,17 @@ public class MultiThreadedServer {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("[Auto-Sync]: System error: " + RED + e.getMessage() + RESET);
+                log.error(e.getMessage());
             }
         }, 0, 30, TimeUnit.SECONDS);
 
-        System.out.println("[System]: Getting address...");
+        log.info("Getting address...");
         String[] publicAddress = getAddress();
 
         if (publicAddress != null) {
             updateAddress(publicAddress[0], Integer.parseInt(publicAddress[1]));
         } else {
-            System.out.println("[System]: " + BLUE + "Cannot get public address. Using localhost" + RESET);
+            log.warn("Cannot get public address. Using localhost");
             updateAddress("127.0.0.1", PORT);
         }
 
@@ -9440,7 +8464,7 @@ public class MultiThreadedServer {
         // Graceful shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             ClientManager.broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly." + RESET, null);
-            System.out.println(YELLOW + "[System]: Server has been shutdown." + RESET);
+            log.info("Server has been shutdown.");
             monitor.stopMonitoring();
             scheduler.shutdown();
             ClientManager.shutdown();
@@ -9470,7 +8494,7 @@ public class MultiThreadedServer {
                         String reason = scanner.nextLine();
                         ClientManager.kickTargetByNumber(index, reason);
                     } catch (NumberFormatException e) {
-                        System.out.println("[System]: /kickn must be followed by an integer.");
+                        log.error("/kickn must be followed by an integer.");
                     }
                 }
                 if (serverMessage.startsWith("/msg ")) {
@@ -9499,7 +8523,7 @@ public class MultiThreadedServer {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\handler\AdminActionHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\handler\AdminActionHandler.java ///
 ======================================================================
 
 package server.handler;
@@ -9630,7 +8654,7 @@ public class AdminActionHandler implements CommandHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\handler\AuctionActionHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\handler\AuctionActionHandler.java ///
 ======================================================================
 
 package server.handler;
@@ -9764,7 +8788,7 @@ public class AuctionActionHandler implements CommandHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\handler\AuthHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\handler\AuthHandler.java ///
 ======================================================================
 
 package server.handler;
@@ -9837,7 +8861,7 @@ public class AuthHandler implements CommandHandler {
         try {
             // Convert the generic data object into a User model for easier handling
             User loginAttempt = mapper.convertValue(data, User.class);
-            User user = client.getUserController().login(loginAttempt.getUserName(), loginAttempt.getUserPass());
+            User user = client.getUserController().login(loginAttempt.getUserName(), loginAttempt.getPassword());
 
             if (user != null) {
                 client.setClientName(user.getUserName());
@@ -9865,7 +8889,7 @@ public class AuthHandler implements CommandHandler {
             User regUser = mapper.convertValue(data, User.class);
             String result = client.getUserController().register(
                     regUser.getUserName(),
-                    regUser.getUserPass(),
+                    regUser.getPassword(),
                     regUser.getName(),
                     regUser.getRole()
             );
@@ -9890,7 +8914,7 @@ public class AuthHandler implements CommandHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\handler\CommandDispatcher.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\handler\CommandDispatcher.java ///
 ======================================================================
 
 package server.handler;
@@ -9999,7 +9023,7 @@ public class CommandDispatcher {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\handler\CommandHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\handler\CommandHandler.java ///
 ======================================================================
 
 package server.handler;
@@ -10027,7 +9051,7 @@ public interface CommandHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\handler\FetchAuctionsHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\handler\FetchAuctionsHandler.java ///
 ======================================================================
 
 package server.handler;
@@ -10116,7 +9140,7 @@ public class FetchAuctionsHandler implements CommandHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\handler\PaymentHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\handler\PaymentHandler.java ///
 ======================================================================
 
 package server.handler;
@@ -10350,7 +9374,7 @@ public class PaymentHandler implements CommandHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\handler\SystemHandler.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\handler\SystemHandler.java ///
 ======================================================================
 
 package server.handler;
@@ -10389,7 +9413,7 @@ public class SystemHandler implements CommandHandler {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ServerExtension\AuctionManager.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\ServerExtension\AuctionManager.java ///
 ======================================================================
 
 package server.ServerExtension;
@@ -10464,7 +9488,7 @@ public class AuctionManager {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\server\ServerExtension\ClientManager.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\server\ServerExtension\ClientManager.java ///
 ======================================================================
 
 package server.ServerExtension;
@@ -10672,7 +9696,7 @@ public class ClientManager {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\service\AutoBidEngine.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\service\AutoBidEngine.java ///
 ======================================================================
 
 package service;
@@ -10796,7 +9820,7 @@ public class AutoBidEngine {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\service\CloudinaryService.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\service\CloudinaryService.java ///
 ======================================================================
 
 package service;
@@ -10836,7 +9860,7 @@ public class CloudinaryService {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\service\PayPalService.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\service\PayPalService.java ///
 ======================================================================
 
 package service;
@@ -10982,7 +10006,7 @@ public class PayPalService {
 }
 
 ======================================================================
-/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\server\src\main\java\service\TOTPService.java ///
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\service\TOTPService.java ///
 ======================================================================
 
 package service;

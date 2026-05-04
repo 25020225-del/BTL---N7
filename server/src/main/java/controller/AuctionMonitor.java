@@ -1,14 +1,6 @@
 package controller;
 
 import database.DatabaseManager;
-<<<<<<< HEAD
-import model.Auction;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.util.ArrayList;
-=======
 import database.TransactionManager;
 import model.auction.Auction;
 import server.ServerExtension.AuctionManager;
@@ -18,7 +10,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.LocalDateTime;
->>>>>>> df73b5cfd21e32839620dec3b4e4f4bde75eecf1
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
@@ -56,39 +47,12 @@ public class AuctionMonitor {
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
-<<<<<<< HEAD
-                List<Auction> safeSnapshot;
-                synchronized (allAuctions) {
-                    safeSnapshot = new ArrayList<>(allAuctions);
-                }
-
-                for (Auction auction : safeSnapshot) {
-                    synchronized (auction) {
-                        if (auction.getStatus().equals(Auction.STATUS_RUNNING)) {
-                            String newStatus = auction.closeAuctionIfTimeIsUp();
-
-                            if (newStatus != null) {
-                                String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-                                try (Connection conn = DatabaseManager.getConnection();
-                                     PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                                    pstmt.setString(1, newStatus);
-                                    pstmt.setString(2, auction.getId());
-                                    pstmt.executeUpdate();
-                                } catch (SQLException e) {
-                                    System.out.println("[Error]: DB Sync failed for monitor: " + RED + e.getMessage() + RESET);
-                                }
-                            }
-                        }
-                    }
-                }
-=======
                 // 1. Process active auctions currently held in Server RAM
                 processRamAuctions();
 
                 // 2. Sweep the database for any orphaned/ghost auctions (e.g., from prior server crashes)
                 sweepDatabaseForOrphans();
 
->>>>>>> df73b5cfd21e32839620dec3b4e4f4bde75eecf1
             } catch (Exception e) {
                 System.out.println("[System](AuctionMonitor): Error occurred during bidding scan process: " + RED + e.getMessage() + RESET);
                 e.printStackTrace();
@@ -100,7 +64,33 @@ public class AuctionMonitor {
      * Iterates through the in-memory auction list, finalizing those whose time has expired.
      */
     private void processRamAuctions() {
-        for (Auction auction : allAuctions) {
+        // Use a safe copy to iterate, preventing ConcurrentModificationException
+        for (Auction auction : List.copyOf(allAuctions)) {
+
+            // Automatically start auctions that are OPEN and have reached their start time.
+            if (auction.getStatus().equals(Auction.STATUS_OPEN) && LocalDateTime.now().isAfter(auction.getStartTime())) {
+                // Ensure the auction has not already ended
+                if (LocalDateTime.now().isBefore(auction.getEndTime())) {
+                    auction.setStatus(Auction.STATUS_RUNNING);
+                    System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " has started and is now " + GREEN + "RUNNING." + RESET);
+
+                    // Asynchronously update the database to persist the new state
+                    Callable<Boolean> dbUpdateTask = () -> {
+                        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
+                        try (Connection conn = DatabaseManager.getConnection();
+                             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                            pstmt.setString(1, Auction.STATUS_RUNNING);
+                            pstmt.setString(2, auction.getId());
+                            pstmt.executeUpdate();
+                            return true;
+                        } catch (Exception e) {
+                            System.out.println("[Database]: Failed to update auction to RUNNING: " + RED + e.getMessage() + RESET);
+                            return false;
+                        }
+                    };
+                    TransactionManager.submitTask(dbUpdateTask);
+                }
+            }
 
             // Check both RUNNING and OPEN statuses to handle auctions with zero bids
             if (auction.getStatus().equals(Auction.STATUS_RUNNING) || auction.getStatus().equals(Auction.STATUS_OPEN)) {
@@ -156,7 +146,7 @@ public class AuctionMonitor {
      */
     private void sweepDatabaseForOrphans() {
         Callable<Boolean> dbSweepTask = () -> {
-            String selectSql = "SELECT id, end_time, current_price, starting_price FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
+            String selectSql = "SELECT id, end_time, current_price, starting_price, start_time FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
             String updateSql = "UPDATE auctions SET status = ? WHERE id = ?";
 
             try (Connection conn = DatabaseManager.getConnection();
@@ -165,28 +155,32 @@ public class AuctionMonitor {
 
                 while (rs.next()) {
                     String id = rs.getString("id");
-                    String endTimeStr = rs.getString("end_time");
-                    double currentPrice = rs.getDouble("current_price");
-                    double startPrice = rs.getDouble("starting_price");
+                    LocalDateTime endTime = LocalDateTime.parse(rs.getString("end_time"));
+                    LocalDateTime startTime = LocalDateTime.parse(rs.getString("start_time"));
+                    LocalDateTime now = LocalDateTime.now();
 
-                    LocalDateTime endTime = LocalDateTime.parse(endTimeStr);
-
-                    // Verify if the database auction's deadline has passed
-                    if (LocalDateTime.now().isAfter(endTime)) {
-
-                        // Determine if it was sold or canceled based on price progression
+                    // Case 1: The auction's end time has passed.
+                    if (now.isAfter(endTime)) {
+                        double currentPrice = rs.getDouble("current_price");
+                        double startPrice = rs.getDouble("starting_price");
                         String newStatus = (currentPrice > startPrice) ? "FINISHED" : "CANCELED";
 
-                        // Execute atomic update directly to the Database
                         try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
                             updateStmt.setString(1, newStatus);
                             updateStmt.setString(2, id);
                             updateStmt.executeUpdate();
                         }
-
-                        // Force clients to remove the ghost item from their UI
                         ClientManager.broadcast("REMOVE_AUCTION", id, null);
                         System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
+                    }
+                    // Case 2: The auction should be running but is not in RAM.
+                    else if (now.isAfter(startTime)) {
+                         try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+                            updateStmt.setString(1, Auction.STATUS_RUNNING);
+                            updateStmt.setString(2, id);
+                            updateStmt.executeUpdate();
+                        }
+                        System.out.println("[System]: " + BLUE + "Swept and started orphaned database auction: " + YELLOW + id + RESET);
                     }
                 }
                 return true;
