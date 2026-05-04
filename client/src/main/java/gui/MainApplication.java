@@ -1,12 +1,14 @@
 package gui;
 
 import client.network.*;
+import gui.process.AlertHelper;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.layout.VBox;
@@ -17,6 +19,13 @@ import java.io.InputStream;
 import java.util.Properties;
 
 import static utils.ConsoleColors.*;
+import javafx.animation.*;
+import javafx.geometry.Insets;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.*;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.HBox;
+import javafx.util.Duration;
 
 /**
  * The main entry point for the JavaFX client application.
@@ -120,48 +129,170 @@ public class MainApplication extends Application {
         primalStage = stage;
         initProperties();
 
-        // Construct a temporary Loading Screen UI dynamically
-        VBox loadingLayout = new VBox(20);
-        loadingLayout.setAlignment(Pos.CENTER);
-        ProgressIndicator spinner = new ProgressIndicator(); // Loading icon
-        Label statusLabel = new Label("Connecting to server...");
-        statusLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
-        loadingLayout.getChildren().addAll(spinner, statusLabel);
+        // ── 1. ROOT CONTAINER ──────────────────────────────────────────
+        StackPane root = new StackPane();
+        root.setStyle("-fx-background-color: #1a1a2e;");
 
-        Scene loadingScene = new Scene(loadingLayout, 800, 600);
-        stage.setTitle("N7 Auction System - Connecting...");
+        VBox centerBox = new VBox(0);
+        centerBox.setAlignment(Pos.CENTER);
+        centerBox.setMaxWidth(320);
+        StackPane.setAlignment(centerBox, Pos.CENTER);
+
+        // ── 2. LOGO (chữ N7 + spinning arc) ───────────────────────────
+        StackPane logoPane = new StackPane();
+        logoPane.setPrefSize(90, 90);
+        logoPane.setMaxSize(90, 90);
+
+        // Nền vuông bo góc
+        Rectangle logoRect = new Rectangle(64, 64);
+        logoRect.setArcWidth(20);
+        logoRect.setArcHeight(20);
+        logoRect.setFill(Color.web("#4f46e5"));
+        logoRect.setOpacity(0);
+
+        // Chữ N7
+        Label logoLabel = new Label("N7");
+        logoLabel.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: white;");
+        logoLabel.setOpacity(0);
+
+        // Arc xoay
+        Arc spinArc = new Arc(45, 45, 40, 40, 90, 80);
+        spinArc.setType(ArcType.OPEN);
+        spinArc.setFill(Color.TRANSPARENT);
+        spinArc.setStroke(Color.web("#818cf8"));
+        spinArc.setStrokeWidth(2.5);
+        spinArc.setStrokeLineCap(StrokeLineCap.ROUND);
+
+        // Vòng tròn nền mờ
+        Arc bgArc = new Arc(45, 45, 40, 40, 0, 360);
+        bgArc.setType(ArcType.OPEN);
+        bgArc.setFill(Color.TRANSPARENT);
+        bgArc.setStroke(Color.web("#4f46e5"));
+        bgArc.setStrokeWidth(1.5);
+        bgArc.setOpacity(0.2);
+
+        logoPane.getChildren().addAll(bgArc, logoRect, logoLabel, spinArc);
+
+        // Animation xoay arc
+        RotateTransition rotate = new RotateTransition(Duration.millis(1200), spinArc);
+        rotate.setByAngle(360);
+        rotate.setCycleCount(Animation.INDEFINITE);
+        rotate.setInterpolator(Interpolator.LINEAR);
+        rotate.play();
+
+        VBox.setMargin(logoPane, new Insets(0, 0, 24, 0));
+
+        // ── 3. TITLE ──────────────────────────────────────────────────
+        Label titleLabel = new Label("N7 Auction System");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: 500; -fx-text-fill: #e2e8f0;");
+        titleLabel.setOpacity(0);
+        VBox.setMargin(titleLabel, new Insets(0, 0, 20, 0));
+
+        // ── 4. STEPS ──────────────────────────────────────────────────
+        String[][] stepDefs = {
+                {"Fetching server address...",     "PENDING"},
+                {"Establishing secure channel...", "PENDING"},
+                {"RSA handshake...",               "PENDING"},
+                {"Loading marketplace...",         "PENDING"},
+        };
+
+        Circle[]    stepDots   = new Circle[stepDefs.length];
+        Label[]     stepLabels = new Label[stepDefs.length];
+        HBox[]      stepRows   = new HBox[stepDefs.length];
+
+        VBox stepsBox = new VBox(10);
+        stepsBox.setAlignment(Pos.CENTER_LEFT);
+        stepsBox.setMaxWidth(220);
+
+        for (int i = 0; i < stepDefs.length; i++) {
+            Circle dot = new Circle(4);
+            dot.setFill(Color.web("#374151"));
+            stepDots[i] = dot;
+
+            Label lbl = new Label(stepDefs[i][0]);
+            lbl.setStyle("-fx-font-size: 13px; -fx-text-fill: #94a3b8;");
+            stepLabels[i] = lbl;
+
+            HBox row = new HBox(10, dot, lbl);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setOpacity(0);
+            stepRows[i] = row;
+            stepsBox.getChildren().add(row);
+        }
+
+        VBox.setMargin(stepsBox, new Insets(0, 0, 16, 0));
+
+        // ── 5. VERSION ────────────────────────────────────────────────
+        Label versionLabel = new Label("v1.0.0  ·  N7 Group Project");
+        versionLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #475569;");
+        versionLabel.setOpacity(0);
+
+        centerBox.getChildren().addAll(logoPane, titleLabel, stepsBox, versionLabel);
+        root.getChildren().add(centerBox);
+
+        // ── 6. HIỆN CỬA SỔ ───────────────────────────────────────────
+        Scene loadingScene = new Scene(root, 800, 600);
+        stage.setTitle("N7 Auction System");
         stage.setScene(loadingScene);
         stage.show();
 
-        // Handle the native OS window close event (clicking the "X" button)
         primalStage.setOnCloseRequest(event -> {
-            System.out.println("[System]: Closing application...");
-            // Clean UI threads
-            javafx.application.Platform.exit();
-            // Kill process completely to ensure no background socket threads leak
+            Platform.exit();
             System.exit(0);
         });
 
-        // Run network discovery and connection on a separate background thread
-        // to prevent freezing the JavaFX UI during the timeout period
+        // ── 7. FADE-IN ANIMATION SEQUENCE ─────────────────────────────
+        // Logo rect
+        FadeTransition fadeRect = new FadeTransition(Duration.millis(400), logoRect);
+        fadeRect.setToValue(1);
+
+        // Logo chữ
+        FadeTransition fadeLogo = new FadeTransition(Duration.millis(400), logoLabel);
+        fadeLogo.setToValue(1);
+
+        // Title
+        FadeTransition fadeTitle = new FadeTransition(Duration.millis(500), titleLabel);
+        fadeTitle.setToValue(1);
+
+        // Steps hiện dần, mỗi cái cách nhau 600ms
+        SequentialTransition stepsAnim = new SequentialTransition();
+        for (int i = 0; i < stepRows.length; i++) {
+            PauseTransition pause = new PauseTransition(Duration.millis(i == 0 ? 0 : 600));
+            FadeTransition fadeRow = new FadeTransition(Duration.millis(400), stepRows[i]);
+            fadeRow.setToValue(1);
+            final int idx = i;
+            fadeRow.setOnFinished(e -> stepDots[idx].setFill(Color.web("#818cf8")));
+            stepsAnim.getChildren().addAll(pause, fadeRow);
+        }
+
+        // Version
+        FadeTransition fadeVer = new FadeTransition(Duration.millis(400), versionLabel);
+        fadeVer.setToValue(1);
+
+        // Chạy toàn bộ sequence
+        SequentialTransition fullSequence = new SequentialTransition(
+                new PauseTransition(Duration.millis(200)),  fadeRect,
+                new PauseTransition(Duration.millis(100)),  fadeLogo,
+                new PauseTransition(Duration.millis(200)),  fadeTitle,
+                stepsAnim,
+                fadeVer
+        );
+        fullSequence.play();
+
+        // ── 8. BACKGROUND THREAD KẾT NỐI ─────────────────────────────
         new Thread(() -> {
             networkClient = ServerDiscovery.establishConnection(properties);
 
-            // Once the connection process completes (success or fail),
-            // return execution to the main UI thread to update the screen
             Platform.runLater(() -> {
                 try {
+                    rotate.stop(); // dừng animation xoay
                     init();
-                    // Switch to login UI
                     Scene sceneLogin = new Scene(rootLogin);
                     stage.setTitle("N7 Auction System - Client");
                     stage.setScene(sceneLogin);
 
-                    System.out.println("[System]: " + GREEN + "Application started successfully" + RESET);
-
-                    // Warn the user if the app had to fallback to offline/localhost mode
                     if (!networkClient.isConnected()) {
-                        gui.process.AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.WARNING,
+                        AlertHelper.showAlert(Alert.AlertType.WARNING,
                                 "Network Issue", "Cannot connect to server. Running offline version.");
                     }
                 } catch (IOException e) {
