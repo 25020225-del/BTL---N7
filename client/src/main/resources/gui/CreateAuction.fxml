@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.DatePicker?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.TextArea?>
-<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.*?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
@@ -46,13 +40,13 @@
             <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
                <children>
                   <Label prefWidth="126.0" text="Choose file" />
-                  <Button fx:id="chooseFile" mnemonicParsing="false" onAction="#handleSelectImage" text="Button" />
+                  <Button fx:id="chooseFile" mnemonicParsing="false" text="Files" />
                   <Label fx:id="fileLinkChoosen" />
                </children>
             </HBox>
             <HBox>
                <children>
-                  <ImageView fx:id="ca_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
+                  <ImageView fx:id="sellerCreateAuction_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
                </children>
             </HBox>
             <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0" VBox.vgrow="ALWAYS">
@@ -73,16 +67,17 @@
             </HBox>
             <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
                <children>
-                  <Label prefWidth="126.0" text="Duration (Max 30 days)" />
-                  <TextField fx:id="ca_durationDays" prefHeight="27.0" prefWidth="60.0" promptText="Days" />
-                  <Label text="Days" />
-                  <TextField fx:id="ca_durationHours" prefHeight="27.0" prefWidth="60.0" promptText="Hours" />
-                  <Label text="Hours" />
+                  <Label prefWidth="126.0" text="Ending time" />
+                  <DatePicker fx:id="ca_endDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_endHour" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_endMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
                </children>
             </HBox>
             <HBox alignment="CENTER" prefHeight="100.0">
                <children>
-                  <Button fx:id="ca_createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" text="Create" />
+                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" stylesheets="@index.css" text="Create" />
                </children>
             </HBox>
          </children>

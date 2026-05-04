@@ -24,7 +24,9 @@ public class ClientManager {
      */
     private static final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
 
-    /** The maximum number of threads dedicated to processing broadcast tasks. */
+    /**
+     * The maximum number of threads dedicated to processing broadcast tasks.
+     */
     private static final int MAX_BROADCASTPOOL_SIZE = 200;
 
     /**
@@ -107,7 +109,7 @@ public class ClientManager {
         receiver = receiver.trim();
         for (ClientHandler client : clients) {
             if (client.getClientName() != null && client.getClientName().equals(receiver)) {
-                client.sendMessage("[Admin]" + BLUE + " (private)" + RESET + ": " + message);
+                client.sendMessage("[Admin]" + BLUE + "(private)" + RESET + ": " + message);
                 return;
             }
         }

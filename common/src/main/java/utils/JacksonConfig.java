@@ -1,7 +1,6 @@
 package utils;
 
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -47,7 +46,8 @@ public final class JacksonConfig {
     private static final ObjectMapper INSTANCE = buildMapper();
 
     // Prevent instantiation
-    private JacksonConfig() {}
+    private JacksonConfig() {
+    }
 
     /**
      * Returns the shared, fully-configured {@link ObjectMapper} instance.

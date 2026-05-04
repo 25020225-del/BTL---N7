@@ -109,10 +109,7 @@ public class AdminActionHandler implements CommandHandler {
             }
         };
 
-        try {
-            // Submit the task to TransactionManager and wait for the result
-            // This ensures SQLite write operations are serialized correctly
-            boolean success = TransactionManager.submitTask(updateTask).get();
+        TransactionManager.submitTask(updateTask).thenAccept(success -> {
             if (success) {
                 String msg = newStatus.equals("OPEN") ? "Auction approved" : "Auction declined";
                 client.sendResponse("ADMIN_ACTION_SUCCESS", msg);
@@ -120,8 +117,10 @@ public class AdminActionHandler implements CommandHandler {
             } else {
                 client.sendResponse("ERROR", "Cannot find this auction in database.");
             }
-        } catch (Exception e) {
+        }).exceptionally(ex -> {
+            // Error handling fallback
             client.sendResponse("ERROR", "Server error.");
-        }
+            return null;
+        });
     }
 }

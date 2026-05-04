@@ -1,30 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.*?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
-
-<VBox alignment="TOP_CENTER" prefWidth="250.0" spacing="12.0" styleClass="profile-popover" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<VBox alignment="TOP_CENTER" prefWidth="250.0" spacing="12.0" styleClass="profile-popover" stylesheets="@index.css"
+      xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
     <children>
         <HBox alignment="CENTER_LEFT" spacing="12.0">
             <children>
                 <ImageView fx:id="imgAvatar" fitHeight="45.0" fitWidth="45.0" pickOnBounds="true" preserveRatio="true">
                     <image>
-                        <Image url="@images/logo2.png" />
+                        <Image url="@images/logo2.png"/>
                     </image>
                 </ImageView>
                 <VBox alignment="CENTER_LEFT">
                     <children>
-                        <Label fx:id="lblFullname" styleClass="user-name-label" text="lmaolmao" />
+                        <Label fx:id="lblFullname" styleClass="user-name-label" text="lmaolmao"/>
                         <Label fx:id="lblRole" text="Bidder &amp; Seller" textFill="#777777">
                             <font>
-                                <Font size="12.0" />
+                                <Font size="12.0"/>
                             </font>
                         </Label>
                     </children>
@@ -32,32 +29,34 @@
             </children>
         </HBox>
 
-        <Separator />
+        <Separator/>
 
         <VBox spacing="8.0">
             <children>
                 <HBox alignment="CENTER_LEFT" spacing="10.0">
                     <children>
-                        <Label text="Số dư ví:" textFill="#555" />
-                        <Label fx:id="lblBalance" style="-fx-font-weight: bold;" text="\$67.67" />
+                        <Label text="Số dư ví:" textFill="#555"/>
+                        <Label fx:id="lblBalance" style="-fx-font-weight: bold;" text="\$67.67"/>
                     </children>
                 </HBox>
                 <HBox alignment="CENTER_LEFT" spacing="10.0">
                     <children>
-                        <Label text="Đang đấu giá:" textFill="#555" />
-                        <Label fx:id="lblActiveBids" text="67" />
+                        <Label text="Đang đấu giá:" textFill="#555"/>
+                        <Label fx:id="lblActiveBids" text="67"/>
                     </children>
                 </HBox>
             </children>
         </VBox>
 
-        <Separator />
+        <Separator/>
 
-        <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: transparent;" text="Cài đặt tài khoản" textAlignment="LEFT" />
+        <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: transparent;"
+                text="Cài đặt tài khoản" textAlignment="LEFT"/>
 
-        <Button fx:id="btnLogout" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="button-logout" text="Đăng xuất" />
+        <Button fx:id="btnLogout" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="button-logout"
+                text="Đăng xuất"/>
     </children>
     <padding>
-        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0"/>
     </padding>
 </VBox>

@@ -1,14 +1,13 @@
 package gui;
 
-import java.awt.Toolkit;
-import java.awt.Dimension;
+import java.awt.*;
 
 /**
  * A launcher class for the JavaFX application.
  * It serves as the primary entry point to configure dynamic UI scaling based on
  * the user's screen resolution before starting the main JavaFX application loop.
  */
-public class Launcher{
+public class Launcher {
 
     /**
      * Calculates the appropriate UI scaling factor based on the current screen's height.
@@ -17,7 +16,7 @@ public class Launcher{
      *
      * @return The calculated scaling factor as a double.
      */
-    public static double getWindowsScale(){
+    public static double getWindowsScale() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         double height = screenSize.getHeight();
         return (height / 720.0) * 0.6;
@@ -30,9 +29,9 @@ public class Launcher{
      *
      * @param args Command-line arguments passed to the application.
      */
-    public static void main(String[] args){
-        System.setProperty("glass.win.uiScale",getWindowsScale()+"");
-        System.setProperty("glass.gtk.uiScale",getWindowsScale()+"");
+    public static void main(String[] args) {
+        System.setProperty("glass.win.uiScale", getWindowsScale() + "");
+        System.setProperty("glass.gtk.uiScale", getWindowsScale() + "");
         MainApplication.main(args);
     }
 }

@@ -1,6 +1,7 @@
 package gui;
 
-import client.network.*;
+import client.network.NetworkClient;
+import client.network.ServerDiscovery;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -45,10 +46,10 @@ public class MainApplication extends Application {
     public static void main(String[] args) {
 
         System.out.println(GREEN + "=================================");
-        System.out.println(        "|                               |");
-        System.out.println(        "|       CLIENT LOG TABLE        |");
-        System.out.println(        "|                               |");
-        System.out.println(        "=================================" + RESET);
+        System.out.println("|                               |");
+        System.out.println("|       CLIENT LOG TABLE        |");
+        System.out.println("|                               |");
+        System.out.println("=================================" + RESET);
         launch(args);
     }
 
@@ -60,7 +61,7 @@ public class MainApplication extends Application {
      * @param k The new Parent node (FXML layout) to display.
      */
     public static void setNewScene(Parent k) {
-        if(k==null){
+        if (k == null) {
             System.out.println("parent is null");
         }
         if (primalStage != null && primalStage.getScene() != null) {

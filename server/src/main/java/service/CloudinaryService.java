@@ -2,6 +2,7 @@ package service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+
 import java.util.Map;
 
 public class CloudinaryService {
@@ -18,6 +19,7 @@ public class CloudinaryService {
 
     /**
      * Upload mảng byte ảnh lên Cloudinary
+     *
      * @param imageBytes Mảng byte của ảnh (đã nén)
      * @return URL của ảnh sau khi upload thành công
      */

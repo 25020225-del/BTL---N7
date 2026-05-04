@@ -1,6 +1,7 @@
 package model.auction;
 
 import model.user.User;
+
 import java.time.LocalDateTime;
 
 /**
@@ -30,21 +31,41 @@ public class AutoBid {
      * @param increment The amount to increase the bid by when outbidding others.
      */
     public AutoBid(User bidder, double maxBid, double increment) {
-        this.bidder         = bidder;
-        this.maxBid         = maxBid;
-        this.increment      = increment;
+        this.bidder = bidder;
+        this.maxBid = maxBid;
+        this.increment = increment;
         this.timeRegistered = LocalDateTime.now();
     }
 
-    public User getBidder() { return bidder; }
-    public void setBidder(User bidder) { this.bidder = bidder; }
+    public User getBidder() {
+        return bidder;
+    }
 
-    public double getMaxBid() { return maxBid; }
-    public void setMaxBid(double maxBid) { this.maxBid = maxBid; }
+    public void setBidder(User bidder) {
+        this.bidder = bidder;
+    }
 
-    public double getIncrement() { return increment; }
-    public void setIncrement(double increment) { this.increment = increment; }
+    public double getMaxBid() {
+        return maxBid;
+    }
 
-    public LocalDateTime getTimeRegistered() { return timeRegistered; }
-    public void setTimeRegistered(LocalDateTime timeRegistered) { this.timeRegistered = timeRegistered; }
+    public void setMaxBid(double maxBid) {
+        this.maxBid = maxBid;
+    }
+
+    public double getIncrement() {
+        return increment;
+    }
+
+    public void setIncrement(double increment) {
+        this.increment = increment;
+    }
+
+    public LocalDateTime getTimeRegistered() {
+        return timeRegistered;
+    }
+
+    public void setTimeRegistered(LocalDateTime timeRegistered) {
+        this.timeRegistered = timeRegistered;
+    }
 }

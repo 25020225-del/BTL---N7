@@ -6,6 +6,8 @@ import io.github.cdimascio.dotenv.Dotenv;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
@@ -38,6 +40,8 @@ import static utils.ConsoleColors.*;
  * </ul>
  */
 public class MultiThreadedServer {
+    private static final Logger log = LoggerFactory.getLogger(MultiThreadedServer.class);
+
     // Scheduler for periodic IP/Port updates
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
@@ -90,12 +94,12 @@ public class MultiThreadedServer {
 
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
-                System.out.println("[JSONBin]: New IP - Port synced: " + YELLOW + currentIp + ":" + currentPort + RESET);
+                log.debug("New IP - Port (JSON-Bin) synced: {}:{}", currentIp, currentPort);
             } else {
-                System.err.println("[JSONBin]: Error: " + RED + responseCode + RESET);
+                log.error(""+responseCode);
             }
         } catch (Exception e) {
-            System.out.println("[JSONBin]: Connection Error: " + RED + e.getMessage() + RESET);
+            log.error("Connection error: {}", e.getMessage());
         }
     }
 
@@ -106,7 +110,7 @@ public class MultiThreadedServer {
      * (like Jackson) to extract data quickly and keep the memory footprint extremely low.
      *
      * @return A String array where index 0 is the Domain/IP and index 1 is the Port,
-     *         or {@code null} if the tunnel is offline or an error occurs.
+     * or {@code null} if the tunnel is offline or an error occurs.
      */
     private static String[] getAddress() {
         try {
@@ -143,7 +147,7 @@ public class MultiThreadedServer {
 
             if (!ip.isEmpty() && !port.isEmpty()) return new String[]{ip, port};
         } catch (Exception e) {
-            System.out.println("[System]: Localtonet API Error: " + RED + e.getMessage() + RESET);
+            log.error("Localtonet API Error: {}", e.getMessage());
         }
         return null;
     }
@@ -170,7 +174,7 @@ public class MultiThreadedServer {
          */
         @Override
         public void onOpen(WebSocket conn, ClientHandshake handshake) {
-            System.out.println("[System]: New WebSocket client connected from: " + YELLOW + conn.getRemoteSocketAddress().getAddress().getHostAddress() + RESET);
+            log.info("New client connected from: {}", conn.getRemoteSocketAddress().getAddress().getHostAddress());
 
             // Initialize ClientHandler with the new WebSocket connection
             ClientHandler clientHandler = new ClientHandler(conn, userController);
@@ -211,12 +215,12 @@ public class MultiThreadedServer {
 
         @Override
         public void onError(WebSocket conn, Exception ex) {
-            System.out.println("[System]: WebSocket Error: " + RED + ex.getMessage() + RESET);
+            log.error("WebSocket Error: {}", ex.getMessage());
         }
 
         @Override
         public void onStart() {
-            System.out.println("[System]: Server is running on port " + YELLOW + getPort() + RESET);
+            log.info("Server is running on port {}", getPort());
         }
     }
 
@@ -240,17 +244,17 @@ public class MultiThreadedServer {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("[Auto-Sync]: System error: " + RED + e.getMessage() + RESET);
+                log.error(e.getMessage());
             }
         }, 0, 30, TimeUnit.SECONDS);
 
-        System.out.println("[System]: Getting address...");
+        log.info("Getting address...");
         String[] publicAddress = getAddress();
 
         if (publicAddress != null) {
             updateAddress(publicAddress[0], Integer.parseInt(publicAddress[1]));
         } else {
-            System.out.println("[System]: " + BLUE + "Cannot get public address. Using localhost" + RESET);
+            log.warn("Cannot get public address. Using localhost");
             updateAddress("127.0.0.1", PORT);
         }
 
@@ -266,7 +270,7 @@ public class MultiThreadedServer {
         // Graceful shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             ClientManager.broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly." + RESET, null);
-            System.out.println(YELLOW + "[System]: Server has been shutdown." + RESET);
+            log.info("Server has been shutdown.");
             monitor.stopMonitoring();
             scheduler.shutdown();
             ClientManager.shutdown();
@@ -296,8 +300,16 @@ public class MultiThreadedServer {
                         String reason = scanner.nextLine();
                         ClientManager.kickTargetByNumber(index, reason);
                     } catch (NumberFormatException e) {
-                        System.out.println("[System]: /kickn must be followed by an integer.");
+                        log.error("/kickn must be followed by an integer.");
                     }
+                }
+                if (serverMessage.startsWith("/msg ")) {
+                    String data = serverMessage.substring(5);
+                    int firstIndexOfSpace = data.indexOf(" ");
+                    String receiver = data.substring(0, firstIndexOfSpace);
+                    String message = data.substring(firstIndexOfSpace + 1);
+                    ClientManager.privateMsg(receiver, message);
+                    continue;
                 }
                 if (serverMessage.startsWith("/clist")) {
                     ClientManager.getClientList();

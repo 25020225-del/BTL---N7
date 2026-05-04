@@ -13,7 +13,7 @@ public class ServicePackage extends Item {
 
     @Override
     public String getInfo() {
-        return    "[Service Package]: " + this.getItemName()
+        return "[Service Package]: " + this.getItemName()
                 + " | Start Price: VND " + this.getStartingPrice();
     }
 }
