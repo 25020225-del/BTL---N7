@@ -3,6 +3,8 @@ package client.handler;
 import client.network.NetworkClient;
 import javafx.application.Platform;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.net.URI;
@@ -17,6 +19,8 @@ import static utils.ConsoleColors.YELLOW;
  * and time synchronization acknowledgments.
  */
 public class ClientSystemHandler implements ResponseHandler {
+    private static final Logger log = LoggerFactory.getLogger(ClientSystemHandler.class);
+
     @Override
     public void handle(NetworkMessage message, NetworkClient client) throws Exception {
         String command = message.getCommand();
@@ -25,10 +29,10 @@ public class ClientSystemHandler implements ResponseHandler {
             String url = (String) message.getData();
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(new URI(url));
-                System.out.println("[System]: Redirecting to: " + YELLOW + url + RESET);
+                log.info("Redirecting to {}",  url);
             }
         } else if ("KICKED".equals(command)) {
-            System.out.println("[System]:" + YELLOW + " You have been kicked. Reason: " + message.getData() + RESET);
+            log.warn("You have been kicked. Reason: {}", message.getData());
 
             // Notify UI if applicable before shutting down
             if (client.getOnMessageReceived() != null) {

@@ -42,7 +42,7 @@ public class ClientAuctionHandler implements ResponseHandler {
             String winnerName = (String) data.get("winnerName");
 
             Platform.runLater(() -> {
-                log.info("Auction {} updated its price: {}", auctionId, newPrice);
+                log.info("{} updated its price: {}", YELLOW + auctionId + RESET, GREEN + newPrice + RESET);
 
                 // If the user is currently viewing this specific auction's detail page,
                 // trigger the real-time line chart and UI update.
@@ -51,14 +51,14 @@ public class ClientAuctionHandler implements ResponseHandler {
                 }
             });
         } else if ("CLI_BROADCAST".equals(command)) {
-            log.info(message.getData().toString());
+            log.info("{}", message.getData());
         } else if ("CREATE_SUCCESS".equals(command)) {
-            log.info(message.getData().toString());
+            log.info("{}", message.getData());
             Platform.runLater(() -> {
                 AlertHelper.showAlert(AlertType.INFORMATION, "Success", message.getData().toString());
             });
         } else if ("CHAT".equals(command)) {
-            log.info(message.getData().toString());
+            log.info("{}", message.getData());
         }
     }
 }

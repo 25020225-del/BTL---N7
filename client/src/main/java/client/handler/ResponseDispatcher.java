@@ -3,6 +3,8 @@ package client.handler;
 import client.network.NetworkClient;
 import javafx.application.Platform;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,6 +16,8 @@ import static utils.ConsoleColors.*;
  * to their appropriate dedicated handler classes.
  */
 public class ResponseDispatcher {
+    private static final Logger log = LoggerFactory.getLogger(ResponseDispatcher.class);
+
     private final Map<String, ResponseHandler> handlers = new HashMap<>();
 
     public ResponseDispatcher() {
@@ -44,7 +48,7 @@ public class ResponseDispatcher {
             try {
                 handler.handle(message, client);
             } catch (Exception e) {
-                System.out.println("[Error]: Client Dispatcher error for \"" + YELLOW + command + RESET + "\": " + RED + e.getMessage() + RESET);
+                log.error("Error for \"{}\": {}", command, e.getMessage());
             }
         } else {
             // Unhandled commands are forwarded directly to the UI component if a callback is registered
