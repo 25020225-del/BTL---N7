@@ -3667,14 +3667,7 @@ public class MinimalItem extends VBox {
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
-<<<<<<< HEAD
 /*nut dang xuất*/
-=======
-
-/
-/
-nut dang xuất
->>>>>>> 89dfeebe728517716e9e02ef0007a89fd2b33f70
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;
@@ -4904,14 +4897,7 @@ nut dang xuất
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
-<<<<<<< HEAD
 /*nut dang xuất*/
-=======
-
-/
-/
-nut dang xuất
->>>>>>> 89dfeebe728517716e9e02ef0007a89fd2b33f70
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;
@@ -5712,10 +5698,10 @@ public class Auction extends Entity {
         this.bidIncrement = bidIncrement;
         this.startTime = startTime;
         this.endTime = endTime;
-        
+
         // Anti-Sniping hard-cap: maximum 30 minutes extension from the initial end time
         this.maxEndTime = endTime.plusMinutes(30);
-        
+
         this.bidHistory = new ArrayList<>();
 
         this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
@@ -5816,11 +5802,11 @@ public class Auction extends Entity {
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }
-    
+
     public LocalDateTime getMaxEndTime() {
         return maxEndTime;
     }
-    
+
     public void setMaxEndTime(LocalDateTime maxEndTime) {
         this.maxEndTime = maxEndTime;
     }
@@ -5909,7 +5895,7 @@ public class Auction extends Entity {
         // Anti-Sniping Algorithm with Hard-Cap Limit
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             LocalDateTime proposedEndTime = endTime.plusMinutes(2);
-            
+
             // Ensure the new end time NEVER exceeds the hard-cap maxEndTime
             if (proposedEndTime.isAfter(maxEndTime)) {
                 endTime = maxEndTime;
@@ -5948,7 +5934,7 @@ public class Auction extends Entity {
             // The currentPrice should be the bidAmount of the last valid transaction
             this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
         }
-        
+
         System.out.println(YELLOW + "[System]: RAM State Reverted to Previous Winner: " + (previousWinner != null ? previousWinner.getUserName() : "None") + RESET);
     }
 
@@ -7206,13 +7192,12 @@ package controller;
 import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.AuctionDAO;
+import database.dao.WalletDAO;
 import model.auction.Auction;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -7232,6 +7217,7 @@ public class AuctionMonitor {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
     private final AuctionDAO auctionDAO = new AuctionDAO(); // Instantiate AuctionDAO
+    private final WalletDAO walletDAO = new WalletDAO(); // Instantiate WalletDAO
 
     /**
      * Constructs the monitor with a reference to the global active auction list in RAM.
@@ -7345,8 +7331,6 @@ public class AuctionMonitor {
         }
 
         Callable<Boolean> settlementTask = () -> {
-            String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
-            String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
             String now = LocalDateTime.now().toString();
 
             try (Connection conn = DatabaseManager.getConnection()) {
@@ -7355,38 +7339,30 @@ public class AuctionMonitor {
                 try {
                     // 1. Pay the seller the final auction price
                     double sellerPayment = auction.getCurrentPrice();
-                    try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
-                        pstmt.setDouble(1, sellerPayment);
-                        pstmt.setString(2, auction.getSeller().getId());
-                        pstmt.executeUpdate();
-                    }
+                    walletDAO.updateBalance(conn, auction.getSeller().getId(), sellerPayment);
 
-                    try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                        pstmt.setString(1, "W-IN-" + System.currentTimeMillis());
-                        pstmt.setString(2, auction.getSeller().getId());
-                        pstmt.setDouble(3, sellerPayment);
-                        pstmt.setString(4, "Payment received for completed auction: " + auction.getId());
-                        pstmt.setString(5, now);
-                        pstmt.executeUpdate();
-                    }
+                    walletDAO.addTransaction(
+                            conn,
+                            "W-IN-" + System.currentTimeMillis(),
+                            auction.getSeller().getId(),
+                            sellerPayment,
+                            "Payment received for completed auction: " + auction.getId(),
+                            now
+                    );
 
                     // 2. Refund the winning bidder for the excess locked amount
                     double refundAmount = auction.getHighestMaxBid() - auction.getCurrentPrice();
                     if (refundAmount > 0) {
-                        try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
-                            pstmt.setDouble(1, refundAmount);
-                            pstmt.setString(2, auction.getWinningBidder().getId());
-                            pstmt.executeUpdate();
-                        }
+                        walletDAO.updateBalance(conn, auction.getWinningBidder().getId(), refundAmount);
 
-                        try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                            pstmt.setString(1, "W-REF-" + (System.currentTimeMillis() + 1)); // +1 to ensure unique ID
-                            pstmt.setString(2, auction.getWinningBidder().getId());
-                            pstmt.setDouble(3, refundAmount);
-                            pstmt.setString(4, "Refund for excess max bid on auction: " + auction.getId());
-                            pstmt.setString(5, now);
-                            pstmt.executeUpdate();
-                        }
+                        walletDAO.addTransaction(
+                                conn,
+                                "W-REF-" + (System.currentTimeMillis() + 1), // +1 to ensure unique ID
+                                auction.getWinningBidder().getId(),
+                                refundAmount,
+                                "Refund for excess max bid on auction: " + auction.getId(),
+                                now
+                        );
                     }
 
                     conn.commit(); // Finalize changes
@@ -7539,6 +7515,7 @@ import service.AutoBidEngine;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -7609,23 +7586,34 @@ public class ServerBidderController {
                     return false;
                 }
 
-                // 3. Calculate the new current price based on bidding logic
+                // 3. Calculate new state using Model logic (Auction.java)
+                // This ensures we follow DRY and use the exact logic from the Model.
+                // We use a dummy bid to calculate what the new state WOULD be.
                 double newCurrentPrice;
+                LocalDateTime newEndTime;
+
                 if (previousWinner == null) {
                     newCurrentPrice = auction.getItem().getStartingPrice();
                 } else if (currentUser.getId().equals(previousWinner.getId())) {
-                    newCurrentPrice = auction.getCurrentPrice(); // Price doesn't change when outbidding self
+                    newCurrentPrice = auction.getCurrentPrice();
                 } else {
                     if (newMaxBid > previousHighestMaxBid) {
                         newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > newMaxBid) {
-                            newCurrentPrice = newMaxBid;
-                        }
+                        if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
                     } else {
                         newCurrentPrice = newMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > previousHighestMaxBid) {
-                            newCurrentPrice = previousHighestMaxBid;
-                        }
+                        if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
+                    }
+                }
+
+                // Anti-sniping calculation logic (must match Auction.java)
+                newEndTime = auction.getEndTime();
+                if (java.time.LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
+                    LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
+                    if (proposedEndTime.isAfter(auction.getMaxEndTime())) {
+                        newEndTime = auction.getMaxEndTime();
+                    } else {
+                        newEndTime = proposedEndTime;
                     }
                 }
 
@@ -7634,7 +7622,7 @@ public class ServerBidderController {
                     conn.setAutoCommit(false); // Begin ACID transaction
 
                     try {
-                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId());
+                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId(), newEndTime);
 
                         if (isDbSuccess) {
                             conn.commit(); // Finalize all changes
@@ -7745,10 +7733,10 @@ package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
+import database.dao.WalletDAO;
 import model.user.User;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
@@ -7762,6 +7750,7 @@ import static utils.ConsoleColors.*;
  * transaction logging are performed atomically through the {@link TransactionManager}.
  */
 public class ServerPaymentController {
+    private final WalletDAO walletDAO = new WalletDAO();
 
     /**
      * Processes a successful deposit notification from a payment gateway (e.g., PayPal).
@@ -7775,9 +7764,6 @@ public class ServerPaymentController {
     public CompletableFuture<Boolean> processDepositSuccess(User user, double amountVND, String payPalOrderId) {
         // Wrap deposit logic into a Task to add to the asynchronous database worker queue
         Callable<Boolean> depositTask = () -> {
-            String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
-            String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
-
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false); // Start Database Transaction
 
@@ -7785,21 +7771,17 @@ public class ServerPaymentController {
                     String now = LocalDateTime.now().toString();
 
                     // 1. Update the current wallet balance
-                    try (PreparedStatement ps = conn.prepareStatement(updateWalletSql)) {
-                        ps.setDouble(1, amountVND);
-                        ps.setString(2, user.getId());
-                        ps.executeUpdate();
-                    }
+                    walletDAO.updateBalance(conn, user.getId(), amountVND);
 
                     // 2. Persist the deposit record into the transaction history
-                    try (PreparedStatement ps = conn.prepareStatement(insertTxnSql)) {
-                        ps.setString(1, "DEP-" + System.currentTimeMillis());
-                        ps.setString(2, user.getId());
-                        ps.setDouble(3, amountVND);
-                        ps.setString(4, "Deposit via PayPal (Order ID: " + payPalOrderId + ")");
-                        ps.setString(5, now);
-                        ps.executeUpdate();
-                    }
+                    walletDAO.addTransaction(
+                            conn,
+                            "DEP-" + System.currentTimeMillis(),
+                            user.getId(),
+                            amountVND,
+                            "Deposit via PayPal (Order ID: " + payPalOrderId + ")",
+                            now
+                    );
 
                     conn.commit(); // Commit all changes as an atomic unit
                     System.out.println("[System]: \"" + YELLOW + user.getName() + RESET + "\" has deposited " + GREEN + amountVND + RESET + " VND");
@@ -8420,6 +8402,53 @@ public class AuctionDAO {
     }
 
     /**
+     * Retrieves the scheduled start and end times for a specific auction.
+     *
+     * @param auctionId The unique identifier of the auction.
+     * @return An array of LocalDateTime where index 0 is start_time and index 1 is end_time.
+     * @throws SQLException if a database access error occurs.
+     */
+    public LocalDateTime[] getAuctionTimes(String auctionId) throws SQLException {
+        String sql = "SELECT start_time, end_time FROM auctions WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, auctionId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String startTimeStr = rs.getString("start_time");
+                    String endTimeStr = rs.getString("end_time");
+                    LocalDateTime start = (startTimeStr != null && !startTimeStr.trim().isEmpty()) ? LocalDateTime.parse(startTimeStr) : null;
+                    LocalDateTime end = (endTimeStr != null && !endTimeStr.trim().isEmpty()) ? LocalDateTime.parse(endTimeStr) : null;
+                    return new LocalDateTime[]{start, end};
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Updates the approval status and timing of an auction.
+     *
+     * @param auctionId The unique identifier of the auction.
+     * @param status    The new status.
+     * @param startTime The updated start time.
+     * @param endTime   The updated end time.
+     * @return true if the update was successful.
+     * @throws SQLException if a database access error occurs.
+     */
+    public boolean updateApprovalStatus(String auctionId, String status, LocalDateTime startTime, LocalDateTime endTime) throws SQLException {
+        String sql = "UPDATE auctions SET status = ?, start_time = ?, end_time = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, status);
+            pstmt.setString(2, startTime.toString());
+            pstmt.setString(3, endTime.toString());
+            pstmt.setString(4, auctionId);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
      * Scans the database for orphaned auctions (expired but not updated in RAM)
      * and updates their status.
      *
@@ -8486,71 +8515,57 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 
 public class BidDAO {
+    private final WalletDAO walletDAO = new WalletDAO();
 
-    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, double newCurrentPrice, String auctionId) throws SQLException {
+    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, double newCurrentPrice, String auctionId, LocalDateTime endTime) throws SQLException {
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
-        String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
 
         if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
             // Case 1: User is outbidding themselves. Only deduct the difference.
             double amountToDeduct = newMaxBid - previousHighestMaxBid;
             if (amountToDeduct > 0) {
-                String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
-                try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
-                    pstmt.setDouble(1, amountToDeduct);
-                    pstmt.setString(2, currentUser.getId());
-                    pstmt.setDouble(3, amountToDeduct);
-                    if (pstmt.executeUpdate() == 0) return false; // Insufficient balance
-                }
+                if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return false; // Insufficient balance
+
                 // Log the incremental withdrawal
-                try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                    pstmt.setString(1, "W-INC-" + System.currentTimeMillis());
-                    pstmt.setString(2, currentUser.getId());
-                    pstmt.setDouble(3, -amountToDeduct);
-                    pstmt.setString(4, "Incremental auction bid for session: " + auctionId);
-                    pstmt.setString(5, now);
-                    pstmt.executeUpdate();
-                }
+                walletDAO.addTransaction(
+                        conn,
+                        "W-INC-" + System.currentTimeMillis(),
+                        currentUser.getId(),
+                        -amountToDeduct,
+                        "Incremental auction bid for session: " + auctionId,
+                        now
+                );
             }
         } else {
             // Case 2: A new user is bidding.
             // Refund previous winner
             if (previousWinner != null) {
-                String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
-                try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
-                    pstmt.setDouble(1, previousHighestMaxBid);
-                    pstmt.setString(2, previousWinner.getId());
-                    pstmt.executeUpdate();
-                }
+                walletDAO.updateBalance(conn, previousWinner.getId(), previousHighestMaxBid);
+
                 // Log the refund
-                try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                    pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
-                    pstmt.setString(2, previousWinner.getId());
-                    pstmt.setDouble(3, previousHighestMaxBid);
-                    pstmt.setString(4, "Refund for being outbid in session: " + auctionId);
-                    pstmt.setString(5, now);
-                    pstmt.executeUpdate();
-                }
+                walletDAO.addTransaction(
+                        conn,
+                        "W-REF-" + System.currentTimeMillis(),
+                        previousWinner.getId(),
+                        previousHighestMaxBid,
+                        "Refund for being outbid in session: " + auctionId,
+                        now
+                );
             }
 
             // Deduct full amount from new bidder
-            String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
-                pstmt.setDouble(1, newMaxBid);
-                pstmt.setString(2, currentUser.getId());
-                pstmt.setDouble(3, newMaxBid);
-                if (pstmt.executeUpdate() == 0) return false; // Insufficient balance
-            }
+            if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid)) return false; // Insufficient balance
+
             // Log the full withdrawal
-            try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
-                pstmt.setString(2, currentUser.getId());
-                pstmt.setDouble(3, -newMaxBid);
-                pstmt.setString(4, "Auction bid placed for session: " + auctionId);
-                pstmt.setString(5, now);
-                pstmt.executeUpdate();
-            }
+            walletDAO.addTransaction(
+                    conn,
+                    "W-OUT-" + System.currentTimeMillis(),
+                    currentUser.getId(),
+                    -newMaxBid,
+                    "Auction bid placed for session: " + auctionId,
+                    now
+            );
         }
 
         // STEP 2: Record the bid history
@@ -8564,11 +8579,12 @@ public class BidDAO {
             pstmt.executeUpdate();
         }
 
-        // STEP 3: Update auction's current price in DB
-        String updateAuctionSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
+        // STEP 3: Update auction's current price and endTime in DB
+        String updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ? WHERE id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
             pstmt.setDouble(1, newCurrentPrice);
-            pstmt.setString(2, auctionId);
+            pstmt.setString(2, endTime.toString());
+            pstmt.setString(3, auctionId);
             pstmt.executeUpdate();
         }
 
@@ -8605,6 +8621,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class UserDAO {
+    private final WalletDAO walletDAO = new WalletDAO();
 
     public boolean isUsernameExists(Connection conn, String userName) throws SQLException {
         String checkSql = "SELECT 1 FROM users WHERE username = ?";
@@ -8627,11 +8644,7 @@ public class UserDAO {
             insertUserStmt.executeUpdate();
         }
 
-        String insertWalletSql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
-        try (PreparedStatement insertWalletStmt = conn.prepareStatement(insertWalletSql)) {
-            insertWalletStmt.setString(1, userId);
-            insertWalletStmt.executeUpdate();
-        }
+        walletDAO.createWallet(conn, userId);
     }
 
     public User findUserByUsername(String userName) throws SQLException {
@@ -8655,6 +8668,101 @@ public class UserDAO {
             }
         }
         return null;
+    }
+}
+
+
+======================================================================
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\database\dao\WalletDAO.java ///
+======================================================================
+
+package database.dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+/**
+ * Data Access Object (DAO) for managing wallet-related database operations.
+ * Follows the MVC pattern by isolating database logic from controllers.
+ */
+public class WalletDAO {
+
+    /**
+     * Updates the balance of a user's wallet.
+     *
+     * @param conn    The active database connection (should be part of a transaction).
+     * @param userId  The ID of the user whose wallet is being updated.
+     * @param amount  The amount to add (positive) or subtract (negative).
+     * @return true if the update was successful.
+     * @throws SQLException if a database error occurs.
+     */
+    public boolean updateBalance(Connection conn, String userId, double amount) throws SQLException {
+        String sql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, amount);
+            pstmt.setString(2, userId);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Deducts an amount from a user's wallet only if they have sufficient funds.
+     *
+     * @param conn    The active database connection.
+     * @param userId  The ID of the user.
+     * @param amount  The positive amount to deduct.
+     * @return true if the deduction was successful.
+     * @throws SQLException if a database error occurs.
+     */
+    public boolean deductBalance(Connection conn, String userId, double amount) throws SQLException {
+        String sql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, amount);
+            pstmt.setString(2, userId);
+            pstmt.setDouble(3, amount);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Records a financial transaction in the wallet_transactions table.
+     *
+     * @param conn        The active database connection.
+     * @param id          The unique transaction ID.
+     * @param userId      The ID of the user involved.
+     * @param amount      The amount of the transaction.
+     * @param description A human-readable description of the transaction.
+     * @param createdAt   The timestamp of the transaction.
+     * @return true if the insertion was successful.
+     * @throws SQLException if a database error occurs.
+     */
+    public boolean addTransaction(Connection conn, String id, String userId, double amount, String description, String createdAt) throws SQLException {
+        String sql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, id);
+            pstmt.setString(2, userId);
+            pstmt.setDouble(3, amount);
+            pstmt.setString(4, description);
+            pstmt.setString(5, createdAt);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Initializes a new wallet for a user with a zero balance.
+     *
+     * @param conn   The active database connection.
+     * @param userId The ID of the user owning the wallet.
+     * @return true if the wallet was created successfully.
+     * @throws SQLException if a database error occurs.
+     */
+    public boolean createWallet(Connection conn, String userId) throws SQLException {
+        String sql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, userId);
+            return pstmt.executeUpdate() > 0;
+        }
     }
 }
 
@@ -9225,12 +9333,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import database.TransactionManager;
+import database.dao.AuctionDAO;
 import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
 
@@ -9243,6 +9350,7 @@ import static utils.ConsoleColors.*;
  */
 public class AdminActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
+    private final AuctionDAO auctionDAO = new AuctionDAO();
 
     /**
      * Entry point for handling administrative network messages.
@@ -9284,70 +9392,35 @@ public class AdminActionHandler implements CommandHandler {
      */
     private void processApproval(String auctionId, String newStatus, ClientHandler client) {
         Callable<Boolean> updateTask = () -> {
-            String selectSql = "SELECT start_time, end_time FROM auctions WHERE id = ?";
-            String updateSql = "UPDATE auctions SET status = ?, start_time = ?, end_time = ? WHERE id = ?";
+            try {
+                LocalDateTime[] times = auctionDAO.getAuctionTimes(auctionId);
+                if (times == null) return false;
 
-            try (Connection conn = DatabaseManager.getConnection()) {
-                LocalDateTime oldStart = null;
-                LocalDateTime oldEnd = null;
-
-                // Fetch the original times saved during creation
-                try (PreparedStatement pstmt = conn.prepareStatement(selectSql)) {
-                    pstmt.setString(1, auctionId);
-                    java.sql.ResultSet rs = pstmt.executeQuery();
-                    if (rs.next()) {
-                        String startTimeStr = rs.getString("start_time");
-                        String endTimeStr = rs.getString("end_time");
-                        
-                        // Safeguard against null or empty dates in the database
-                        if (startTimeStr != null && !startTimeStr.trim().isEmpty()) {
-                            oldStart = LocalDateTime.parse(startTimeStr);
-                        }
-                        if (endTimeStr != null && !endTimeStr.trim().isEmpty()) {
-                            oldEnd = LocalDateTime.parse(endTimeStr);
-                        }
-                    } else {
-                        return false;
-                    }
-                }
-
+                LocalDateTime oldStart = times[0];
+                LocalDateTime oldEnd = times[1];
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime newStart = oldStart;
                 LocalDateTime newEnd = oldEnd;
 
                 if (newStatus.equals("OPEN")) {
-                    // DYNAMIC RECALCULATION LOGIC:
-                    // 1. oldStart is null/empty (Fallback safeguard)
-                    // 2. oldStart has already passed (Admin approved late)
-                    // 3. oldStart was 'now' at creation time (so it is definitely in the past compared to server's 'now' at approval time)
                     if (oldStart == null || oldStart.isBefore(now) || oldStart.isEqual(now)) {
-                        
                         long duration = 60; // Default fallback duration
                         if (oldStart != null && oldEnd != null) {
                             duration = java.time.Duration.between(oldStart, oldEnd).toMinutes();
                         }
-                        
                         newStart = now;
                         newEnd = now.plusMinutes(duration);
                         System.out.println("[System]: Admin approved late or immediate start. Recalculated new start time to NOW.");
                     } else {
-                        // Admin is approving EARLY for a future scheduled auction.
-                        // MUST KEEP ORIGINAL oldStart and oldEnd!
-                        newStart = oldStart;
-                        newEnd = oldEnd;
                         System.out.println("[System]: Admin approved early for a future scheduled auction. Kept original times.");
                     }
                 }
 
-                // Update the database with the adjusted times
-                try (PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
-                    pstmt.setString(1, newStatus);
-                    pstmt.setString(2, newStart != null ? newStart.toString() : now.toString());
-                    pstmt.setString(3, newEnd != null ? newEnd.toString() : now.plusMinutes(60).toString());
-                    pstmt.setString(4, auctionId);
-                    int rows = pstmt.executeUpdate();
-                    return rows > 0;
-                }
+                // Default values if recalculation results in null (unlikely but safe)
+                if (newStart == null) newStart = now;
+                if (newEnd == null) newEnd = now.plusMinutes(60);
+
+                return auctionDAO.updateApprovalStatus(auctionId, newStatus, newStart, newEnd);
             } catch (Exception e) {
                 log.warn("Updating approval status failed: {}", e.getMessage());
                 return false;
