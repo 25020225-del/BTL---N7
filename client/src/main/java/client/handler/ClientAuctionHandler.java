@@ -13,6 +13,7 @@ import java.util.Map;
  */
 public class ClientAuctionHandler implements ResponseHandler {
     private static final Logger log = LoggerFactory.getLogger(ClientAuctionHandler.class);
+    public static Object activeDetailController;
 
     /**
      * Dispatches the incoming network message to the appropriate UI update logic.

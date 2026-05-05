@@ -17,7 +17,6 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.*;
-import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import model.auction.Auction;
 import model.user.User;
@@ -32,6 +31,8 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static utils.ConsoleColors.*;
 
 /**
  * The unified primary controller for standard users.
@@ -49,16 +50,23 @@ public class ClientUserController {
     private Parent accountView;
     private Parent settingsView;
 
+    private CreateAuctionController  createAuctionView;
+
+
     private User currentUser;
 
     // FUN
     private int dih = 0;
     private long niggardly = 0;
+    private File imagefile;
 
-    @FXML
-    private VBox mainDock;
-    @FXML
-    private VBox mainViewController;
+    @FXML private VBox mainDock;
+    @FXML private VBox mainViewController;
+
+    @FXML private HBox searchBarContainer;
+    @FXML private TilePane mainTilePane;
+    @FXML private TextField searchField;
+    @FXML private Button searchButton;
 
     @FXML
     private TilePane mainTilePane;
@@ -82,7 +90,7 @@ public class ClientUserController {
 
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
-        this.accountBtn = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
+        this.accountBtn  = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
 
         FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainLoader.setController(this);
@@ -120,7 +128,6 @@ public class ClientUserController {
                 marketplaceBtn,
                 createAuctionBtn,
                 depositBtn,
-                testCreateAuctionBtn,
                 separator,
                 region,
                 settingsBtn,
@@ -142,15 +149,13 @@ public class ClientUserController {
 
         createAuctionBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(createAuctionView);
+            mainViewController.getChildren().add(createAuctionView.getParent());
         });
 
         depositBtn.setOnAction(event -> requestDeposit(50000));
         testCreateAuctionBtn.setOnAction(event -> UIService.createTestAuction());
 
-        accountBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(accountView);
 
             long currentTime = System.currentTimeMillis();
             if (niggardly == 0 || (currentTime - niggardly > 30000)) {
@@ -161,6 +166,8 @@ public class ClientUserController {
             }
             dih = UIService.handleAccountTrollLogic(dih);
             if (dih == 0) niggardly = 0;
+=======
+>>>>>>> 086780d95c0db8f678d2291acb3205f9a469e85a
         });
 
         settingsBtn.setOnAction(event -> {
@@ -178,7 +185,7 @@ public class ClientUserController {
 
     @FXML
     public void handleSignOut() {
-        log.info("\"{}\" is signing out.", currentUser.getUserName());
+        log.info("User \"{}\" is signing out.", currentUser.getName());
         MainApplication.networkClient.sendMessage("LOGOUT", "");
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
@@ -234,6 +241,8 @@ public class ClientUserController {
 
             ItemDetailController detailController = loader.getController();
             detailController.setAuctionData(auction);
+
+            client.handler.ClientAuctionHandler.activeDetailController = detailController;
 
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(detailView);

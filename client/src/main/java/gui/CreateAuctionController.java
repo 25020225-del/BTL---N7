@@ -4,28 +4,31 @@ import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.process.ImageCompressor;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.control.Alert;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.stage.FileChooser;
 import model.auction.Auction;
 import model.item.Item;
+
+import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 
-import static utils.ConsoleColors.GREEN;
-import static utils.ConsoleColors.RESET;
-import static utils.ConsoleColors.YELLOW;
+public class CreateAuctionController {
+    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
+    Parent createAuctionView;
 
-/**
- * Controller dedicated to Seller-specific operations.
- * Manages auction creation and seller dashboard logic.
- */
-public class SellerDashboardController {
-    private static final Logger log = LoggerFactory.getLogger(SellerDashboardController.class);
+    private File imagefile;
 
     @FXML private TextField ca_itemName;
     @FXML private TextArea ca_description;
@@ -37,8 +40,55 @@ public class SellerDashboardController {
     @FXML private TextField ca_durationDays;
     @FXML private TextField ca_durationHours;
     @FXML private ImageView ca_image;
+    private Runnable onAuctionCreated;
+    public CreateAuctionController(){
 
-    private File imagefile;
+        FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
+        sellerLoader.setController(this);
+        try {
+            createAuctionView = sellerLoader.load();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void setOnAuctionCreated(Runnable callback) { // thêm method này
+        this.onAuctionCreated = callback;
+    }
+
+    /**
+     * Choose image from local storage.
+     */
+    @FXML
+    private void handleSelectImage(){
+        // Hạ giới hạn xuống 1MB để bảo vệ RAM của Server khi mã hóa và parse JSON
+        final int MAX_IMAGE_SIZE = 1 * 1024 * 1024;
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choose an image");
+        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+
+        File selectedFile = fileChooser.showOpenDialog(createAuctionView.getScene().getWindow());
+
+        if (selectedFile != null) {
+            // Kiểm tra dung lượng NGAY LẬP TỨC trước khi làm bất cứ việc gì
+            if (selectedFile.length() > MAX_IMAGE_SIZE) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB để đảm bảo đường truyền mạng!");
+                return; // Thoát ngay, không lưu file này
+            }
+
+            // Nếu qua được vòng kiểm duyệt thì mới gán vào biến toàn cục và hiển thị lên UI
+            this.imagefile = selectedFile;
+            log.info("Selected image file: {}", imagefile.getName());
+
+            Image image = new Image(imagefile.toURI().toString());
+            CropImage.cropImage(ca_image, image, 720, 480);
+        }
+    }
+
+    public Parent getParent(){
+        return createAuctionView;
+    }
 
     /**
      * Handles the submission of the Create Auction form.
@@ -110,14 +160,6 @@ public class SellerDashboardController {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Giờ bắt đầu phải từ 0–23 và phút từ 0–59.");
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    public void setImageFile(File file) {
-        this.imagefile = file;
-        if (file != null) {
-            Image image = new Image(file.toURI().toString());
-            CropImage.cropImage(ca_image, image, 720, 480);
         }
     }
 
