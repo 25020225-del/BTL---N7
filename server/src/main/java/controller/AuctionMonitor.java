@@ -27,16 +27,20 @@ public class AuctionMonitor {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
-    private final AuctionDAO auctionDAO = new AuctionDAO(); // Instantiate AuctionDAO
-    private final WalletDAO walletDAO = new WalletDAO(); // Instantiate WalletDAO
+    private final AuctionDAO auctionDAO;
+    private final WalletDAO walletDAO;
 
     /**
-     * Constructs the monitor with a reference to the global active auction list in RAM.
+     * Constructs the monitor with its dependencies.
      *
      * @param allAuctions The shared list of currently monitored auctions.
+     * @param auctionDAO  The DAO for auction persistence.
+     * @param walletDAO   The DAO for financial settlements.
      */
-    public AuctionMonitor(List<Auction> allAuctions) {
+    public AuctionMonitor(List<Auction> allAuctions, AuctionDAO auctionDAO, WalletDAO walletDAO) {
         this.allAuctions = allAuctions;
+        this.auctionDAO = auctionDAO;
+        this.walletDAO = walletDAO;
     }
 
     /**
@@ -66,8 +70,9 @@ public class AuctionMonitor {
      * Iterates through the in-memory auction list, finalizing those whose time has expired.
      */
     private void processRamAuctions() {
-        // Use a safe copy to iterate, preventing ConcurrentModificationException
-        for (Auction auction : List.copyOf(allAuctions)) {
+        // auctionList in AuctionManager is already a CopyOnWriteArrayList, 
+        // so we can iterate over it safely without manual copying or locking.
+        for (Auction auction : AuctionManager.getAuctionList()) {
 
             // Apply Striped Locking to ensure the daemon thread doesn't clash with incoming
             // bids that are concurrently modifying or reading the auction's state.
@@ -99,7 +104,24 @@ public class AuctionMonitor {
                 }
 
                 String status = auction.getStatus();
-                if (status.equals(Auction.STATUS_FINISHED) ||
+
+                // Step 1: Handle transition from FINISHED to final settlement state
+                if (status.equals(Auction.STATUS_FINISHED)) {
+                    // Logic check: only process financial settlement if there's a winner
+                    if (auction.getWinningBidder() != null) {
+                        auction.setStatus(Auction.STATUS_PAID);
+                        processFinancialSettlement(auction);
+                        System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " finished with winner: " + GREEN + auction.getWinningBidder().getUserName() + RESET);
+                    } else {
+                        auction.setStatus(Auction.STATUS_CANCELED);
+                        System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " finished with NO winner. CANCELED.");
+                    }
+                    // Update the local status variable for the next block
+                    status = auction.getStatus();
+                }
+
+                // Step 2: Handle cleanup and persistence for terminal states
+                if (status.equals(Auction.STATUS_PAID) ||
                         status.equals(Auction.STATUS_CANCELED) ||
                         status.equals(Auction.STATUS_DELETED)) {
 
@@ -107,15 +129,11 @@ public class AuctionMonitor {
                     allAuctions.remove(auction);
                     AuctionManager.removeAuctionLock(auction.getId());
 
-                    // Trigger financial settlement if the auction finished successfully
-                    if (status.equals(Auction.STATUS_FINISHED)) {
-                        processFinancialSettlement(auction);
-                    }
-
                     // Persist the closed status to the SQLite Database asynchronously
+                    final String finalStatus = status;
                     Callable<Boolean> dbUpdateTask = () -> {
                         try {
-                            return auctionDAO.updateAuctionStatus(auction.getId(), status);
+                            return auctionDAO.updateAuctionStatus(auction.getId(), finalStatus);
                         } catch (Exception e) {
                             return false;
                         }

@@ -54,10 +54,12 @@ public class PaymentHandler implements CommandHandler {
 
     /**
      * Constructs a new PaymentHandler and initializes the background cleanup task.
+     *
+     * @param paymentController The controller for financial operations.
      */
-    public PaymentHandler() {
+    public PaymentHandler(ServerPaymentController paymentController) {
         this.payPalService = new PayPalService();
-        this.paymentController = new ServerPaymentController();
+        this.paymentController = paymentController;
         startCleanupTask();
     }
 
@@ -182,15 +184,14 @@ public class PaymentHandler implements CommandHandler {
         boolean isCaptured = payPalService.captureOrder(orderId);
 
         if (isCaptured) {
-            double amountVND = depositInfo.getAmountVND();
-
             // Credit the user's wallet and log the transaction atomically
-            paymentController.processDepositSuccess(currentUser, amountVND, orderId).thenAccept(dbSuccess -> {
+            // The controller now verifies the amount internally to prevent client-side manipulation
+            paymentController.processDepositSuccess(currentUser, orderId).thenAccept(dbSuccess -> {
                 if (dbSuccess) {
-                    client.sendResponse("DEPOSIT_SUCCESS", "Successful transaction. Deposited " + amountVND + " VND to balance.");
+                    client.sendResponse("DEPOSIT_SUCCESS", "Successful transaction. Your balance will be updated shortly.");
                     pendingDeposits.remove(orderId); // Free memory
                 } else {
-                    client.sendResponse("ERROR", "Money is deducted but not deposited. Please contact Admins.");
+                    client.sendResponse("ERROR", "Payment verification failed or database error. Please contact Admins.");
                 }
             }).exceptionally(ex -> {
                 client.sendResponse("ERROR", "Database logging error.");

@@ -218,25 +218,21 @@ public class Auction extends Entity {
      * @param newMaxBid The maximum amount the user is willing to bid.
      * @return The created {@link BidTransaction} if the bid is valid and successfully placed; {@code null} otherwise.
      */
-    public synchronized BidTransaction placeBid(User bidder, double newMaxBid) {
+    public BidTransaction placeBid(User bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
-            System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
             return null;
         }
 
         if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
-            System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
             return null;
         }
 
         if (newMaxBid < 0) {
-            System.out.println("[Error]: " + RED + "Invalid Bid" + RESET);
             return null;
         }
 
         double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
-            System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
             return null;
         }
 
@@ -271,13 +267,12 @@ public class Auction extends Entity {
         // Anti-Sniping Algorithm with Hard-Cap Limit
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             LocalDateTime proposedEndTime = endTime.plusMinutes(2);
+
             // Ensure the new end time NEVER exceeds the hard-cap maxEndTime
             if (proposedEndTime.isAfter(maxEndTime)) {
                 endTime = maxEndTime;
-                System.out.println(YELLOW + "[System]: Anti-sniping triggered but hit hard-cap limit. End time: " + endTime + RESET);
             } else {
                 endTime = proposedEndTime;
-                System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered). End time: " + endTime + RESET);
             }
         }
 
@@ -292,7 +287,7 @@ public class Auction extends Entity {
      * @param previousHighestMaxBid The highest max bid before the failed bid.
      * @param failedTransaction     The specific bid transaction that failed and needs to be removed.
      */
-    public synchronized void revertLastBid(User previousWinner, double previousHighestMaxBid, BidTransaction failedTransaction) {
+    public void revertLastBid(User previousWinner, double previousHighestMaxBid, BidTransaction failedTransaction) {
         // 1. Remove the specific failed transaction from bidHistory
         if (failedTransaction != null) {
             bidHistory.remove(failedTransaction);
@@ -309,23 +304,16 @@ public class Auction extends Entity {
             // The currentPrice should be the bidAmount of the last valid transaction
             this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
         }
-        System.out.println(YELLOW + "[System]: RAM State Reverted to Previous Winner: " + (previousWinner != null ? previousWinner.getUserName() : "None") + RESET);
     }
 
     /**
      * Evaluates the current system time against the auction's end time.
-     * Transitions the status to FINISHED if there is a winner, or CANCELED if no bids were placed.
+     * Transitions the status to FINISHED if the time has passed.
+     * Financial settlement and transition to PAID/CANCELED are handled by the AuctionMonitor.
      */
-    public synchronized void closeAuctionIfTimeIsUp() {
+    public void closeAuctionIfTimeIsUp() {
         if ((this.status.equals(STATUS_RUNNING) || this.status.equals(STATUS_OPEN)) && LocalDateTime.now().isAfter(this.endTime)) {
-            if (this.winningBidder != null) {
-                this.status = STATUS_FINISHED;
-                System.out.println(GREEN + "[System]: Auction session \"" + this.getId() + "\" has ended" + RESET);
-                System.out.println(GREEN + "[System]: Winner: \"" + winningBidder.getUserName() + "\" at VND " + currentPrice + RESET);
-            } else {
-                this.status = STATUS_CANCELED;
-                System.out.println(YELLOW + "[System]: Auction session \"" + this.getId() + "\" was cancelled due to no bidders" + RESET);
-            }
+            this.status = STATUS_FINISHED;
         }
     }
 
@@ -338,21 +326,17 @@ public class Auction extends Entity {
      * @param userIncrement The incremental step amount to increase the price when outbidding.
      * @return {@code true} if the registration is successful; {@code false} if constraints fail.
      */
-    public synchronized boolean registerAutoBid(User bidder, double maxBid, double userIncrement) {
+    public boolean registerAutoBid(User bidder, double maxBid, double userIncrement) {
         if (!status.equals(STATUS_RUNNING)) {
-            System.out.println("[Error]: " + RED + "Auction is not in RUNNING status" + RESET);
             return false;
         }
 
         if (maxBid <= currentPrice) {
-            System.out.println("[Error]: " + RED + "Maximum bid must be greater than current price" + RESET);
             return false;
         }
 
         AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
         activeAutoBids.offer(newAutoBid);
-
-        System.out.println(BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + RESET);
 
         return true;
     }

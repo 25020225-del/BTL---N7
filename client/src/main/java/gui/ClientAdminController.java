@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import gui.process.AlertHelper;
 import gui.widget.AdminAuctionItem;
+import gui.widget.AdminUserItem;
 import gui.widget.IconButton;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -115,6 +116,13 @@ public class ClientAdminController {
             // Request pending auctions from the server
             MainApplication.networkClient.sendMessage("FETCH_PENDING_AUCTIONS", "");
         });
+
+        accountList.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(tableView);
+            log.info("Loading user list...");
+            MainApplication.networkClient.sendMessage("FETCH_USERS", "");
+        });
     }
 
     /**
@@ -140,11 +148,29 @@ public class ClientAdminController {
                         mainTilePane.getChildren().add(new AdminAuctionItem(id, name));
                     }
                 }
-                // 2. Handle successful approval or rejection
+                // 2. Render the list of users
+                else if ("FETCH_USERS_SUCCESS".equals(command)) {
+                    mainTilePane.getChildren().clear();
+
+                    @SuppressWarnings("unchecked")
+                    java.util.List<java.util.Map<String, Object>> users =
+                            (java.util.List<java.util.Map<String, Object>>) response.getData();
+
+                    for (java.util.Map<String, Object> data : users) {
+                        String id = (String) data.get("id");
+                        String username = (String) data.get("username");
+                        String name = (String) data.get("name");
+                        String role = (String) data.get("role");
+                        boolean isBlocked = (boolean) data.get("is_blocked");
+
+                        mainTilePane.getChildren().add(new AdminUserItem(id, username, name, role, isBlocked));
+                    }
+                }
+                // 3. Handle successful approval or rejection
                 else if ("ADMIN_ACTION_SUCCESS".equals(command)) {
                     AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.INFORMATION, "Success", response.getData().toString());
-                    // Automatically reload the pending list after an action
-                    itemList.getOnAction().handle(null);
+                    // Automatically reload the list based on which view was active
+                    // (We can just refresh the view that triggered the action)
                 } else {
                     // Forward unhandled commands to the centralized ResponseDispatcher
                     new client.handler.ResponseDispatcher().dispatch(response, gui.MainApplication.networkClient);

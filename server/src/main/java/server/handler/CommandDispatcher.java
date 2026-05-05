@@ -1,5 +1,6 @@
 package server.handler;
 
+import controller.ServerBidderController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import network.NetworkMessage;
@@ -20,30 +21,42 @@ import static utils.ConsoleColors.RESET;
 public class CommandDispatcher {
     private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
-    /**
-     * A registry mapping unique command strings (e.g., "LOGIN", "CREATE_AUCTION")
-     * to their respective operational handlers.
-     */
     private final Map<String, CommandHandler> handlers = new HashMap<>();
 
+    // Dependencies for DI
+    private final database.dao.UserDAO userDAO;
+    private final database.dao.AuctionDAO auctionDAO;
+    private final database.dao.BidDAO bidDAO;
+    private final database.dao.WalletDAO walletDAO;
+    private final service.TOTPService totpService;
+    private final controller.ServerSellerController sellerCtrl;
+    private final controller.ServerPaymentController paymentCtrl;
+
     /**
-     * Constructs a new CommandDispatcher and initializes the handler registry.
+     * Constructs a new CommandDispatcher and initializes the handler registry with dependencies.
      */
-    public CommandDispatcher() {
+    public CommandDispatcher(
+            database.dao.UserDAO userDAO,
+            database.dao.AuctionDAO auctionDAO,
+            database.dao.BidDAO bidDAO,
+            database.dao.WalletDAO walletDAO,
+            service.TOTPService totpService,
+            controller.ServerSellerController sellerCtrl,
+            controller.ServerPaymentController paymentCtrl) {
+        
+        this.userDAO = userDAO;
+        this.auctionDAO = auctionDAO;
+        this.bidDAO = bidDAO;
+        this.walletDAO = walletDAO;
+        this.totpService = totpService;
+        this.sellerCtrl = sellerCtrl;
+        this.paymentCtrl = paymentCtrl;
+        
         registerHandlers();
     }
 
     /**
      * Registers all available command handlers into the dispatcher.
-     * Handlers are grouped by functional domains:
-     * <ul>
-     *     <li><b>System:</b> Connectivity and synchronization.</li>
-     *     <li><b>Auth:</b> Identity and access management.</li>
-     *     <li><b>Auction:</b> Core marketplace operations.</li>
-     *     <li><b>Payment:</b> Financial transactions and wallet management.</li>
-     *     <li><b>Fetch:</b> Data retrieval for clients.</li>
-     *     <li><b>Admin:</b> Privileged system oversight.</li>
-     * </ul>
      */
     private void registerHandlers() {
         // Register System level functions (Ping, Time Sync)
@@ -52,29 +65,42 @@ public class CommandDispatcher {
         handlers.put("TIME_SYNC", sysHandler);
 
         // Register Authentication and Session management
-        AuthHandler authHandler = new AuthHandler();
+        AuthHandler authHandler = new AuthHandler(); // AuthHandler uses client.getUserController()
         handlers.put("LOGIN", authHandler);
         handlers.put("REGISTER", authHandler);
         handlers.put("LOGOUT", authHandler);
 
         // Register Auction creation and management
-        AuctionActionHandler auctionHandler = new AuctionActionHandler();
+        AuctionActionHandler auctionHandler = new AuctionActionHandler(sellerCtrl);
         handlers.put("CREATE_AUCTION", auctionHandler);
 
         // Register Financial/Payment processing
-        PaymentHandler paymentHandler = new PaymentHandler();
+        PaymentHandler paymentHandler = new PaymentHandler(paymentCtrl);
         handlers.put("CREATE_DEPOSIT", paymentHandler);
         handlers.put("CONFIRM_DEPOSIT", paymentHandler);
 
         // Register Data Fetching operations
-        FetchAuctionsHandler fetchHandler = new FetchAuctionsHandler();
+        FetchAuctionsHandler fetchHandler = new FetchAuctionsHandler(auctionDAO);
         handlers.put("FETCH_AUCTIONS", fetchHandler);
-        handlers.put("FETCH_PENDING_AUCTIONS", fetchHandler);
 
-        // Register Administrative operations
-        AdminActionHandler adminHandler = new AdminActionHandler();
+        // Register Admin operations
+        AdminActionHandler adminHandler = new AdminActionHandler(auctionDAO, userDAO);
+        handlers.put("FETCH_PENDING_AUCTIONS", new FetchAuctionsHandler(auctionDAO));
         handlers.put("APPROVE_AUCTION", adminHandler);
         handlers.put("REJECT_AUCTION", adminHandler);
+        handlers.put("FETCH_USERS", adminHandler);
+        handlers.put("BLOCK_USER", adminHandler);
+        handlers.put("UNBLOCK_USER", adminHandler);
+        
+        // Register Bidding operations
+        BidActionHandler bidHandler = new BidActionHandler(new controller.ServerBidderController(bidDAO), auctionDAO);
+        handlers.put("PLACE_BID", bidHandler);
+        handlers.put("SETUP_AUTOBID", bidHandler);
+
+        // Register Seller operations
+        SellerActionHandler sellerHandler = new SellerActionHandler(sellerCtrl, auctionDAO);
+        handlers.put("EDIT_AUCTION", sellerHandler);
+        handlers.put("DELETE_AUCTION", sellerHandler);
     }
 
     /**

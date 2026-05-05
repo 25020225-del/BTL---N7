@@ -84,9 +84,17 @@ public class DatabaseManager {
                     "role TEXT NOT NULL, " +
                     "is_good INTEGER DEFAULT 0, " +
                     "totp_secret TEXT, " +
-                    "is_totp_enabled INTEGER DEFAULT 0" +
+                    "is_totp_enabled INTEGER DEFAULT 0, " +
+                    "is_blocked INTEGER DEFAULT 0" +
                     ");";
             stmt.execute(createUsersTable);
+
+            // Migration: Add is_blocked column to users if it doesn't exist
+            try {
+                stmt.execute("ALTER TABLE users ADD COLUMN is_blocked INTEGER DEFAULT 0;");
+            } catch (SQLException e) {
+                // Column likely already exists
+            }
 
             // --- FINANCIAL SCHEMA ---
             String createWalletsTable = "CREATE TABLE IF NOT EXISTS wallets (" +

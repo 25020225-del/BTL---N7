@@ -23,7 +23,19 @@ import static utils.ConsoleColors.*;
  */
 public class AdminActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
-    private final AuctionDAO auctionDAO = new AuctionDAO();
+    private final AuctionDAO auctionDAO;
+    private final database.dao.UserDAO userDAO;
+
+    /**
+     * Constructs the handler with necessary DAOs via Dependency Injection.
+     *
+     * @param auctionDAO The DAO for auction management.
+     * @param userDAO    The DAO for user management.
+     */
+    public AdminActionHandler(AuctionDAO auctionDAO, database.dao.UserDAO userDAO) {
+        this.auctionDAO = auctionDAO;
+        this.userDAO = userDAO;
+    }
 
     /**
      * Entry point for handling administrative network messages.
@@ -44,13 +56,46 @@ public class AdminActionHandler implements CommandHandler {
             return;
         }
 
-        // The data payload is expected to be the unique ID of the auction
+        if ("FETCH_USERS".equals(command)) {
+            handleFetchUsers(client);
+            return;
+        } else if ("BLOCK_USER".equals(command)) {
+            handleUserBlock(message.getData().toString(), true, client);
+            return;
+        } else if ("UNBLOCK_USER".equals(command)) {
+            handleUserBlock(message.getData().toString(), false, client);
+            return;
+        }
+
+        // The data payload is expected to be the unique ID of the auction for approval/rejection
         String auctionId = (String) message.getData();
 
         if ("APPROVE_AUCTION".equals(command)) {
             processApproval(auctionId, "OPEN", client);
         } else if ("REJECT_AUCTION".equals(command)) {
             processApproval(auctionId, "CANCELED", client);
+        }
+    }
+
+    private void handleFetchUsers(ClientHandler client) {
+        try {
+            java.util.List<java.util.Map<String, Object>> users = userDAO.getAllUsers();
+            client.sendResponse("FETCH_USERS_SUCCESS", users);
+        } catch (java.sql.SQLException e) {
+            client.sendResponse("ERROR", "Failed to fetch users: " + e.getMessage());
+        }
+    }
+
+    private void handleUserBlock(String userId, boolean block, ClientHandler client) {
+        try {
+            if (userDAO.updateUserBlockStatus(userId, block)) {
+                String action = block ? "blocked" : "unblocked";
+                client.sendResponse("ADMIN_ACTION_SUCCESS", "User " + userId + " has been " + action);
+            } else {
+                client.sendResponse("ERROR", "User not found.");
+            }
+        } catch (java.sql.SQLException e) {
+            client.sendResponse("ERROR", "Failed to update user status: " + e.getMessage());
         }
     }
 
