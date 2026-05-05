@@ -1,5 +1,7 @@
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.process.ImageUtil;
@@ -26,6 +28,7 @@ import java.util.Map;
  * and rendering the real-time bid history line chart.
  */
 public class ItemDetailController {
+    private static final Logger log = LoggerFactory.getLogger(ItemDetailController.class);
 
     @FXML
     private ImageView imgLarge;
@@ -62,7 +65,7 @@ public class ItemDetailController {
 
     @FXML
     public void initialize() {
-        System.out.println("[System]: Item Detail View Initialized.");
+        log.info("Item Detail View Initialized.");
         setupChart();
     }
 

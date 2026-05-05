@@ -5,6 +5,8 @@ import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.net.URI;
@@ -13,6 +15,8 @@ import java.util.Map;
 import static utils.ConsoleColors.*;
 
 public class ClientPaymentHandler implements ResponseHandler {
+    private static final Logger log =  LoggerFactory.getLogger(ClientPaymentHandler.class);
+
     @Override
     public void handle(NetworkMessage message, NetworkClient client) throws Exception {
         String command = message.getCommand();
@@ -24,7 +28,7 @@ public class ClientPaymentHandler implements ResponseHandler {
             String url = responseData.get("url");
             String orderId = responseData.get("orderId");
 
-            System.out.println("[Payment]: Open browser to complete payment: " + YELLOW + url + RESET);
+            log.info("Open {} to complete payment.", url);
 
             // Open the browser automatically
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
@@ -46,7 +50,7 @@ public class ClientPaymentHandler implements ResponseHandler {
                 });
             });
         } else if ("DEPOSIT_SUCCESS".equals(command)) {
-            System.out.println("[Payment]: " + GREEN + data.toString() + RESET);
+            log.info(data.toString());
             Platform.runLater(() -> {
                 AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", data.toString());
             });

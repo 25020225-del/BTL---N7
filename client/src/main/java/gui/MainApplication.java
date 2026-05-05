@@ -1,5 +1,7 @@
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
 import client.network.ServerDiscovery;
 import javafx.application.Application;
@@ -25,6 +27,7 @@ import static utils.ConsoleColors.*;
  * background network connection to the server, and loads the foundational UI components.
  */
 public class MainApplication extends Application {
+    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
 
     // Global UI references to allow seamless scene switching
     public static Stage primalStage;
@@ -45,11 +48,11 @@ public class MainApplication extends Application {
      */
     public static void main(String[] args) {
 
-        System.out.println(GREEN + "=================================");
-        System.out.println("|                               |");
-        System.out.println("|       CLIENT LOG TABLE        |");
-        System.out.println("|                               |");
-        System.out.println("=================================" + RESET);
+        System.out.println(GREEN + "===================================================================");
+        System.out.println(        "|                                                                 |");
+        System.out.println(        "|                               LOG                               |");
+        System.out.println(        "|                                                                 |");
+        System.out.println(        "===================================================================" + RESET);
         launch(args);
     }
 
@@ -62,7 +65,7 @@ public class MainApplication extends Application {
      */
     public static void setNewScene(Parent k) {
         if (k == null) {
-            System.out.println("parent is null");
+            log.warn("Parent is null");
         }
         if (primalStage != null && primalStage.getScene() != null) {
             primalStage.getScene().setRoot(k);
@@ -78,10 +81,10 @@ public class MainApplication extends Application {
     public void initProperties() throws IOException {
         InputStream input = MainApplication.class.getResourceAsStream("config.properties");
         if (input != null) {
-            System.out.println("[System]: Reading configuration file...");
+            log.info("Reading configuration file...");
             properties.load(input);
         } else {
-            System.out.println("[Error]: " + RED + "Cannot find config.properties" + RESET);
+            log.error("Cannot find config.properties.");
         }
     }
 
@@ -136,7 +139,7 @@ public class MainApplication extends Application {
 
         // Handle the native OS window close event (clicking the "X" button)
         primalStage.setOnCloseRequest(event -> {
-            System.out.println("[System]: Closing application...");
+            log.info("Closing application...");
             // Clean UI threads
             javafx.application.Platform.exit();
             // Kill process completely to ensure no background socket threads leak
@@ -158,7 +161,7 @@ public class MainApplication extends Application {
                     stage.setTitle("N7 Auction System - Client");
                     stage.setScene(sceneLogin);
 
-                    System.out.println("[System]: " + GREEN + "Application started successfully" + RESET);
+                    log.info("Application started successfully.");
 
                     // Warn the user if the app had to fallback to offline/localhost mode
                     if (!networkClient.isConnected()) {

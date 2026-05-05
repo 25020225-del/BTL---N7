@@ -1,5 +1,7 @@
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import network.NetworkMessage;
 import server.ClientHandler;
 
@@ -16,6 +18,7 @@ import static utils.ConsoleColors.RESET;
  * to the appropriate handler based on the command string.
  */
 public class CommandDispatcher {
+    private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
     /**
      * A registry mapping unique command strings (e.g., "LOGIN", "CREATE_AUCTION")
@@ -92,12 +95,12 @@ public class CommandDispatcher {
                 handler.handle(message, client);
             } catch (Exception e) {
                 // Global error handling for unexpected runtime failures during command execution
-                System.out.println("[Error]: Error executing command " + command + ": " + RED + e.getMessage() + RESET);
+                log.error("Error executing command {}: {}", command, e.getMessage());
                 client.sendResponse("ERROR", "Internal server error while processing command");
             }
         } else {
             // Log and notify client of invalid/unsupported commands
-            System.out.println("[Error]: Unrecognized command: " + RED + command + RESET);
+            log.warn("Unrecognized command: {}", command);
             client.sendResponse("ERROR", "Unrecognized command");
         }
     }

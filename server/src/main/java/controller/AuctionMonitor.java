@@ -1,5 +1,8 @@
 package controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import database.DatabaseManager;
 import database.TransactionManager;
 import model.auction.Auction;
@@ -16,14 +19,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static utils.ConsoleColors.*;
-
 /**
  * A background daemon service that continuously monitors active auctions.
  * It manages real-time expiration in RAM and routinely sweeps the database
  * to clean up any "orphaned" or "ghost" auctions left over from previous server sessions.
  */
 public class AuctionMonitor {
+    private static final Logger log = LoggerFactory.getLogger(AuctionMonitor.class);
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
@@ -43,7 +45,7 @@ public class AuctionMonitor {
      * handling both volatile RAM instances and persistent Database records.
      */
     public void startMonitoring() {
-        System.out.println("[System]:" + GREEN + " Auction monitor has been launched." + RESET);
+        log.info("Auction monitor launched.");
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
@@ -54,7 +56,7 @@ public class AuctionMonitor {
                 sweepDatabaseForOrphans();
 
             } catch (Exception e) {
-                System.out.println("[System](AuctionMonitor): Error occurred during bidding scan process: " + RED + e.getMessage() + RESET);
+                log.error("Error occurred during bidding scan process: {}", e.getMessage());
                 e.printStackTrace();
             }
         }, 0, 10, TimeUnit.SECONDS); // Scans every 10 seconds
@@ -98,7 +100,7 @@ public class AuctionMonitor {
                 // Broadcast removal command to all connected clients
                 ClientManager.broadcast("REMOVE_AUCTION", auction.getId(), null);
 
-                System.out.println("[System]: " + BLUE + "Removed auction " + YELLOW + auction.getId() + RESET + " from RAM and updated DB to " + status);
+                log.debug("Removed auction {} from RAM and updated DB to {}", auction.getId(), status);
             }
         }
     }
@@ -150,12 +152,12 @@ public class AuctionMonitor {
 
                         // Force clients to remove the ghost item from their UI
                         ClientManager.broadcast("REMOVE_AUCTION", id, null);
-                        System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
+                        log.debug("Swept and closed orphaned database auction: {} -> {}", id, newStatus);
                     }
                 }
                 return true;
             } catch (Exception e) {
-                System.out.println("[Database]: Orphan sweep error: " + RED + e.getMessage() + RESET);
+                log.error("Orphan sweep error: {}", e.getMessage());
                 return false;
             }
         };
@@ -169,6 +171,6 @@ public class AuctionMonitor {
      */
     public void stopMonitoring() {
         scheduler.shutdown();
-        System.out.println("[System]: " + YELLOW + " Auction monitor has been shutdown." + RESET);
+        log.info("Auction monitor shutdown.");
     }
 }

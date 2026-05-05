@@ -1,5 +1,7 @@
 package controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import model.auction.Auction;
 import model.user.Admin;
 import model.user.User;
@@ -12,6 +14,7 @@ import static utils.ConsoleColors.*;
  * and verifying user trust levels.
  */
 public class ServerAdminController {
+    private static final Logger log = LoggerFactory.getLogger(ServerAdminController.class);
 
     /**
      * Approves a pending auction request, transitioning its status to OPEN.
@@ -22,12 +25,12 @@ public class ServerAdminController {
      */
     public boolean approveAuction(Admin admin, Auction auction) {
         if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
-            System.out.println("[Security]: " + RED + "User does not have approval rights" + RESET);
+            log.warn("User does not have approval rights.");
             return false;
         }
 
         auction.setStatus(Auction.STATUS_OPEN);
-        System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has approved auction \"" + YELLOW + auction.getId() + RESET + "\"");
+        log.info("{} has approved auction {}.", admin.getUserName(), auction.getId());
 
         return true;
     }
@@ -42,7 +45,7 @@ public class ServerAdminController {
     public void verifySeller(Admin admin, User user) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             user.setGood(true);
-            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has verified User \"" + YELLOW + user.getName() + RESET + "\" as reputable");
+            log.info("{} has verified {} as reputable", admin.getUserName(), user.getUserName());
         }
     }
 
@@ -55,7 +58,7 @@ public class ServerAdminController {
     public void rejectAuctionRequest(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             auction.setStatus(Auction.STATUS_CANCELED);
-            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has rejected the auction request for \"" + YELLOW + auction.getId() + RESET + "\"");
+            log.info("{} has rejected the auction request for {}.", admin.getUserName(), auction.getId());
         }
     }
 
@@ -69,7 +72,7 @@ public class ServerAdminController {
     public void forceDeleteAuction(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             auction.setStatus(Auction.STATUS_DELETED);
-            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has permanently deleted auction \"" + YELLOW + auction.getId() + RESET + "\"");
+            log.info("{} has deleted auction {}.", admin.getUserName(), auction.getId());
         }
     }
 }

@@ -79,7 +79,7 @@ public class ClientAuctionHandler implements ResponseHandler {
             String winnerName = (String) data.get("winnerName");
 
             Platform.runLater(() -> {
-                log.info("Auction {} updated its price: {}", auctionId, newPrice);
+                log.info("{} updated its price: {}", YELLOW + auctionId + RESET, GREEN + newPrice + RESET);
 
                 // If the user is currently viewing this specific auction's detail page,
                 // trigger the real-time line chart and UI update.
@@ -88,14 +88,14 @@ public class ClientAuctionHandler implements ResponseHandler {
                 }
             });
         } else if ("CLI_BROADCAST".equals(command)) {
-            log.info(message.getData().toString());
+            log.info("{}", message.getData());
         } else if ("CREATE_SUCCESS".equals(command)) {
-            log.info(message.getData().toString());
+            log.info("{}", message.getData());
             Platform.runLater(() -> {
                 AlertHelper.showAlert(AlertType.INFORMATION, "Success", message.getData().toString());
             });
         } else if ("CHAT".equals(command)) {
-            log.info(message.getData().toString());
+            log.info("{}", message.getData());
         }
     }
 }
@@ -111,6 +111,8 @@ import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.net.URI;
@@ -119,6 +121,8 @@ import java.util.Map;
 import static utils.ConsoleColors.*;
 
 public class ClientPaymentHandler implements ResponseHandler {
+    private static final Logger log =  LoggerFactory.getLogger(ClientPaymentHandler.class);
+
     @Override
     public void handle(NetworkMessage message, NetworkClient client) throws Exception {
         String command = message.getCommand();
@@ -130,7 +134,7 @@ public class ClientPaymentHandler implements ResponseHandler {
             String url = responseData.get("url");
             String orderId = responseData.get("orderId");
 
-            System.out.println("[Payment]: Open browser to complete payment: " + YELLOW + url + RESET);
+            log.info("Open {} to complete payment.", url);
 
             // Open the browser automatically
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
@@ -152,7 +156,7 @@ public class ClientPaymentHandler implements ResponseHandler {
                 });
             });
         } else if ("DEPOSIT_SUCCESS".equals(command)) {
-            System.out.println("[Payment]: " + GREEN + data.toString() + RESET);
+            log.info(data.toString());
             Platform.runLater(() -> {
                 AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", data.toString());
             });
@@ -169,13 +173,12 @@ package client.handler;
 import client.network.NetworkClient;
 import javafx.application.Platform;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.net.URI;
 import java.util.Map;
-
-import static utils.ConsoleColors.RESET;
-import static utils.ConsoleColors.YELLOW;
 
 /**
  * Handles system-level commands received from the server,
@@ -183,6 +186,8 @@ import static utils.ConsoleColors.YELLOW;
  * and time synchronization acknowledgments.
  */
 public class ClientSystemHandler implements ResponseHandler {
+    private static final Logger log = LoggerFactory.getLogger(ClientSystemHandler.class);
+
     @Override
     public void handle(NetworkMessage message, NetworkClient client) throws Exception {
         String command = message.getCommand();
@@ -191,10 +196,10 @@ public class ClientSystemHandler implements ResponseHandler {
             String url = (String) message.getData();
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(new URI(url));
-                System.out.println("[System]: Redirecting to: " + YELLOW + url + RESET);
+                log.info("Redirecting to {}", url);
             }
         } else if ("KICKED".equals(command)) {
-            System.out.println("[System]:" + YELLOW + " You have been kicked. Reason: " + message.getData() + RESET);
+            log.warn("Kicked. Reason: {}", message.getData());
 
             // Notify UI if applicable before shutting down
             if (client.getOnMessageReceived() != null) {
@@ -228,6 +233,8 @@ package client.handler;
 import client.network.NetworkClient;
 import javafx.application.Platform;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -239,6 +246,8 @@ import static utils.ConsoleColors.*;
  * to their appropriate dedicated handler classes.
  */
 public class ResponseDispatcher {
+    private static final Logger log = LoggerFactory.getLogger(ResponseDispatcher.class);
+
     private final Map<String, ResponseHandler> handlers = new HashMap<>();
 
     public ResponseDispatcher() {
@@ -269,7 +278,7 @@ public class ResponseDispatcher {
             try {
                 handler.handle(message, client);
             } catch (Exception e) {
-                System.out.println("[Error]: Client Dispatcher error for \"" + YELLOW + command + RESET + "\": " + RED + e.getMessage() + RESET);
+                log.error("Command \"{}\": {}", command, e.getMessage());
             }
         } else {
             // Unhandled commands are forwarded directly to the UI component if a callback is registered
@@ -398,10 +407,10 @@ public class NetworkClient {
                     }
                 } else {
                     // Handle failed connectBlocking() (server offline)
-                    log.warn("Failed at try {} - Connection refused by server.", (i + 1));
+                    log.warn("Failed at try {} - Connection refused", (i + 1));
                 }
             } catch (Exception e) {
-                log.error("Failed at try {} - ", e.getMessage());
+                log.warn("Failed at try {} - {}", (i+1), e.getMessage());
             }
 
             if (i < 4) {
@@ -440,7 +449,7 @@ public class NetworkClient {
      */
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
-            log.warn("Cannot send command: \"{}\" due to not being fully connected.", command);
+            log.warn("Cannot send command: \"{}\" due to not being connected.", command);
             return;
         }
 
@@ -518,7 +527,7 @@ public class NetworkClient {
 
         @Override
         public void onError(Exception ex) {
-            log.error("WebSocket Error: {}", ex.getMessage());
+            log.error("{}", ex.getMessage());
         }
     }
 }
@@ -528,6 +537,9 @@ public class NetworkClient {
 ======================================================================
 
 package client.network;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -544,6 +556,7 @@ import static utils.ConsoleColors.*;
  * establishing the appropriate network connection.
  */
 public class ServerDiscovery {
+    private static final Logger log = LoggerFactory.getLogger(ServerDiscovery.class);
 
     /**
      * Fetches the server's dynamic IP and Port from a remote JSONBin storage.
@@ -580,7 +593,7 @@ public class ServerDiscovery {
                 return new String[]{ip, port};
             }
         } catch (Exception e) {
-            System.out.println("[Error]:" + RED + " API Data Retrieval failed: " + e.getMessage() + RESET);
+            log.error("API Data Retrieval failed: {}", e.getMessage());
         }
         return null;
     }
@@ -594,7 +607,7 @@ public class ServerDiscovery {
      */
     public static NetworkClient establishConnection(Properties properties) {
         String binID = properties.getProperty("binID");
-        System.out.println("[System]: Fetching server address from remote storage...");
+        log.info("Fetching server address...");
 
         String[] serverInfo = getServerAddress(binID);
         String serverURL;
@@ -603,14 +616,14 @@ public class ServerDiscovery {
         if (serverInfo != null && serverInfo.length == 2) {
             serverURL = serverInfo[0];
             port = Integer.parseInt(serverInfo[1]);
-            System.out.println("[System]: " + GREEN + "Successfully retrieved server address" + RESET);
+            log.info("Successfully retrieved server address.");
         } else {
-            System.out.println("[System]: " + BLUE + "Could not get remote address. Switching to Localhost (Fallback)" + RESET);
+            log.warn("Could not get remote address. Switching to Localhost");
             serverURL = properties.getProperty("fallbackServerURL", "localhost");
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("[System]: Target server address is: " + YELLOW + serverURL + ":" + port + RESET);
+        log.debug("Target server address: {}:{}", serverURL, port);
 
         // SECURE CONNECTION ROUTING:
         // Automatically determine if the connection is local or remote.
@@ -624,21 +637,21 @@ public class ServerDiscovery {
 
         // Fallback mechanism if the main remote connection fails
         if (!client.isConnected() && !isLocal) {
-            System.out.println("\n[System]:" + BLUE + " Online server is unreachable. Automatically falling back to localhost..." + RESET);
+            log.warn("Online server is unreachable. Using localhost...");
 
             String fallbackURL = properties.getProperty("fallbackServerURL", "localhost");
             int fallbackPort = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
 
             // Local fallback uses standard ws://
             String fallbackFullUrl = "ws://" + fallbackURL + ":" + fallbackPort;
-            System.out.println("[System]: Connecting to fallback: " + YELLOW + fallbackFullUrl + RESET);
+            log.info("Connecting to fallback: {}", fallbackFullUrl);
 
             client = new NetworkClient(fallbackFullUrl);
         }
 
         if (!client.isConnected()) {
-            System.out.println("\n[System]: " + RED + "All connection attempts failed." + RESET);
-            System.out.println("[System]: " + BLUE + "Opening offline application..." + RESET);
+            log.warn("All connection attempts failed.");
+            log.info("Opening offline application...");
         }
 
         return client;
@@ -650,6 +663,9 @@ public class ServerDiscovery {
 ======================================================================
 
 package gui;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import gui.process.AlertHelper;
 import gui.widget.AdminAuctionItem;
@@ -673,6 +689,7 @@ import java.io.IOException;
  * and monitors the overall system statistics.
  */
 public class ClientAdminController {
+    private static final Logger log = LoggerFactory.getLogger(ClientAdminController.class);
 
     private Parent mainView;
     private Parent adminView;
@@ -758,7 +775,7 @@ public class ClientAdminController {
         itemList.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(tableView);
-            System.out.println("[System]: Loading pending auctions...");
+            log.info("Loading pending auctions...");
             // Request pending auctions from the server
             MainApplication.networkClient.sendMessage("FETCH_PENDING_AUCTIONS", "");
         });
@@ -806,7 +823,7 @@ public class ClientAdminController {
     public void start() {
         setMainDock();
         setMainViewController();
-        System.out.println("[System]: Admin view initialized successfully.");
+        log.info("Admin view initialized successfully.");
     }
 }
 
@@ -849,9 +866,6 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
 
 /**
  * The unified primary controller for standard users.
@@ -1008,7 +1022,7 @@ public class ClientUserController {
             dummyData.put("bidIncrement", "5000");
             dummyData.put("durationMinutes", "60");
 
-            log.info("[Debug]: Sending CREATE_AUCTION for {}", testItemName);
+            log.debug("Sending CREATE_AUCTION for {}", testItemName);
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
         });
 
@@ -1031,7 +1045,7 @@ public class ClientUserController {
                         java.awt.Desktop.getDesktop().browse(new java.net.URI(troll));
                     }
                 } catch (Exception e) {
-                    log.error("[System]: Error: " + RED + e.getMessage() + RESET);
+                    log.error("{}", e.getMessage());
                 }
                 dih = 0;
                 niggardly = 0;
@@ -1059,7 +1073,7 @@ public class ClientUserController {
      */
     @FXML
     public void handleSignOut() {
-        System.out.println("[System]: User \"" + currentUser.getName() + "\" is signing out.");
+        log.info("\"{}\" is signing out.", currentUser.getUserName());
         MainApplication.networkClient.sendMessage("LOGOUT", "");
         client.handler.ClientAuctionHandler.activeDetailController = null;
         MainApplication.setNewScene(MainApplication.rootLogin);
@@ -1093,7 +1107,7 @@ public class ClientUserController {
 
             // Nếu qua được vòng kiểm duyệt thì mới gán vào biến toàn cục và hiển thị lên UI
             this.imagefile = selectedFile;
-            System.out.println("[System]: Selected image file: " + imagefile.getName());
+            log.info("Selected file: {}", imagefile.getName());
 
             Image image = new Image(imagefile.toURI().toString());
             CropImage.cropImage(ca_image, image, 720, 480);
@@ -1344,6 +1358,8 @@ public class CreateAuction {
 
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.process.ImageUtil;
@@ -1370,6 +1386,7 @@ import java.util.Map;
  * and rendering the real-time bid history line chart.
  */
 public class ItemDetailController {
+    private static final Logger log = LoggerFactory.getLogger(ItemDetailController.class);
 
     @FXML
     private ImageView imgLarge;
@@ -1406,7 +1423,7 @@ public class ItemDetailController {
 
     @FXML
     public void initialize() {
-        System.out.println("[System]: Item Detail View Initialized.");
+        log.info("Item Detail View Initialized.");
         setupChart();
     }
 
@@ -1621,6 +1638,8 @@ public class Launcher {
 
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gui.process.AlertHelper;
@@ -1634,14 +1653,13 @@ import model.user.User;
 import network.NetworkMessage;
 import utils.JacksonConfig;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Controller responsible for managing the user login interface.
  * It handles capturing user credentials, validating inputs, dispatching authentication
  * requests to the server, and routing the user to the appropriate dashboard upon success.
  */
 public class LoginController {
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
 
     @FXML
     private TextField loginAccountName;
@@ -1696,7 +1714,7 @@ public class LoginController {
             User loginAttempt = new User("", username, password, "");
             networkClient.sendMessage("LOGIN", loginAttempt);
         } else {
-            System.out.println("[System]: " + RED + "Cannot connect to the server" + RESET);
+            log.warn("Cannot connect to server.");
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server");
         }
     }
@@ -1725,14 +1743,14 @@ public class LoginController {
             loginButton.setText("SIGN IN");
 
             String command = response.getCommand();
-            System.out.println("[Log]: Server Response: " + command);
+            log.debug("Server Response: {}", command);
 
             if ("LOGIN_SUCCESS".equals(command)) {
                 try {
                     // Deserialize the authenticated user data returned by the server
                     User loggedInUser = mapper.convertValue(response.getData(), User.class);
 
-                    System.out.println("[Log]: " + GREEN + loggedInUser.getName() + " successfully logged in" + RESET);
+                    log.info("{} successfully logged in", loggedInUser.getUserName());
 
                     // Clear sensitive fields from memory
                     loginAccountName.clear();
@@ -1741,14 +1759,14 @@ public class LoginController {
                     // Delegate routing to the MainController based on the user's role
                     MainController.start(loggedInUser);
                 } catch (Exception e) {
-                    System.out.println("[System]: Login error: " + RED + e.getMessage() + RESET);
+                    log.error("Login Error: {}", e.getMessage());
                 }
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
                 // Extract error message from server or use a default generic message
                 String errorMsg = response.getData() != null ? response.getData().toString() : "Username or password is incorrect!";
 
-                System.out.println("[System]: " + RED + "Login failed: " + errorMsg + RESET);
+                log.warn("Login failed: {}", errorMsg);
 
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "Login Failed", errorMsg);
             }
@@ -1762,6 +1780,8 @@ public class LoginController {
 
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
 import client.network.ServerDiscovery;
 import javafx.application.Application;
@@ -1787,6 +1807,7 @@ import static utils.ConsoleColors.*;
  * background network connection to the server, and loads the foundational UI components.
  */
 public class MainApplication extends Application {
+    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
 
     // Global UI references to allow seamless scene switching
     public static Stage primalStage;
@@ -1807,11 +1828,11 @@ public class MainApplication extends Application {
      */
     public static void main(String[] args) {
 
-        System.out.println(GREEN + "=================================");
-        System.out.println("|                               |");
-        System.out.println("|       CLIENT LOG TABLE        |");
-        System.out.println("|                               |");
-        System.out.println("=================================" + RESET);
+        System.out.println(GREEN + "===================================================================");
+        System.out.println(        "|                                                                 |");
+        System.out.println(        "|                               LOG                               |");
+        System.out.println(        "|                                                                 |");
+        System.out.println(        "===================================================================" + RESET);
         launch(args);
     }
 
@@ -1824,7 +1845,7 @@ public class MainApplication extends Application {
      */
     public static void setNewScene(Parent k) {
         if (k == null) {
-            System.out.println("parent is null");
+            log.warn("Parent is null");
         }
         if (primalStage != null && primalStage.getScene() != null) {
             primalStage.getScene().setRoot(k);
@@ -1840,10 +1861,10 @@ public class MainApplication extends Application {
     public void initProperties() throws IOException {
         InputStream input = MainApplication.class.getResourceAsStream("config.properties");
         if (input != null) {
-            System.out.println("[System]: Reading configuration file...");
+            log.info("Reading configuration file...");
             properties.load(input);
         } else {
-            System.out.println("[Error]: " + RED + "Cannot find config.properties" + RESET);
+            log.error("Cannot find config.properties.");
         }
     }
 
@@ -1898,7 +1919,7 @@ public class MainApplication extends Application {
 
         // Handle the native OS window close event (clicking the "X" button)
         primalStage.setOnCloseRequest(event -> {
-            System.out.println("[System]: Closing application...");
+            log.info("Closing application...");
             // Clean UI threads
             javafx.application.Platform.exit();
             // Kill process completely to ensure no background socket threads leak
@@ -1920,7 +1941,7 @@ public class MainApplication extends Application {
                     stage.setTitle("N7 Auction System - Client");
                     stage.setScene(sceneLogin);
 
-                    System.out.println("[System]: " + GREEN + "Application started successfully" + RESET);
+                    log.info("Application started successfully.");
 
                     // Warn the user if the app had to fallback to offline/localhost mode
                     if (!networkClient.isConnected()) {
@@ -1984,6 +2005,8 @@ public class MainController {
 
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
 import gui.process.AlertHelper;
 import gui.process.QRCodeHelper;
@@ -2007,6 +2030,7 @@ import static utils.ConsoleColors.*;
  * All new public registrations are defaulted to the standard "USER" role.
  */
 public class RegisterController {
+    private static final Logger log = LoggerFactory.getLogger(RegisterController.class);
 
     @FXML
     private TextField registerName;
@@ -2033,7 +2057,7 @@ public class RegisterController {
      */
     @FXML
     protected void onRegisterButtonClick() {
-        System.out.println("[Log]: Registration process started");
+        log.info("Registration process started.");
 
         String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
@@ -2068,12 +2092,12 @@ public class RegisterController {
 
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
-            System.out.println("[System]: Sending registration data to server...");
+            log.info("Sending registration data to server...");
             networkClient.sendMessage("REGISTER", newUser);
 
             registerButton.setDisable(true);
         } else {
-            System.out.println("[System]: " + RED + "Network is not initialized" + RESET);
+            log.warn("Network is not initialized.");
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to server");
         }
     }
@@ -2083,7 +2107,6 @@ public class RegisterController {
      */
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("[Log]: Navigating to Login UI");
         clearFields();
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
@@ -2103,7 +2126,7 @@ public class RegisterController {
 
             try {
                 if ("REGISTER_SUCCESS".equals(command)) {
-                    System.out.println("[System]: " + GREEN + "Registration successful. Initializing 2FA..." + RESET);
+                    log.info("Registration successful. Initializing 2FA...");
 
                     @SuppressWarnings("unchecked")
                     List<String> dataList = (List<String>) data;
@@ -2133,11 +2156,11 @@ public class RegisterController {
 
                 } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
                     String errorMsg = data != null ? data.toString() : "Unidentified error";
-                    System.out.println("[System]: " + RED + "Registration failed: " + errorMsg + RESET);
+                    log.warn("Registration failed: {}", errorMsg);
                     AlertHelper.showAlert(Alert.AlertType.ERROR, "Registration failed", errorMsg);
                 }
             } catch (Exception e) {
-                System.out.println("[System]: QR code generation error: " + RED + e.getMessage() + RESET);
+                log.error("QR Code Generation Error: {}", e.getMessage());
                 e.printStackTrace();
             }
         });
@@ -2151,6 +2174,164 @@ public class RegisterController {
         registerAccountName.clear();
         registerPasswordAccount.clear();
         if (confirmPasswordAccount != null) confirmPasswordAccount.clear();
+    }
+}
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\Transaction.java ///
+======================================================================
+
+package gui;
+
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+
+public class Transaction {
+    private final SimpleStringProperty date;
+    private final SimpleStringProperty type;
+    private final SimpleDoubleProperty amount;
+    private final SimpleStringProperty status;
+    private final SimpleStringProperty note;
+
+    public Transaction(String date, String type, double amount, String status, String note) {
+        this.date = new SimpleStringProperty(date);
+        this.type = new SimpleStringProperty(type);
+        this.amount = new SimpleDoubleProperty(amount);
+        this.status = new SimpleStringProperty(status);
+        this.note = new SimpleStringProperty(note);
+    }
+
+    public String getDate() {
+        return date.get();
+    }
+    public String getType() {
+        return type.get();
+    }
+    public double getAmount() {
+        return amount.get();
+    }
+    public String getStatus() {
+        return status.get();
+    }
+    public String getNote() {
+        return note.get();
+    }
+}
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\WalletController.java ///
+======================================================================
+
+package gui;
+
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class WalletController {
+
+    @FXML private Label lblTotalBalance;
+    @FXML private Label lblFrozenBalance;
+    @FXML private TextField txtDepositAmount;
+
+    @FXML private TableView<Transaction> tableTransactions;
+    @FXML private TableColumn<Transaction, String> colDate;
+    @FXML private TableColumn<Transaction, String> colType;
+    @FXML private TableColumn<Transaction, Double> colAmount;
+    @FXML private TableColumn<Transaction, String> colStatus;
+    @FXML private TableColumn<Transaction, String> colNote;
+
+    private double currentBalance = 0.0;
+    private ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
+
+    @FXML
+    public void initialize() {
+        colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
+        colType.setCellValueFactory(new PropertyValueFactory<>("type"));
+        colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        colNote.setCellValueFactory(new PropertyValueFactory<>("note"));
+
+        tableTransactions.setItems(transactionData);
+
+        transactionData.add(new Transaction("1975-10-20 10:00", "Đặt cọc", 200.0, "Success", "Pinecone : Konichiwa !!"));
+
+        updateBalanceUI();
+    }
+
+
+    @FXML
+    private void handleDeposit() {
+        try {
+            double amount = Double.parseDouble(txtDepositAmount.getText());
+            if (amount <= 0) throw new Exception();
+
+            currentBalance += amount;
+
+
+            String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            transactionData.add(0, new Transaction(now, "Nạp tiền", amount, "Completed", "Nạp tiền qua ngân hàng"));
+
+            updateBalanceUI();
+            txtDepositAmount.clear();
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Thành công");
+            alert.setHeaderText(null);
+            alert.setContentText("Đã nạp $" + amount );
+            alert.showAndWait();
+
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setContentText("Vui lòng nhập số tiền hợp lệ!");
+            alert.showAndWait();
+        }
+    }
+
+    private void updateBalanceUI() {
+        lblTotalBalance.setText(String.format("$%.2f", currentBalance));
+    }
+    // nap nhanh
+    @FXML
+    private void addQuickAmount(javafx.event.ActionEvent event) {
+        Button btn = (Button) event.getSource();
+        String text = btn.getText().replace("+$", "");
+        txtDepositAmount.setText(text);
+    }
+}
+
+======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\java\gui\WalletTestLauncher.java ///
+======================================================================
+
+package gui;
+
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+
+public class WalletTestLauncher extends Application {
+
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("WalletView.fxml"));
+        Parent root = loader.load();
+        Scene scene = new Scene(root);
+        primaryStage.setTitle("Ví điện tử");
+        primaryStage.setScene(scene);
+        primaryStage.setResizable(false);
+        primaryStage.show();
+    }
+
+    public static void main(String[] args) {
+        launch(args);
     }
 }
 
@@ -2297,14 +2478,19 @@ public class AnimateEffect {
 
 package gui.process;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javafx.geometry.Rectangle2D;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
 public class CropImage {
+    private static Logger log = LoggerFactory.getLogger(CropImage.class);
+
     public static void cropImage(ImageView imageView, Image image, int width, int height) {
         if (image == null || image.isError()) {
-            System.out.println("Ảnh bị lỗi hoặc null!");
+            log.warn("Image is null or error");
             return;
         }
 
@@ -2368,7 +2554,7 @@ public class ImageCompressor {
         // 1. Đọc ảnh gốc
         BufferedImage originalImage = ImageIO.read(file);
         if (originalImage == null) {
-            throw new IOException("Không thể đọc định dạng file này!");
+            throw new IOException("Cannot read file format: " + file.getAbsolutePath());
         }
 
         // 2. Xử lý trường hợp ảnh có nền trong suốt (Alpha channel)
@@ -2389,7 +2575,7 @@ public class ImageCompressor {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
 
-        if (!writers.hasNext()) throw new IllegalStateException("Hệ thống không hỗ trợ ghi định dạng JPG");
+        if (!writers.hasNext()) throw new IllegalStateException(".jpg format is not available");
         ImageWriter writer = writers.next();
 
         try (ImageOutputStream ios = ImageIO.createImageOutputStream(baos)) {
@@ -2418,6 +2604,9 @@ public class ImageCompressor {
 
 package gui.process;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javafx.scene.image.Image;
 
 import java.io.ByteArrayInputStream;
@@ -2433,6 +2622,7 @@ import static utils.ConsoleColors.*;
  * and decodes Base64 strings back to JavaFX Image objects.
  */
 public class ImageUtil {
+    private static final Logger log = LoggerFactory.getLogger(ImageUtil.class);
 
     /**
      * Reads a local file and encodes it into a Base64 string.
@@ -2442,7 +2632,7 @@ public class ImageUtil {
      */
     public static String encodeImageToBase64(File file) {
         if (file == null || !file.exists()) {
-            System.out.println("[Warning]: Image file not found or is null.");
+            log.warn("Image not found or is null.");
             return null;
         }
 
@@ -2451,12 +2641,12 @@ public class ImageUtil {
 
             // Check file size (e.g., limit to ~2MB) to prevent overwhelming the server/WebSocket
             if (fileContent.length > 2 * 1024 * 1024) {
-                System.out.println("[Warning]: " + YELLOW + "Image size exceeds 2MB. Transmission might be slow." + RESET);
+                log.warn("Image size exceeds 2MB. Transmission might be slow.");
             }
 
             return Base64.getEncoder().encodeToString(fileContent);
         } catch (Exception e) {
-            System.out.println("[Error]: Failed to encode image to Base64: " + RED + e.getMessage() + RESET);
+            log.error("Failed to encode image to Base64: {}", e.getMessage());
             return null;
         }
     }
@@ -2476,10 +2666,10 @@ public class ImageUtil {
             byte[] imageBytes = Base64.getDecoder().decode(base64String);
             return new Image(new ByteArrayInputStream(imageBytes));
         } catch (IllegalArgumentException e) {
-            System.out.println("[Error]: Invalid Base64 format received: " + RED + e.getMessage() + RESET);
+            log.warn("Invalid Base64 format received: {}", e.getMessage());
             return null;
         } catch (Exception e) {
-            System.out.println("[Error]: Failed to decode Base64 image: " + RED + e.getMessage() + RESET);
+            log.error("Failed to decode Base64 image: {}", e.getMessage());
             return null;
         }
     }
@@ -2491,6 +2681,8 @@ public class ImageUtil {
 
 package gui.process;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
@@ -2498,8 +2690,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
+import static utils.ConsoleColors.*;
 
 /**
  * A utility class for generating Quick Response (QR) codes.
@@ -2507,6 +2698,7 @@ import static utils.ConsoleColors.RESET;
  * and converts it directly into a JavaFX {@link Image} for UI rendering.
  */
 public final class QRCodeHelper {
+    private static final Logger log = LoggerFactory.getLogger(QRCodeHelper.class);
 
     /**
      * Private constructor to prevent instantiation of this utility class.
@@ -2540,7 +2732,7 @@ public final class QRCodeHelper {
             return image;
 
         } catch (Exception e) {
-            System.out.println("[Error]: QR code creation failed: " + RED + e.getMessage() + RESET);
+            log.error("QR code creation failed: {}", e.getMessage());
             return null;
         }
     }
@@ -2739,7 +2931,9 @@ public class CountdownClock extends Label {
      * Stops the active countdown timeline, halting any further UI updates.
      */
     public void stop() {
-        if (timeline != null) timeline.stop();
+        if (timeline != null) {
+            timeline.stop();
+        }
     }
 }
 
@@ -2753,8 +2947,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Tooltip;
 import org.kordamp.ikonli.javafx.FontIcon;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
+import static utils.ConsoleColors.*;
 
 /**
  * A custom JavaFX {@link Button} that seamlessly integrates a scalable {@link FontIcon}
@@ -3121,87 +3314,83 @@ public class MinimalItem extends VBox {
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
-<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25"
-            xmlns:fx="http://javafx.com/fxml/1">
-    <content>
-        <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity"
-              minWidth="-Infinity" spacing="10.0">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-            </padding>
-            <children>
-                <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
-                    <font>
-                        <Font name="System Bold" size="14.0"/>
-                    </font>
-                </Text>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Item name"/>
-                        <TextField fx:id="ca_itemName"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Starting price"/>
-                        <TextField fx:id="ca_startPrice"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Bid Increment"/>
-                        <TextField fx:id="ca_bidIncrement"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Choose file"/>
-                        <Button fx:id="chooseFile" mnemonicParsing="false" onAction="#handleSelectImage" text="Button"/>
-                        <Label fx:id="fileLinkChoosen"/>
-                    </children>
-                </HBox>
-                <HBox>
-                    <children>
-                        <ImageView fx:id="ca_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true"/>
-                    </children>
-                </HBox>
-                <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0"
-                      VBox.vgrow="ALWAYS">
-                    <children>
-                        <Label text="Description"/>
-                        <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0"
-                                  HBox.hgrow="ALWAYS"/>
-                    </children>
-                </HBox>
-                <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Starting time"/>
-                        <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity"
-                                    minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0"/>
-                        <TextField fx:id="ca_startHour" prefWidth="30.0"/>
-                        <Label text="Hour"/>
-                        <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0"/>
-                        <Label text="Minute"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Duration (Max 30 days)"/>
-                        <TextField fx:id="ca_durationDays" prefHeight="27.0" prefWidth="60.0" promptText="Days"/>
-                        <Label text="Days"/>
-                        <TextField fx:id="ca_durationHours" prefHeight="27.0" prefWidth="60.0" promptText="Hours"/>
-                        <Label text="Hours"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER" prefHeight="100.0">
-                    <children>
-                        <Button fx:id="ca_createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction"
-                                text="Create"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
-    </content>
+
+<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+   <content>
+      <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" spacing="10.0">
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+         <children>
+            <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
+               <font>
+                  <Font name="System Bold" size="14.0" />
+               </font>
+            </Text>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Item name" />
+                  <TextField fx:id="ca_itemName" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Starting price" />
+                  <TextField fx:id="ca_startPrice" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Bid Increment" />
+                  <TextField fx:id="ca_bidIncrement" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Choose file" />
+                  <Button fx:id="chooseFile" mnemonicParsing="false" text="Files" />
+                  <Label fx:id="fileLinkChoosen" />
+               </children>
+            </HBox>
+            <HBox>
+               <children>
+                  <ImageView fx:id="sellerCreateAuction_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
+               </children>
+            </HBox>
+            <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0" VBox.vgrow="ALWAYS">
+               <children>
+                  <Label text="Description" />
+                  <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0" HBox.hgrow="ALWAYS" />
+               </children>
+            </HBox>
+            <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Starting time" />
+                  <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_startHour" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Ending time" />
+                  <DatePicker fx:id="ca_endDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_endHour" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_endMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" prefHeight="100.0">
+               <children>
+                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" stylesheets="@index.css" text="Create" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </content>
 </ScrollPane>
 
 
@@ -3435,10 +3624,14 @@ public class MinimalItem extends VBox {
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
+<<<<<<< HEAD
+/*nut dang xuất*/
+=======
 
 /
 /
 nut dang xuất
+>>>>>>> 89dfeebe728517716e9e02ef0007a89fd2b33f70
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;
@@ -3451,6 +3644,35 @@ nut dang xuất
 .button-logout:hover {
     -fx-background-color: #fff1f1;
 }
+/* hiển thị  */
+.balance-card {
+    -fx-background-color: linear-gradient(to right, #3665f3, #2b50c7);
+    -fx-background-radius: 15;
+    -fx-padding: 25;
+    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.3), 10, 0, 0, 5);
+}
+
+.balance-card .label {
+    -fx-text-fill: white;
+}
+
+/* Các nút nạp */
+.quick-amount-btn {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5;
+    -fx-cursor: hand;
+}
+
+.quick-amount-btn:hover {
+    -fx-border-color: #3665f3;
+    -fx-text-fill: #3665f3;
+}
+
+
+.status-completed { -fx-text-fill: #28a745; -fx-font-weight: bold; }
+.status-pending { -fx-text-fill: #f39c12; -fx-font-weight: bold; }
+.status-hold { -fx-text-fill: #3665f3; -fx-font-weight: bold; }
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\Login.fxml ///
@@ -4019,6 +4241,99 @@ nut dang xuất
 
 
 ======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\src\main\resources\gui\WalletView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.WalletController">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <children>
+                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại" />
+                <Label text="Ma Wallet">
+                    <font><Font name="System Bold" size="24.0" /></font>
+                </Label>
+            </children>
+        </HBox>
+
+        <HBox spacing="20.0">
+            <children>
+                <VBox prefWidth="350.0" styleClass="balance-card" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label style="-fx-opacity: 0.8;" text="Số dư khả dụng" />
+                        <Label fx:id="lblTotalBalance" text="0.00">
+                            <font><Font name="System Bold" size="36.0" /></font>
+                        </Label>
+                        <Separator opacity="0.2">
+                            <VBox.margin><Insets bottom="10.0" top="10.0" /></VBox.margin>
+                        </Separator>
+                        <HBox spacing="20.0">
+                            <children>
+                                <VBox>
+                                    <children>
+                                        <Label style="-fx-font-size: 11; -fx-opacity: 0.8;" text="Đang đặt cọc" />
+                                        <Label fx:id="lblFrozenBalance" style="-fx-font-size: 16; -fx-font-weight: bold;" text="0.00" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="400.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;" styleClass="product-card" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label text="Nạp ">
+                            <font><Font name="System Bold" size="16.0" /></font>
+                        </Label>
+                        <TextField fx:id="txtDepositAmount" prefHeight="40.0" promptText="Nhập số tiền ($)" />
+                        <HBox spacing="10.0">
+                            <children>
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$10" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$50" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$100" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$500" />
+                            </children>
+                        </HBox>
+                        <Button maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="NẠP TIỀN NGAY" />
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+
+        <VBox spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 15;" VBox.vgrow="ALWAYS">
+            <children>
+                <Label text="Lịch sử giao dịch gần đây">
+                    <font><Font name="System Bold" size="16.0" /></font>
+                </Label>
+                <TableView fx:id="tableTransactions" prefHeight="300.0" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colDate" prefWidth="150.0" text="Ngày giao dịch" />
+                        <TableColumn fx:id="colType" prefWidth="150.0" text="Loại" />
+                        <TableColumn fx:id="colAmount" prefWidth="120.0" text="Số tiền" />
+                        <TableColumn fx:id="colStatus" prefWidth="120.0" text="Trạng thái" />
+                        <TableColumn fx:id="colNote" prefWidth="200.0" text="Ghi chú" />
+                    </columns>
+                </TableView>
+            </children>
+        </VBox>
+    </children>
+    <padding><Insets bottom="30.0" left="30.0" right="30.0" top="30.0" /></padding>
+</VBox>
+
+
+======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\AccountReview.fxml ///
 ======================================================================
 
@@ -4236,87 +4551,83 @@ nut dang xuất
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
-<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25"
-            xmlns:fx="http://javafx.com/fxml/1">
-    <content>
-        <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity"
-              minWidth="-Infinity" spacing="10.0">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-            </padding>
-            <children>
-                <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
-                    <font>
-                        <Font name="System Bold" size="14.0"/>
-                    </font>
-                </Text>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Item name"/>
-                        <TextField fx:id="ca_itemName"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Starting price"/>
-                        <TextField fx:id="ca_startPrice"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Bid Increment"/>
-                        <TextField fx:id="ca_bidIncrement"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Choose file"/>
-                        <Button fx:id="chooseFile" mnemonicParsing="false" onAction="#handleSelectImage" text="Button"/>
-                        <Label fx:id="fileLinkChoosen"/>
-                    </children>
-                </HBox>
-                <HBox>
-                    <children>
-                        <ImageView fx:id="ca_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true"/>
-                    </children>
-                </HBox>
-                <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0"
-                      VBox.vgrow="ALWAYS">
-                    <children>
-                        <Label text="Description"/>
-                        <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0"
-                                  HBox.hgrow="ALWAYS"/>
-                    </children>
-                </HBox>
-                <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Starting time"/>
-                        <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity"
-                                    minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0"/>
-                        <TextField fx:id="ca_startHour" prefWidth="30.0"/>
-                        <Label text="Hour"/>
-                        <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0"/>
-                        <Label text="Minute"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Duration (Max 30 days)"/>
-                        <TextField fx:id="ca_durationDays" prefHeight="27.0" prefWidth="60.0" promptText="Days"/>
-                        <Label text="Days"/>
-                        <TextField fx:id="ca_durationHours" prefHeight="27.0" prefWidth="60.0" promptText="Hours"/>
-                        <Label text="Hours"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER" prefHeight="100.0">
-                    <children>
-                        <Button fx:id="ca_createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction"
-                                text="Create"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
-    </content>
+
+<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+   <content>
+      <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" spacing="10.0">
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+         <children>
+            <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
+               <font>
+                  <Font name="System Bold" size="14.0" />
+               </font>
+            </Text>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Item name" />
+                  <TextField fx:id="ca_itemName" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Starting price" />
+                  <TextField fx:id="ca_startPrice" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Bid Increment" />
+                  <TextField fx:id="ca_bidIncrement" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Choose file" />
+                  <Button fx:id="chooseFile" mnemonicParsing="false" text="Files" />
+                  <Label fx:id="fileLinkChoosen" />
+               </children>
+            </HBox>
+            <HBox>
+               <children>
+                  <ImageView fx:id="sellerCreateAuction_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
+               </children>
+            </HBox>
+            <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0" VBox.vgrow="ALWAYS">
+               <children>
+                  <Label text="Description" />
+                  <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0" HBox.hgrow="ALWAYS" />
+               </children>
+            </HBox>
+            <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Starting time" />
+                  <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_startHour" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Ending time" />
+                  <DatePicker fx:id="ca_endDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_endHour" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_endMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" prefHeight="100.0">
+               <children>
+                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" stylesheets="@index.css" text="Create" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </content>
 </ScrollPane>
 
 
@@ -4550,10 +4861,14 @@ nut dang xuất
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
+<<<<<<< HEAD
+/*nut dang xuất*/
+=======
 
 /
 /
 nut dang xuất
+>>>>>>> 89dfeebe728517716e9e02ef0007a89fd2b33f70
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;
@@ -4566,6 +4881,35 @@ nut dang xuất
 .button-logout:hover {
     -fx-background-color: #fff1f1;
 }
+/* hiển thị  */
+.balance-card {
+    -fx-background-color: linear-gradient(to right, #3665f3, #2b50c7);
+    -fx-background-radius: 15;
+    -fx-padding: 25;
+    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.3), 10, 0, 0, 5);
+}
+
+.balance-card .label {
+    -fx-text-fill: white;
+}
+
+/* Các nút nạp */
+.quick-amount-btn {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5;
+    -fx-cursor: hand;
+}
+
+.quick-amount-btn:hover {
+    -fx-border-color: #3665f3;
+    -fx-text-fill: #3665f3;
+}
+
+
+.status-completed { -fx-text-fill: #28a745; -fx-font-weight: bold; }
+.status-pending { -fx-text-fill: #f39c12; -fx-font-weight: bold; }
+.status-hold { -fx-text-fill: #3665f3; -fx-font-weight: bold; }
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\Login.fxml ///
@@ -5134,6 +5478,99 @@ nut dang xuất
 
 
 ======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\gui\WalletView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.WalletController">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <children>
+                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại" />
+                <Label text="Ma Wallet">
+                    <font><Font name="System Bold" size="24.0" /></font>
+                </Label>
+            </children>
+        </HBox>
+
+        <HBox spacing="20.0">
+            <children>
+                <VBox prefWidth="350.0" styleClass="balance-card" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label style="-fx-opacity: 0.8;" text="Số dư khả dụng" />
+                        <Label fx:id="lblTotalBalance" text="0.00">
+                            <font><Font name="System Bold" size="36.0" /></font>
+                        </Label>
+                        <Separator opacity="0.2">
+                            <VBox.margin><Insets bottom="10.0" top="10.0" /></VBox.margin>
+                        </Separator>
+                        <HBox spacing="20.0">
+                            <children>
+                                <VBox>
+                                    <children>
+                                        <Label style="-fx-font-size: 11; -fx-opacity: 0.8;" text="Đang đặt cọc" />
+                                        <Label fx:id="lblFrozenBalance" style="-fx-font-size: 16; -fx-font-weight: bold;" text="0.00" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="400.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;" styleClass="product-card" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label text="Nạp ">
+                            <font><Font name="System Bold" size="16.0" /></font>
+                        </Label>
+                        <TextField fx:id="txtDepositAmount" prefHeight="40.0" promptText="Nhập số tiền ($)" />
+                        <HBox spacing="10.0">
+                            <children>
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$10" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$50" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$100" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$500" />
+                            </children>
+                        </HBox>
+                        <Button maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="NẠP TIỀN NGAY" />
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+
+        <VBox spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 15;" VBox.vgrow="ALWAYS">
+            <children>
+                <Label text="Lịch sử giao dịch gần đây">
+                    <font><Font name="System Bold" size="16.0" /></font>
+                </Label>
+                <TableView fx:id="tableTransactions" prefHeight="300.0" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colDate" prefWidth="150.0" text="Ngày giao dịch" />
+                        <TableColumn fx:id="colType" prefWidth="150.0" text="Loại" />
+                        <TableColumn fx:id="colAmount" prefWidth="120.0" text="Số tiền" />
+                        <TableColumn fx:id="colStatus" prefWidth="120.0" text="Trạng thái" />
+                        <TableColumn fx:id="colNote" prefWidth="200.0" text="Ghi chú" />
+                    </columns>
+                </TableView>
+            </children>
+        </VBox>
+    </children>
+    <padding><Insets bottom="30.0" left="30.0" right="30.0" top="30.0" /></padding>
+</VBox>
+
+
+======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\AccountReview.fxml ///
 ======================================================================
 
@@ -5351,87 +5788,83 @@ nut dang xuất
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
-<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25"
-            xmlns:fx="http://javafx.com/fxml/1">
-    <content>
-        <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity"
-              minWidth="-Infinity" spacing="10.0">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-            </padding>
-            <children>
-                <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
-                    <font>
-                        <Font name="System Bold" size="14.0"/>
-                    </font>
-                </Text>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Item name"/>
-                        <TextField fx:id="ca_itemName"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Starting price"/>
-                        <TextField fx:id="ca_startPrice"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Bid Increment"/>
-                        <TextField fx:id="ca_bidIncrement"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Choose file"/>
-                        <Button fx:id="chooseFile" mnemonicParsing="false" onAction="#handleSelectImage" text="Button"/>
-                        <Label fx:id="fileLinkChoosen"/>
-                    </children>
-                </HBox>
-                <HBox>
-                    <children>
-                        <ImageView fx:id="ca_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true"/>
-                    </children>
-                </HBox>
-                <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0"
-                      VBox.vgrow="ALWAYS">
-                    <children>
-                        <Label text="Description"/>
-                        <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0"
-                                  HBox.hgrow="ALWAYS"/>
-                    </children>
-                </HBox>
-                <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
-                    <children>
-                        <Label prefHeight="18.0" prefWidth="126.0" text="Starting time"/>
-                        <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity"
-                                    minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0"/>
-                        <TextField fx:id="ca_startHour" prefWidth="30.0"/>
-                        <Label text="Hour"/>
-                        <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0"/>
-                        <Label text="Minute"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
-                    <children>
-                        <Label prefWidth="126.0" text="Duration (Max 30 days)"/>
-                        <TextField fx:id="ca_durationDays" prefHeight="27.0" prefWidth="60.0" promptText="Days"/>
-                        <Label text="Days"/>
-                        <TextField fx:id="ca_durationHours" prefHeight="27.0" prefWidth="60.0" promptText="Hours"/>
-                        <Label text="Hours"/>
-                    </children>
-                </HBox>
-                <HBox alignment="CENTER" prefHeight="100.0">
-                    <children>
-                        <Button fx:id="ca_createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction"
-                                text="Create"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
-    </content>
+
+<ScrollPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+   <content>
+      <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" spacing="10.0">
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+         <children>
+            <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
+               <font>
+                  <Font name="System Bold" size="14.0" />
+               </font>
+            </Text>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Item name" />
+                  <TextField fx:id="ca_itemName" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Starting price" />
+                  <TextField fx:id="ca_startPrice" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Bid Increment" />
+                  <TextField fx:id="ca_bidIncrement" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Choose file" />
+                  <Button fx:id="chooseFile" mnemonicParsing="false" text="Files" />
+                  <Label fx:id="fileLinkChoosen" />
+               </children>
+            </HBox>
+            <HBox>
+               <children>
+                  <ImageView fx:id="sellerCreateAuction_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
+               </children>
+            </HBox>
+            <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0" VBox.vgrow="ALWAYS">
+               <children>
+                  <Label text="Description" />
+                  <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0" HBox.hgrow="ALWAYS" />
+               </children>
+            </HBox>
+            <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
+               <children>
+                  <Label prefHeight="18.0" prefWidth="126.0" text="Starting time" />
+                  <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_startHour" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
+               <children>
+                  <Label prefWidth="126.0" text="Ending time" />
+                  <DatePicker fx:id="ca_endDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_endHour" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Hour" />
+                  <TextField fx:id="ca_endMinute" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Minute" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" prefHeight="100.0">
+               <children>
+                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" stylesheets="@index.css" text="Create" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </content>
 </ScrollPane>
 
 
@@ -5665,10 +6098,14 @@ nut dang xuất
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
+<<<<<<< HEAD
+/*nut dang xuất*/
+=======
 
 /
 /
 nut dang xuất
+>>>>>>> 89dfeebe728517716e9e02ef0007a89fd2b33f70
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;
@@ -5681,6 +6118,35 @@ nut dang xuất
 .button-logout:hover {
     -fx-background-color: #fff1f1;
 }
+/* hiển thị  */
+.balance-card {
+    -fx-background-color: linear-gradient(to right, #3665f3, #2b50c7);
+    -fx-background-radius: 15;
+    -fx-padding: 25;
+    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.3), 10, 0, 0, 5);
+}
+
+.balance-card .label {
+    -fx-text-fill: white;
+}
+
+/* Các nút nạp */
+.quick-amount-btn {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5;
+    -fx-cursor: hand;
+}
+
+.quick-amount-btn:hover {
+    -fx-border-color: #3665f3;
+    -fx-text-fill: #3665f3;
+}
+
+
+.status-completed { -fx-text-fill: #28a745; -fx-font-weight: bold; }
+.status-pending { -fx-text-fill: #f39c12; -fx-font-weight: bold; }
+.status-hold { -fx-text-fill: #3665f3; -fx-font-weight: bold; }
 
 ======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\Login.fxml ///
@@ -6249,6 +6715,99 @@ nut dang xuất
 
 
 ======================================================================
+/// FILE: D:\Lap Trinh Nang Cao\BTL---N7\client\target\classes\main\resources\gui\WalletView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.WalletController">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <children>
+                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại" />
+                <Label text="Ma Wallet">
+                    <font><Font name="System Bold" size="24.0" /></font>
+                </Label>
+            </children>
+        </HBox>
+
+        <HBox spacing="20.0">
+            <children>
+                <VBox prefWidth="350.0" styleClass="balance-card" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label style="-fx-opacity: 0.8;" text="Số dư khả dụng" />
+                        <Label fx:id="lblTotalBalance" text="0.00">
+                            <font><Font name="System Bold" size="36.0" /></font>
+                        </Label>
+                        <Separator opacity="0.2">
+                            <VBox.margin><Insets bottom="10.0" top="10.0" /></VBox.margin>
+                        </Separator>
+                        <HBox spacing="20.0">
+                            <children>
+                                <VBox>
+                                    <children>
+                                        <Label style="-fx-font-size: 11; -fx-opacity: 0.8;" text="Đang đặt cọc" />
+                                        <Label fx:id="lblFrozenBalance" style="-fx-font-size: 16; -fx-font-weight: bold;" text="0.00" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="400.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;" styleClass="product-card" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label text="Nạp ">
+                            <font><Font name="System Bold" size="16.0" /></font>
+                        </Label>
+                        <TextField fx:id="txtDepositAmount" prefHeight="40.0" promptText="Nhập số tiền ($)" />
+                        <HBox spacing="10.0">
+                            <children>
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$10" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$50" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$100" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$500" />
+                            </children>
+                        </HBox>
+                        <Button maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="NẠP TIỀN NGAY" />
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+
+        <VBox spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 15;" VBox.vgrow="ALWAYS">
+            <children>
+                <Label text="Lịch sử giao dịch gần đây">
+                    <font><Font name="System Bold" size="16.0" /></font>
+                </Label>
+                <TableView fx:id="tableTransactions" prefHeight="300.0" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colDate" prefWidth="150.0" text="Ngày giao dịch" />
+                        <TableColumn fx:id="colType" prefWidth="150.0" text="Loại" />
+                        <TableColumn fx:id="colAmount" prefWidth="120.0" text="Số tiền" />
+                        <TableColumn fx:id="colStatus" prefWidth="120.0" text="Trạng thái" />
+                        <TableColumn fx:id="colNote" prefWidth="200.0" text="Ghi chú" />
+                    </columns>
+                </TableView>
+            </children>
+        </VBox>
+    </children>
+    <padding><Insets bottom="30.0" left="30.0" right="30.0" top="30.0" /></padding>
+</VBox>
+
+
+======================================================================
 /// FILE: D:\Lap Trinh Nang Cao\BTL---N7\common\src\main\java\module-info.java ///
 ======================================================================
 
@@ -6271,6 +6830,8 @@ module common {
 ======================================================================
 
 package model.auction;
+
+import org.slf4j.Logger;
 
 import model.base.Entity;
 import model.finance.BidTransaction;
@@ -8690,12 +9251,12 @@ package database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.mindrot.jbcrypt.BCrypt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-
-import static utils.ConsoleColors.*;
 
 /**
  * Manages database connectivity and lifecycle for the auction system.
@@ -8703,6 +9264,8 @@ import static utils.ConsoleColors.*;
  * the initial creation and migration of SQLite database tables.
  */
 public class DatabaseManager {
+
+    private static final Logger log = LoggerFactory.getLogger(DatabaseManager.class);
 
     /**
      * The JDBC connection URL for the SQLite database, configured with WAL mode.
@@ -8795,14 +9358,14 @@ public class DatabaseManager {
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
-                System.out.println("[Database]: " + GREEN + "Successfully upgraded user table" + RESET);
+                log.info("Successfully upgraded user table");
             } catch (SQLException ignored) {
                 // Columns already exist
             }
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;");
-                System.out.println("[Database]: " + GREEN + "Successfully upgraded auctions table" + RESET);
+                log.info("Successfully upgraded auctions table");
             } catch (SQLException ignored) {
                 // Cột đã tồn tại
             }
@@ -8854,10 +9417,10 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            System.out.println("[Database]:" + GREEN + " Successfully initialized" + RESET);
+            log.info("Successfully initialized");
 
         } catch (SQLException e) {
-            System.out.println("[Error]: Database initialization error: " + RED + e.getMessage() + RESET);
+            log.error("Database initialization error: {}", e.getMessage());
         }
     }
 }
@@ -8959,6 +9522,8 @@ import controller.UserController;
 import model.user.User;
 import network.NetworkMessage;
 import org.java_websocket.WebSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ServerExtension.ClientManager;
 import server.handler.CommandDispatcher;
 import utils.CryptoUtil;
@@ -8967,8 +9532,6 @@ import utils.JacksonConfig;
 import javax.crypto.SecretKey;
 import java.security.KeyPair;
 import java.util.Base64;
-
-import static utils.ConsoleColors.*;
 
 /**
  * Handles individual client WebSocket connections.
@@ -8984,6 +9547,8 @@ import static utils.ConsoleColors.*;
  * does not monopolize a dedicated thread.
  */
 public class ClientHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
 
     private final WebSocket conn;
     private static int cNC = 0;
@@ -9023,7 +9588,7 @@ public class ClientHandler {
             String publicKeyBase64 = Base64.getEncoder().encodeToString(rsaKeyPair.getPublic().getEncoded());
             conn.send(publicKeyBase64);
         } catch (Exception e) {
-            System.out.println("[Error]: RSA Key generation failed in ClientHandler: " + RED + e.getMessage() + RESET);
+            log.error("RSA Key generation failed in ClientHandler: {}", e.getMessage());
         }
     }
 
@@ -9042,9 +9607,9 @@ public class ClientHandler {
             try {
                 sharedAesKey = CryptoUtil.decryptAESKeyWithRSA(message, rsaKeyPair.getPrivate());
                 isAesKeyEstablished = true;
-                System.out.println("[Security]: Handshake success with \"" + YELLOW + clientName + RESET + "\". AES Channel established.");
+                log.info("Handshake success with \"{}\". AES Channel established.", clientName);
             } catch (Exception e) {
-                System.out.println("[Security]: Handshake failed with " + YELLOW + clientName + RESET);
+                log.warn("Handshake failed with {}", clientName);
                 closeConnection();
             }
             return;
@@ -9053,12 +9618,12 @@ public class ClientHandler {
         // Phase 2: Standard Command Processing
         try {
             String jsonMessage = CryptoUtil.decryptAES(message, sharedAesKey);
-            System.out.println("[System]: Decrypted JSON from Client: " + YELLOW + jsonMessage + RESET);
+            log.debug("Decrypted JSON from Client: {}", jsonMessage);
 
             NetworkMessage netMsg = mapper.readValue(jsonMessage, NetworkMessage.class);
 
             if (netMsg.getCommand() == null) {
-                System.out.println("[System](ClientHandler): \"" + YELLOW + clientName + RESET + "\" sent a null command.");
+                log.warn("\"{}\" sent a null command.", clientName);
                 sendResponse("ERROR", "Command cannot be null");
                 return;
             }
@@ -9066,7 +9631,7 @@ public class ClientHandler {
             dispatcher.dispatch(netMsg, this);
 
         } catch (Exception e) {
-            System.out.println("[System](ClientHandler): Invalid JSON format or Decryption error: " + RED + e.getMessage() + RESET);
+            log.error("Invalid JSON format or Decryption error: {}", e.getMessage());
             sendResponse("ERROR", "Invalid JSON format");
         }
     }
@@ -9090,7 +9655,7 @@ public class ClientHandler {
             conn.send(encryptedPayload);
 
         } catch (Exception e) {
-            System.out.println("[System](ClientHandler): JSON serialization error: " + RED + e.getMessage() + RESET);
+            log.error("JSON serialization error: {}", e.getMessage());
         }
     }
 
@@ -9108,7 +9673,7 @@ public class ClientHandler {
      */
     public void closeConnection() {
         ClientManager.removeClient(this);
-        System.out.println("[System]: \"" + YELLOW + clientName + RESET + "\" has disconnected.");
+        log.info("\"{}\" has disconnected.", clientName);
         if (conn != null && conn.isOpen()) {
             conn.close();
         }
@@ -9180,6 +9745,8 @@ import io.github.cdimascio.dotenv.Dotenv;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
@@ -9212,6 +9779,8 @@ import static utils.ConsoleColors.*;
  * </ul>
  */
 public class MultiThreadedServer {
+    private static final Logger log = LoggerFactory.getLogger(MultiThreadedServer.class);
+
     // Scheduler for periodic IP/Port updates
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
@@ -9264,12 +9833,12 @@ public class MultiThreadedServer {
 
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
-                System.out.println("[JSONBin]: New IP - Port synced: " + YELLOW + currentIp + ":" + currentPort + RESET);
+                log.debug("New IP - Port (JSON-Bin) synced: {}:{}", currentIp, currentPort);
             } else {
-                System.err.println("[JSONBin]: Error: " + RED + responseCode + RESET);
+                log.error(""+responseCode);
             }
         } catch (Exception e) {
-            System.out.println("[JSONBin]: Connection Error: " + RED + e.getMessage() + RESET);
+            log.error("Connection error: {}", e.getMessage());
         }
     }
 
@@ -9317,7 +9886,7 @@ public class MultiThreadedServer {
 
             if (!ip.isEmpty() && !port.isEmpty()) return new String[]{ip, port};
         } catch (Exception e) {
-            System.out.println("[System]: Localtonet API Error: " + RED + e.getMessage() + RESET);
+            log.error("Localtonet API Error: {}", e.getMessage());
         }
         return null;
     }
@@ -9344,7 +9913,7 @@ public class MultiThreadedServer {
          */
         @Override
         public void onOpen(WebSocket conn, ClientHandshake handshake) {
-            System.out.println("[System]: New WebSocket client connected from: " + YELLOW + conn.getRemoteSocketAddress().getAddress().getHostAddress() + RESET);
+            log.info("New client connected from: {}", conn.getRemoteSocketAddress().getAddress().getHostAddress());
 
             // Initialize ClientHandler with the new WebSocket connection
             ClientHandler clientHandler = new ClientHandler(conn, userController);
@@ -9385,12 +9954,12 @@ public class MultiThreadedServer {
 
         @Override
         public void onError(WebSocket conn, Exception ex) {
-            System.out.println("[System]: WebSocket Error: " + RED + ex.getMessage() + RESET);
+            log.error("WebSocket Error: {}", ex.getMessage());
         }
 
         @Override
         public void onStart() {
-            System.out.println("[System]: Server is running on port " + YELLOW + getPort() + RESET);
+            log.info("Server is running on port {}", getPort());
         }
     }
 
@@ -9414,17 +9983,17 @@ public class MultiThreadedServer {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("[Auto-Sync]: System error: " + RED + e.getMessage() + RESET);
+                log.error(e.getMessage());
             }
         }, 0, 30, TimeUnit.SECONDS);
 
-        System.out.println("[System]: Getting address...");
+        log.info("Getting address...");
         String[] publicAddress = getAddress();
 
         if (publicAddress != null) {
             updateAddress(publicAddress[0], Integer.parseInt(publicAddress[1]));
         } else {
-            System.out.println("[System]: " + BLUE + "Cannot get public address. Using localhost" + RESET);
+            log.warn("Cannot get public address. Using localhost");
             updateAddress("127.0.0.1", PORT);
         }
 
@@ -9440,7 +10009,7 @@ public class MultiThreadedServer {
         // Graceful shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             ClientManager.broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly." + RESET, null);
-            System.out.println(YELLOW + "[System]: Server has been shutdown." + RESET);
+            log.info("Server has been shutdown.");
             monitor.stopMonitoring();
             scheduler.shutdown();
             ClientManager.shutdown();
@@ -9470,7 +10039,7 @@ public class MultiThreadedServer {
                         String reason = scanner.nextLine();
                         ClientManager.kickTargetByNumber(index, reason);
                     } catch (NumberFormatException e) {
-                        System.out.println("[System]: /kickn must be followed by an integer.");
+                        log.error("/kickn must be followed by an integer.");
                     }
                 }
                 if (serverMessage.startsWith("/msg ")) {

@@ -1,5 +1,8 @@
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import gui.process.AlertHelper;
 import gui.widget.AdminAuctionItem;
 import gui.widget.IconButton;
@@ -22,6 +25,7 @@ import java.io.IOException;
  * and monitors the overall system statistics.
  */
 public class ClientAdminController {
+    private static final Logger log = LoggerFactory.getLogger(ClientAdminController.class);
 
     private Parent mainView;
     private Parent adminView;
@@ -107,7 +111,7 @@ public class ClientAdminController {
         itemList.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(tableView);
-            System.out.println("[System]: Loading pending auctions...");
+            log.info("Loading pending auctions...");
             // Request pending auctions from the server
             MainApplication.networkClient.sendMessage("FETCH_PENDING_AUCTIONS", "");
         });
@@ -155,6 +159,6 @@ public class ClientAdminController {
     public void start() {
         setMainDock();
         setMainViewController();
-        System.out.println("[System]: Admin view initialized successfully.");
+        log.info("Admin view initialized successfully.");
     }
 }

@@ -1,5 +1,8 @@
 package model.auction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import model.base.Entity;
 import model.finance.BidTransaction;
 import model.item.Item;
@@ -19,6 +22,7 @@ import static utils.ConsoleColors.*;
  * the current price, manual bidding history, automated bots (AutoBids), and time tracking.
  */
 public class Auction extends Entity {
+    private static final Logger log = LoggerFactory.getLogger(Auction.class);
 
     // Auction lifecycle states
     public static final String STATUS_PENDING = "PENDING_APPROVAL";
@@ -207,23 +211,23 @@ public class Auction extends Entity {
      */
     public synchronized boolean placeBid(User bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
-            System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
+            log.warn("The auction session has been deleted.");
             return false;
         }
 
         if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
-            System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+            log.warn("Cannot place a bid. The auction is not running or has already ended.");
             return false;
         }
 
         if (newMaxBid < 0) {
-            System.out.println("[Error]: " + RED + "Invalid Bid" + RESET);
+            log.warn("Invalid Bid.");
             return false;
         }
 
         double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
-            System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+            log.warn("Bid must be greater than or equal to {} VND ", minRequiredBid);
             return false;
         }
 
@@ -258,7 +262,7 @@ public class Auction extends Entity {
         // Anti-Sniping Algorithm: Extend time by 2 minutes if a bid is placed in the last minute
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             endTime = endTime.plusMinutes(2);
-            System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + RESET);
+            log.info("Time increased 2 minutes (Anti-sniping triggered)");
         }
 
         return true;
@@ -272,11 +276,11 @@ public class Auction extends Entity {
         if ((this.status.equals(STATUS_RUNNING) || this.status.equals(STATUS_OPEN)) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
                 this.status = STATUS_FINISHED;
-                System.out.println(GREEN + "[System]: Auction session \"" + this.getId() + "\" has ended" + RESET);
-                System.out.println(GREEN + "[System]: Winner: \"" + winningBidder.getUserName() + "\" at VND " + currentPrice + RESET);
+                log.info("Auction session \"{}\" has ended", this.getId());
+                log.info("Winner: \"{}\" at {} VND ", winningBidder.getUserName(), currentPrice);
             } else {
                 this.status = STATUS_CANCELED;
-                System.out.println(YELLOW + "[System]: Auction session \"" + this.getId() + "\" was cancelled due to no bidders" + RESET);
+                log.info("Auction session \"{}\" was cancelled due to no bidders", this.getId());
             }
         }
     }
@@ -292,19 +296,19 @@ public class Auction extends Entity {
      */
     public synchronized boolean registerAutoBid(User bidder, double maxBid, double userIncrement) {
         if (!status.equals(STATUS_RUNNING)) {
-            System.out.println("[Error]: " + RED + "Auction is not in RUNNING status" + RESET);
+            log.warn("Auction is not running.");
             return false;
         }
 
         if (maxBid <= currentPrice) {
-            System.out.println("[Error]: " + RED + "Maximum bid must be greater than current price" + RESET);
+            log.warn("Maximum bid must be greater than current price.");
             return false;
         }
 
         AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
         activeAutoBids.offer(newAutoBid);
 
-        System.out.println(BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + RESET);
+        log.info("\"{}\" registered Auto-Bid successfully (Max: {})", bidder.getUserName(),  maxBid);
 
         return true;
     }

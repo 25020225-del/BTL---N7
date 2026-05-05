@@ -1,5 +1,8 @@
 package utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -16,6 +19,7 @@ import static utils.ConsoleColors.RESET;
  * Implements secure RSA-2048 for key exchange and AES-256-GCM for payload encryption.
  */
 public class CryptoUtil {
+    private static final Logger log = LoggerFactory.getLogger(CryptoUtil.class);
 
     private static final String RSA = "RSA";
     private static final String AES_ALGO = "AES";
@@ -35,7 +39,7 @@ public class CryptoUtil {
             keyGen.initialize(2048);
             return keyGen.generateKeyPair();
         } catch (NoSuchAlgorithmException e) {
-            System.out.println("[Crypto]: Error: " + RED + "RSA algorithm not found." + RESET);
+            log.error("RSA algorithm not found.");
             throw new RuntimeException("Cannot find RSA algorithm", e);
         }
     }
@@ -49,7 +53,7 @@ public class CryptoUtil {
             keyGen.init(256);
             return keyGen.generateKey();
         } catch (NoSuchAlgorithmException e) {
-            System.out.println("[Crypto]: " + RED + "AES algorithm not found." + RESET);
+            log.error("AES algorithm not found.");
             throw new RuntimeException("Cannot find AES algorithm", e);
         }
     }
@@ -64,7 +68,7 @@ public class CryptoUtil {
             byte[] encryptedKey = cipher.doFinal(aesKey.getEncoded());
             return Base64.getEncoder().encodeToString(encryptedKey);
         } catch (GeneralSecurityException e) {
-            System.out.println("[Crypto]: " + RED + "Error encrypting AES key." + RESET);
+            log.error("Error encrypting AES key.");
             throw new RuntimeException("RSA encrypting error", e);
         }
     }
@@ -80,7 +84,7 @@ public class CryptoUtil {
             byte[] decryptedKey = cipher.doFinal(Base64.getDecoder().decode(encryptedAesKeyBase64));
             return new SecretKeySpec(decryptedKey, 0, decryptedKey.length, AES_ALGO);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "Wrong key format or RSA decrypting error." + RESET);
+            log.error("Wrong key format or RSA decrypting error.");
             throw new RuntimeException("RSA decrypting error", e);
         }
     }
@@ -109,7 +113,7 @@ public class CryptoUtil {
 
             return Base64.getEncoder().encodeToString(cipherMessage);
         } catch (GeneralSecurityException e) {
-            System.out.println("[Crypto]: " + RED + "Error encrypting payload with AES-GCM." + RESET);
+            log.error("Error encrypting payload with AES-GCM.");
             throw new RuntimeException("Encrypting AES error", e);
         }
     }
@@ -138,7 +142,7 @@ public class CryptoUtil {
             byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
             return new String(decryptedBytes);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "AES Decryption failed (Data manipulated or corrupted)." + RESET);
+            log.error("AES Decryption failed (Data manipulated or corrupted).");
             throw new RuntimeException("Decrypting AES error", e);
         }
     }
@@ -151,7 +155,7 @@ public class CryptoUtil {
             KeyFactory keyFactory = KeyFactory.getInstance(RSA);
             return keyFactory.generatePublic(spec);
         } catch (NoSuchAlgorithmException | java.security.spec.InvalidKeySpecException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "Server public key generating error." + RESET);
+            log.error("Server public key generating error.");
             throw new RuntimeException("Public key getting error", e);
         }
     }

@@ -1,5 +1,7 @@
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
 import gui.process.AlertHelper;
 import gui.process.QRCodeHelper;
@@ -23,6 +25,7 @@ import static utils.ConsoleColors.*;
  * All new public registrations are defaulted to the standard "USER" role.
  */
 public class RegisterController {
+    private static final Logger log = LoggerFactory.getLogger(RegisterController.class);
 
     @FXML
     private TextField registerName;
@@ -49,7 +52,7 @@ public class RegisterController {
      */
     @FXML
     protected void onRegisterButtonClick() {
-        System.out.println("[Log]: Registration process started");
+        log.info("Registration process started.");
 
         String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
@@ -84,12 +87,12 @@ public class RegisterController {
 
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
-            System.out.println("[System]: Sending registration data to server...");
+            log.info("Sending registration data to server...");
             networkClient.sendMessage("REGISTER", newUser);
 
             registerButton.setDisable(true);
         } else {
-            System.out.println("[System]: " + RED + "Network is not initialized" + RESET);
+            log.warn("Network is not initialized.");
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to server");
         }
     }
@@ -99,7 +102,6 @@ public class RegisterController {
      */
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("[Log]: Navigating to Login UI");
         clearFields();
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
@@ -119,7 +121,7 @@ public class RegisterController {
 
             try {
                 if ("REGISTER_SUCCESS".equals(command)) {
-                    System.out.println("[System]: " + GREEN + "Registration successful. Initializing 2FA..." + RESET);
+                    log.info("Registration successful. Initializing 2FA...");
 
                     @SuppressWarnings("unchecked")
                     List<String> dataList = (List<String>) data;
@@ -149,11 +151,11 @@ public class RegisterController {
 
                 } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
                     String errorMsg = data != null ? data.toString() : "Unidentified error";
-                    System.out.println("[System]: " + RED + "Registration failed: " + errorMsg + RESET);
+                    log.warn("Registration failed: {}", errorMsg);
                     AlertHelper.showAlert(Alert.AlertType.ERROR, "Registration failed", errorMsg);
                 }
             } catch (Exception e) {
-                System.out.println("[System]: QR code generation error: " + RED + e.getMessage() + RESET);
+                log.error("QR Code Generation Error: {}", e.getMessage());
                 e.printStackTrace();
             }
         });

@@ -34,9 +34,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
-
 /**
  * The unified primary controller for standard users.
  * This single controller manages both buying (Bidding) and selling (Auction Creation)
@@ -192,7 +189,7 @@ public class ClientUserController {
             dummyData.put("bidIncrement", "5000");
             dummyData.put("durationMinutes", "60");
 
-            log.info("[Debug]: Sending CREATE_AUCTION for {}", testItemName);
+            log.debug("Sending CREATE_AUCTION for {}", testItemName);
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
         });
 
@@ -215,7 +212,7 @@ public class ClientUserController {
                         java.awt.Desktop.getDesktop().browse(new java.net.URI(troll));
                     }
                 } catch (Exception e) {
-                    log.error("[System]: Error: " + RED + e.getMessage() + RESET);
+                    log.error("{}", e.getMessage());
                 }
                 dih = 0;
                 niggardly = 0;
@@ -243,7 +240,7 @@ public class ClientUserController {
      */
     @FXML
     public void handleSignOut() {
-        System.out.println("[System]: User \"" + currentUser.getName() + "\" is signing out.");
+        log.info("\"{}\" is signing out.", currentUser.getUserName());
         MainApplication.networkClient.sendMessage("LOGOUT", "");
         client.handler.ClientAuctionHandler.activeDetailController = null;
         MainApplication.setNewScene(MainApplication.rootLogin);
@@ -277,7 +274,7 @@ public class ClientUserController {
 
             // Nếu qua được vòng kiểm duyệt thì mới gán vào biến toàn cục và hiển thị lên UI
             this.imagefile = selectedFile;
-            System.out.println("[System]: Selected image file: " + imagefile.getName());
+            log.info("Selected file: {}", imagefile.getName());
 
             Image image = new Image(imagefile.toURI().toString());
             CropImage.cropImage(ca_image, image, 720, 480);

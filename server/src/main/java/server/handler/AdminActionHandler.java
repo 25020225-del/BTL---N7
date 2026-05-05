@@ -1,5 +1,7 @@
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import database.TransactionManager;
 import model.user.User;
@@ -19,6 +21,7 @@ import static utils.ConsoleColors.*;
  * ensuring that only users with the "ADMIN" role can execute these operations.
  */
 public class AdminActionHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
 
     /**
      * Entry point for handling administrative network messages.
@@ -104,7 +107,7 @@ public class AdminActionHandler implements CommandHandler {
                     return rows > 0;
                 }
             } catch (Exception e) {
-                System.out.println("[System](AdminActionHandler): Updating approval status failed: " + RED + e.getMessage() + RESET);
+                log.warn("Updating approval status failed: {}", e.getMessage());
                 return false;
             }
         };
@@ -113,7 +116,7 @@ public class AdminActionHandler implements CommandHandler {
             if (success) {
                 String msg = newStatus.equals("OPEN") ? "Auction approved" : "Auction declined";
                 client.sendResponse("ADMIN_ACTION_SUCCESS", msg);
-                System.out.println("[System]: Admin \"" + YELLOW + client.getUser().getName() + RESET + "\" has changed the status of " + auctionId + " to " + newStatus);
+                log.info("{} has changed the status of {} to {}", client.getUser().getUserName(), auctionId, newStatus);
             } else {
                 client.sendResponse("ERROR", "Cannot find this auction in database.");
             }

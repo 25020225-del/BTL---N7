@@ -18,9 +18,19 @@ public class Transaction {
         this.note = new SimpleStringProperty(note);
     }
 
-    public String getDate() { return date.get(); }
-    public String getType() { return type.get(); }
-    public double getAmount() { return amount.get(); }
-    public String getStatus() { return status.get(); }
-    public String getNote() { return note.get(); }
+    public String getDate() {
+        return date.get();
+    }
+    public String getType() {
+        return type.get();
+    }
+    public double getAmount() {
+        return amount.get();
+    }
+    public String getStatus() {
+        return status.get();
+    }
+    public String getNote() {
+        return note.get();
+    }
 }
