@@ -10,9 +10,6 @@ import java.awt.*;
 import java.net.URI;
 import java.util.Map;
 
-import static utils.ConsoleColors.RESET;
-import static utils.ConsoleColors.YELLOW;
-
 /**
  * Handles system-level commands received from the server,
  * such as external browser redirections, forced disconnections (kicks),
@@ -29,10 +26,10 @@ public class ClientSystemHandler implements ResponseHandler {
             String url = (String) message.getData();
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(new URI(url));
-                log.info("Redirecting to {}",  url);
+                log.info("Redirecting to {}", url);
             }
         } else if ("KICKED".equals(command)) {
-            log.warn("You have been kicked. Reason: {}", message.getData());
+            log.warn("Kicked. Reason: {}", message.getData());
 
             // Notify UI if applicable before shutting down
             if (client.getOnMessageReceived() != null) {
