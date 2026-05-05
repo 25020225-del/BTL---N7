@@ -55,12 +55,11 @@ public class ServerBidderController {
         }
 
         // Encapsulate the entire atomic operation (Lock -> DB -> RAM) into a Callable
-        // to be processed asynchronously by the single-threaded TransactionManager.
+        // to be processed asynchronously by the multi-threaded TransactionManager pool.
         Callable<Boolean> bidTask = () -> {
-            // This entire block is now executed on the single worker thread,
-            // ensuring sequential processing without needing a lock at the controller level.
-            // However, for absolute safety against future changes (e.g., multi-threaded worker),
-            // the lock is acquired here, guaranteeing atomicity for this specific auction.
+            // We use Striped Locking (locking per auction ID) to ensure that 
+            // concurrent bids on the SAME auction are processed sequentially,
+            // while bids on DIFFERENT auctions can run in parallel across the ThreadPool.
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                 
                 // 1. Get current state from RAM for validation and DB transaction.
