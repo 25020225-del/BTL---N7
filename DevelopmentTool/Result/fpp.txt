@@ -6814,6 +6814,7 @@ nut dang xuất
 module common {
     requires com.fasterxml.jackson.databind;
     requires com.fasterxml.jackson.datatype.jsr310;
+    requires org.slf4j;
     opens model.auction to com.fasterxml.jackson.databind;
 
     exports network;
@@ -6832,6 +6833,7 @@ module common {
 package model.auction;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import model.base.Entity;
 import model.finance.BidTransaction;
@@ -6852,6 +6854,7 @@ import static utils.ConsoleColors.*;
  * the current price, manual bidding history, automated bots (AutoBids), and time tracking.
  */
 public class Auction extends Entity {
+    private static final Logger log = LoggerFactory.getLogger(Auction.class);
 
     // Auction lifecycle states
     public static final String STATUS_PENDING = "PENDING_APPROVAL";
@@ -7040,23 +7043,23 @@ public class Auction extends Entity {
      */
     public synchronized boolean placeBid(User bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
-            System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
+            log.warn("The auction session has been deleted.");
             return false;
         }
 
         if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
-            System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+            log.warn("Cannot place a bid. The auction is not running or has already ended.");
             return false;
         }
 
         if (newMaxBid < 0) {
-            System.out.println("[Error]: " + RED + "Invalid Bid" + RESET);
+            log.warn("Invalid Bid.");
             return false;
         }
 
         double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
-            System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+            log.warn("Bid must be greater than or equal to {} VND ", minRequiredBid);
             return false;
         }
 
@@ -7091,7 +7094,7 @@ public class Auction extends Entity {
         // Anti-Sniping Algorithm: Extend time by 2 minutes if a bid is placed in the last minute
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             endTime = endTime.plusMinutes(2);
-            System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + RESET);
+            log.info("Time increased 2 minutes (Anti-sniping triggered)");
         }
 
         return true;
@@ -7105,11 +7108,11 @@ public class Auction extends Entity {
         if ((this.status.equals(STATUS_RUNNING) || this.status.equals(STATUS_OPEN)) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
                 this.status = STATUS_FINISHED;
-                System.out.println(GREEN + "[System]: Auction session \"" + this.getId() + "\" has ended" + RESET);
-                System.out.println(GREEN + "[System]: Winner: \"" + winningBidder.getUserName() + "\" at VND " + currentPrice + RESET);
+                log.info("Auction session \"{}\" has ended", this.getId());
+                log.info("Winner: \"{}\" at {} VND ", winningBidder.getUserName(), currentPrice);
             } else {
                 this.status = STATUS_CANCELED;
-                System.out.println(YELLOW + "[System]: Auction session \"" + this.getId() + "\" was cancelled due to no bidders" + RESET);
+                log.info("Auction session \"{}\" was cancelled due to no bidders", this.getId());
             }
         }
     }
@@ -7125,19 +7128,19 @@ public class Auction extends Entity {
      */
     public synchronized boolean registerAutoBid(User bidder, double maxBid, double userIncrement) {
         if (!status.equals(STATUS_RUNNING)) {
-            System.out.println("[Error]: " + RED + "Auction is not in RUNNING status" + RESET);
+            log.warn("Auction is not running.");
             return false;
         }
 
         if (maxBid <= currentPrice) {
-            System.out.println("[Error]: " + RED + "Maximum bid must be greater than current price" + RESET);
+            log.warn("Maximum bid must be greater than current price.");
             return false;
         }
 
         AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
         activeAutoBids.offer(newAutoBid);
 
-        System.out.println(BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + RESET);
+        log.info("\"{}\" registered Auto-Bid successfully (Max: {})", bidder.getUserName(),  maxBid);
 
         return true;
     }
@@ -7660,12 +7663,16 @@ public class Item extends Entity {
 
 package model.item;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Factory class responsible for creating generalized categories of Items.
  * Implements the Factory Method Design Pattern to promote loose coupling
  * and adhere to the Open/Closed Principle.
  */
 public class ItemFactory {
+    private static Logger log = LoggerFactory.getLogger(ItemFactory.class);
 
     /**
      * Constants representing the broad item categories.
@@ -7687,7 +7694,7 @@ public class ItemFactory {
     public static Item createItem(String type, String id, String itemName, String description, double startingPrice) {
         // Fallback to a general physical item if the type is not provided
         if (type == null || type.trim().isEmpty()) {
-            System.out.println("[Warning]: Item type is null. Defaulting to TangibleItem.");
+            log.warn("Item type is null. Defaulting to TangibleItem.");
             return new TangibleItem(id, itemName, description, startingPrice);
         }
 
@@ -7699,7 +7706,7 @@ public class ItemFactory {
             case TYPE_SERVICE:
                 return new ServicePackage(id, itemName, description, startingPrice);
             default:
-                System.out.println("[Warning]: Unknown item type '" + type + "'. Defaulting to TangibleItem.");
+                log.warn("Unknown item type '{}'. Defaulting to TangibleItem.", type);
                 return new TangibleItem(id, itemName, description, startingPrice);
         }
     }
@@ -8027,6 +8034,9 @@ public final class ConsoleColors {
 
 package utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -8043,6 +8053,7 @@ import static utils.ConsoleColors.RESET;
  * Implements secure RSA-2048 for key exchange and AES-256-GCM for payload encryption.
  */
 public class CryptoUtil {
+    private static final Logger log = LoggerFactory.getLogger(CryptoUtil.class);
 
     private static final String RSA = "RSA";
     private static final String AES_ALGO = "AES";
@@ -8062,7 +8073,7 @@ public class CryptoUtil {
             keyGen.initialize(2048);
             return keyGen.generateKeyPair();
         } catch (NoSuchAlgorithmException e) {
-            System.out.println("[Crypto]: Error: " + RED + "RSA algorithm not found." + RESET);
+            log.error("RSA algorithm not found.");
             throw new RuntimeException("Cannot find RSA algorithm", e);
         }
     }
@@ -8076,7 +8087,7 @@ public class CryptoUtil {
             keyGen.init(256);
             return keyGen.generateKey();
         } catch (NoSuchAlgorithmException e) {
-            System.out.println("[Crypto]: " + RED + "AES algorithm not found." + RESET);
+            log.error("AES algorithm not found.");
             throw new RuntimeException("Cannot find AES algorithm", e);
         }
     }
@@ -8091,7 +8102,7 @@ public class CryptoUtil {
             byte[] encryptedKey = cipher.doFinal(aesKey.getEncoded());
             return Base64.getEncoder().encodeToString(encryptedKey);
         } catch (GeneralSecurityException e) {
-            System.out.println("[Crypto]: " + RED + "Error encrypting AES key." + RESET);
+            log.error("Error encrypting AES key.");
             throw new RuntimeException("RSA encrypting error", e);
         }
     }
@@ -8107,7 +8118,7 @@ public class CryptoUtil {
             byte[] decryptedKey = cipher.doFinal(Base64.getDecoder().decode(encryptedAesKeyBase64));
             return new SecretKeySpec(decryptedKey, 0, decryptedKey.length, AES_ALGO);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "Wrong key format or RSA decrypting error." + RESET);
+            log.error("Wrong key format or RSA decrypting error.");
             throw new RuntimeException("RSA decrypting error", e);
         }
     }
@@ -8136,7 +8147,7 @@ public class CryptoUtil {
 
             return Base64.getEncoder().encodeToString(cipherMessage);
         } catch (GeneralSecurityException e) {
-            System.out.println("[Crypto]: " + RED + "Error encrypting payload with AES-GCM." + RESET);
+            log.error("Error encrypting payload with AES-GCM.");
             throw new RuntimeException("Encrypting AES error", e);
         }
     }
@@ -8165,7 +8176,7 @@ public class CryptoUtil {
             byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
             return new String(decryptedBytes);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "AES Decryption failed (Data manipulated or corrupted)." + RESET);
+            log.error("AES Decryption failed (Data manipulated or corrupted).");
             throw new RuntimeException("Decrypting AES error", e);
         }
     }
@@ -8178,7 +8189,7 @@ public class CryptoUtil {
             KeyFactory keyFactory = KeyFactory.getInstance(RSA);
             return keyFactory.generatePublic(spec);
         } catch (NoSuchAlgorithmException | java.security.spec.InvalidKeySpecException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "Server public key generating error." + RESET);
+            log.error("Server public key generating error.");
             throw new RuntimeException("Public key getting error", e);
         }
     }
@@ -8286,12 +8297,16 @@ public final class JacksonConfig {
 
 package utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Utility class to manage time synchronization between the Client and the Server.
  * Implements an NTP-like offset calculation to ensure countdowns and auction events
  * use the Server's authoritative time, regardless of the Client's local machine clock.
  */
 public class TimeUtil {
+    private static final Logger log = LoggerFactory.getLogger(TimeUtil.class);
 
     // The calculated difference in milliseconds between the Server and the Client.
     private static long timeOffset = 0;
@@ -8314,7 +8329,7 @@ public class TimeUtil {
         // Save the offset: how far ahead or behind the server is compared to local time
         timeOffset = estimatedRealServerTime - clientReceiveTime;
 
-        System.out.println("[Time Sync]: Network RTT: " + roundTripTime + "ms | Offset adjusted by " + timeOffset + "ms");
+        log.debug("Network RTT: {}ms | Offset adjusted by {}ms", roundTripTime, timeOffset);
     }
 
     /**
@@ -8334,6 +8349,9 @@ public class TimeUtil {
 
 package controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import database.DatabaseManager;
 import database.TransactionManager;
 import model.auction.Auction;
@@ -8350,14 +8368,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static utils.ConsoleColors.*;
-
 /**
  * A background daemon service that continuously monitors active auctions.
  * It manages real-time expiration in RAM and routinely sweeps the database
  * to clean up any "orphaned" or "ghost" auctions left over from previous server sessions.
  */
 public class AuctionMonitor {
+    private static final Logger log = LoggerFactory.getLogger(AuctionMonitor.class);
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
@@ -8377,7 +8394,7 @@ public class AuctionMonitor {
      * handling both volatile RAM instances and persistent Database records.
      */
     public void startMonitoring() {
-        System.out.println("[System]:" + GREEN + " Auction monitor has been launched." + RESET);
+        log.info("Auction monitor launched.");
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
@@ -8388,7 +8405,7 @@ public class AuctionMonitor {
                 sweepDatabaseForOrphans();
 
             } catch (Exception e) {
-                System.out.println("[System](AuctionMonitor): Error occurred during bidding scan process: " + RED + e.getMessage() + RESET);
+                log.error("Error occurred during bidding scan process: {}", e.getMessage());
                 e.printStackTrace();
             }
         }, 0, 10, TimeUnit.SECONDS); // Scans every 10 seconds
@@ -8432,7 +8449,7 @@ public class AuctionMonitor {
                 // Broadcast removal command to all connected clients
                 ClientManager.broadcast("REMOVE_AUCTION", auction.getId(), null);
 
-                System.out.println("[System]: " + BLUE + "Removed auction " + YELLOW + auction.getId() + RESET + " from RAM and updated DB to " + status);
+                log.debug("Removed auction {} from RAM and updated DB to {}", auction.getId(), status);
             }
         }
     }
@@ -8484,12 +8501,12 @@ public class AuctionMonitor {
 
                         // Force clients to remove the ghost item from their UI
                         ClientManager.broadcast("REMOVE_AUCTION", id, null);
-                        System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
+                        log.debug("Swept and closed orphaned database auction: {} -> {}", id, newStatus);
                     }
                 }
                 return true;
             } catch (Exception e) {
-                System.out.println("[Database]: Orphan sweep error: " + RED + e.getMessage() + RESET);
+                log.error("Orphan sweep error: {}", e.getMessage());
                 return false;
             }
         };
@@ -8503,7 +8520,7 @@ public class AuctionMonitor {
      */
     public void stopMonitoring() {
         scheduler.shutdown();
-        System.out.println("[System]: " + YELLOW + " Auction monitor has been shutdown." + RESET);
+        log.info("Auction monitor shutdown.");
     }
 }
 
@@ -8513,6 +8530,8 @@ public class AuctionMonitor {
 
 package controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import model.auction.Auction;
 import model.user.Admin;
 import model.user.User;
@@ -8525,6 +8544,7 @@ import static utils.ConsoleColors.*;
  * and verifying user trust levels.
  */
 public class ServerAdminController {
+    private static final Logger log = LoggerFactory.getLogger(ServerAdminController.class);
 
     /**
      * Approves a pending auction request, transitioning its status to OPEN.
@@ -8535,12 +8555,12 @@ public class ServerAdminController {
      */
     public boolean approveAuction(Admin admin, Auction auction) {
         if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
-            System.out.println("[Security]: " + RED + "User does not have approval rights" + RESET);
+            log.warn("User does not have approval rights.");
             return false;
         }
 
         auction.setStatus(Auction.STATUS_OPEN);
-        System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has approved auction \"" + YELLOW + auction.getId() + RESET + "\"");
+        log.info("{} has approved auction {}.", admin.getUserName(), auction.getId());
 
         return true;
     }
@@ -8555,7 +8575,7 @@ public class ServerAdminController {
     public void verifySeller(Admin admin, User user) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             user.setGood(true);
-            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has verified User \"" + YELLOW + user.getName() + RESET + "\" as reputable");
+            log.info("{} has verified {} as reputable", admin.getUserName(), user.getUserName());
         }
     }
 
@@ -8568,7 +8588,7 @@ public class ServerAdminController {
     public void rejectAuctionRequest(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             auction.setStatus(Auction.STATUS_CANCELED);
-            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has rejected the auction request for \"" + YELLOW + auction.getId() + RESET + "\"");
+            log.info("{} has rejected the auction request for {}.", admin.getUserName(), auction.getId());
         }
     }
 
@@ -8582,7 +8602,7 @@ public class ServerAdminController {
     public void forceDeleteAuction(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             auction.setStatus(Auction.STATUS_DELETED);
-            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has permanently deleted auction \"" + YELLOW + auction.getId() + RESET + "\"");
+            log.info("{} has deleted auction {}.", admin.getUserName(), auction.getId());
         }
     }
 }
@@ -8593,6 +8613,8 @@ public class ServerAdminController {
 
 package controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import database.TransactionManager;
 import model.auction.Auction;
@@ -8617,6 +8639,7 @@ import static utils.ConsoleColors.*;
  * atomically and asynchronously.
  */
 public class ServerBidderController {
+    private static final Logger log = LoggerFactory.getLogger(ServerBidderController.class);
 
     /**
      * Processes a bid placement attempt for a specific auction.
@@ -8639,7 +8662,7 @@ public class ServerBidderController {
 
         // Prevent users from bidding on items they are selling
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[System]: " + RED + "You cannot bid on your own auction" + RESET);
+            log.warn("{} tried to bid on their own auction.", currentUser.getUserName());
             return CompletableFuture.completedFuture(false);
         }
 
@@ -8663,7 +8686,7 @@ public class ServerBidderController {
                         int rowsAffected = pstmt.executeUpdate();
 
                         if (rowsAffected == 0) {
-                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
+                            log.info("{} has insufficient balance.", currentUser.getUserName());
                             conn.rollback();
                             return false;
                         }
@@ -8726,7 +8749,7 @@ public class ServerBidderController {
                         }
 
                         conn.commit(); // Finalize all changes
-                        System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+                        log.info("Successfully placed bid for {}", currentUser.getName());
                         return true;
 
                     } else {
@@ -8736,11 +8759,11 @@ public class ServerBidderController {
 
                 } catch (SQLException e) {
                     conn.rollback();
-                    System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
+                    log.error("Database Transaction Error: {}", e.getMessage());
                     return false;
                 }
             } catch (SQLException e) {
-                System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+                log.error("Connection Error: {}", e.getMessage());
                 return false;
             }
         };
@@ -8763,7 +8786,7 @@ public class ServerBidderController {
             }
             return finalResult;
         }).exceptionally(ex -> {
-            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
+            log.warn("The transaction could not be executed via the queue: {}", ex.getMessage());
             return false;
         });
     }
@@ -9431,6 +9454,8 @@ public class DatabaseManager {
 
 package database;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -9445,6 +9470,7 @@ import static utils.ConsoleColors.*;
  * does not natively support high-concurrency writes.
  */
 public class TransactionManager {
+    private static Logger log = LoggerFactory.getLogger(TransactionManager.class);
 
     /**
      * Thread-safe queue containing database tasks awaiting execution.
@@ -9460,18 +9486,18 @@ public class TransactionManager {
     static {
         // Initialize the dedicated Database Worker Thread
         dbWorker = new Thread(() -> {
-            System.out.println("[Database]: " + GREEN + "Transaction Worker Thread started." + RESET);
+            log.info("Transaction Worker Thread started.");
             while (true) {
                 try {
                     // Block and wait for the next available task in the queue
                     Runnable task = queue.take();
                     task.run();
                 } catch (InterruptedException e) {
-                    System.out.println("[Database]: Worker Thread interrupted.");
+                    log.error("Worker Thread interrupted.");
                     Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
-                    System.out.println("[Database]: " + RED + "Error executing task: " + e.getMessage() + RESET);
+                    log.error("Error executing task: {}", e.getMessage());
                 }
             }
         });
@@ -10073,6 +10099,8 @@ public class MultiThreadedServer {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import database.TransactionManager;
 import model.user.User;
@@ -10092,6 +10120,7 @@ import static utils.ConsoleColors.*;
  * ensuring that only users with the "ADMIN" role can execute these operations.
  */
 public class AdminActionHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
 
     /**
      * Entry point for handling administrative network messages.
@@ -10177,7 +10206,7 @@ public class AdminActionHandler implements CommandHandler {
                     return rows > 0;
                 }
             } catch (Exception e) {
-                System.out.println("[System](AdminActionHandler): Updating approval status failed: " + RED + e.getMessage() + RESET);
+                log.warn("Updating approval status failed: {}", e.getMessage());
                 return false;
             }
         };
@@ -10186,7 +10215,7 @@ public class AdminActionHandler implements CommandHandler {
             if (success) {
                 String msg = newStatus.equals("OPEN") ? "Auction approved" : "Auction declined";
                 client.sendResponse("ADMIN_ACTION_SUCCESS", msg);
-                System.out.println("[System]: Admin \"" + YELLOW + client.getUser().getName() + RESET + "\" has changed the status of " + auctionId + " to " + newStatus);
+                log.info("{} has changed the status of {} to {}", client.getUser().getUserName(), auctionId, newStatus);
             } else {
                 client.sendResponse("ERROR", "Cannot find this auction in database.");
             }
@@ -10204,6 +10233,8 @@ public class AdminActionHandler implements CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.auction.Auction;
 import model.item.Item;
@@ -10224,6 +10255,7 @@ import static utils.ConsoleColors.*;
  * Handles requests from clients to create new auction sessions.
  */
 public class AuctionActionHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(AuctionActionHandler.class);
 
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
@@ -10312,7 +10344,7 @@ public class AuctionActionHandler implements CommandHandler {
                 newAuction.setStatus(Auction.STATUS_RUNNING);
                 AuctionManager.addAuctionToMonitor(newAuction);
 
-                System.out.println("[System]: Seller \"" + YELLOW + authenticatedUser.getName() + RESET + "\" has created an auction.");
+                log.info("{} has created an auction.", authenticatedUser.getUserName());
 
                 String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
                 ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
@@ -10326,7 +10358,7 @@ public class AuctionActionHandler implements CommandHandler {
             }
 
         } catch (Exception e) {
-            System.out.println("[System](AuctionActionHandler): Error parsing creation data: " + RED + e.getMessage() + RESET);
+            log.warn("Error parsing creation data: {}", e.getMessage());
             client.sendResponse("ERROR", "Invalid data format provided for creating auction.");
         }
     }
@@ -10338,6 +10370,8 @@ public class AuctionActionHandler implements CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.user.User;
 import network.NetworkMessage;
@@ -10353,6 +10387,7 @@ import static utils.ConsoleColors.*;
  * to verify credentials and persist new accounts.
  */
 public class AuthHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(AuthHandler.class);
 
     /**
      * Jackson object mapper used to convert generic network data into domain models.
@@ -10391,7 +10426,7 @@ public class AuthHandler implements CommandHandler {
         client.setClientName("#Guest" + ClientHandler.getcNC());
         ClientHandler.incrementcNC();
 
-        System.out.println("[System]: \"" + YELLOW + oldName + RESET + "\" signed out and reverted to " + client.getClientName());
+        log.info("{} signed out and reverted to {}", oldName, client.getClientName());
     }
 
     /**
@@ -10416,7 +10451,7 @@ public class AuthHandler implements CommandHandler {
                 client.sendResponse("LOGIN_FAIL", "Wrong username or password");
             }
         } catch (IllegalArgumentException e) {
-            System.out.println("[Error]: Mapping JSON to User (Login): " + RED + e.getMessage() + RESET);
+            log.warn("Mapping JSON to User (Login): {}", e.getMessage());
             client.sendResponse("ERROR", "Invalid login data");
         }
     }
@@ -10452,7 +10487,7 @@ public class AuthHandler implements CommandHandler {
                 client.sendResponse("REGISTER_FAIL", result);
             }
         } catch (IllegalArgumentException e) {
-            System.out.println("[Error]: Mapping JSON to User (Register): " + RED + e.getMessage() + RESET);
+            log.warn("Mapping JSON to User (Register): {}", e.getMessage());
             client.sendResponse("ERROR", "Invalid register data");
         }
     }
@@ -10464,6 +10499,8 @@ public class AuthHandler implements CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import network.NetworkMessage;
 import server.ClientHandler;
 
@@ -10480,6 +10517,7 @@ import static utils.ConsoleColors.RESET;
  * to the appropriate handler based on the command string.
  */
 public class CommandDispatcher {
+    private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
     /**
      * A registry mapping unique command strings (e.g., "LOGIN", "CREATE_AUCTION")
@@ -10556,12 +10594,12 @@ public class CommandDispatcher {
                 handler.handle(message, client);
             } catch (Exception e) {
                 // Global error handling for unexpected runtime failures during command execution
-                System.out.println("[Error]: Error executing command " + command + ": " + RED + e.getMessage() + RESET);
+                log.error("Error executing command {}: {}", command, e.getMessage());
                 client.sendResponse("ERROR", "Internal server error while processing command");
             }
         } else {
             // Log and notify client of invalid/unsupported commands
-            System.out.println("[Error]: Unrecognized command: " + RED + command + RESET);
+            log.warn("Unrecognized command: {}", command);
             client.sendResponse("ERROR", "Unrecognized command");
         }
     }
@@ -10601,6 +10639,8 @@ public interface CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import network.NetworkMessage;
 import server.ClientHandler;
@@ -10624,6 +10664,7 @@ import static utils.ConsoleColors.*;
  * including time conversions for countdown timers.
  */
 public class FetchAuctionsHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(FetchAuctionsHandler.class);
 
     /**
      * Processes FETCH_AUCTIONS and FETCH_PENDING_AUCTIONS commands.
@@ -10675,10 +10716,10 @@ public class FetchAuctionsHandler implements CommandHandler {
             }
 
             client.sendResponse("FETCH_AUCTIONS_SUCCESS", activeAuctions);
-            System.out.println("[System]: Sent auction list (" + command + ") to \"" + YELLOW + client.getClientName() + RESET + "\"");
+            log.info("Sent auction list to {}", client.getClientName());
 
         } catch (Exception e) {
-            System.out.println("[System](FetchAuctionHandler): Getting auction list error: " + RED + e.getMessage() + RESET);
+            log.warn("Getting auction list error: {}", e.getMessage());
             client.sendResponse("ERROR", "Cannot load auction list.");
         }
     }
@@ -10690,6 +10731,8 @@ public class FetchAuctionsHandler implements CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import controller.ServerPaymentController;
 import model.user.User;
 import network.NetworkMessage;
@@ -10712,6 +10755,7 @@ import static utils.ConsoleColors.*;
  * It utilizes a background cleanup task to prevent memory leaks from abandoned transactions.
  */
 public class PaymentHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(PaymentHandler.class);
 
     /**
      * Service for interacting with the PayPal REST API.
@@ -10765,7 +10809,7 @@ public class PaymentHandler implements CommandHandler {
             }
 
             if (removedCount > 0) {
-                System.out.println("[Payment]: Deleted " + YELLOW + removedCount + RESET + " suspending transactions");
+                log.info("Deleted {} suspending transactions.",  removedCount);
             }
         }, 5, 5, TimeUnit.MINUTES);
     }
@@ -10798,12 +10842,12 @@ public class PaymentHandler implements CommandHandler {
                     handleConfirmDeposit(data, client, currentUser);
                     break;
                 default:
-                    System.out.println("[System](PaymentHandler.java): Invalid payment command: " + RED + command + RESET);
+                    log.warn("Invalid payment command: {}", command);
                     client.sendResponse("ERROR", "Invalid payment command: " + RED + command + RESET);
                     break;
             }
         } catch (Exception e) {
-            System.out.println("[System](PaymentHandler.java): Error: " + RED + e.getMessage() + RESET);
+            log.error("{}", e.getMessage());
             client.sendResponse("ERROR", "Server error: " + e.getMessage());
         }
     }
@@ -10831,8 +10875,7 @@ public class PaymentHandler implements CommandHandler {
             return;
         }
 
-        System.out.println("[System]: Creating deposit order of " + YELLOW + amountVND + RESET + " VND for \""
-                + YELLOW + currentUser.getName() + RESET + "\"");
+        log.info("Creating deposit order of {} VND for {}", amountVND, currentUser.getUserName());
 
         String[] orderInfo = payPalService.createOrder(amountVND);
         String orderId = orderInfo[0];
@@ -11246,6 +11289,8 @@ public class ClientManager {
 
 package service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import controller.ServerBidderController;
 import model.auction.Auction;
 import model.auction.AutoBid;
@@ -11265,6 +11310,7 @@ import static utils.ConsoleColors.*;
  * Part of the Auction System project.
  */
 public class AutoBidEngine {
+    private static final Logger log = LoggerFactory.getLogger(AutoBidEngine.class);
 
     /**
      * Fixed thread pool for managing concurrent bot execution.
@@ -11338,8 +11384,7 @@ public class AutoBidEngine {
             final AutoBid currentBot = capableBot;
             final double finalRequiredBid = requiredBid;
 
-            System.out.println("[Auto-Bid Engine]: Bot of \""
-                    + YELLOW + currentBot.getBidder().getUserName() + RESET + "\" is attempting an automatic bid.");
+            log.info("Bot of {} is attempting an automatic bid.", currentBot.getBidder().getUserName());
 
             // Use an async callback to either recurse or clean up failed bots.
             bidderCtrl.placeBidOnAuction(currentBot.getBidder(), auction, finalRequiredBid, true)
@@ -11349,15 +11394,14 @@ public class AutoBidEngine {
                             processNextBot(auction);
                         } else {
                             // Typically occurs if the user has insufficient wallet funds.
-                            System.out.println("[Auto-Bid Engine]: Bot of \""
-                                    + YELLOW + currentBot.getBidder().getUserName() + RESET + "\" failed. Removing configuration.");
+                            log.info("Bot of {} failed. Removing configuration.", currentBot.getBidder().getUserName());
                             auction.getActiveAutoBids().removeIf(b ->
                                     b.getBidder().getId().equals(currentBot.getBidder().getId())
                             );
                             processNextBot(auction);
                         }
                     }).exceptionally(ex -> {
-                        System.out.println("[System]: Bot Engine execution failed: " + RED + ex.getMessage() + RESET);
+                        log.error("Bot Engine execution failed: {}", ex.getMessage());
                         return null;
                     });
         }
@@ -11410,6 +11454,8 @@ public class CloudinaryService {
 
 package service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -11428,6 +11474,7 @@ import static utils.ConsoleColors.RED;
 import static utils.ConsoleColors.RESET;
 
 public class PayPalService {
+    private static final Logger log = LoggerFactory.getLogger(PayPalService.class);
     private final String clientId;
     private final String secret;
     private final String baseUrl;
@@ -11545,7 +11592,7 @@ public class PayPalService {
             return "COMPLETED".equals(status);
         }
 
-        System.out.println("[PayPal]: Capture failed: " + RED + response.statusCode() + RESET);
+        log.warn("PayPal Capture failed: {}", response.statusCode());
         return false;
     }
 }
@@ -11556,6 +11603,8 @@ public class PayPalService {
 
 package service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 
 import java.net.URLEncoder;
@@ -11570,6 +11619,7 @@ import static utils.ConsoleColors.RESET;
  * verifying time-sensitive tokens.
  */
 public class TOTPService {
+    private static final Logger log = LoggerFactory.getLogger(TOTPService.class);
 
     /**
      * Internal library instance used for core TOTP logic and key generation.
@@ -11603,7 +11653,7 @@ public class TOTPService {
             String encodedUsername = URLEncoder.encode(username, "UTF-8").replace("+", "%20");
             return "otpauth://totp/" + issuer + ":" + encodedUsername + "?secret=" + secretKey + "&issuer=" + issuer;
         } catch (Exception e) {
-            System.out.println("[Error]: URL Encoding failed: " + RED + e.getMessage() + RESET);
+            log.warn("URL Encoding failed: {}", e.getMessage());
             e.printStackTrace();
             // Fallback to a basic URI if encoding fails
             return "otpauth://totp/AuctionSystem-N7:" + username + "?secret=" + secretKey + "&issuer=AuctionSystem-N7";
