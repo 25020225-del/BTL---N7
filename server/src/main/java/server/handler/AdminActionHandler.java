@@ -72,8 +72,16 @@ public class AdminActionHandler implements CommandHandler {
                     pstmt.setString(1, auctionId);
                     java.sql.ResultSet rs = pstmt.executeQuery();
                     if (rs.next()) {
-                        oldStart = LocalDateTime.parse(rs.getString("start_time"));
-                        oldEnd = LocalDateTime.parse(rs.getString("end_time"));
+                        String startTimeStr = rs.getString("start_time");
+                        String endTimeStr = rs.getString("end_time");
+                        
+                        // Safeguard against null or empty dates in the database
+                        if (startTimeStr != null && !startTimeStr.trim().isEmpty()) {
+                            oldStart = LocalDateTime.parse(startTimeStr);
+                        }
+                        if (endTimeStr != null && !endTimeStr.trim().isEmpty()) {
+                            oldEnd = LocalDateTime.parse(endTimeStr);
+                        }
                     } else {
                         return false;
                     }
@@ -84,21 +92,34 @@ public class AdminActionHandler implements CommandHandler {
                 LocalDateTime newEnd = oldEnd;
 
                 if (newStatus.equals("OPEN")) {
-                    // DYNAMIC RECALCULATION:
-                    // If the scheduled start time is in the past (meaning it was set to "start immediately upon approval"
-                    // OR it was scheduled for the future but the Admin was too slow to approve it in time).
-                    if (oldStart.isBefore(now) || oldStart.isEqual(now)) {
-                        long duration = java.time.Duration.between(oldStart, oldEnd).toMinutes();
+                    // DYNAMIC RECALCULATION LOGIC:
+                    // 1. oldStart is null/empty (Fallback safeguard)
+                    // 2. oldStart has already passed (Admin approved late)
+                    // 3. oldStart was 'now' at creation time (so it is definitely in the past compared to server's 'now' at approval time)
+                    if (oldStart == null || oldStart.isBefore(now) || oldStart.isEqual(now)) {
+                        
+                        long duration = 60; // Default fallback duration
+                        if (oldStart != null && oldEnd != null) {
+                            duration = java.time.Duration.between(oldStart, oldEnd).toMinutes();
+                        }
+                        
                         newStart = now;
                         newEnd = now.plusMinutes(duration);
+                        System.out.println("[System]: Admin approved late or immediate start. Recalculated new start time to NOW.");
+                    } else {
+                        // Admin is approving EARLY for a future scheduled auction.
+                        // MUST KEEP ORIGINAL oldStart and oldEnd!
+                        newStart = oldStart;
+                        newEnd = oldEnd;
+                        System.out.println("[System]: Admin approved early for a future scheduled auction. Kept original times.");
                     }
                 }
 
                 // Update the database with the adjusted times
                 try (PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
                     pstmt.setString(1, newStatus);
-                    pstmt.setString(2, newStart.toString());
-                    pstmt.setString(3, newEnd.toString());
+                    pstmt.setString(2, newStart != null ? newStart.toString() : now.toString());
+                    pstmt.setString(3, newEnd != null ? newEnd.toString() : now.plusMinutes(60).toString());
                     pstmt.setString(4, auctionId);
                     int rows = pstmt.executeUpdate();
                     return rows > 0;
