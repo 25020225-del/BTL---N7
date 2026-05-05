@@ -17,7 +17,18 @@ import static utils.ConsoleColors.*;
  */
 public class ServerSellerController {
 
-    private final AuctionDAO auctionDAO = new AuctionDAO();
+    private final AuctionDAO auctionDAO;
+
+    /**
+     * Constructs the controller with the necessary Data Access Objects.
+     * This implementation follows the Dependency Injection pattern to facilitate 
+     * easier testing and decoupling.
+     *
+     * @param auctionDAO The DAO responsible for auction-related database transactions.
+     */
+    public ServerSellerController(AuctionDAO auctionDAO) {
+        this.auctionDAO = auctionDAO;
+    }
 
     /**
      * Creates and persists a new auction session in the database.
@@ -68,6 +79,7 @@ public class ServerSellerController {
 
         // Logic check: Cannot edit auctions that have already started or concluded
         if (auction.getStatus().equals(Auction.STATUS_RUNNING) ||
+                auction.getStatus().equals(Auction.STATUS_PAID) ||
                 auction.getStatus().equals(Auction.STATUS_FINISHED) ||
                 auction.getStatus().equals(Auction.STATUS_DELETED)) {
             System.out.println("[Error]: " + RED + "Cannot edit information while the auction is ongoing, finished, or deleted" + RESET);

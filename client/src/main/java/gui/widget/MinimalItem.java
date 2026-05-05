@@ -2,7 +2,9 @@ package gui.widget;
 
 import gui.process.CropImage;
 import javafx.geometry.Insets;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
@@ -71,6 +73,24 @@ public class MinimalItem extends VBox {
                 countdownClock,
                 auctionButton
         );
+    }
+
+    /**
+     * Adds seller-specific management options (Edit/Delete) to this item.
+     * These options are presented via a right-click context menu.
+     */
+    public void addSellerOptions(java.util.function.Consumer<String> onEdit, java.util.function.Consumer<String> onDelete) {
+        ContextMenu contextMenu = new ContextMenu();
+
+        MenuItem editItem = new MenuItem("Edit Auction");
+        editItem.setOnAction(e -> onEdit.accept(this.getId()));
+
+        MenuItem deleteItem = new MenuItem("Delete Auction");
+        deleteItem.setStyle("-fx-text-fill: red;");
+        deleteItem.setOnAction(e -> onDelete.accept(this.getId()));
+
+        contextMenu.getItems().addAll(editItem, deleteItem);
+        this.setOnContextMenuRequested(e -> contextMenu.show(this, e.getScreenX(), e.getScreenY()));
     }
 
     /**

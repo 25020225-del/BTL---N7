@@ -55,7 +55,9 @@ public class MultiThreadedServer {
     private static String lastSyncedIp = "";
     private static int lastSyncedPort = -1;
 
-    private static final UserController userController = new UserController();
+    // Core Dependencies (Initialized in main)
+    private static UserController userController;
+    private static server.handler.CommandDispatcher commandDispatcher;
 
     // === API SYNCING METHODS ===
 
@@ -176,8 +178,8 @@ public class MultiThreadedServer {
         public void onOpen(WebSocket conn, ClientHandshake handshake) {
             log.info("New client connected from: {}", conn.getRemoteSocketAddress().getAddress().getHostAddress());
 
-            // Initialize ClientHandler with the new WebSocket connection
-            ClientHandler clientHandler = new ClientHandler(conn, userController);
+            // Initialize ClientHandler with the new WebSocket connection and global controllers/dispatcher
+            ClientHandler clientHandler = new ClientHandler(conn, userController, commandDispatcher);
 
             // Attach ClientHandler to the connection for later retrieval
             conn.setAttachment(clientHandler);
@@ -260,7 +262,30 @@ public class MultiThreadedServer {
 
         database.DatabaseManager.initializeDatabase();
 
-        AuctionMonitor monitor = new AuctionMonitor(AuctionManager.getAuctionList());
+        // 1. Initialize DAOs and Services
+        database.dao.UserDAO userDAO = new database.dao.UserDAO();
+        database.dao.AuctionDAO auctionDAO = new database.dao.AuctionDAO();
+        database.dao.BidDAO bidDAO = new database.dao.BidDAO();
+        database.dao.WalletDAO walletDAO = new database.dao.WalletDAO();
+        service.TOTPService totpService = new service.TOTPService();
+
+        // 2. Initialize Controllers with DI
+        userController = new UserController(userDAO, totpService);
+        controller.ServerSellerController sellerCtrl = new controller.ServerSellerController(auctionDAO);
+        controller.ServerPaymentController paymentCtrl = new controller.ServerPaymentController(walletDAO);
+        controller.ServerBidderController bidderCtrl = new controller.ServerBidderController(bidDAO);
+
+        // 3. Inject dependencies into static utility services
+        service.AutoBidEngine.setBidderController(bidderCtrl);
+
+        // 4. Initialize Command Dispatcher with all required dependencies
+        commandDispatcher = new server.handler.CommandDispatcher(
+                userDAO, auctionDAO, bidDAO, walletDAO, 
+                totpService, sellerCtrl, paymentCtrl
+        );
+
+        // 4. Start background monitoring with injected DAOs
+        AuctionMonitor monitor = new AuctionMonitor(AuctionManager.getAuctionList(), auctionDAO, walletDAO);
         monitor.startMonitoring();
 
         // RUN SERVER

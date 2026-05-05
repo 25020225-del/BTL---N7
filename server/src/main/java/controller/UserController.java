@@ -20,8 +20,21 @@ import static utils.ConsoleColors.*;
  */
 public class UserController {
 
-    private final TOTPService totpService = new TOTPService();
-    private final UserDAO userDAO = new UserDAO();
+    private final TOTPService totpService;
+    private final UserDAO userDAO;
+
+    /**
+     * Constructs the controller with the necessary services and DAOs.
+     * This implementation follows the Dependency Injection pattern to facilitate 
+     * easier testing and decoupling.
+     *
+     * @param userDAO     The DAO responsible for user-related database transactions.
+     * @param totpService The service responsible for 2FA/TOTP logic.
+     */
+    public UserController(UserDAO userDAO, TOTPService totpService) {
+        this.userDAO = userDAO;
+        this.totpService = totpService;
+    }
 
     /**
      * Registers a new user in the system and initializes their digital wallet.
@@ -36,7 +49,7 @@ public class UserController {
      * @return A status string. On success, returns "SUCCESS" appended with the 2FA secret
      * and QR URL. On failure, returns an error message.
      */
-    public synchronized String register(String userName, String password, String name, String role) {
+    public String register(String userName, String password, String name, String role) {
         // Security check: Prevent self-registration as an Administrator
         if (role.equalsIgnoreCase("ADMIN")) {
             return "[Error]: You are not allowed to register an Admin account yourself";
@@ -51,15 +64,12 @@ public class UserController {
             conn.setAutoCommit(false);
 
             try {
-                if (userDAO.isUsernameExists(conn, userName)) {
-                    System.out.println("[System](UserController): Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
-                    return "[Error]: Username \"" + userName + "\" already exists.";
-                }
-
                 String newId = "U-" + System.currentTimeMillis();
                 String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
                 String secretKey = totpService.createSecretKey();
 
+                // 1. Attempt to create user and wallet directly.
+                // Unique constraint on 'username' will handle duplicates without a pre-check lock.
                 userDAO.createUserAndWallet(conn, newId, userName, hashedPassword, name, role, secretKey);
 
                 conn.commit();
@@ -70,6 +80,11 @@ public class UserController {
 
             } catch (SQLException e) {
                 conn.rollback();
+                // 2. Catch SQLite Unique Constraint error specifically for username
+                if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed: users.username")) {
+                    System.out.println("[System](UserController): Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
+                    return "[Error]: Username \"" + userName + "\" already exists.";
+                }
                 throw e;
             }
 

@@ -25,6 +25,16 @@ public class AuctionActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AuctionActionHandler.class);
 
     private final ObjectMapper mapper = JacksonConfig.mapper();
+    private final controller.ServerSellerController sellerCtrl;
+
+    /**
+     * Constructs the handler with necessary controllers via Dependency Injection.
+     *
+     * @param sellerCtrl The controller for seller-side auction operations.
+     */
+    public AuctionActionHandler(controller.ServerSellerController sellerCtrl) {
+        this.sellerCtrl = sellerCtrl;
+    }
 
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
@@ -104,7 +114,6 @@ public class AuctionActionHandler implements CommandHandler {
             item.setImageUrl(imageUrl);
 
             // Forward the creation request to the Seller Controller
-            controller.ServerSellerController sellerCtrl = new controller.ServerSellerController();
             Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, reqStart, (int) durationMinutes);
 
             if (newAuction != null) {
