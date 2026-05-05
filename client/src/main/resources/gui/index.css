@@ -221,7 +221,7 @@
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
-//nut dang xuất
+/*nut dang xuất*/
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;
@@ -234,3 +234,32 @@
 .button-logout:hover {
     -fx-background-color: #fff1f1;
 }
+/* hiển thị  */
+.balance-card {
+    -fx-background-color: linear-gradient(to right, #3665f3, #2b50c7);
+    -fx-background-radius: 15;
+    -fx-padding: 25;
+    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.3), 10, 0, 0, 5);
+}
+
+.balance-card .label {
+    -fx-text-fill: white;
+}
+
+/* Các nút nạp */
+.quick-amount-btn {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5;
+    -fx-cursor: hand;
+}
+
+.quick-amount-btn:hover {
+    -fx-border-color: #3665f3;
+    -fx-text-fill: #3665f3;
+}
+
+
+.status-completed { -fx-text-fill: #28a745; -fx-font-weight: bold; }
+.status-pending { -fx-text-fill: #f39c12; -fx-font-weight: bold; }
+.status-hold { -fx-text-fill: #3665f3; -fx-font-weight: bold; }
