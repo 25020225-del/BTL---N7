@@ -104,6 +104,23 @@ public class AuctionMonitor {
                 }
 
                 String status = auction.getStatus();
+
+                // Step 1: Handle transition from FINISHED to final settlement state
+                if (status.equals(Auction.STATUS_FINISHED)) {
+                    // Logic check: only process financial settlement if there's a winner
+                    if (auction.getWinningBidder() != null) {
+                        auction.setStatus(Auction.STATUS_PAID);
+                        processFinancialSettlement(auction);
+                        System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " finished with winner: " + GREEN + auction.getWinningBidder().getUserName() + RESET);
+                    } else {
+                        auction.setStatus(Auction.STATUS_CANCELED);
+                        System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " finished with NO winner. CANCELED.");
+                    }
+                    // Update the local status variable for the next block
+                    status = auction.getStatus();
+                }
+
+                // Step 2: Handle cleanup and persistence for terminal states
                 if (status.equals(Auction.STATUS_PAID) ||
                         status.equals(Auction.STATUS_CANCELED) ||
                         status.equals(Auction.STATUS_DELETED)) {
@@ -112,15 +129,11 @@ public class AuctionMonitor {
                     allAuctions.remove(auction);
                     AuctionManager.removeAuctionLock(auction.getId());
 
-                    // Trigger financial settlement if the auction finished successfully
-                    if (status.equals(Auction.STATUS_PAID)) {
-                        processFinancialSettlement(auction);
-                    }
-
                     // Persist the closed status to the SQLite Database asynchronously
+                    final String finalStatus = status;
                     Callable<Boolean> dbUpdateTask = () -> {
                         try {
-                            return auctionDAO.updateAuctionStatus(auction.getId(), status);
+                            return auctionDAO.updateAuctionStatus(auction.getId(), finalStatus);
                         } catch (Exception e) {
                             return false;
                         }

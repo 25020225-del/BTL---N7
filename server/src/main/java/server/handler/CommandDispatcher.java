@@ -90,7 +90,7 @@ public class CommandDispatcher {
         handlers.put("REJECT_AUCTION", adminHandler);
         
         // Register Bidding operations
-        BidActionHandler bidHandler = new BidActionHandler(new controller.ServerBidderController(bidDAO));
+        BidActionHandler bidHandler = new BidActionHandler(new controller.ServerBidderController(bidDAO), auctionDAO);
         handlers.put("PLACE_BID", bidHandler);
         handlers.put("SETUP_AUTOBID", bidHandler);
     }

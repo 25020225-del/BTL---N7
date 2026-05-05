@@ -308,15 +308,12 @@ public class Auction extends Entity {
 
     /**
      * Evaluates the current system time against the auction's end time.
-     * Transitions the status to PAID if there is a winner, or CANCELED if no bids were placed.
+     * Transitions the status to FINISHED if the time has passed.
+     * Financial settlement and transition to PAID/CANCELED are handled by the AuctionMonitor.
      */
     public void closeAuctionIfTimeIsUp() {
         if ((this.status.equals(STATUS_RUNNING) || this.status.equals(STATUS_OPEN)) && LocalDateTime.now().isAfter(this.endTime)) {
-            if (this.winningBidder != null) {
-                this.status = STATUS_PAID;
-            } else {
-                this.status = STATUS_CANCELED;
-            }
+            this.status = STATUS_FINISHED;
         }
     }
 

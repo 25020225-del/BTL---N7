@@ -231,7 +231,7 @@ public class AuctionDAO {
                     double startPrice = rs.getDouble("starting_price");
                     String winningBidderId = rs.getString("winning_bidder_id");
                     
-                    String newStatus = (winningBidderId != null && currentPrice > startPrice) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
+                    String newStatus = (winningBidderId != null && currentPrice >= startPrice) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
 
                     updateStmt.setString(1, newStatus);
                     updateStmt.setString(2, id);

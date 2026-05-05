@@ -65,73 +65,73 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        // Encapsulate the entire atomic operation (Lock -> DB -> RAM) into a Callable
-        // to be processed asynchronously by the multi-threaded TransactionManager pool.
-        Callable<Boolean> bidTask = () -> {
-            // We use Striped Locking (locking per auction ID) to ensure that 
-            // concurrent bids on the SAME auction are processed sequentially,
-            // while bids on DIFFERENT auctions can run in parallel across the ThreadPool.
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                
-                // 1. Get current state from RAM for validation and DB transaction.
-                final User previousWinner = auction.getWinningBidder();
-                final double previousHighestMaxBid = auction.getHighestMaxBid();
+        // 1. Acquire the lock OUTSIDE of the ThreadPool task to prevent Starvation.
+        // This ensures that the HikariCP worker pool isn't clogged with threads waiting for a lock.
+        synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+            
+            // 2. Perform non-mutating validation checks while holding the lock
+            final User previousWinner = auction.getWinningBidder();
+            final double previousHighestMaxBid = auction.getHighestMaxBid();
 
-                // 2. Perform pre-validation checks that don't modify state
-                if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
-                    System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
-                    return false;
-                }
-                if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || java.time.LocalDateTime.now().isAfter(auction.getEndTime())) {
-                    System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
-                    return false;
-                }
-                double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
-                if (newMaxBid < minRequiredBid) {
-                    System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
-                    return false;
-                }
+            if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
+                System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
+                return CompletableFuture.completedFuture(false);
+            }
+            if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || java.time.LocalDateTime.now().isAfter(auction.getEndTime())) {
+                System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+                return CompletableFuture.completedFuture(false);
+            }
+            double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
+            if (newMaxBid < minRequiredBid) {
+                System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+                return CompletableFuture.completedFuture(false);
+            }
 
-                // 3. Virtual calculation for pre-DB persistence
-                // This logic MUST match Auction.placeBid but without modifying the object
-                User newWinner = previousWinner;
-                double newHighestMaxBid = previousHighestMaxBid;
-                double newCurrentPrice = auction.getCurrentPrice();
-                LocalDateTime newEndTime = auction.getEndTime();
+            // 3. Virtual calculation for pre-DB persistence
+            User newWinner = previousWinner;
+            double newHighestMaxBid = previousHighestMaxBid;
+            double newCurrentPrice = auction.getCurrentPrice();
+            LocalDateTime newEndTime = auction.getEndTime();
 
-                if (previousWinner == null) {
-                    newCurrentPrice = auction.getItem().getStartingPrice();
+            if (previousWinner == null) {
+                newCurrentPrice = auction.getItem().getStartingPrice();
+                newHighestMaxBid = newMaxBid;
+                newWinner = currentUser;
+            } else if (currentUser.getId().equals(previousWinner.getId())) {
+                if (newMaxBid > previousHighestMaxBid) {
+                    newHighestMaxBid = newMaxBid;
+                }
+            } else {
+                if (newMaxBid > previousHighestMaxBid) {
+                    newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
+                    if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
                     newHighestMaxBid = newMaxBid;
                     newWinner = currentUser;
-                } else if (currentUser.getId().equals(previousWinner.getId())) {
-                    if (newMaxBid > previousHighestMaxBid) {
-                        newHighestMaxBid = newMaxBid;
-                    }
                 } else {
-                    if (newMaxBid > previousHighestMaxBid) {
-                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
-                        newHighestMaxBid = newMaxBid;
-                        newWinner = currentUser;
-                    } else {
-                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
-                    }
+                    newCurrentPrice = newMaxBid + auction.getBidIncrement();
+                    if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
                 }
+            }
 
-                // Anti-sniping calculation
-                if (LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
-                    LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
-                    if (proposedEndTime.isBefore(auction.getMaxEndTime())) {
-                        newEndTime = proposedEndTime;
-                    } else {
-                        newEndTime = auction.getMaxEndTime();
-                    }
+            // Anti-sniping calculation
+            if (LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
+                LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
+                if (proposedEndTime.isBefore(auction.getMaxEndTime())) {
+                    newEndTime = proposedEndTime;
+                } else {
+                    newEndTime = auction.getMaxEndTime();
                 }
+            }
 
-                // 4. Execute DB transaction
+            final LocalDateTime finalNewEndTime = newEndTime;
+            final User finalNewWinner = newWinner;
+            final double finalNewHighestMaxBid = newHighestMaxBid;
+            final double finalNewCurrentPrice = newCurrentPrice;
+
+            // 4. Wrap ONLY the Database interaction into the Callable task
+            Callable<Boolean> bidTask = () -> {
                 try (Connection conn = DatabaseManager.getConnection()) {
-                    conn.setAutoCommit(false); // Begin ACID transaction
+                    conn.setAutoCommit(false);
 
                     try {
                         boolean isDbSuccess = bidDAO.executeBidTransaction(
@@ -140,18 +140,22 @@ public class ServerBidderController {
                                 newMaxBid, 
                                 previousWinner, 
                                 previousHighestMaxBid, 
-                                newWinner,
-                                newHighestMaxBid,
-                                newCurrentPrice, 
+                                finalNewWinner,
+                                finalNewHighestMaxBid,
+                                finalNewCurrentPrice, 
                                 auction.getId(), 
-                                newEndTime
+                                finalNewEndTime
                         );
 
                         if (isDbSuccess) {
-                            conn.commit(); // Finalize all changes
+                            conn.commit();
                             
-                            // 5. DB Success, now update RAM atomically INSIDE the lock
-                            auction.placeBid(currentUser, newMaxBid);
+                            // 5. Update RAM ONLY after DB success.
+                            // Since we released the outer lock, we MUST re-acquire it briefly 
+                            // to ensure RAM consistency during the final mutation.
+                            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                                auction.placeBid(currentUser, newMaxBid);
+                            }
                             
                             System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                             return true;
@@ -160,7 +164,6 @@ public class ServerBidderController {
                             conn.rollback();
                             return false;
                         }
-
                     } catch (SQLException e) {
                         conn.rollback();
                         System.out.println("[Database]: Database TransactionError: " + RED + e.getMessage() + RESET);
@@ -170,31 +173,28 @@ public class ServerBidderController {
                     System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
                     return false;
                 }
-            } // Lock is released here, after both DB and RAM are synced.
-        };
+            };
 
-        // Submit the task to TransactionManager. The result is handled asynchronously.
-        return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
-            if (finalResult) {
-                // Broadcast price update to all connected clients
-                Map<String, Object> updateData = new HashMap<>();
-                updateData.put("auctionId", auction.getId());
-                updateData.put("newPrice", auction.getCurrentPrice());
-                updateData.put("winnerName", currentUser.getUserName());
+            // Submit the task to TransactionManager and chain the broadcast logic
+            return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
+                if (finalResult) {
+                    Map<String, Object> updateData = new HashMap<>();
+                    updateData.put("auctionId", auction.getId());
+                    updateData.put("newPrice", auction.getCurrentPrice());
+                    updateData.put("winnerName", currentUser.getUserName());
 
-                server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
+                    server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
 
-                // Trigger the auto-bid engine scan if this was a manual bid
-                if (!isBot) {
-                    AutoBidEngine.triggerBotScan(auction);
+                    if (!isBot) {
+                        AutoBidEngine.triggerBotScan(auction);
+                    }
                 }
-            }
-            // No need for a failure case here, as RAM was never modified if DB failed.
-            return finalResult;
-        }).exceptionally(ex -> {
-            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
-            return false;
-        });
+                return finalResult;
+            }).exceptionally(ex -> {
+                System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
+                return false;
+            });
+        }
     }
 
     /**
