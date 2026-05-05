@@ -1,8 +1,5 @@
 package model.auction;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import model.base.Entity;
 import model.finance.BidTransaction;
 import model.item.Item;
@@ -22,7 +19,6 @@ import static utils.ConsoleColors.*;
  * the current price, manual bidding history, automated bots (AutoBids), and time tracking.
  */
 public class Auction extends Entity {
-    private static final Logger log = LoggerFactory.getLogger(Auction.class);
 
     // Auction lifecycle states
     public static final String STATUS_PENDING = "PENDING_APPROVAL";
@@ -43,6 +39,7 @@ public class Auction extends Entity {
     private User winningBidder;
     private String status;
     private LocalDateTime endTime;
+    private LocalDateTime maxEndTime; // Hard-cap limit for Anti-Sniping
     private List<BidTransaction> bidHistory;
 
     // PriorityQueue to guarantee that auto-bids are processed based on their registration time
@@ -77,6 +74,10 @@ public class Auction extends Entity {
         this.bidIncrement = bidIncrement;
         this.startTime = startTime;
         this.endTime = endTime;
+        
+        // Anti-Sniping hard-cap: maximum 30 minutes extension from the initial end time
+        this.maxEndTime = endTime.plusMinutes(30);
+        
         this.bidHistory = new ArrayList<>();
 
         this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
@@ -177,6 +178,14 @@ public class Auction extends Entity {
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }
+    
+    public LocalDateTime getMaxEndTime() {
+        return maxEndTime;
+    }
+    
+    public void setMaxEndTime(LocalDateTime maxEndTime) {
+        this.maxEndTime = maxEndTime;
+    }
 
     public List<BidTransaction> getBidHistory() {
         return bidHistory;
@@ -207,28 +216,28 @@ public class Auction extends Entity {
      *
      * @param bidder    The user placing the bid.
      * @param newMaxBid The maximum amount the user is willing to bid.
-     * @return {@code true} if the bid is valid and successfully placed; {@code false} otherwise.
+     * @return The created {@link BidTransaction} if the bid is valid and successfully placed; {@code null} otherwise.
      */
-    public synchronized boolean placeBid(User bidder, double newMaxBid) {
+    public synchronized BidTransaction placeBid(User bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
-            log.warn("The auction session has been deleted.");
-            return false;
+            System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
+            return null;
         }
 
         if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
-            log.warn("Cannot place a bid. The auction is not running or has already ended.");
-            return false;
+            System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+            return null;
         }
 
         if (newMaxBid < 0) {
-            log.warn("Invalid Bid.");
-            return false;
+            System.out.println("[Error]: " + RED + "Invalid Bid" + RESET);
+            return null;
         }
 
         double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
-            log.warn("Bid must be greater than or equal to {} VND ", minRequiredBid);
-            return false;
+            System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+            return null;
         }
 
         if (winningBidder == null) {
@@ -259,13 +268,50 @@ public class Auction extends Entity {
         BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
         bidHistory.add(transaction);
 
-        // Anti-Sniping Algorithm: Extend time by 2 minutes if a bid is placed in the last minute
+        // Anti-Sniping Algorithm with Hard-Cap Limit
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
-            endTime = endTime.plusMinutes(2);
-            log.info("Time increased 2 minutes (Anti-sniping triggered)");
+            LocalDateTime proposedEndTime = endTime.plusMinutes(2);
+            
+            // Ensure the new end time NEVER exceeds the hard-cap maxEndTime
+            if (proposedEndTime.isAfter(maxEndTime)) {
+                endTime = maxEndTime;
+                System.out.println(YELLOW + "[System]: Anti-sniping triggered but hit hard-cap limit. End time: " + endTime + RESET);
+            } else {
+                endTime = proposedEndTime;
+                System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered). End time: " + endTime + RESET);
+            }
         }
 
-        return true;
+        return transaction;
+    }
+
+    /**
+     * Reverts a specific failed bid transaction. This is typically used to roll back the in-memory
+     * state if the corresponding database transaction fails.
+     *
+     * @param previousWinner        The user who was winning before the failed bid.
+     * @param previousHighestMaxBid The highest max bid before the failed bid.
+     * @param failedTransaction     The specific bid transaction that failed and needs to be removed.
+     */
+    public synchronized void revertLastBid(User previousWinner, double previousHighestMaxBid, BidTransaction failedTransaction) {
+        // 1. Remove the specific failed transaction from bidHistory
+        if (failedTransaction != null) {
+            bidHistory.remove(failedTransaction);
+        }
+
+        // 2. Restore winning bidder and highest max bid to the state before the failed transaction
+        this.winningBidder = previousWinner;
+        this.highestMaxBid = previousHighestMaxBid;
+
+        // 3. Recalculate currentPrice based on the remaining bid history
+        if (bidHistory.isEmpty()) {
+            this.currentPrice = item.getStartingPrice();
+        } else {
+            // The currentPrice should be the bidAmount of the last valid transaction
+            this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
+        }
+        
+        System.out.println(YELLOW + "[System]: RAM State Reverted to Previous Winner: " + (previousWinner != null ? previousWinner.getUserName() : "None") + RESET);
     }
 
     /**
@@ -276,11 +322,11 @@ public class Auction extends Entity {
         if ((this.status.equals(STATUS_RUNNING) || this.status.equals(STATUS_OPEN)) && LocalDateTime.now().isAfter(this.endTime)) {
             if (this.winningBidder != null) {
                 this.status = STATUS_FINISHED;
-                log.info("Auction session \"{}\" has ended", this.getId());
-                log.info("Winner: \"{}\" at {} VND ", winningBidder.getUserName(), currentPrice);
+                System.out.println(GREEN + "[System]: Auction session \"" + this.getId() + "\" has ended" + RESET);
+                System.out.println(GREEN + "[System]: Winner: \"" + winningBidder.getUserName() + "\" at VND " + currentPrice + RESET);
             } else {
                 this.status = STATUS_CANCELED;
-                log.info("Auction session \"{}\" was cancelled due to no bidders", this.getId());
+                System.out.println(YELLOW + "[System]: Auction session \"" + this.getId() + "\" was cancelled due to no bidders" + RESET);
             }
         }
     }
@@ -296,19 +342,19 @@ public class Auction extends Entity {
      */
     public synchronized boolean registerAutoBid(User bidder, double maxBid, double userIncrement) {
         if (!status.equals(STATUS_RUNNING)) {
-            log.warn("Auction is not running.");
+            System.out.println("[Error]: " + RED + "Auction is not in RUNNING status" + RESET);
             return false;
         }
 
         if (maxBid <= currentPrice) {
-            log.warn("Maximum bid must be greater than current price.");
+            System.out.println("[Error]: " + RED + "Maximum bid must be greater than current price" + RESET);
             return false;
         }
 
         AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
         activeAutoBids.offer(newAutoBid);
 
-        log.info("\"{}\" registered Auto-Bid successfully (Max: {})", bidder.getUserName(),  maxBid);
+        System.out.println(BLUE + "[Auto-Bid]: \"" + bidder.getUserName() + "\" registered Auto-Bid successfully (Max: " + maxBid + ")" + RESET);
 
         return true;
     }

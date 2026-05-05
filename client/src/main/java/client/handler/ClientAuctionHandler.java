@@ -19,10 +19,6 @@ import static utils.ConsoleColors.*;
 public class ClientAuctionHandler implements ResponseHandler {
     private static final Logger log = LoggerFactory.getLogger(ClientAuctionHandler.class);
 
-    // A static reference to the currently active detail controller.
-    // This allows the network thread to push real-time updates directly to the active chart.
-    public static gui.ItemDetailController activeDetailController = null;
-
     /**
      * Dispatches the incoming network message to the appropriate UI update logic.
      *
@@ -39,26 +35,21 @@ public class ClientAuctionHandler implements ResponseHandler {
 
             String auctionId = (String) data.get("auctionId");
             double newPrice = ((Number) data.get("newPrice")).doubleValue();
-            String winnerName = (String) data.get("winnerName");
 
-            Platform.runLater(() -> {
-                log.info("{} updated its price: {}", YELLOW + auctionId + RESET, GREEN + newPrice + RESET);
+            log.info("Auction {} updated its price: {}", auctionId, newPrice);
 
-                // If the user is currently viewing this specific auction's detail page,
-                // trigger the real-time line chart and UI update.
-                if (activeDetailController != null) {
-                    activeDetailController.updateRealTimePrice(newPrice, winnerName);
-                }
-            });
+            // Fire the event through the bus to decouple network logic from UI controllers
+            AuctionEventBus.fireEvent(AuctionEventBus.PRICE_UPDATED, data);
+
         } else if ("CLI_BROADCAST".equals(command)) {
-            log.info("{}", message.getData());
+            log.info(message.getData().toString());
         } else if ("CREATE_SUCCESS".equals(command)) {
-            log.info("{}", message.getData());
+            log.info(message.getData().toString());
             Platform.runLater(() -> {
                 AlertHelper.showAlert(AlertType.INFORMATION, "Success", message.getData().toString());
             });
         } else if ("CHAT".equals(command)) {
-            log.info("{}", message.getData());
+            log.info(message.getData().toString());
         }
     }
 }
