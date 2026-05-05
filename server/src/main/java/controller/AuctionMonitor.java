@@ -2,7 +2,7 @@ package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
-import model.Auction;
+import model.auction.Auction;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
@@ -101,6 +101,17 @@ public class AuctionMonitor {
                 System.out.println("[System]: " + BLUE + "Removed auction " + YELLOW + auction.getId() + RESET + " from RAM and updated DB to " + status);
             }
         }
+    }
+
+    /**
+     * Sweeps and finalizes finished auctions.
+     * Executes financial settlements: refunds excess locked funds to the winner
+     * and transfers the final closing price to the seller's wallet.
+     */
+    private void processFinancialSettlement(Auction auction) {
+        // Viết logic cộng tiền (currentPrice) cho auction.getSeller()
+        // Viết logic hoàn tiền (highestMaxBid - currentPrice) cho auction.getWinningBidder()
+        // Thông qua TransactionManager để đảm bảo tính ACID
     }
 
     /**

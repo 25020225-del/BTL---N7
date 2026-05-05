@@ -1,4 +1,4 @@
-package model;
+package model.item;
 
 /**
  * Represents a digital product in the auction system.
@@ -13,7 +13,7 @@ public class DigitalItem extends Item {
 
     @Override
     public String getInfo() {
-        return    "[Digital Product]: " + this.getItemName()
+        return "[Digital Product]: " + this.getItemName()
                 + " | Start Price: VND " + this.getStartingPrice();
     }
 }

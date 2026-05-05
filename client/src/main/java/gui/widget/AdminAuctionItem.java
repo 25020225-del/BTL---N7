@@ -6,31 +6,42 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
+/**
+ * A custom UI widget representing an auction item pending administrator approval.
+ * This component displays the item's name and provides actionable buttons for an
+ * admin to either approve or reject the auction session.
+ */
 public class AdminAuctionItem extends VBox {
 
+    /**
+     * Constructs an AdminAuctionItem widget.
+     *
+     * @param id   The unique identifier of the auction session.
+     * @param name The name of the item being auctioned.
+     */
     public AdminAuctionItem(String id, String name) {
-        // 1. Setup Layout
+        // Initialize layout and base styling
         super(10);
         this.setStyle("-fx-border-color: #aaa; -fx-padding: 10; -fx-background-color: white;");
 
-        // 2. Components
+        // Initialize UI components
         Label lblName = new Label("Item: " + name);
         Button btnApprove = new Button("Approve");
         Button btnReject = new Button("Reject");
 
-        // Styling
+        // Apply inline styling
         btnApprove.setStyle("-fx-background-color: green; -fx-text-fill: white;");
         btnReject.setStyle("-fx-background-color: red; -fx-text-fill: white;");
 
-        // 3. Events
+        // Attach event handlers for approval and rejection
         btnApprove.setOnAction(e -> {
             MainApplication.networkClient.sendMessage("APPROVE_AUCTION", id);
-            this.setDisable(true); // Vô hiệu hóa sau khi bấm
+            this.setDisable(true); // Disable the widget to prevent multiple submissions
         });
 
         btnReject.setOnAction(e -> {
             MainApplication.networkClient.sendMessage("REJECT_AUCTION", id);
-            this.setDisable(true);
+            this.setDisable(true); // Disable the widget to prevent multiple submissions
         });
 
         HBox btnGroup = new HBox(10, btnApprove, btnReject);

@@ -5,7 +5,8 @@ import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import network.NetworkMessage;
-import java.awt.Desktop;
+
+import java.awt.*;
 import java.net.URI;
 import java.util.Map;
 
@@ -44,8 +45,7 @@ public class ClientPaymentHandler implements ResponseHandler {
                     }
                 });
             });
-        }
-        else if ("DEPOSIT_SUCCESS".equals(command)) {
+        } else if ("DEPOSIT_SUCCESS".equals(command)) {
             System.out.println("[Payment]: " + GREEN + data.toString() + RESET);
             Platform.runLater(() -> {
                 AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", data.toString());

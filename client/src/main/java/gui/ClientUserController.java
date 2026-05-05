@@ -2,7 +2,8 @@ package gui;
 
 import client.handler.ResponseDispatcher;
 import gui.process.AlertHelper;
-import gui.process.AnimateEffect;
+import gui.process.CropImage;
+import gui.process.ImageCompressor;
 import gui.process.Search;
 import gui.widget.IconButton;
 import gui.widget.MinimalItem;
@@ -13,11 +14,19 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.util.Duration;
-import model.User;
+import model.auction.Auction;
+import model.item.Item;
+import model.user.User;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -25,51 +34,89 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RED;
+import static utils.ConsoleColors.RESET;
 
 /**
- * The primary controller for standard users (Bidders and Sellers).
- * Manages the main dashboard navigation, marketplace grid updates,
- * and handles server events related to UI synchronization.
+ * The unified primary controller for standard users.
+ * This single controller manages both buying (Bidding) and selling (Auction Creation)
+ * capabilities, acting as the main dashboard for the application.
  */
 public class ClientUserController {
+    private static final Logger log = LoggerFactory.getLogger(ClientUserController.class);
 
     private Parent mainView;
     private Parent createAuctionView;
     private Parent tableAuctionView;
+    private Parent accountView;
+    private Parent settingsView;
 
     private User currentUser;
 
-    @FXML private VBox mainDock;
-    @FXML private VBox mainViewController;
+    private File imagefile;
 
-    @FXML private HBox searchBarContainer;
-    @FXML private TilePane mainTilePane;
-    @FXML private TextField searchField;
-    @FXML private Button searchButton;
+    // FUN
+    private int dih = 0;
+    private long niggardly = 0;
 
-    @FXML private TextField ca_itemName;
-    @FXML private TextArea ca_description;
-    @FXML private TextField ca_startPrice;
-    @FXML private TextField ca_bidIncrement;
-    @FXML private DatePicker ca_startDate;
-    @FXML private DatePicker ca_endDate;
-    @FXML private TextField ca_startHour;
-    @FXML private TextField ca_startMinute;
-    @FXML private TextField ca_endHour;
-    @FXML private TextField ca_endMinute;
+    @FXML
+    private VBox mainDock;
+    @FXML
+    private VBox mainViewController;
+
+    @FXML
+    private HBox searchBarContainer;
+    @FXML
+    private TilePane mainTilePane;
+    @FXML
+    private TextField searchField;
+    @FXML
+    private Button searchButton;
+
+    @FXML
+    private TextField ca_itemName;
+    @FXML
+    private TextArea ca_description;
+    @FXML
+    private TextField ca_startPrice;
+    @FXML
+    private TextField ca_bidIncrement;
+    @FXML
+    private DatePicker ca_startDate;
+    @FXML
+    private TextField ca_startHour;
+    @FXML
+    private TextField ca_startMinute;
+    @FXML
+    private TextField ca_durationDays;
+    @FXML
+    private TextField ca_durationHours;
+    @FXML
+    private ImageView ca_image;
+
+    @FXML
+    private Label accName;
+    @FXML
+    private Label accUsername;
 
     private IconButton accountBtn;
-    private IconButton toggleList           = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
-    private IconButton toggleSearchButton   = new IconButton("mdi2f-file-find-outline",     "Search",                "Search",          "special-button");
-    private IconButton marketplaceBtn       = new IconButton("mdi2s-storefront-outline",    "Marketplace",           "Marketplace",     "special-button");
-    private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
-    private IconButton depositBtn           = new IconButton("mdi2c-cash-plus",             "Deposit 50k (Test)",    "Deposit",         "special-button");
-    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private IconButton toggleSearchButton = new IconButton("mdi2f-file-find-outline", "Search", "Search", "special-button");
+    private IconButton marketplaceBtn = new IconButton("mdi2s-storefront-outline", "Marketplace", "Marketplace", "special-button");
+    private IconButton createAuctionBtn = new IconButton("mdi2a-archive-plus-outline", "Sell Item", "Create Auction", "special-button");
+    private IconButton depositBtn = new IconButton("mdi2c-cash-plus", "Deposit 50k (Test)", "Deposit", "special-button");
+    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug", "Create Bot (Test)", "Test Create", "special-button");
+    private IconButton settingsBtn = new IconButton("mdi2c-cog", "Settings", "Settings", "special-button");
 
+    /**
+     * Initializes the Unified User Controller and loads all required FXML layouts.
+     *
+     * @param user The currently authenticated user instance.
+     * @throws IOException If FXML files cannot be loaded.
+     */
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
-        this.accountBtn  = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
+        this.accountBtn = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
 
         FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainLoader.setController(this);
@@ -83,11 +130,22 @@ public class ClientUserController {
         tableViewLoader.setController(this);
         tableAuctionView = tableViewLoader.load();
 
+        FXMLLoader accountLoader = new FXMLLoader(getClass().getResource("AccountView.fxml"));
+        accountLoader.setController(this);
+        accountView = accountLoader.load();
+
+        accName.setText("Full Name: " + currentUser.getName());
+        accUsername.setText("Username: " + currentUser.getUserName());
+
+        FXMLLoader settingsLoader = new FXMLLoader(getClass().getResource("SettingsView.fxml"));
+        settingsLoader.setController(this);
+        settingsView = settingsLoader.load();
+
         MainApplication.setNewScene(mainView);
     }
 
     /**
-     * Initializes the side navigation menu layout and button actions.
+     * Configures the side navigation dock menu.
      */
     private void setMainDock() {
         Separator separator = new Separator();
@@ -101,6 +159,7 @@ public class ClientUserController {
                 testCreateAuctionBtn,
                 separator,
                 region,
+                settingsBtn,
                 accountBtn
         );
 
@@ -115,11 +174,7 @@ public class ClientUserController {
             toggleList.setUserData(!collapsed);
         });
 
-        marketplaceBtn.setOnAction(event -> {
-            mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(tableAuctionView);
-            MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
-        });
+        marketplaceBtn.setOnAction(event -> handleBackToMarketplace());
 
         createAuctionBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
@@ -131,23 +186,106 @@ public class ClientUserController {
         testCreateAuctionBtn.setOnAction(event -> {
             String testItemName = "TEST_ITEM_" + (System.currentTimeMillis() % 10000);
             Map<String, String> dummyData = new HashMap<>();
-            dummyData.put("itemName",       testItemName);
-            dummyData.put("description",    "Test description");
-            dummyData.put("startingPrice",  "50000");
-            dummyData.put("bidIncrement",   "5000");
-            dummyData.put("durationMinutes","60");
+            dummyData.put("itemName", testItemName);
+            dummyData.put("description", "Test description");
+            dummyData.put("startingPrice", "50000");
+            dummyData.put("bidIncrement", "5000");
+            dummyData.put("durationMinutes", "60");
 
-            System.out.println("[Debug]: Sending CREATE_AUCTION for " + testItemName);
+            log.info("[Debug]: Sending CREATE_AUCTION for {}", testItemName);
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
         });
+
+        accountBtn.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(accountView);
+
+            // FUN
+            long skibidi_toilet = System.currentTimeMillis();
+            if (niggardly == 0 || (skibidi_toilet - niggardly > 30000)) {
+                dih = 1;
+                niggardly = skibidi_toilet;
+            } else dih++;
+
+            if (dih == 67) {
+                try {
+                    String troll = "https://www.tiktok.com/@rven6166/video/7615455293991963934";
+
+                    if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                        java.awt.Desktop.getDesktop().browse(new java.net.URI(troll));
+                    }
+                } catch (Exception e) {
+                    log.error("[System]: Error: " + RED + e.getMessage() + RESET);
+                }
+                dih = 0;
+                niggardly = 0;
+            }
+        });
+
+        settingsBtn.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(settingsView);
+        });
+    }
+
+    /**
+     * Navigates the user back to the primary marketplace table view.
+     */
+    @FXML
+    public void handleBackToMarketplace() {
+        mainViewController.getChildren().clear();
+        mainViewController.getChildren().add(tableAuctionView);
+        MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
+    }
+
+    /**
+     * Handles the user sign out process by clearing the session.
+     */
+    @FXML
+    public void handleSignOut() {
+        System.out.println("[System]: User \"" + currentUser.getName() + "\" is signing out.");
+        MainApplication.networkClient.sendMessage("LOGOUT", "");
+        client.handler.ClientAuctionHandler.activeDetailController = null;
+        MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
     private void setMainViewController() {
         mainTilePane.getChildren().clear();
+
     }
 
     /**
-     * Configures the real-time local search bar to filter items in the grid.
+     * Choose image from local storage.
+     */
+    @FXML
+    private void handleSelectImage() {
+        // Hạ giới hạn xuống 1MB để bảo vệ RAM của Server khi mã hóa và parse JSON
+        final int MAX_IMAGE_SIZE = 1 * 1024 * 1024;
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choose an image");
+        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+
+        File selectedFile = fileChooser.showOpenDialog(mainViewController.getScene().getWindow());
+
+        if (selectedFile != null) {
+            // Kiểm tra dung lượng NGAY LẬP TỨC trước khi làm bất cứ việc gì
+            if (selectedFile.length() > MAX_IMAGE_SIZE) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB để đảm bảo đường truyền mạng!");
+                return; // Thoát ngay, không lưu file này
+            }
+
+            // Nếu qua được vòng kiểm duyệt thì mới gán vào biến toàn cục và hiển thị lên UI
+            this.imagefile = selectedFile;
+            System.out.println("[System]: Selected image file: " + imagefile.getName());
+
+            Image image = new Image(imagefile.toURI().toString());
+            CropImage.cropImage(ca_image, image, 720, 480);
+        }
+    }
+
+    /**
+     * Initializes the local search functionality within the active marketplace grid.
      */
     private void setupSearch() {
         if (searchField == null || mainTilePane == null) return;
@@ -171,7 +309,7 @@ public class ClientUserController {
     }
 
     /**
-     * Sends a request to the server to mock a deposit into the user's wallet.
+     * Requests a balance deposit from the server.
      */
     public void requestDeposit(double amount) {
         if (amount <= 0) {
@@ -182,68 +320,102 @@ public class ClientUserController {
     }
 
     /**
-     * Parses the UI form data to submit a request for creating a new auction session.
+     * Handles the submission of the Create Auction form.
+     * Validates inputs, processes dynamic start times (immediate vs scheduled),
+     * and calculates the end time based on the user-defined duration.
      */
     @FXML
     public void handleSubmitAuction(javafx.event.ActionEvent event) {
         try {
-            String name       = ca_itemName.getText().trim();
-            String desc       = ca_description.getText().trim();
+            String name = ca_itemName.getText().trim();
+            String desc = ca_description.getText().trim();
             String startPrice = ca_startPrice.getText().trim();
-            String bidInc     = ca_bidIncrement.getText().trim();
+            String bidInc = ca_bidIncrement.getText().trim();
 
             if (name.isEmpty() || desc.isEmpty() || startPrice.isEmpty() || bidInc.isEmpty()) {
                 AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Fields", "Please fill in all required fields.");
                 return;
             }
-
-            if (ca_startDate.getValue() == null || ca_endDate.getValue() == null) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Date", "Please select both start and end dates.");
+            if (imagefile == null) {
+                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Image", "Please select an image file.");
                 return;
             }
 
-            LocalDateTime startDT = LocalDateTime.of(ca_startDate.getValue(), LocalTime.of(Integer.parseInt(ca_startHour.getText().trim()), Integer.parseInt(ca_startMinute.getText().trim())));
-            LocalDateTime endDT = LocalDateTime.of(ca_endDate.getValue(), LocalTime.of(Integer.parseInt(ca_endHour.getText().trim()), Integer.parseInt(ca_endMinute.getText().trim())));
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime startDT;
 
-            long durationMinutes = java.time.Duration.between(startDT, endDT).toMinutes();
-            if (durationMinutes <= 0) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Time", "End time must be after start time.");
+            // Check if Start Time fields are completely empty
+            boolean isStartTimeEmpty = ca_startDate.getValue() == null ||
+                    ca_startHour.getText().trim().isEmpty() ||
+                    ca_startMinute.getText().trim().isEmpty();
+
+            if (isStartTimeEmpty) {
+                // If empty, default to current time (Server will dynamically update this upon Admin approval)
+                startDT = now;
+            } else {
+                startDT = LocalDateTime.of(
+                        ca_startDate.getValue(),
+                        LocalTime.of(Integer.parseInt(ca_startHour.getText().trim()), Integer.parseInt(ca_startMinute.getText().trim()))
+                );
+
+                // If user specifies a future date, it must be at least 24 hours from now to allow Admin review
+                if (startDT.isBefore(now.plusDays(1))) {
+                    AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Time", "Thời gian bắt đầu phải để trống (chờ duyệt xong chạy luôn) hoặc phải cách hiện tại ít nhất 1 ngày (24 giờ).");
+                    return;
+                }
+            }
+
+            int days = ca_durationDays.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationDays.getText().trim());
+            int hours = ca_durationHours.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationHours.getText().trim());
+            long durationMinutes = (days * 24L * 60L) + (hours * 60L);
+
+            // Constraint: Minimum 1 minute, Maximum 30 days (43200 minutes)
+            if (durationMinutes <= 0 || durationMinutes > 43200) {
+                AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Duration", "Thời lượng đấu giá phải từ 1 phút đến tối đa 30 ngày.");
                 return;
             }
 
             Double.parseDouble(startPrice);
             Double.parseDouble(bidInc);
 
-            Map<String, String> auctionData = new HashMap<>();
-            auctionData.put("itemName",        name);
-            auctionData.put("description",     desc);
-            auctionData.put("startingPrice",   startPrice);
-            auctionData.put("bidIncrement",    bidInc);
-            auctionData.put("durationMinutes", String.valueOf(durationMinutes));
+            Auction auction = new Auction();
+            auction.setItem(new Item());
+            auction.getItem().setItemName(name);
+            auction.getItem().setDescription(desc);
+            auction.getItem().setStartingPrice(Double.parseDouble(startPrice));
+            auction.getItem().setFile(ImageCompressor.compressToBytes(imagefile, 0.05F));
+            auction.setBidIncrement(Double.parseDouble(bidInc));
 
-            MainApplication.networkClient.sendMessage("CREATE_AUCTION", auctionData);
+            // Set calculated times
+            auction.setStartTime(startDT);
+            auction.setEndTime(startDT.plusMinutes(durationMinutes));
 
-            ca_itemName.clear();       ca_description.clear();
-            ca_startPrice.clear();     ca_bidIncrement.clear();
-            ca_startHour.clear();      ca_startMinute.clear();
-            ca_endHour.clear();        ca_endMinute.clear();
-            ca_startDate.setValue(null); ca_endDate.setValue(null);
+            MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
+
+            // Reset UI
+            ca_itemName.clear();
+            ca_description.clear();
+            ca_startPrice.clear();
+            ca_bidIncrement.clear();
+            ca_startHour.clear();
+            ca_startMinute.clear();
+            ca_startDate.setValue(null);
+            ca_durationDays.clear();
+            ca_durationHours.clear();
 
             if (marketplaceBtn != null) marketplaceBtn.fire();
 
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Price, hours, and minutes must be valid numbers.");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Giá tiền và thời lượng phải là số hợp lệ.");
         } catch (java.time.DateTimeException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Hour must be 0–23 and minute must be 0–59.");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Giờ bắt đầu phải từ 0–23 và phút từ 0–59.");
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     /**
-     * Loads the detailed view for a specific item and injects the dynamic payload data.
-     *
-     * @param auctionData A mapped dictionary of properties for the targeted auction.
+     * Navigates to the detailed view of a specific auction item.
      */
     private void openItemDetail(Map<String, Object> auctionData) {
         try {
@@ -264,9 +436,7 @@ public class ClientUserController {
     }
 
     /**
-     * Global router for server messages intended to manipulate the Dashboard UI.
-     *
-     * @param response The structured NetworkMessage from the server.
+     * Global router for server messages intended to manipulate the User UI.
      */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
@@ -280,28 +450,32 @@ public class ClientUserController {
                     mainTilePane.getChildren().clear();
 
                     for (Map<String, Object> data : auctions) {
-                        String id      = (String) data.get("id");
-                        String name    = (String) data.get("itemName");
-                        String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
-                        long   endTime = ((Number) data.get("endTime")).longValue();
+                        String id = (String) data.get("id");
+                        String name = (String) data.get("itemName");
+                        String price = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
+                        String imageUrl = (String) data.get("imageUrl");
+                        long endTime = ((Number) data.get("endTime")).longValue();
 
-                        MinimalItem item = new MinimalItem(id, name, price, endTime);
+                        MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTime);
                         item.getAuctionButton().setOnAction(e -> openItemDetail(data));
                         mainTilePane.getChildren().add(item);
                     }
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                    System.out.println("[ClientAuctionHandler]: FETCH_AUCTIONS_SUCCESS parse error: " + e.getMessage());
+                }
 
             } else if ("NEW_AUCTION_ADDED".equals(command)) {
                 try {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> data = (Map<String, Object>) response.getData();
 
-                    String id      = (String) data.get("id");
-                    String name    = (String) data.get("itemName");
-                    String price   = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
-                    long   endTime = ((Number) data.get("endTime")).longValue();
+                    String id = (String) data.get("id");
+                    String name = (String) data.get("itemName");
+                    String price = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
+                    String imageUrl = (String) data.get("imageUrl");
+                    long endTime = ((Number) data.get("endTime")).longValue();
 
-                    MinimalItem newItem = new MinimalItem(id, name, price, endTime);
+                    MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTime);
                     newItem.getAuctionButton().setOnAction(e -> openItemDetail(data));
 
                     newItem.setOpacity(0);
@@ -310,15 +484,15 @@ public class ClientUserController {
                     FadeTransition ft = new FadeTransition(Duration.millis(500), newItem);
                     ft.setToValue(1.0);
                     ft.play();
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                }
 
             } else if ("REMOVE_AUCTION".equals(command)) {
-                // BUG FIX: Automatically remove the product card from the UI grid when the Server broadcasts an expiration notice
                 try {
                     String auctionIdToRemove = (String) response.getData();
                     mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
-                    System.out.println("[UI System]: Removed expired auction from grid: " + auctionIdToRemove);
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                }
 
             } else {
                 new ResponseDispatcher().dispatch(response, MainApplication.networkClient);
@@ -326,6 +500,9 @@ public class ClientUserController {
         });
     }
 
+    /**
+     * Bootstraps the controller logic upon initial navigation.
+     */
     public void start() {
         setMainDock();
         setMainViewController();

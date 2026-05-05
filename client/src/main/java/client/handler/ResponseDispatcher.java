@@ -1,8 +1,9 @@
 package client.handler;
 
 import client.network.NetworkClient;
-import network.NetworkMessage;
 import javafx.application.Platform;
+import network.NetworkMessage;
+
 import java.util.HashMap;
 import java.util.Map;
 

@@ -3,26 +3,39 @@ package gui;
 import client.network.NetworkClient;
 import gui.process.AlertHelper;
 import gui.process.QRCodeHelper;
-import model.User;
-import network.NetworkMessage;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import model.user.User;
+import network.NetworkMessage;
 
 import java.util.List;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Controller responsible for handling new user registrations.
+ * All new public registrations are defaulted to the standard "USER" role.
+ */
 public class RegisterController {
 
-    @FXML private TextField registerName;
-    @FXML private TextField registerAccountName;
-    @FXML private PasswordField registerPasswordAccount;
-    @FXML private PasswordField confirmPasswordAccount;
-    @FXML private Button registerButton;
-    @FXML private Button changeLoginScene;
+    @FXML
+    private TextField registerName;
+    @FXML
+    private TextField registerAccountName;
+    @FXML
+    private PasswordField registerPasswordAccount;
+    @FXML
+    private PasswordField confirmPasswordAccount;
+    @FXML
+    private Button registerButton;
+    @FXML
+    private Button changeLoginScene;
 
     private NetworkClient networkClient;
 
@@ -30,11 +43,15 @@ public class RegisterController {
         this.networkClient = client;
     }
 
+    /**
+     * Handles the registration button click event.
+     * Validates input fields and sends the registration payload to the server.
+     */
     @FXML
     protected void onRegisterButtonClick() {
         System.out.println("[Log]: Registration process started");
 
-        String name     = registerName.getText().trim();
+        String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
         String confirmPass = (confirmPasswordAccount != null) ? confirmPasswordAccount.getText().trim() : "";
@@ -62,6 +79,7 @@ public class RegisterController {
             return;
         }
 
+        // Unify all new sign-ups to the generic "USER" role
         User newUser = new User("", username, password, name, "USER");
 
         if (networkClient != null) {
@@ -76,13 +94,22 @@ public class RegisterController {
         }
     }
 
+    /**
+     * Switches the view back to the Login screen.
+     */
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("[Log]: Login UI view");
+        System.out.println("[Log]: Navigating to Login UI");
         clearFields();
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
+    /**
+     * Processes the server's response regarding the registration attempt.
+     * Handles 2FA setup upon successful registration.
+     *
+     * @param response The network message received from the server.
+     */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             registerButton.setDisable(false);
@@ -97,7 +124,7 @@ public class RegisterController {
                     @SuppressWarnings("unchecked")
                     List<String> dataList = (List<String>) data;
                     String secretKey = dataList.get(0);
-                    String qrUrl     = dataList.get(1);
+                    String qrUrl = dataList.get(1);
 
                     Image qrImage = QRCodeHelper.generateQRCodeImage(qrUrl, 250, 250);
 
@@ -132,6 +159,9 @@ public class RegisterController {
         });
     }
 
+    /**
+     * Clears all input fields in the registration form.
+     */
     private void clearFields() {
         registerName.clear();
         registerAccountName.clear();
