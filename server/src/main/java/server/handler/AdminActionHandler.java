@@ -4,12 +4,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import database.TransactionManager;
+import database.dao.AuctionDAO;
+import model.auction.Auction;
 import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
+import server.ServerExtension.AuctionManager;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
 
@@ -22,6 +23,7 @@ import static utils.ConsoleColors.*;
  */
 public class AdminActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
+    private final AuctionDAO auctionDAO = new AuctionDAO();
 
     /**
      * Entry point for handling administrative network messages.
@@ -63,49 +65,35 @@ public class AdminActionHandler implements CommandHandler {
      */
     private void processApproval(String auctionId, String newStatus, ClientHandler client) {
         Callable<Boolean> updateTask = () -> {
-            String selectSql = "SELECT start_time, end_time FROM auctions WHERE id = ?";
-            String updateSql = "UPDATE auctions SET status = ?, start_time = ?, end_time = ? WHERE id = ?";
+            try {
+                LocalDateTime[] times = auctionDAO.getAuctionTimes(auctionId);
+                if (times == null) return false;
 
-            try (Connection conn = DatabaseManager.getConnection()) {
-                LocalDateTime oldStart = null;
-                LocalDateTime oldEnd = null;
-
-                // Fetch the original times saved during creation
-                try (PreparedStatement pstmt = conn.prepareStatement(selectSql)) {
-                    pstmt.setString(1, auctionId);
-                    java.sql.ResultSet rs = pstmt.executeQuery();
-                    if (rs.next()) {
-                        oldStart = LocalDateTime.parse(rs.getString("start_time"));
-                        oldEnd = LocalDateTime.parse(rs.getString("end_time"));
-                    } else {
-                        return false;
-                    }
-                }
-
+                LocalDateTime oldStart = times[0];
+                LocalDateTime oldEnd = times[1];
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime newStart = oldStart;
                 LocalDateTime newEnd = oldEnd;
 
                 if (newStatus.equals("OPEN")) {
-                    // DYNAMIC RECALCULATION:
-                    // If the scheduled start time is in the past (meaning it was set to "start immediately upon approval"
-                    // OR it was scheduled for the future but the Admin was too slow to approve it in time).
-                    if (oldStart.isBefore(now) || oldStart.isEqual(now)) {
-                        long duration = java.time.Duration.between(oldStart, oldEnd).toMinutes();
+                    if (oldStart == null || oldStart.isBefore(now) || oldStart.isEqual(now)) {
+                        long duration = 60; // Default fallback duration
+                        if (oldStart != null && oldEnd != null) {
+                            duration = java.time.Duration.between(oldStart, oldEnd).toMinutes();
+                        }
                         newStart = now;
                         newEnd = now.plusMinutes(duration);
+                        System.out.println("[System]: Admin approved late or immediate start. Recalculated new start time to NOW.");
+                    } else {
+                        System.out.println("[System]: Admin approved early for a future scheduled auction. Kept original times.");
                     }
                 }
 
-                // Update the database with the adjusted times
-                try (PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
-                    pstmt.setString(1, newStatus);
-                    pstmt.setString(2, newStart.toString());
-                    pstmt.setString(3, newEnd.toString());
-                    pstmt.setString(4, auctionId);
-                    int rows = pstmt.executeUpdate();
-                    return rows > 0;
-                }
+                // Default values if recalculation results in null (unlikely but safe)
+                if (newStart == null) newStart = now;
+                if (newEnd == null) newEnd = now.plusMinutes(60);
+
+                return auctionDAO.updateApprovalStatus(auctionId, newStatus, newStart, newEnd);
             } catch (Exception e) {
                 log.warn("Updating approval status failed: {}", e.getMessage());
                 return false;
@@ -117,6 +105,19 @@ public class AdminActionHandler implements CommandHandler {
                 String msg = newStatus.equals("OPEN") ? "Auction approved" : "Auction declined";
                 client.sendResponse("ADMIN_ACTION_SUCCESS", msg);
                 log.info("{} has changed the status of {} to {}", client.getUser().getUserName(), auctionId, newStatus);
+
+                // If approved, load the auction into RAM for monitoring
+                if (newStatus.equals("OPEN")) {
+                    try {
+                        Auction auction = auctionDAO.getAuctionById(auctionId);
+                        if (auction != null) {
+                            AuctionManager.addAuctionToMonitor(auction);
+                            System.out.println("[System]: Auction " + auctionId + " added to RAM monitor after Admin approval.");
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to load approved auction into RAM: {}", e.getMessage());
+                    }
+                }
             } else {
                 client.sendResponse("ERROR", "Cannot find this auction in database.");
             }

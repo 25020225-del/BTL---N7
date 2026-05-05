@@ -71,7 +71,7 @@ public class AuthHandler implements CommandHandler {
         try {
             // Convert the generic data object into a User model for easier handling
             User loginAttempt = mapper.convertValue(data, User.class);
-            User user = client.getUserController().login(loginAttempt.getUserName(), loginAttempt.getUserPass());
+            User user = client.getUserController().login(loginAttempt.getUserName(), loginAttempt.getPassword());
 
             if (user != null) {
                 client.setClientName(user.getUserName());
@@ -99,7 +99,7 @@ public class AuthHandler implements CommandHandler {
             User regUser = mapper.convertValue(data, User.class);
             String result = client.getUserController().register(
                     regUser.getUserName(),
-                    regUser.getUserPass(),
+                    regUser.getPassword(),
                     regUser.getName(),
                     regUser.getRole()
             );

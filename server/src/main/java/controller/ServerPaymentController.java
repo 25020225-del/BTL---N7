@@ -2,10 +2,10 @@ package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
+import database.dao.WalletDAO;
 import model.user.User;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
@@ -19,6 +19,7 @@ import static utils.ConsoleColors.*;
  * transaction logging are performed atomically through the {@link TransactionManager}.
  */
 public class ServerPaymentController {
+    private final WalletDAO walletDAO = new WalletDAO();
 
     /**
      * Processes a successful deposit notification from a payment gateway (e.g., PayPal).
@@ -32,9 +33,6 @@ public class ServerPaymentController {
     public CompletableFuture<Boolean> processDepositSuccess(User user, double amountVND, String payPalOrderId) {
         // Wrap deposit logic into a Task to add to the asynchronous database worker queue
         Callable<Boolean> depositTask = () -> {
-            String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
-            String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
-
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false); // Start Database Transaction
 
@@ -42,21 +40,17 @@ public class ServerPaymentController {
                     String now = LocalDateTime.now().toString();
 
                     // 1. Update the current wallet balance
-                    try (PreparedStatement ps = conn.prepareStatement(updateWalletSql)) {
-                        ps.setDouble(1, amountVND);
-                        ps.setString(2, user.getId());
-                        ps.executeUpdate();
-                    }
+                    walletDAO.updateBalance(conn, user.getId(), amountVND);
 
                     // 2. Persist the deposit record into the transaction history
-                    try (PreparedStatement ps = conn.prepareStatement(insertTxnSql)) {
-                        ps.setString(1, "DEP-" + System.currentTimeMillis());
-                        ps.setString(2, user.getId());
-                        ps.setDouble(3, amountVND);
-                        ps.setString(4, "Deposit via PayPal (Order ID: " + payPalOrderId + ")");
-                        ps.setString(5, now);
-                        ps.executeUpdate();
-                    }
+                    walletDAO.addTransaction(
+                            conn,
+                            "DEP-" + System.currentTimeMillis(),
+                            user.getId(),
+                            amountVND,
+                            "Deposit via PayPal (Order ID: " + payPalOrderId + ")",
+                            now
+                    );
 
                     conn.commit(); // Commit all changes as an atomic unit
                     System.out.println("[System]: \"" + YELLOW + user.getName() + RESET + "\" has deposited " + GREEN + amountVND + RESET + " VND");

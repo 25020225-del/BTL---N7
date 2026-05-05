@@ -242,7 +242,6 @@ public class ClientUserController {
     public void handleSignOut() {
         log.info("\"{}\" is signing out.", currentUser.getUserName());
         MainApplication.networkClient.sendMessage("LOGOUT", "");
-        client.handler.ClientAuctionHandler.activeDetailController = null;
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
@@ -384,8 +383,8 @@ public class ClientUserController {
             auction.setBidIncrement(Double.parseDouble(bidInc));
 
             // Set calculated times
-            auction.setStartTime(startDT);
             auction.setEndTime(startDT.plusMinutes(durationMinutes));
+            auction.setStartTime(startDT);
 
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
 
@@ -421,8 +420,6 @@ public class ClientUserController {
 
             ItemDetailController detailController = loader.getController();
             detailController.setProductData(auctionData);
-
-            client.handler.ClientAuctionHandler.activeDetailController = detailController;
 
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(detailView);

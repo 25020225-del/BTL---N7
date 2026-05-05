@@ -11,6 +11,7 @@ import service.AutoBidEngine;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -54,12 +55,11 @@ public class ServerBidderController {
         }
 
         // Encapsulate the entire atomic operation (Lock -> DB -> RAM) into a Callable
-        // to be processed asynchronously by the single-threaded TransactionManager.
+        // to be processed asynchronously by the multi-threaded TransactionManager pool.
         Callable<Boolean> bidTask = () -> {
-            // This entire block is now executed on the single worker thread,
-            // ensuring sequential processing without needing a lock at the controller level.
-            // However, for absolute safety against future changes (e.g., multi-threaded worker),
-            // the lock is acquired here, guaranteeing atomicity for this specific auction.
+            // We use Striped Locking (locking per auction ID) to ensure that 
+            // concurrent bids on the SAME auction are processed sequentially,
+            // while bids on DIFFERENT auctions can run in parallel across the ThreadPool.
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                 
                 // 1. Get current state from RAM for validation and DB transaction.
@@ -81,32 +81,60 @@ public class ServerBidderController {
                     return false;
                 }
 
-                // 3. Calculate the new current price based on bidding logic
-                double newCurrentPrice;
+                // 3. Virtual calculation for pre-DB persistence
+                // This logic MUST match Auction.placeBid but without modifying the object
+                User newWinner = previousWinner;
+                double newHighestMaxBid = previousHighestMaxBid;
+                double newCurrentPrice = auction.getCurrentPrice();
+                LocalDateTime newEndTime = auction.getEndTime();
+
                 if (previousWinner == null) {
                     newCurrentPrice = auction.getItem().getStartingPrice();
+                    newHighestMaxBid = newMaxBid;
+                    newWinner = currentUser;
                 } else if (currentUser.getId().equals(previousWinner.getId())) {
-                    newCurrentPrice = auction.getCurrentPrice(); // Price doesn't change when outbidding self
+                    if (newMaxBid > previousHighestMaxBid) {
+                        newHighestMaxBid = newMaxBid;
+                    }
                 } else {
                     if (newMaxBid > previousHighestMaxBid) {
                         newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > newMaxBid) {
-                            newCurrentPrice = newMaxBid;
-                        }
+                        if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
+                        newHighestMaxBid = newMaxBid;
+                        newWinner = currentUser;
                     } else {
                         newCurrentPrice = newMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > previousHighestMaxBid) {
-                            newCurrentPrice = previousHighestMaxBid;
-                        }
+                        if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
                     }
                 }
 
-                // 4. Execute DB transaction FIRST
+                // Anti-sniping calculation
+                if (LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
+                    LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
+                    if (proposedEndTime.isBefore(auction.getMaxEndTime())) {
+                        newEndTime = proposedEndTime;
+                    } else {
+                        newEndTime = auction.getMaxEndTime();
+                    }
+                }
+
+                // 4. Execute DB transaction
                 try (Connection conn = DatabaseManager.getConnection()) {
                     conn.setAutoCommit(false); // Begin ACID transaction
 
                     try {
-                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId());
+                        boolean isDbSuccess = bidDAO.executeBidTransaction(
+                                conn, 
+                                currentUser, 
+                                newMaxBid, 
+                                previousWinner, 
+                                previousHighestMaxBid, 
+                                newWinner,
+                                newHighestMaxBid,
+                                newCurrentPrice, 
+                                auction.getId(), 
+                                newEndTime
+                        );
 
                         if (isDbSuccess) {
                             conn.commit(); // Finalize all changes
@@ -117,21 +145,18 @@ public class ServerBidderController {
                             System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                             return true;
                         } else {
-                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
+                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance or transaction failed");
                             conn.rollback();
-                            // NO need to revert RAM because we never modified it!
                             return false;
                         }
 
                     } catch (SQLException e) {
                         conn.rollback();
-                        // NO need to revert RAM because we never modified it!
                         System.out.println("[Database]: Database TransactionError: " + RED + e.getMessage() + RESET);
                         return false;
                     }
                 } catch (SQLException e) {
                     System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
-                    // NO need to revert RAM because we never modified it!
                     return false;
                 }
             } // Lock is released here, after both DB and RAM are synced.

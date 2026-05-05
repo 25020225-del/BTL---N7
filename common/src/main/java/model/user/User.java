@@ -10,7 +10,7 @@ import model.base.Entity;
 public class User extends Entity {
 
     private String userName;
-    private String userPass;
+    private String password; // Renamed from userPass
     private String name;
     private String role;
 
@@ -33,14 +33,14 @@ public class User extends Entity {
      *
      * @param id       The unique identifier for the user.
      * @param userName The login username.
-     * @param userPass The user's encrypted password.
+     * @param password The user's encrypted password.
      * @param name     The display name or real name of the user.
      * @param role     The system role assigned to the user (e.g., "USER", "ADMIN").
      */
-    public User(String id, String userName, String userPass, String name, String role) {
+    public User(String id, String userName, String password, String name, String role) {
         super(id);
         this.userName = userName;
-        this.userPass = userPass;
+        this.password = password;
         this.name = name;
         this.role = role;
     }
@@ -50,13 +50,13 @@ public class User extends Entity {
      *
      * @param id       The unique identifier for the user.
      * @param userName The login username.
-     * @param userPass The user's encrypted password.
+     * @param password The user's encrypted password.
      * @param name     The display name or real name of the user.
      */
-    public User(String id, String userName, String userPass, String name) {
+    public User(String id, String userName, String password, String name) {
         super(id);
         this.userName = userName;
-        this.userPass = userPass;
+        this.password = password;
         this.name = name;
     }
 
@@ -68,12 +68,14 @@ public class User extends Entity {
         this.userName = userName;
     }
 
-    public String getUserPass() {
-        return userPass;
+    // Getter for password
+    public String getPassword() {
+        return password;
     }
 
-    public void setUserPass(String userPass) {
-        this.userPass = userPass;
+    // Setter for password
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getName() {

@@ -1,12 +1,10 @@
 package controller;
 
-import database.DatabaseManager;
+import database.dao.AuctionDAO;
 import model.auction.Auction;
 import model.item.Item;
 import model.user.User;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
@@ -18,6 +16,8 @@ import static utils.ConsoleColors.*;
  * conditions, and handle the deletion/removal of auction sessions from the active database.
  */
 public class ServerSellerController {
+
+    private final AuctionDAO auctionDAO = new AuctionDAO();
 
     /**
      * Creates and persists a new auction session in the database.
@@ -34,31 +34,15 @@ public class ServerSellerController {
         // Utilize the factory method to prepare the Auction object in RAM
         Auction newAuction = Auction.createNewAuction(item, currentUser, bidIncrement, startTime, durationMinutes);
 
-        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, newAuction.getId());
-            pstmt.setString(2, item.getItemName());
-            pstmt.setString(3, item.getDescription());
-            pstmt.setDouble(4, item.getStartingPrice());
-            pstmt.setDouble(5, newAuction.getCurrentPrice());
-            pstmt.setDouble(6, bidIncrement);
-            pstmt.setString(7, newAuction.getStartTime().toString());
-            pstmt.setString(8, newAuction.getEndTime().toString());
-            pstmt.setString(9, newAuction.getStatus());
-            pstmt.setString(10, currentUser.getId());
-            pstmt.setString(11, item.getImageUrl());
-
-            pstmt.executeUpdate();
-            System.out.println("[System]: User \"" + YELLOW + currentUser.getName() + RESET + "\" created auction: " + item.getItemName());
-
+        try {
+            if (auctionDAO.addAuction(newAuction)) {
+                System.out.println("[System]: User \"" + YELLOW + currentUser.getName() + RESET + "\" created auction: " + item.getItemName());
+                return newAuction;
+            }
         } catch (SQLException e) {
             System.out.println("[Error]: Database error during addAuction: " + utils.ConsoleColors.RED + e.getMessage() + utils.ConsoleColors.RESET);
-            return null;
         }
-
-        return newAuction;
+        return null;
     }
 
     /**
@@ -92,22 +76,9 @@ public class ServerSellerController {
 
         // If an auction was previously canceled, editing it resets it to PENDING for re-approval
         String newStatus = auction.getStatus().equals(Auction.STATUS_CANCELED) ? Auction.STATUS_PENDING : auction.getStatus();
-        String sql = "UPDATE auctions SET item_name = ?, description = ?, starting_price = ?, current_price = ?, start_time = ?, end_time = ?, status = ? WHERE id = ?";
 
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, newName);
-            pstmt.setString(2, newDesc);
-            pstmt.setDouble(3, newStartPrice);
-            pstmt.setDouble(4, newStartPrice);
-            pstmt.setString(5, newStartTime.toString());
-            pstmt.setString(6, newEndTime.toString());
-            pstmt.setString(7, newStatus);
-            pstmt.setString(8, auction.getId());
-
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
+        try {
+            if (auctionDAO.updateAuction(auction, newName, newDesc, newStartPrice, newStartTime, newEndTime, newStatus)) {
                 // Synchronize the RAM object with the Database updates
                 auction.getItem().setItemName(newName);
                 auction.getItem().setDescription(newDesc);
@@ -141,16 +112,8 @@ public class ServerSellerController {
             return false;
         }
 
-        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, Auction.STATUS_DELETED);
-            pstmt.setString(2, auction.getId());
-
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
+        try {
+            if (auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_DELETED)) {
                 auction.setStatus(Auction.STATUS_DELETED);
                 System.out.println("[System]: Auction \"" + YELLOW + auction.getId() + RESET + "\" has been deleted by " + YELLOW + currentUser.getName() + RESET);
                 return true;

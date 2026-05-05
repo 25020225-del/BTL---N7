@@ -108,18 +108,24 @@ public class AuctionActionHandler implements CommandHandler {
             Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, reqStart, (int) durationMinutes);
 
             if (newAuction != null) {
-                newAuction.setStatus(Auction.STATUS_RUNNING);
-                AuctionManager.addAuctionToMonitor(newAuction);
-
                 log.info("{} has created an auction.", authenticatedUser.getUserName());
 
-                String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
-                ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
-
-                client.sendResponse("CREATE_SUCCESS", "Successfully created auction.");
-
-                // Broadcast the newly created auction to all clients for real-time UI updates
-                ClientManager.broadcast("NEW_AUCTION_ADDED", newAuction, null);
+                // Logic check: only add to RAM monitor if user isGood (trusted)
+                if (authenticatedUser.isGood()) {
+                    newAuction.setStatus(Auction.STATUS_RUNNING);
+                    AuctionManager.addAuctionToMonitor(newAuction);
+                    
+                    String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
+                    ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
+                    
+                    client.sendResponse("CREATE_SUCCESS", "Successfully created auction.");
+                    
+                    // Broadcast the newly created auction to all clients for real-time UI updates
+                    ClientManager.broadcast("NEW_AUCTION_ADDED", newAuction, null);
+                } else {
+                    // Stay in PENDING status, handled by Admin approval
+                    client.sendResponse("CREATE_SUCCESS", "Auction created and pending admin approval.");
+                }
             } else {
                 client.sendResponse("ERROR", "Cannot create auction due to a database error.");
             }

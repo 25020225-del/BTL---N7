@@ -117,10 +117,17 @@ public class DatabaseManager {
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;");
-                log.info("Successfully upgraded auctions table");
-            } catch (SQLException ignored) {
-                // Cột đã tồn tại
-            }
+            } catch (SQLException ignored) {}
+
+            try {
+                stmt.execute("ALTER TABLE auctions ADD COLUMN winning_bidder_id TEXT;");
+            } catch (SQLException ignored) {}
+
+            try {
+                stmt.execute("ALTER TABLE auctions ADD COLUMN highest_max_bid REAL DEFAULT 0.0;");
+            } catch (SQLException ignored) {}
+
+            log.info("Successfully upgraded auctions table");
 
             // SEED DATA: Insert default admin user if not present
             String adminPass = BCrypt.hashpw("123456", BCrypt.gensalt(12));
@@ -141,7 +148,10 @@ public class DatabaseManager {
                     "status TEXT NOT NULL, " +
                     "seller_id TEXT NOT NULL, " +
                     "image_url TEXT, " +
-                    "FOREIGN KEY (seller_id) REFERENCES users(id)" +
+                    "winning_bidder_id TEXT, " +
+                    "highest_max_bid REAL DEFAULT 0.0, " +
+                    "FOREIGN KEY (seller_id) REFERENCES users(id), " +
+                    "FOREIGN KEY (winning_bidder_id) REFERENCES users(id)" +
                     ");";
             stmt.execute(createAuctionsTable);
 
