@@ -15,6 +15,55 @@ import static utils.ConsoleColors.*;
  */
 public class ServerAdminController {
     private static final Logger log = LoggerFactory.getLogger(ServerAdminController.class);
+    private final database.dao.UserDAO userDAO;
+
+    public ServerAdminController(database.dao.UserDAO userDAO) {
+        this.userDAO = userDAO;
+    }
+
+    /**
+     * Blocks a user from participating in auctions.
+     *
+     * @param admin  The administrator performing the action.
+     * @param userId The ID of the user to be blocked.
+     * @return {@code true} if successful.
+     */
+    public boolean blockUser(Admin admin, String userId) {
+        if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
+            try {
+                boolean success = userDAO.updateUserBlockStatus(userId, true);
+                if (success) {
+                    log.info("Admin {} blocked user {}", admin.getUserName(), userId);
+                    return true;
+                }
+            } catch (Exception e) {
+                log.error("Error blocking user: {}", e.getMessage());
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Unblocks a previously blocked user.
+     *
+     * @param admin  The administrator performing the action.
+     * @param userId The ID of the user to be unblocked.
+     * @return {@code true} if successful.
+     */
+    public boolean unblockUser(Admin admin, String userId) {
+        if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
+            try {
+                boolean success = userDAO.updateUserBlockStatus(userId, false);
+                if (success) {
+                    log.info("Admin {} unblocked user {}", admin.getUserName(), userId);
+                    return true;
+                }
+            } catch (Exception e) {
+                log.error("Error unblocking user: {}", e.getMessage());
+            }
+        }
+        return false;
+    }
 
     /**
      * Approves a pending auction request, transitioning its status to OPEN.

@@ -320,9 +320,67 @@ public class ClientUserController {
     }
 
     private void handleEditAuction(String auctionId) {
-        // For simplicity in this step, we'll just show a placeholder alert.
-        // In a real app, this would open a dialog to edit auction details.
-        AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Edit Auction", "Chức năng chỉnh sửa đang được phát triển. Bạn có thể xóa và tạo lại đấu giá mới.");
+        // Create a custom dialog for editing auction details
+        Dialog<Map<String, String>> dialog = new Dialog<>();
+        dialog.setTitle("Edit Auction");
+        dialog.setHeaderText("Update details for auction: " + auctionId);
+
+        // Set the button types
+        ButtonType saveButtonType = new ButtonType("Save Changes", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+
+        // Create the form grid
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+
+        TextField nameField = new TextField();
+        nameField.setPromptText("Item Name");
+        TextArea descField = new TextArea();
+        descField.setPromptText("Description");
+        descField.setPrefRowCount(3);
+        TextField priceField = new TextField();
+        priceField.setPromptText("New Starting Price");
+
+        grid.add(new Label("Item Name:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("Description:"), 0, 1);
+        grid.add(descField, 1, 1);
+        grid.add(new Label("Starting Price:"), 0, 2);
+        grid.add(priceField, 1, 2);
+
+        dialog.getDialogPane().setContent(grid);
+
+        // Convert the result to a map when the save button is clicked
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == saveButtonType) {
+                Map<String, String> result = new HashMap<>();
+                result.put("auctionId", auctionId);
+                result.put("itemName", nameField.getText());
+                result.put("description", descField.getText());
+                result.put("startPrice", priceField.getText());
+                return result;
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(data -> {
+            // Basic validation
+            if (data.get("itemName").isEmpty() || data.get("startPrice").isEmpty()) {
+                AlertHelper.showAlert(AlertType.ERROR, "Validation Error", "Name and Price cannot be empty.");
+                return;
+            }
+            
+            try {
+                Double.parseDouble(data.get("startPrice"));
+            } catch (NumberFormatException e) {
+                AlertHelper.showAlert(AlertType.ERROR, "Validation Error", "Invalid price format.");
+                return;
+            }
+
+            MainApplication.networkClient.sendMessage("EDIT_AUCTION", data);
+        });
     }
 
     private void handleDeleteAuction(String auctionId) {

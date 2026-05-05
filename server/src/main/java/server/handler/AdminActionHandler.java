@@ -25,16 +25,19 @@ public class AdminActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
     private final AuctionDAO auctionDAO;
     private final database.dao.UserDAO userDAO;
+    private final controller.ServerAdminController adminCtrl;
 
     /**
      * Constructs the handler with necessary DAOs via Dependency Injection.
      *
      * @param auctionDAO The DAO for auction management.
      * @param userDAO    The DAO for user management.
+     * @param adminCtrl  The controller for administrative logic.
      */
-    public AdminActionHandler(AuctionDAO auctionDAO, database.dao.UserDAO userDAO) {
+    public AdminActionHandler(AuctionDAO auctionDAO, database.dao.UserDAO userDAO, controller.ServerAdminController adminCtrl) {
         this.auctionDAO = auctionDAO;
         this.userDAO = userDAO;
+        this.adminCtrl = adminCtrl;
     }
 
     /**
@@ -48,22 +51,25 @@ public class AdminActionHandler implements CommandHandler {
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
         String command = message.getCommand();
-        User admin = client.getUser();
+        User adminUser = client.getUser();
 
         // Security check: Only admins can use this command
-        if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
+        if (adminUser == null || !adminUser.getRole().equalsIgnoreCase("ADMIN")) {
             client.sendResponse("ERROR", "You do not have permission to perform this command.");
             return;
         }
+        
+        // Cast to model.user.Admin if needed for controller calls
+        model.user.Admin admin = new model.user.Admin(adminUser);
 
         if ("FETCH_USERS".equals(command)) {
             handleFetchUsers(client);
             return;
         } else if ("BLOCK_USER".equals(command)) {
-            handleUserBlock(message.getData().toString(), true, client);
+            handleUserBlock(admin, message.getData().toString(), true, client);
             return;
         } else if ("UNBLOCK_USER".equals(command)) {
-            handleUserBlock(message.getData().toString(), false, client);
+            handleUserBlock(admin, message.getData().toString(), false, client);
             return;
         }
 
@@ -86,16 +92,13 @@ public class AdminActionHandler implements CommandHandler {
         }
     }
 
-    private void handleUserBlock(String userId, boolean block, ClientHandler client) {
-        try {
-            if (userDAO.updateUserBlockStatus(userId, block)) {
-                String action = block ? "blocked" : "unblocked";
-                client.sendResponse("ADMIN_ACTION_SUCCESS", "User " + userId + " has been " + action);
-            } else {
-                client.sendResponse("ERROR", "User not found.");
-            }
-        } catch (java.sql.SQLException e) {
-            client.sendResponse("ERROR", "Failed to update user status: " + e.getMessage());
+    private void handleUserBlock(model.user.Admin admin, String userId, boolean block, ClientHandler client) {
+        boolean success = block ? adminCtrl.blockUser(admin, userId) : adminCtrl.unblockUser(admin, userId);
+        if (success) {
+            String action = block ? "blocked" : "unblocked";
+            client.sendResponse("ADMIN_ACTION_SUCCESS", "User " + userId + " has been " + action);
+        } else {
+            client.sendResponse("ERROR", "Failed to update user status.");
         }
     }
 
