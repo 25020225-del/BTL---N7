@@ -10,6 +10,7 @@ import service.AutoBidEngine;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -57,46 +58,81 @@ public class ServerBidderController {
         // and pushed to the database transaction queue at a time.
         synchronized (AuctionManager.getLockForAuction(auction.getId())) {
 
-            User previousWinner = auction.getWinningBidder();
-            double amountToRefund = auction.getHighestMaxBid();
+            // 1. Get current state from RAM for validation and DB transaction.
+            // Declared as final to be safely used inside the lambda.
+            final User previousWinner = auction.getWinningBidder();
+            final double previousHighestMaxBid = auction.getHighestMaxBid();
 
-            // Validate auction logic in RAM before hitting the database
-            boolean isRamSuccess = auction.placeBid(currentUser, newMaxBid);
-            if (!isRamSuccess) {
-                return CompletableFuture.completedFuture(false); // Bid is invalid (e.g., too low, auction closed)
+            // 2. Perform pre-validation checks that don't modify state
+            if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
+                System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
+                return CompletableFuture.completedFuture(false);
+            }
+            if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || LocalDateTime.now().isAfter(auction.getEndTime())) {
+                System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+                return CompletableFuture.completedFuture(false);
+            }
+            double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
+            if (newMaxBid < minRequiredBid) {
+                System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+                return CompletableFuture.completedFuture(false);
             }
 
             // Encapsulate the transaction logic into a task for the database worker thread
             Callable<Boolean> bidTask = () -> {
+                
+                // 3. Calculate the new current price based on bidding logic inside the lambda.
+                double newCurrentPrice;
+                if (previousWinner == null) {
+                    newCurrentPrice = auction.getItem().getStartingPrice();
+                } else if (currentUser.getId().equals(previousWinner.getId())) {
+                    newCurrentPrice = auction.getCurrentPrice(); // Price doesn't change when outbidding self
+                } else {
+                    if (newMaxBid > previousHighestMaxBid) {
+                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > newMaxBid) {
+                            newCurrentPrice = newMaxBid;
+                        }
+                    } else {
+                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > previousHighestMaxBid) {
+                            newCurrentPrice = previousHighestMaxBid;
+                        }
+                    }
+                }
+
                 try (Connection conn = DatabaseManager.getConnection()) {
                     conn.setAutoCommit(false); // Begin ACID transaction
 
                     try {
-                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, auction, newMaxBid, previousWinner, amountToRefund);
+                        // 4. Execute DB transaction FIRST
+                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId());
 
                         if (isDbSuccess) {
                             conn.commit(); // Finalize all changes
+                            
+                            // 5. DB Success, now update RAM atomically
+                            // We call placeBid here because we know the DB is fully synced
+                            auction.placeBid(currentUser, newMaxBid);
+                            
                             System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                             return true;
                         } else {
                             System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
                             conn.rollback();
-                            // Revert the bid placement in RAM as the DB transaction failed
-                            auction.revertLastBid(previousWinner, amountToRefund);
+                            // NO need to revert RAM because we never modified it!
                             return false;
                         }
 
                     } catch (SQLException e) {
                         conn.rollback();
-                        // Revert the bid placement in RAM as the DB transaction failed
-                        auction.revertLastBid(previousWinner, amountToRefund);
+                        // NO need to revert RAM because we never modified it!
                         System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
                         return false;
                     }
                 } catch (SQLException e) {
                     System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
-                    // Revert the bid placement in RAM as the DB connection failed
-                    auction.revertLastBid(previousWinner, amountToRefund);
+                    // NO need to revert RAM because we never modified it!
                     return false;
                 }
             };
@@ -120,8 +156,6 @@ public class ServerBidderController {
                 return finalResult;
             }).exceptionally(ex -> {
                 System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
-                // Revert the bid placement in RAM as the task execution entirely failed
-                auction.revertLastBid(previousWinner, amountToRefund);
                 return false;
             });
         }

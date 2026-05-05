@@ -10,66 +10,88 @@ import java.time.LocalDateTime;
 
 public class BidDAO {
 
-    public boolean executeBidTransaction(Connection conn, User currentUser, Auction auction, double newMaxBid, User previousWinner, double amountToRefund) throws SQLException {
-        // STEP 1: Atomic wallet deduction with balance check
-        String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
-        try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
-            pstmt.setDouble(1, newMaxBid);
-            pstmt.setString(2, currentUser.getId());
-            pstmt.setDouble(3, newMaxBid);
-            if (pstmt.executeUpdate() == 0) {
-                return false; // Insufficient balance
-            }
-        }
-
-        // STEP 2: Log the withdrawal transaction
+    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, double newCurrentPrice, String auctionId) throws SQLException {
+        // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
         String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-            pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
-            pstmt.setString(2, currentUser.getId());
-            pstmt.setDouble(3, -newMaxBid);
-            pstmt.setString(4, "Auction bid placed for session: " + auction.getId());
-            pstmt.setString(5, now);
-            pstmt.executeUpdate();
-        }
 
-        // STEP 3: Refund the previous winner (if not the same user)
-        if (previousWinner != null && !previousWinner.getId().equals(currentUser.getId())) {
-            String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
-                pstmt.setDouble(1, amountToRefund);
-                pstmt.setString(2, previousWinner.getId());
-                pstmt.executeUpdate();
+        if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
+            // Case 1: User is outbidding themselves. Only deduct the difference.
+            double amountToDeduct = newMaxBid - previousHighestMaxBid;
+            if (amountToDeduct > 0) {
+                String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
+                    pstmt.setDouble(1, amountToDeduct);
+                    pstmt.setString(2, currentUser.getId());
+                    pstmt.setDouble(3, amountToDeduct);
+                    if (pstmt.executeUpdate() == 0) return false; // Insufficient balance
+                }
+                // Log the incremental withdrawal
+                try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+                    pstmt.setString(1, "W-INC-" + System.currentTimeMillis());
+                    pstmt.setString(2, currentUser.getId());
+                    pstmt.setDouble(3, -amountToDeduct);
+                    pstmt.setString(4, "Incremental auction bid for session: " + auctionId);
+                    pstmt.setString(5, now);
+                    pstmt.executeUpdate();
+                }
+            }
+        } else {
+            // Case 2: A new user is bidding.
+            // Refund previous winner
+            if (previousWinner != null) {
+                String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
+                    pstmt.setDouble(1, previousHighestMaxBid);
+                    pstmt.setString(2, previousWinner.getId());
+                    pstmt.executeUpdate();
+                }
+                // Log the refund
+                try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+                    pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
+                    pstmt.setString(2, previousWinner.getId());
+                    pstmt.setDouble(3, previousHighestMaxBid);
+                    pstmt.setString(4, "Refund for being outbid in session: " + auctionId);
+                    pstmt.setString(5, now);
+                    pstmt.executeUpdate();
+                }
             }
 
-            // Log the refund transaction
+            // Deduct full amount from new bidder
+            String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
+                pstmt.setDouble(1, newMaxBid);
+                pstmt.setString(2, currentUser.getId());
+                pstmt.setDouble(3, newMaxBid);
+                if (pstmt.executeUpdate() == 0) return false; // Insufficient balance
+            }
+            // Log the full withdrawal
             try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
-                pstmt.setString(2, previousWinner.getId());
-                pstmt.setDouble(3, amountToRefund);
-                pstmt.setString(4, "Refund for price overrun during session: " + auction.getId());
+                pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
+                pstmt.setString(2, currentUser.getId());
+                pstmt.setDouble(3, -newMaxBid);
+                pstmt.setString(4, "Auction bid placed for session: " + auctionId);
                 pstmt.setString(5, now);
                 pstmt.executeUpdate();
             }
         }
 
-        // STEP 4: Record the bid history
+        // STEP 2: Record the bid history
         String bidLogSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(bidLogSql)) {
             pstmt.setString(1, "BID-" + System.currentTimeMillis());
-            pstmt.setString(2, auction.getId());
+            pstmt.setString(2, auctionId);
             pstmt.setString(3, currentUser.getId());
-            pstmt.setDouble(4, auction.getCurrentPrice());
+            pstmt.setDouble(4, newCurrentPrice);
             pstmt.setString(5, now);
             pstmt.executeUpdate();
         }
 
-        // STEP 5: Update auction current price
+        // STEP 3: Update auction's current price in DB
         String updateAuctionSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
-            pstmt.setDouble(1, auction.getCurrentPrice());
-            pstmt.setString(2, auction.getId());
+            pstmt.setDouble(1, newCurrentPrice);
+            pstmt.setString(2, auctionId);
             pstmt.executeUpdate();
         }
 

@@ -2155,6 +2155,154 @@ public class RegisterController {
 }
 
 ======================================================================
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\Transaction.java ///
+======================================================================
+
+package gui;
+
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+
+public class Transaction {
+    private final SimpleStringProperty date;
+    private final SimpleStringProperty type;
+    private final SimpleDoubleProperty amount;
+    private final SimpleStringProperty status;
+    private final SimpleStringProperty note;
+
+    public Transaction(String date, String type, double amount, String status, String note) {
+        this.date = new SimpleStringProperty(date);
+        this.type = new SimpleStringProperty(type);
+        this.amount = new SimpleDoubleProperty(amount);
+        this.status = new SimpleStringProperty(status);
+        this.note = new SimpleStringProperty(note);
+    }
+
+    public String getDate() { return date.get(); }
+    public String getType() { return type.get(); }
+    public double getAmount() { return amount.get(); }
+    public String getStatus() { return status.get(); }
+    public String getNote() { return note.get(); }
+}
+
+======================================================================
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\WalletController.java ///
+======================================================================
+
+package gui;
+
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class WalletController {
+
+    @FXML private Label lblTotalBalance;
+    @FXML private Label lblFrozenBalance;
+    @FXML private TextField txtDepositAmount;
+
+    @FXML private TableView<Transaction> tableTransactions;
+    @FXML private TableColumn<Transaction, String> colDate;
+    @FXML private TableColumn<Transaction, String> colType;
+    @FXML private TableColumn<Transaction, Double> colAmount;
+    @FXML private TableColumn<Transaction, String> colStatus;
+    @FXML private TableColumn<Transaction, String> colNote;
+
+    private double currentBalance = 0.0;
+    private ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
+
+    @FXML
+    public void initialize() {
+        colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
+        colType.setCellValueFactory(new PropertyValueFactory<>("type"));
+        colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        colNote.setCellValueFactory(new PropertyValueFactory<>("note"));
+
+        tableTransactions.setItems(transactionData);
+
+        transactionData.add(new Transaction("1975-10-20 10:00", "Đặt cọc", 200.0, "Success", "Pinecone : Konichiwa !!"));
+
+        updateBalanceUI();
+    }
+
+
+    @FXML
+    private void handleDeposit() {
+        try {
+            double amount = Double.parseDouble(txtDepositAmount.getText());
+            if (amount <= 0) throw new Exception();
+
+            currentBalance += amount;
+
+
+            String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            transactionData.add(0, new Transaction(now, "Nạp tiền", amount, "Completed", "Nạp tiền qua ngân hàng"));
+
+            updateBalanceUI();
+            txtDepositAmount.clear();
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Thành công");
+            alert.setHeaderText(null);
+            alert.setContentText("Đã nạp $" + amount );
+            alert.showAndWait();
+
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setContentText("Vui lòng nhập số tiền hợp lệ!");
+            alert.showAndWait();
+        }
+    }
+
+    private void updateBalanceUI() {
+        lblTotalBalance.setText(String.format("$%.2f", currentBalance));
+    }
+    // nap nhanh
+    @FXML
+    private void addQuickAmount(javafx.event.ActionEvent event) {
+        Button btn = (Button) event.getSource();
+        String text = btn.getText().replace("+$", "");
+        txtDepositAmount.setText(text);
+    }
+}
+
+======================================================================
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\WalletTestLauncher.java ///
+======================================================================
+
+package gui;
+
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+
+public class WalletTestLauncher extends Application {
+
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("WalletView.fxml"));
+        Parent root = loader.load();
+        Scene scene = new Scene(root);
+        primaryStage.setTitle("Ví điện tử");
+        primaryStage.setScene(scene);
+        primaryStage.setResizable(false);
+        primaryStage.show();
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+}
+
+======================================================================
 /// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\java\gui\process\AlertHelper.java ///
 ======================================================================
 
@@ -3431,10 +3579,14 @@ public class MinimalItem extends VBox {
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
+<<<<<<< HEAD
+/*nut dang xuất*/
+=======
 
 /
 /
 nut dang xuất
+>>>>>>> 89dfeebe728517716e9e02ef0007a89fd2b33f70
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;
@@ -3447,6 +3599,35 @@ nut dang xuất
 .button-logout:hover {
     -fx-background-color: #fff1f1;
 }
+/* hiển thị  */
+.balance-card {
+    -fx-background-color: linear-gradient(to right, #3665f3, #2b50c7);
+    -fx-background-radius: 15;
+    -fx-padding: 25;
+    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.3), 10, 0, 0, 5);
+}
+
+.balance-card .label {
+    -fx-text-fill: white;
+}
+
+/* Các nút nạp */
+.quick-amount-btn {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5;
+    -fx-cursor: hand;
+}
+
+.quick-amount-btn:hover {
+    -fx-border-color: #3665f3;
+    -fx-text-fill: #3665f3;
+}
+
+
+.status-completed { -fx-text-fill: #28a745; -fx-font-weight: bold; }
+.status-pending { -fx-text-fill: #f39c12; -fx-font-weight: bold; }
+.status-hold { -fx-text-fill: #3665f3; -fx-font-weight: bold; }
 
 ======================================================================
 /// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\Login.fxml ///
@@ -4011,6 +4192,99 @@ nut dang xuất
             </content>
         </ScrollPane>
     </children>
+</VBox>
+
+
+======================================================================
+/// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\client\src\main\resources\gui\WalletView.fxml ///
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.WalletController">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <children>
+                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại" />
+                <Label text="Ma Wallet">
+                    <font><Font name="System Bold" size="24.0" /></font>
+                </Label>
+            </children>
+        </HBox>
+
+        <HBox spacing="20.0">
+            <children>
+                <VBox prefWidth="350.0" styleClass="balance-card" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label style="-fx-opacity: 0.8;" text="Số dư khả dụng" />
+                        <Label fx:id="lblTotalBalance" text="0.00">
+                            <font><Font name="System Bold" size="36.0" /></font>
+                        </Label>
+                        <Separator opacity="0.2">
+                            <VBox.margin><Insets bottom="10.0" top="10.0" /></VBox.margin>
+                        </Separator>
+                        <HBox spacing="20.0">
+                            <children>
+                                <VBox>
+                                    <children>
+                                        <Label style="-fx-font-size: 11; -fx-opacity: 0.8;" text="Đang đặt cọc" />
+                                        <Label fx:id="lblFrozenBalance" style="-fx-font-size: 16; -fx-font-weight: bold;" text="0.00" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="400.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;" styleClass="product-card" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label text="Nạp ">
+                            <font><Font name="System Bold" size="16.0" /></font>
+                        </Label>
+                        <TextField fx:id="txtDepositAmount" prefHeight="40.0" promptText="Nhập số tiền ($)" />
+                        <HBox spacing="10.0">
+                            <children>
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$10" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$50" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$100" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$500" />
+                            </children>
+                        </HBox>
+                        <Button maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="NẠP TIỀN NGAY" />
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+
+        <VBox spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 15;" VBox.vgrow="ALWAYS">
+            <children>
+                <Label text="Lịch sử giao dịch gần đây">
+                    <font><Font name="System Bold" size="16.0" /></font>
+                </Label>
+                <TableView fx:id="tableTransactions" prefHeight="300.0" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colDate" prefWidth="150.0" text="Ngày giao dịch" />
+                        <TableColumn fx:id="colType" prefWidth="150.0" text="Loại" />
+                        <TableColumn fx:id="colAmount" prefWidth="120.0" text="Số tiền" />
+                        <TableColumn fx:id="colStatus" prefWidth="120.0" text="Trạng thái" />
+                        <TableColumn fx:id="colNote" prefWidth="200.0" text="Ghi chú" />
+                    </columns>
+                </TableView>
+            </children>
+        </VBox>
+    </children>
+    <padding><Insets bottom="30.0" left="30.0" right="30.0" top="30.0" /></padding>
 </VBox>
 
 
@@ -6678,6 +6952,7 @@ package controller;
 
 import database.DatabaseManager;
 import database.TransactionManager;
+import database.dao.AuctionDAO;
 import model.auction.Auction;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
@@ -6703,6 +6978,7 @@ public class AuctionMonitor {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
+    private final AuctionDAO auctionDAO = new AuctionDAO(); // Instantiate AuctionDAO
 
     /**
      * Constructs the monitor with a reference to the global active auction list in RAM.
@@ -6752,13 +7028,8 @@ public class AuctionMonitor {
 
                     // Asynchronously update the database to persist the new state
                     Callable<Boolean> dbUpdateTask = () -> {
-                        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-                        try (Connection conn = DatabaseManager.getConnection();
-                             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                            pstmt.setString(1, Auction.STATUS_RUNNING);
-                            pstmt.setString(2, auction.getId());
-                            pstmt.executeUpdate();
-                            return true;
+                        try {
+                            return auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_RUNNING);
                         } catch (Exception e) {
                             System.out.println("[Database]: Failed to update auction to RUNNING: " + RED + e.getMessage() + RESET);
                             return false;
@@ -6784,13 +7055,8 @@ public class AuctionMonitor {
 
                 // Persist the closed status to the SQLite Database asynchronously
                 Callable<Boolean> dbUpdateTask = () -> {
-                    String sql = "UPDATE auctions SET status = ? WHERE id = ?";
-                    try (Connection conn = DatabaseManager.getConnection();
-                         PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                        pstmt.setString(1, status);
-                        pstmt.setString(2, auction.getId());
-                        pstmt.executeUpdate();
-                        return true;
+                    try {
+                        return auctionDAO.updateAuctionStatus(auction.getId(), status);
                     } catch (Exception e) {
                         return false;
                     }
@@ -6822,42 +7088,11 @@ public class AuctionMonitor {
      */
     private void sweepDatabaseForOrphans() {
         Callable<Boolean> dbSweepTask = () -> {
-            String selectSql = "SELECT id, end_time, current_price, starting_price, start_time FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
-            String updateSql = "UPDATE auctions SET status = ? WHERE id = ?";
-
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement selectStmt = conn.prepareStatement(selectSql);
-                 ResultSet rs = selectStmt.executeQuery()) {
-
-                while (rs.next()) {
-                    String id = rs.getString("id");
-                    LocalDateTime endTime = LocalDateTime.parse(rs.getString("end_time"));
-                    LocalDateTime startTime = LocalDateTime.parse(rs.getString("start_time"));
-                    LocalDateTime now = LocalDateTime.now();
-
-                    // Case 1: The auction's end time has passed.
-                    if (now.isAfter(endTime)) {
-                        double currentPrice = rs.getDouble("current_price");
-                        double startPrice = rs.getDouble("starting_price");
-                        String newStatus = (currentPrice > startPrice) ? "FINISHED" : "CANCELED";
-
-                        try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-                            updateStmt.setString(1, newStatus);
-                            updateStmt.setString(2, id);
-                            updateStmt.executeUpdate();
-                        }
-                        ClientManager.broadcast("REMOVE_AUCTION", id, null);
-                        System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
-                    }
-                    // Case 2: The auction should be running but is not in RAM.
-                    else if (now.isAfter(startTime)) {
-                         try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-                            updateStmt.setString(1, Auction.STATUS_RUNNING);
-                            updateStmt.setString(2, id);
-                            updateStmt.executeUpdate();
-                        }
-                        System.out.println("[System]: " + BLUE + "Swept and started orphaned database auction: " + YELLOW + id + RESET);
-                    }
+            try {
+                List<String> updatedIds = auctionDAO.sweepOrphanAuctions();
+                for (String id : updatedIds) {
+                    // Force clients to remove the ghost item from their UI
+                    ClientManager.broadcast("REMOVE_AUCTION", id, null);
                 }
                 return true;
             } catch (Exception e) {
@@ -6878,6 +7113,7 @@ public class AuctionMonitor {
         System.out.println("[System]: " + YELLOW + " Auction monitor has been shutdown." + RESET);
     }
 }
+
 
 ======================================================================
 /// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\controller\ServerAdminController.java ///
@@ -7751,11 +7987,20 @@ package database.dao;
 import database.DatabaseManager;
 import model.auction.Auction;
 import model.item.Item;
+import server.ServerExtension.ClientManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import static utils.ConsoleColors.BLUE;
+import static utils.ConsoleColors.RED;
+import static utils.ConsoleColors.RESET;
+import static utils.ConsoleColors.YELLOW;
 
 public class AuctionDAO {
 
@@ -7809,6 +8054,56 @@ public class AuctionDAO {
 
             return pstmt.executeUpdate() > 0;
         }
+    }
+
+    /**
+     * Scans the database for orphaned auctions (expired but not updated in RAM)
+     * and updates their status.
+     *
+     * @return A list of auction IDs that were updated.
+     * @throws SQLException if a database access error occurs.
+     */
+    public List<String> sweepOrphanAuctions() throws SQLException {
+        List<String> updatedAuctionIds = new ArrayList<>();
+        String selectSql = "SELECT id, end_time, current_price, starting_price, start_time, status FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
+        String updateSql = "UPDATE auctions SET status = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement selectStmt = conn.prepareStatement(selectSql);
+             PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+
+            ResultSet rs = selectStmt.executeQuery();
+
+            while (rs.next()) {
+                String id = rs.getString("id");
+                LocalDateTime endTime = LocalDateTime.parse(rs.getString("end_time"));
+                LocalDateTime startTime = LocalDateTime.parse(rs.getString("start_time"));
+                String currentStatus = rs.getString("status");
+                LocalDateTime now = LocalDateTime.now();
+
+                // Case 1: The auction's end time has passed.
+                if (now.isAfter(endTime)) {
+                    double currentPrice = rs.getDouble("current_price");
+                    double startPrice = rs.getDouble("starting_price");
+                    String newStatus = (currentPrice > startPrice) ? Auction.STATUS_FINISHED : Auction.STATUS_CANCELED;
+
+                    updateStmt.setString(1, newStatus);
+                    updateStmt.setString(2, id);
+                    updateStmt.executeUpdate();
+                    updatedAuctionIds.add(id);
+                    System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
+                }
+                // Case 2: The auction should be running but is still OPEN in DB.
+                else if (currentStatus.equals(Auction.STATUS_OPEN) && now.isAfter(startTime)) {
+                    updateStmt.setString(1, Auction.STATUS_RUNNING);
+                    updateStmt.setString(2, id);
+                    updateStmt.executeUpdate();
+                    updatedAuctionIds.add(id);
+                    System.out.println("[System]: " + BLUE + "Swept and started orphaned database auction: " + YELLOW + id + RESET);
+                }
+            }
+        }
+        return updatedAuctionIds;
     }
 }
 
