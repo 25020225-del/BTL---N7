@@ -1,5 +1,7 @@
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gui.process.AlertHelper;
@@ -13,14 +15,13 @@ import model.user.User;
 import network.NetworkMessage;
 import utils.JacksonConfig;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Controller responsible for managing the user login interface.
  * It handles capturing user credentials, validating inputs, dispatching authentication
  * requests to the server, and routing the user to the appropriate dashboard upon success.
  */
 public class LoginController {
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
 
     @FXML
     private TextField loginAccountName;
@@ -75,7 +76,7 @@ public class LoginController {
             User loginAttempt = new User("", username, password, "");
             networkClient.sendMessage("LOGIN", loginAttempt);
         } else {
-            System.out.println("[System]: " + RED + "Cannot connect to the server" + RESET);
+            log.warn("Cannot connect to server.");
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server");
         }
     }
@@ -104,14 +105,14 @@ public class LoginController {
             loginButton.setText("SIGN IN");
 
             String command = response.getCommand();
-            System.out.println("[Log]: Server Response: " + command);
+            log.debug("Server Response: {}", command);
 
             if ("LOGIN_SUCCESS".equals(command)) {
                 try {
                     // Deserialize the authenticated user data returned by the server
                     User loggedInUser = mapper.convertValue(response.getData(), User.class);
 
-                    System.out.println("[Log]: " + GREEN + loggedInUser.getName() + " successfully logged in" + RESET);
+                    log.info("{} successfully logged in", loggedInUser.getUserName());
 
                     // Clear sensitive fields from memory
                     loginAccountName.clear();
@@ -120,14 +121,14 @@ public class LoginController {
                     // Delegate routing to the MainController based on the user's role
                     MainController.start(loggedInUser);
                 } catch (Exception e) {
-                    System.out.println("[System]: Login error: " + RED + e.getMessage() + RESET);
+                    log.error("Login Error: {}", e.getMessage());
                 }
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
                 // Extract error message from server or use a default generic message
                 String errorMsg = response.getData() != null ? response.getData().toString() : "Username or password is incorrect!";
 
-                System.out.println("[System]: " + RED + "Login failed: " + errorMsg + RESET);
+                log.warn("Login failed: {}", errorMsg);
 
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "Login Failed", errorMsg);
             }

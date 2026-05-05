@@ -48,7 +48,7 @@ public class ResponseDispatcher {
             try {
                 handler.handle(message, client);
             } catch (Exception e) {
-                log.error("Error for \"{}\": {}", command, e.getMessage());
+                log.error("Command \"{}\": {}", command, e.getMessage());
             }
         } else {
             // Unhandled commands are forwarded directly to the UI component if a callback is registered

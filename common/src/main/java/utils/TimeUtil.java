@@ -1,11 +1,15 @@
 package utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Utility class to manage time synchronization between the Client and the Server.
  * Implements an NTP-like offset calculation to ensure countdowns and auction events
  * use the Server's authoritative time, regardless of the Client's local machine clock.
  */
 public class TimeUtil {
+    private static final Logger log = LoggerFactory.getLogger(TimeUtil.class);
 
     // The calculated difference in milliseconds between the Server and the Client.
     private static long timeOffset = 0;
@@ -28,7 +32,7 @@ public class TimeUtil {
         // Save the offset: how far ahead or behind the server is compared to local time
         timeOffset = estimatedRealServerTime - clientReceiveTime;
 
-        System.out.println("[Time Sync]: Network RTT: " + roundTripTime + "ms | Offset adjusted by " + timeOffset + "ms");
+        log.debug("Network RTT: {}ms | Offset adjusted by {}ms", roundTripTime, timeOffset);
     }
 
     /**

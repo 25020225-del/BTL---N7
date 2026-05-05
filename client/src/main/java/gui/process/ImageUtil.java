@@ -1,5 +1,8 @@
 package gui.process;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javafx.scene.image.Image;
 
 import java.io.ByteArrayInputStream;
@@ -15,6 +18,7 @@ import static utils.ConsoleColors.*;
  * and decodes Base64 strings back to JavaFX Image objects.
  */
 public class ImageUtil {
+    private static final Logger log = LoggerFactory.getLogger(ImageUtil.class);
 
     /**
      * Reads a local file and encodes it into a Base64 string.
@@ -24,7 +28,7 @@ public class ImageUtil {
      */
     public static String encodeImageToBase64(File file) {
         if (file == null || !file.exists()) {
-            System.out.println("[Warning]: Image file not found or is null.");
+            log.warn("Image not found or is null.");
             return null;
         }
 
@@ -33,12 +37,12 @@ public class ImageUtil {
 
             // Check file size (e.g., limit to ~2MB) to prevent overwhelming the server/WebSocket
             if (fileContent.length > 2 * 1024 * 1024) {
-                System.out.println("[Warning]: " + YELLOW + "Image size exceeds 2MB. Transmission might be slow." + RESET);
+                log.warn("Image size exceeds 2MB. Transmission might be slow.");
             }
 
             return Base64.getEncoder().encodeToString(fileContent);
         } catch (Exception e) {
-            System.out.println("[Error]: Failed to encode image to Base64: " + RED + e.getMessage() + RESET);
+            log.error("Failed to encode image to Base64: {}", e.getMessage());
             return null;
         }
     }
@@ -58,10 +62,10 @@ public class ImageUtil {
             byte[] imageBytes = Base64.getDecoder().decode(base64String);
             return new Image(new ByteArrayInputStream(imageBytes));
         } catch (IllegalArgumentException e) {
-            System.out.println("[Error]: Invalid Base64 format received: " + RED + e.getMessage() + RESET);
+            log.warn("Invalid Base64 format received: {}", e.getMessage());
             return null;
         } catch (Exception e) {
-            System.out.println("[Error]: Failed to decode Base64 image: " + RED + e.getMessage() + RESET);
+            log.error("Failed to decode Base64 image: {}", e.getMessage());
             return null;
         }
     }

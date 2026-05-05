@@ -1,5 +1,7 @@
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.auction.Auction;
 import model.item.Item;
@@ -20,6 +22,7 @@ import static utils.ConsoleColors.*;
  * Handles requests from clients to create new auction sessions.
  */
 public class AuctionActionHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(AuctionActionHandler.class);
 
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
@@ -108,7 +111,7 @@ public class AuctionActionHandler implements CommandHandler {
                 newAuction.setStatus(Auction.STATUS_RUNNING);
                 AuctionManager.addAuctionToMonitor(newAuction);
 
-                System.out.println("[System]: Seller \"" + YELLOW + authenticatedUser.getName() + RESET + "\" has created an auction.");
+                log.info("{} has created an auction.", authenticatedUser.getUserName());
 
                 String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
                 ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
@@ -122,7 +125,7 @@ public class AuctionActionHandler implements CommandHandler {
             }
 
         } catch (Exception e) {
-            System.out.println("[System](AuctionActionHandler): Error parsing creation data: " + RED + e.getMessage() + RESET);
+            log.warn("Error parsing creation data: {}", e.getMessage());
             client.sendResponse("ERROR", "Invalid data format provided for creating auction.");
         }
     }

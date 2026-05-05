@@ -1,5 +1,7 @@
 package controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import database.TransactionManager;
 import model.auction.Auction;
@@ -24,6 +26,7 @@ import static utils.ConsoleColors.*;
  * atomically and asynchronously.
  */
 public class ServerBidderController {
+    private static final Logger log = LoggerFactory.getLogger(ServerBidderController.class);
 
     /**
      * Processes a bid placement attempt for a specific auction.
@@ -46,7 +49,7 @@ public class ServerBidderController {
 
         // Prevent users from bidding on items they are selling
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[System]: " + RED + "You cannot bid on your own auction" + RESET);
+            log.warn("{} tried to bid on their own auction.", currentUser.getUserName());
             return CompletableFuture.completedFuture(false);
         }
 
@@ -70,7 +73,7 @@ public class ServerBidderController {
                         int rowsAffected = pstmt.executeUpdate();
 
                         if (rowsAffected == 0) {
-                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
+                            log.info("{} has insufficient balance.", currentUser.getUserName());
                             conn.rollback();
                             return false;
                         }
@@ -133,7 +136,7 @@ public class ServerBidderController {
                         }
 
                         conn.commit(); // Finalize all changes
-                        System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+                        log.info("Successfully placed bid for {}", currentUser.getName());
                         return true;
 
                     } else {
@@ -143,11 +146,11 @@ public class ServerBidderController {
 
                 } catch (SQLException e) {
                     conn.rollback();
-                    System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
+                    log.error("Database Transaction Error: {}", e.getMessage());
                     return false;
                 }
             } catch (SQLException e) {
-                System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+                log.error("Connection Error: {}", e.getMessage());
                 return false;
             }
         };
@@ -170,7 +173,7 @@ public class ServerBidderController {
             }
             return finalResult;
         }).exceptionally(ex -> {
-            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
+            log.warn("The transaction could not be executed via the queue: {}", ex.getMessage());
             return false;
         });
     }

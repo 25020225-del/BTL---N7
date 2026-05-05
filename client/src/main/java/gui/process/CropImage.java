@@ -1,13 +1,18 @@
 package gui.process;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javafx.geometry.Rectangle2D;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
 public class CropImage {
+    private static Logger log = LoggerFactory.getLogger(CropImage.class);
+
     public static void cropImage(ImageView imageView, Image image, int width, int height) {
         if (image == null || image.isError()) {
-            System.out.println("Ảnh bị lỗi hoặc null!");
+            log.warn("Image is null or error");
             return;
         }
 

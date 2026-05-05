@@ -1,5 +1,7 @@
 package service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 
 import java.net.URLEncoder;
@@ -14,6 +16,7 @@ import static utils.ConsoleColors.RESET;
  * verifying time-sensitive tokens.
  */
 public class TOTPService {
+    private static final Logger log = LoggerFactory.getLogger(TOTPService.class);
 
     /**
      * Internal library instance used for core TOTP logic and key generation.
@@ -47,7 +50,7 @@ public class TOTPService {
             String encodedUsername = URLEncoder.encode(username, "UTF-8").replace("+", "%20");
             return "otpauth://totp/" + issuer + ":" + encodedUsername + "?secret=" + secretKey + "&issuer=" + issuer;
         } catch (Exception e) {
-            System.out.println("[Error]: URL Encoding failed: " + RED + e.getMessage() + RESET);
+            log.warn("URL Encoding failed: {}", e.getMessage());
             e.printStackTrace();
             // Fallback to a basic URI if encoding fails
             return "otpauth://totp/AuctionSystem-N7:" + username + "?secret=" + secretKey + "&issuer=AuctionSystem-N7";

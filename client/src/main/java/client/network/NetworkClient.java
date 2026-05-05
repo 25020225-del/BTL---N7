@@ -84,10 +84,10 @@ public class NetworkClient {
                     }
                 } else {
                     // Handle failed connectBlocking() (server offline)
-                    log.warn("Failed at try {} - Connection refused by server.", (i + 1));
+                    log.warn("Failed at try {} - Connection refused", (i + 1));
                 }
             } catch (Exception e) {
-                log.error("Failed at try {} - ", e.getMessage());
+                log.warn("Failed at try {} - {}", (i+1), e.getMessage());
             }
 
             if (i < 4) {
@@ -126,7 +126,7 @@ public class NetworkClient {
      */
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
-            log.warn("Cannot send command: \"{}\" due to not being fully connected.", command);
+            log.warn("Cannot send command: \"{}\" due to not being connected.", command);
             return;
         }
 
@@ -204,7 +204,7 @@ public class NetworkClient {
 
         @Override
         public void onError(Exception ex) {
-            log.error("WebSocket Error: {}", ex.getMessage());
+            log.error("{}", ex.getMessage());
         }
     }
 }

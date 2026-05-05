@@ -1,5 +1,7 @@
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import network.NetworkMessage;
 import server.ClientHandler;
@@ -23,6 +25,7 @@ import static utils.ConsoleColors.*;
  * including time conversions for countdown timers.
  */
 public class FetchAuctionsHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(FetchAuctionsHandler.class);
 
     /**
      * Processes FETCH_AUCTIONS and FETCH_PENDING_AUCTIONS commands.
@@ -74,10 +77,10 @@ public class FetchAuctionsHandler implements CommandHandler {
             }
 
             client.sendResponse("FETCH_AUCTIONS_SUCCESS", activeAuctions);
-            System.out.println("[System]: Sent auction list (" + command + ") to \"" + YELLOW + client.getClientName() + RESET + "\"");
+            log.info("Sent auction list to {}", client.getClientName());
 
         } catch (Exception e) {
-            System.out.println("[System](FetchAuctionHandler): Getting auction list error: " + RED + e.getMessage() + RESET);
+            log.warn("Getting auction list error: {}", e.getMessage());
             client.sendResponse("ERROR", "Cannot load auction list.");
         }
     }

@@ -99,7 +99,7 @@ public class ServerDiscovery {
 
         // Fallback mechanism if the main remote connection fails
         if (!client.isConnected() && !isLocal) {
-            log.warn("Online server is unreachable. Automatically falling back to localhost...");
+            log.warn("Online server is unreachable. Using localhost...");
 
             String fallbackURL = properties.getProperty("fallbackServerURL", "localhost");
             int fallbackPort = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
@@ -112,8 +112,8 @@ public class ServerDiscovery {
         }
 
         if (!client.isConnected()) {
-            log.warn(RED + "All connection attempts failed." + RESET);
-            log.info(BLUE + "Opening offline application..." + RESET);
+            log.warn("All connection attempts failed.");
+            log.info("Opening offline application...");
         }
 
         return client;

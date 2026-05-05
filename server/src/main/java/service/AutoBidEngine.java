@@ -1,5 +1,7 @@
 package service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import controller.ServerBidderController;
 import model.auction.Auction;
 import model.auction.AutoBid;
@@ -19,6 +21,7 @@ import static utils.ConsoleColors.*;
  * Part of the Auction System project.
  */
 public class AutoBidEngine {
+    private static final Logger log = LoggerFactory.getLogger(AutoBidEngine.class);
 
     /**
      * Fixed thread pool for managing concurrent bot execution.
@@ -92,8 +95,7 @@ public class AutoBidEngine {
             final AutoBid currentBot = capableBot;
             final double finalRequiredBid = requiredBid;
 
-            System.out.println("[Auto-Bid Engine]: Bot of \""
-                    + YELLOW + currentBot.getBidder().getUserName() + RESET + "\" is attempting an automatic bid.");
+            log.info("Bot of {} is attempting an automatic bid.", currentBot.getBidder().getUserName());
 
             // Use an async callback to either recurse or clean up failed bots.
             bidderCtrl.placeBidOnAuction(currentBot.getBidder(), auction, finalRequiredBid, true)
@@ -103,15 +105,14 @@ public class AutoBidEngine {
                             processNextBot(auction);
                         } else {
                             // Typically occurs if the user has insufficient wallet funds.
-                            System.out.println("[Auto-Bid Engine]: Bot of \""
-                                    + YELLOW + currentBot.getBidder().getUserName() + RESET + "\" failed. Removing configuration.");
+                            log.info("Bot of {} failed. Removing configuration.", currentBot.getBidder().getUserName());
                             auction.getActiveAutoBids().removeIf(b ->
                                     b.getBidder().getId().equals(currentBot.getBidder().getId())
                             );
                             processNextBot(auction);
                         }
                     }).exceptionally(ex -> {
-                        System.out.println("[System]: Bot Engine execution failed: " + RED + ex.getMessage() + RESET);
+                        log.error("Bot Engine execution failed: {}", ex.getMessage());
                         return null;
                     });
         }
