@@ -27,16 +27,20 @@ public class AuctionMonitor {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
-    private final AuctionDAO auctionDAO = new AuctionDAO(); // Instantiate AuctionDAO
-    private final WalletDAO walletDAO = new WalletDAO(); // Instantiate WalletDAO
+    private final AuctionDAO auctionDAO;
+    private final WalletDAO walletDAO;
 
     /**
-     * Constructs the monitor with a reference to the global active auction list in RAM.
+     * Constructs the monitor with its dependencies.
      *
      * @param allAuctions The shared list of currently monitored auctions.
+     * @param auctionDAO  The DAO for auction persistence.
+     * @param walletDAO   The DAO for financial settlements.
      */
-    public AuctionMonitor(List<Auction> allAuctions) {
+    public AuctionMonitor(List<Auction> allAuctions, AuctionDAO auctionDAO, WalletDAO walletDAO) {
         this.allAuctions = allAuctions;
+        this.auctionDAO = auctionDAO;
+        this.walletDAO = walletDAO;
     }
 
     /**

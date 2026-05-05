@@ -27,7 +27,18 @@ import static utils.ConsoleColors.*;
  */
 public class ServerBidderController {
 
-    private final BidDAO bidDAO = new BidDAO();
+    private final BidDAO bidDAO;
+
+    /**
+     * Constructs the controller with the necessary Data Access Objects.
+     * This implementation follows the Dependency Injection pattern to facilitate 
+     * easier testing and decoupling.
+     *
+     * @param bidDAO The DAO responsible for bid-related database transactions.
+     */
+    public ServerBidderController(BidDAO bidDAO) {
+        this.bidDAO = bidDAO;
+    }
 
     /**
      * Processes a bid placement attempt for a specific auction.

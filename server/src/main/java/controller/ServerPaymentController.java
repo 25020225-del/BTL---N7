@@ -19,7 +19,16 @@ import static utils.ConsoleColors.*;
  * transaction logging are performed atomically through the {@link TransactionManager}.
  */
 public class ServerPaymentController {
-    private final WalletDAO walletDAO = new WalletDAO();
+    private final WalletDAO walletDAO;
+
+    /**
+     * Constructs the controller with the necessary Data Access Objects.
+     *
+     * @param walletDAO The DAO responsible for wallet-related database transactions.
+     */
+    public ServerPaymentController(WalletDAO walletDAO) {
+        this.walletDAO = walletDAO;
+    }
 
     /**
      * Processes a successful deposit notification from a payment gateway (e.g., PayPal).

@@ -13,7 +13,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static utils.ConsoleColors.BLUE;
 import static utils.ConsoleColors.RED;
@@ -43,6 +45,7 @@ public class AuctionDAO {
                     auction.setItem(item);
                     
                     User seller = new User();
+                    // Cần khởi tạo hoặc inject AuctionDAO trước đó
                     seller.setId(rs.getString("seller_id"));
                     auction.setSeller(seller);
                     
@@ -109,6 +112,37 @@ public class AuctionDAO {
         }
     }
 
+    public List<Map<String, Object>> getAuctionsByStatus(String... statuses) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT id, item_name, description, starting_price, current_price, end_time, image_url FROM auctions WHERE status IN (");
+        for (int i = 0; i < statuses.length; i++) {
+            sql.append("?");
+            if (i < statuses.length - 1) sql.append(", ");
+        }
+        sql.append(")");
+
+        List<Map<String, Object>> list = new ArrayList<>();
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < statuses.length; i++) {
+                pstmt.setString(i + 1, statuses[i]);
+            }
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", rs.getString("id"));
+                    map.put("item_name", rs.getString("item_name"));
+                    map.put("description", rs.getString("description"));
+                    map.put("starting_price", rs.getDouble("starting_price"));
+                    map.put("current_price", rs.getDouble("current_price"));
+                    map.put("end_time", rs.getString("end_time"));
+                    map.put("image_url", rs.getString("image_url"));
+                    list.add(map);
+                }
+            }
+        }
+        return list;
+    }
+
     public boolean updateAuctionStatus(String auctionId, String status) throws SQLException {
         String sql = "UPDATE auctions SET status = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -160,41 +194,39 @@ public class AuctionDAO {
         String sql = "UPDATE auctions SET status = ?, start_time = ?, end_time = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
             pstmt.setString(1, status);
             pstmt.setString(2, startTime.toString());
             pstmt.setString(3, endTime.toString());
             pstmt.setString(4, auctionId);
+
             return pstmt.executeUpdate() > 0;
         }
     }
 
     /**
-     * Scans the database for orphaned auctions (expired but not updated in RAM)
-     * and updates their status.
+     * Sweeps the database for auctions that have expired while the server was offline
+     * or those that were not properly transitioned in RAM.
      *
-     * @return A list of Auction objects that were transitioned to FINISHED, for financial settlement.
+     * @return A list of Auction objects that were finalized during the sweep.
      * @throws SQLException if a database access error occurs.
      */
     public List<Auction> sweepOrphanAuctions() throws SQLException {
         List<Auction> finishedAuctions = new ArrayList<>();
-        String selectSql = "SELECT id, end_time, current_price, starting_price, start_time, status, seller_id, winning_bidder_id, highest_max_bid FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
+        String now = LocalDateTime.now().toString();
+
+        // 1. Find auctions that should have ended but are still in RUNNING/OPEN status
+        String selectSql = "SELECT * FROM auctions WHERE (status = 'RUNNING' OR status = 'OPEN') AND end_time < ?";
         String updateSql = "UPDATE auctions SET status = ? WHERE id = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement selectStmt = conn.prepareStatement(selectSql);
              PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
 
-            ResultSet rs = selectStmt.executeQuery();
-
-            while (rs.next()) {
-                String id = rs.getString("id");
-                LocalDateTime endTime = LocalDateTime.parse(rs.getString("end_time"));
-                LocalDateTime startTime = LocalDateTime.parse(rs.getString("start_time"));
-                String currentStatus = rs.getString("status");
-                LocalDateTime now = LocalDateTime.now();
-
-                // Case 1: The auction's end time has passed.
-                if (now.isAfter(endTime)) {
+            selectStmt.setString(1, now);
+            try (ResultSet rs = selectStmt.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString("id");
                     double currentPrice = rs.getDouble("current_price");
                     double startPrice = rs.getDouble("starting_price");
                     String winningBidderId = rs.getString("winning_bidder_id");
@@ -227,15 +259,33 @@ public class AuctionDAO {
                     
                     System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
                 }
-                // Case 2: The auction should be running but is still OPEN in DB.
-                else if (currentStatus.equals(Auction.STATUS_OPEN) && now.isAfter(startTime)) {
-                    updateStmt.setString(1, Auction.STATUS_RUNNING);
-                    updateStmt.setString(2, id);
-                    updateStmt.executeUpdate();
-                    System.out.println("[System]: " + BLUE + "Swept and started orphaned database auction: " + YELLOW + id + RESET);
+            }
+
+            // 2. Find auctions that should have started but are still in OPEN status
+            String startSql = "SELECT id FROM auctions WHERE status = 'OPEN' AND start_time <= ? AND end_time > ?";
+            try (PreparedStatement startStmt = conn.prepareStatement(startSql)) {
+                startStmt.setString(1, now);
+                startStmt.setString(2, now);
+                try (ResultSet rs = startStmt.executeQuery()) {
+                    while (rs.next()) {
+                        String id = rs.getString("id");
+                        updateStmt.setString(1, "RUNNING");
+                        updateStmt.setString(2, id);
+                        updateStmt.executeUpdate();
+                        System.out.println("[System]: " + BLUE + "Swept and started orphaned database auction: " + YELLOW + id + RESET);
+                    }
                 }
             }
         }
         return finishedAuctions;
+    }
+
+    public boolean deleteAuction(String auctionId) throws SQLException {
+        String sql = "DELETE FROM auctions WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, auctionId);
+            return pstmt.executeUpdate() > 0;
+        }
     }
 }

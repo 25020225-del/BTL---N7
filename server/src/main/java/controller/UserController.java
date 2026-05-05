@@ -20,8 +20,21 @@ import static utils.ConsoleColors.*;
  */
 public class UserController {
 
-    private final TOTPService totpService = new TOTPService();
-    private final UserDAO userDAO = new UserDAO();
+    private final TOTPService totpService;
+    private final UserDAO userDAO;
+
+    /**
+     * Constructs the controller with the necessary services and DAOs.
+     * This implementation follows the Dependency Injection pattern to facilitate 
+     * easier testing and decoupling.
+     *
+     * @param userDAO     The DAO responsible for user-related database transactions.
+     * @param totpService The service responsible for 2FA/TOTP logic.
+     */
+    public UserController(UserDAO userDAO, TOTPService totpService) {
+        this.userDAO = userDAO;
+        this.totpService = totpService;
+    }
 
     /**
      * Registers a new user in the system and initializes their digital wallet.

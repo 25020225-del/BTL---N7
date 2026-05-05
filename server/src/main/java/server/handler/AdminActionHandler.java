@@ -23,7 +23,16 @@ import static utils.ConsoleColors.*;
  */
 public class AdminActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
-    private final AuctionDAO auctionDAO = new AuctionDAO();
+    private final AuctionDAO auctionDAO;
+
+    /**
+     * Constructs the handler with necessary DAOs via Dependency Injection.
+     *
+     * @param auctionDAO The DAO for auction management.
+     */
+    public AdminActionHandler(AuctionDAO auctionDAO) {
+        this.auctionDAO = auctionDAO;
+    }
 
     /**
      * Entry point for handling administrative network messages.

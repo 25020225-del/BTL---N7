@@ -39,7 +39,7 @@ public class ClientHandler {
     private User user;
 
     private final UserController userController;
-    private static final CommandDispatcher dispatcher = new CommandDispatcher();
+    private final CommandDispatcher dispatcher;
 
     // Ignore unknown JSON properties for robust parsing
     private final ObjectMapper mapper = JacksonConfig.mapper();
@@ -55,10 +55,12 @@ public class ClientHandler {
      *
      * @param conn           The active WebSocket connection.
      * @param userController The controller handling user authentication and data.
+     * @param dispatcher     The central command dispatcher for routing messages.
      */
-    public ClientHandler(WebSocket conn, UserController userController) {
+    public ClientHandler(WebSocket conn, UserController userController, CommandDispatcher dispatcher) {
         this.conn = conn;
         this.userController = userController;
+        this.dispatcher = dispatcher;
     }
 
     /**

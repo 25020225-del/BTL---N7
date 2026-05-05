@@ -17,7 +17,18 @@ import static utils.ConsoleColors.*;
  */
 public class ServerSellerController {
 
-    private final AuctionDAO auctionDAO = new AuctionDAO();
+    private final AuctionDAO auctionDAO;
+
+    /**
+     * Constructs the controller with the necessary Data Access Objects.
+     * This implementation follows the Dependency Injection pattern to facilitate 
+     * easier testing and decoupling.
+     *
+     * @param auctionDAO The DAO responsible for auction-related database transactions.
+     */
+    public ServerSellerController(AuctionDAO auctionDAO) {
+        this.auctionDAO = auctionDAO;
+    }
 
     /**
      * Creates and persists a new auction session in the database.

@@ -26,6 +26,16 @@ import static utils.ConsoleColors.*;
  */
 public class FetchAuctionsHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(FetchAuctionsHandler.class);
+    private final database.dao.AuctionDAO auctionDAO;
+
+    /**
+     * Constructs the handler with necessary DAOs via Dependency Injection.
+     *
+     * @param auctionDAO The DAO for auction data retrieval.
+     */
+    public FetchAuctionsHandler(database.dao.AuctionDAO auctionDAO) {
+        this.auctionDAO = auctionDAO;
+    }
 
     /**
      * Processes FETCH_AUCTIONS and FETCH_PENDING_AUCTIONS commands.
@@ -38,50 +48,38 @@ public class FetchAuctionsHandler implements CommandHandler {
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
         String command = message.getCommand();
-        String sql = "";
 
-        if ("FETCH_AUCTIONS".equals(command)) {
-            sql = "SELECT id, item_name, description, starting_price, current_price, end_time, image_url FROM auctions WHERE status IN ('RUNNING', 'OPEN')";
+        try {
+            List<Map<String, Object>> auctionList = new ArrayList<>();
 
-        } else if ("FETCH_PENDING_AUCTIONS".equals(command)) {
-            if (client.getUser() != null && client.getUser().getRole().equalsIgnoreCase("ADMIN")) {
-                sql = "SELECT id, item_name, description, starting_price, current_price, end_time, image_url FROM auctions WHERE status = 'PENDING_APPROVAL'";
-            } else {
-                client.sendResponse("ERROR", "You do not have permission to view pending auctions.");
-                return;
-            }
-        } else {
-            return;
-        }
+            if ("FETCH_AUCTIONS".equals(command)) {
+                auctionList = auctionDAO.getAuctionsByStatus("RUNNING", "OPEN");
 
-        List<Map<String, Object>> activeAuctions = new ArrayList<>();
-
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
-
-            while (rs.next()) {
-                Map<String, Object> auctionData = new HashMap<>();
-                auctionData.put("id", rs.getString("id"));
-                auctionData.put("itemName", rs.getString("item_name"));
-                auctionData.put("description", rs.getString("description"));
-                auctionData.put("startingPrice", rs.getDouble("starting_price"));
-                auctionData.put("currentPrice", rs.getDouble("current_price"));
-
-                LocalDateTime endTime = LocalDateTime.parse(rs.getString("end_time"));
-                long endTimeMillis = endTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-                auctionData.put("endTime", endTimeMillis);
-                auctionData.put("imageUrl", rs.getString("image_url"));
-
-                activeAuctions.add(auctionData);
+            } else if ("FETCH_PENDING_AUCTIONS".equals(command)) {
+                if (client.getUser() != null && client.getUser().getRole().equalsIgnoreCase("ADMIN")) {
+                    auctionList = auctionDAO.getAuctionsByStatus("PENDING_APPROVAL");
+                } else {
+                    client.sendResponse("ERROR", "You do not have permission to view pending auctions.");
+                    return;
+                }
             }
 
-            client.sendResponse("FETCH_AUCTIONS_SUCCESS", activeAuctions);
-            log.info("Sent auction list to {}", client.getClientName());
+            // Transform the end_time into a remaining seconds format for the client-side countdown
+            LocalDateTime now = LocalDateTime.now();
+            for (Map<String, Object> map : auctionList) {
+                String endTimeStr = (String) map.get("end_time");
+                if (endTimeStr != null) {
+                    LocalDateTime end = LocalDateTime.parse(endTimeStr);
+                    long secondsRemaining = java.time.Duration.between(now, end).getSeconds();
+                    map.put("secondsRemaining", Math.max(0, secondsRemaining));
+                }
+            }
+
+            client.sendResponse("FETCH_AUCTIONS_SUCCESS", auctionList);
 
         } catch (Exception e) {
-            log.warn("Getting auction list error: {}", e.getMessage());
-            client.sendResponse("ERROR", "Cannot load auction list.");
+            log.error("Database error during auction fetch: {}", e.getMessage());
+            client.sendResponse("ERROR", "Internal database error.");
         }
     }
 }

@@ -30,8 +30,18 @@ public class AutoBidEngine {
 
     /**
      * Controller used to handle the actual bid placement and wallet transactions.
+     * This field is now non-final to allow for Dependency Injection from the server setup.
      */
-    private static final ServerBidderController bidderCtrl = new ServerBidderController();
+    private static ServerBidderController bidderCtrl;
+
+    /**
+     * Injects the required controller into the engine.
+     *
+     * @param ctrl The bidder controller instance.
+     */
+    public static void setBidderController(ServerBidderController ctrl) {
+        bidderCtrl = ctrl;
+    }
 
     /**
      * Entry point to trigger an automated scan for a specific auction.

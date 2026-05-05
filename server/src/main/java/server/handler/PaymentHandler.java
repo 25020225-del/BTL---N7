@@ -54,10 +54,12 @@ public class PaymentHandler implements CommandHandler {
 
     /**
      * Constructs a new PaymentHandler and initializes the background cleanup task.
+     *
+     * @param paymentController The controller for financial operations.
      */
-    public PaymentHandler() {
+    public PaymentHandler(ServerPaymentController paymentController) {
         this.payPalService = new PayPalService();
-        this.paymentController = new ServerPaymentController();
+        this.paymentController = paymentController;
         startCleanupTask();
     }
 
