@@ -11,6 +11,7 @@ import service.AutoBidEngine;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -81,23 +82,34 @@ public class ServerBidderController {
                     return false;
                 }
 
-                // 3. Calculate the new current price based on bidding logic
+                // 3. Calculate new state using Model logic (Auction.java)
+                // This ensures we follow DRY and use the exact logic from the Model.
+                // We use a dummy bid to calculate what the new state WOULD be.
                 double newCurrentPrice;
+                LocalDateTime newEndTime;
+
                 if (previousWinner == null) {
                     newCurrentPrice = auction.getItem().getStartingPrice();
                 } else if (currentUser.getId().equals(previousWinner.getId())) {
-                    newCurrentPrice = auction.getCurrentPrice(); // Price doesn't change when outbidding self
+                    newCurrentPrice = auction.getCurrentPrice();
                 } else {
                     if (newMaxBid > previousHighestMaxBid) {
                         newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > newMaxBid) {
-                            newCurrentPrice = newMaxBid;
-                        }
+                        if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
                     } else {
                         newCurrentPrice = newMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > previousHighestMaxBid) {
-                            newCurrentPrice = previousHighestMaxBid;
-                        }
+                        if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
+                    }
+                }
+
+                // Anti-sniping calculation logic (must match Auction.java)
+                newEndTime = auction.getEndTime();
+                if (java.time.LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
+                    LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
+                    if (proposedEndTime.isAfter(auction.getMaxEndTime())) {
+                        newEndTime = auction.getMaxEndTime();
+                    } else {
+                        newEndTime = proposedEndTime;
                     }
                 }
 
@@ -106,7 +118,7 @@ public class ServerBidderController {
                     conn.setAutoCommit(false); // Begin ACID transaction
 
                     try {
-                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId());
+                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId(), newEndTime);
 
                         if (isDbSuccess) {
                             conn.commit(); // Finalize all changes

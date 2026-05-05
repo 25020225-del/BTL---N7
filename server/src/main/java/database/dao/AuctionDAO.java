@@ -73,6 +73,53 @@ public class AuctionDAO {
     }
 
     /**
+     * Retrieves the scheduled start and end times for a specific auction.
+     *
+     * @param auctionId The unique identifier of the auction.
+     * @return An array of LocalDateTime where index 0 is start_time and index 1 is end_time.
+     * @throws SQLException if a database access error occurs.
+     */
+    public LocalDateTime[] getAuctionTimes(String auctionId) throws SQLException {
+        String sql = "SELECT start_time, end_time FROM auctions WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, auctionId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String startTimeStr = rs.getString("start_time");
+                    String endTimeStr = rs.getString("end_time");
+                    LocalDateTime start = (startTimeStr != null && !startTimeStr.trim().isEmpty()) ? LocalDateTime.parse(startTimeStr) : null;
+                    LocalDateTime end = (endTimeStr != null && !endTimeStr.trim().isEmpty()) ? LocalDateTime.parse(endTimeStr) : null;
+                    return new LocalDateTime[]{start, end};
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Updates the approval status and timing of an auction.
+     *
+     * @param auctionId The unique identifier of the auction.
+     * @param status    The new status.
+     * @param startTime The updated start time.
+     * @param endTime   The updated end time.
+     * @return true if the update was successful.
+     * @throws SQLException if a database access error occurs.
+     */
+    public boolean updateApprovalStatus(String auctionId, String status, LocalDateTime startTime, LocalDateTime endTime) throws SQLException {
+        String sql = "UPDATE auctions SET status = ?, start_time = ?, end_time = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, status);
+            pstmt.setString(2, startTime.toString());
+            pstmt.setString(3, endTime.toString());
+            pstmt.setString(4, auctionId);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
      * Scans the database for orphaned auctions (expired but not updated in RAM)
      * and updates their status.
      *

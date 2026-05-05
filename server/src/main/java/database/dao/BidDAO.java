@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class BidDAO {
     private final WalletDAO walletDAO = new WalletDAO();
 
-    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, double newCurrentPrice, String auctionId) throws SQLException {
+    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, double newCurrentPrice, String auctionId, LocalDateTime endTime) throws SQLException {
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
 
@@ -73,11 +73,12 @@ public class BidDAO {
             pstmt.executeUpdate();
         }
 
-        // STEP 3: Update auction's current price in DB
-        String updateAuctionSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
+        // STEP 3: Update auction's current price and endTime in DB
+        String updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ? WHERE id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
             pstmt.setDouble(1, newCurrentPrice);
-            pstmt.setString(2, auctionId);
+            pstmt.setString(2, endTime.toString());
+            pstmt.setString(3, auctionId);
             pstmt.executeUpdate();
         }
 

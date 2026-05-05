@@ -4,12 +4,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import database.TransactionManager;
+import database.dao.AuctionDAO;
 import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
 
@@ -22,6 +21,7 @@ import static utils.ConsoleColors.*;
  */
 public class AdminActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
+    private final AuctionDAO auctionDAO = new AuctionDAO();
 
     /**
      * Entry point for handling administrative network messages.
@@ -63,70 +63,35 @@ public class AdminActionHandler implements CommandHandler {
      */
     private void processApproval(String auctionId, String newStatus, ClientHandler client) {
         Callable<Boolean> updateTask = () -> {
-            String selectSql = "SELECT start_time, end_time FROM auctions WHERE id = ?";
-            String updateSql = "UPDATE auctions SET status = ?, start_time = ?, end_time = ? WHERE id = ?";
+            try {
+                LocalDateTime[] times = auctionDAO.getAuctionTimes(auctionId);
+                if (times == null) return false;
 
-            try (Connection conn = DatabaseManager.getConnection()) {
-                LocalDateTime oldStart = null;
-                LocalDateTime oldEnd = null;
-
-                // Fetch the original times saved during creation
-                try (PreparedStatement pstmt = conn.prepareStatement(selectSql)) {
-                    pstmt.setString(1, auctionId);
-                    java.sql.ResultSet rs = pstmt.executeQuery();
-                    if (rs.next()) {
-                        String startTimeStr = rs.getString("start_time");
-                        String endTimeStr = rs.getString("end_time");
-                        
-                        // Safeguard against null or empty dates in the database
-                        if (startTimeStr != null && !startTimeStr.trim().isEmpty()) {
-                            oldStart = LocalDateTime.parse(startTimeStr);
-                        }
-                        if (endTimeStr != null && !endTimeStr.trim().isEmpty()) {
-                            oldEnd = LocalDateTime.parse(endTimeStr);
-                        }
-                    } else {
-                        return false;
-                    }
-                }
-
+                LocalDateTime oldStart = times[0];
+                LocalDateTime oldEnd = times[1];
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime newStart = oldStart;
                 LocalDateTime newEnd = oldEnd;
 
                 if (newStatus.equals("OPEN")) {
-                    // DYNAMIC RECALCULATION LOGIC:
-                    // 1. oldStart is null/empty (Fallback safeguard)
-                    // 2. oldStart has already passed (Admin approved late)
-                    // 3. oldStart was 'now' at creation time (so it is definitely in the past compared to server's 'now' at approval time)
                     if (oldStart == null || oldStart.isBefore(now) || oldStart.isEqual(now)) {
-                        
                         long duration = 60; // Default fallback duration
                         if (oldStart != null && oldEnd != null) {
                             duration = java.time.Duration.between(oldStart, oldEnd).toMinutes();
                         }
-                        
                         newStart = now;
                         newEnd = now.plusMinutes(duration);
                         System.out.println("[System]: Admin approved late or immediate start. Recalculated new start time to NOW.");
                     } else {
-                        // Admin is approving EARLY for a future scheduled auction.
-                        // MUST KEEP ORIGINAL oldStart and oldEnd!
-                        newStart = oldStart;
-                        newEnd = oldEnd;
                         System.out.println("[System]: Admin approved early for a future scheduled auction. Kept original times.");
                     }
                 }
 
-                // Update the database with the adjusted times
-                try (PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
-                    pstmt.setString(1, newStatus);
-                    pstmt.setString(2, newStart != null ? newStart.toString() : now.toString());
-                    pstmt.setString(3, newEnd != null ? newEnd.toString() : now.plusMinutes(60).toString());
-                    pstmt.setString(4, auctionId);
-                    int rows = pstmt.executeUpdate();
-                    return rows > 0;
-                }
+                // Default values if recalculation results in null (unlikely but safe)
+                if (newStart == null) newStart = now;
+                if (newEnd == null) newEnd = now.plusMinutes(60);
+
+                return auctionDAO.updateApprovalStatus(auctionId, newStatus, newStart, newEnd);
             } catch (Exception e) {
                 log.warn("Updating approval status failed: {}", e.getMessage());
                 return false;
