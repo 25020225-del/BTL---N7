@@ -43,6 +43,7 @@ build/
 ### Custom App Files ###
 *.log
 DevelopmentTool/
+Results/
 
 *.db
 *.db-wal
