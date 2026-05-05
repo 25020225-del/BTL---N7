@@ -49,6 +49,10 @@ public class ClientUserController {
     private Parent accountView;
     private Parent settingsView;
 
+    private CreateAuctionController  createAuctionView;
+    private WalletController walletView;
+
+
     private User currentUser;
 
     // FUN
@@ -70,13 +74,21 @@ public class ClientUserController {
     private Label accUsername;
 
     private IconButton accountBtn;
-    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
-    private IconButton marketplaceBtn = new IconButton("mdi2s-storefront-outline", "Marketplace", "Marketplace", "special-button");
-    private IconButton createAuctionBtn = new IconButton("mdi2a-archive-plus-outline", "Sell Item", "Create Auction", "special-button");
-    private IconButton depositBtn = new IconButton("mdi2c-cash-plus", "Deposit 50k (Test)", "Deposit", "special-button");
-    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug", "Create Bot (Test)", "Test Create", "special-button");
-    private IconButton settingsBtn = new IconButton("mdi2c-cog", "Settings", "Settings", "special-button");
+    private IconButton toggleList           = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
+    private IconButton toggleSearchButton   = new IconButton("mdi2f-file-find-outline",     "Search",                "Search",          "special-button");
+    private IconButton marketplaceBtn       = new IconButton("mdi2s-storefront-outline",    "Marketplace",           "Marketplace",     "special-button");
+    private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
+    private IconButton walletBtn            = new IconButton("mdi2w-wallet-bifold-outline", "Wallet",                "Wallet",          "special-button");
+    private IconButton depositBtn           = new IconButton("mdi2c-cash-plus",             "Deposit 50k (Test)",    "Deposit",         "special-button");
+    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
+    private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
 
+    /**
+     * Initializes the Unified User Controller and loads all required FXML layouts.
+     *
+     * @param user The currently authenticated user instance.
+     * @throws IOException If FXML files cannot be loaded.
+     */
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
         this.accountBtn  = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
@@ -86,6 +98,9 @@ public class ClientUserController {
         mainView = mainLoader.load();
 
         createAuctionController = new CreateAuctionController();
+
+        walletView = new WalletController();
+        walletView.setOnAuctionCreated(() -> marketplaceBtn.fire());
 
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
         tableViewLoader.setController(this);
@@ -113,6 +128,7 @@ public class ClientUserController {
                 toggleList,
                 marketplaceBtn,
                 createAuctionBtn,
+                walletBtn,
                 depositBtn,
                 separator,
                 region,
@@ -136,6 +152,11 @@ public class ClientUserController {
         createAuctionBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(createAuctionController);
+        });
+
+        walletBtn.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(walletView.getParent());
         });
 
         depositBtn.setOnAction(event -> requestDeposit(50000));

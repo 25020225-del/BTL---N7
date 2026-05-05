@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 public class CreateAuctionController extends javafx.scene.control.ScrollPane {
     private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
 
+    private Runnable onAuctionCreated;
+
     private File imagefile;
 
     @FXML private TextField ca_itemName;
@@ -39,7 +41,8 @@ public class CreateAuctionController extends javafx.scene.control.ScrollPane {
     @FXML private TextField ca_durationDays;
     @FXML private TextField ca_durationHours;
     @FXML private ImageView ca_image;
-    private Runnable onAuctionCreated;
+
+
     public CreateAuctionController(){
         FXMLLoader loader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
         loader.setRoot(this);
