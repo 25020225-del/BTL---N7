@@ -44,14 +44,12 @@ import static utils.ConsoleColors.*;
 public class ClientUserController {
 
     private Parent mainView;
-    private Parent createAuctionView;
-    private SellerDashboardController sellerController; // Module nhỏ xử lý nghiệp vụ Seller
     private Parent tableAuctionView;
     private Parent accountView;
     private Parent settingsView;
 
+    private CreateAuctionController  createAuctionView;
 
-    CreateAuctionController createAuctionView;
 
     private User currentUser;
 

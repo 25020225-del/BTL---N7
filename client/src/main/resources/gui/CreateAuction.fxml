@@ -73,12 +73,12 @@
             </HBox>
             <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
                <children>
-                  <Label prefWidth="126.0" text="Ending time" />
-                  <DatePicker fx:id="ca_endDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
-                  <TextField fx:id="ca_endHour" prefHeight="27.0" prefWidth="30.0" />
+                  <Label prefWidth="126.0" text="Duration" />
+                  <DatePicker fx:id="ca_endDate" disable="true" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
+                  <TextField fx:id="ca_durationDays" prefHeight="27.0" prefWidth="30.0" />
+                  <Label text="Day  " />
+                  <TextField fx:id="ca_durationHours" prefHeight="27.0" prefWidth="30.0" />
                   <Label text="Hour" />
-                  <TextField fx:id="ca_endMinute" prefHeight="27.0" prefWidth="30.0" />
-                  <Label text="Minute" />
                </children>
             </HBox>
             <HBox alignment="CENTER" prefHeight="100.0">
