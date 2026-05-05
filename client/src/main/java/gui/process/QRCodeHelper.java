@@ -7,8 +7,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
+import static utils.ConsoleColors.*;
 
 /**
  * A utility class for generating Quick Response (QR) codes.

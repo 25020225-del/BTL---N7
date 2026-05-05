@@ -96,6 +96,8 @@ public class CountdownClock extends Label {
      * Stops the active countdown timeline, halting any further UI updates.
      */
     public void stop() {
-        if (timeline != null) timeline.stop();
+        if (timeline != null) {
+            timeline.stop();
+        }
     }
 }
