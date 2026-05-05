@@ -201,10 +201,13 @@ public class AuctionMonitor {
     private void sweepDatabaseForOrphans() {
         Callable<Boolean> dbSweepTask = () -> {
             try {
-                List<String> updatedIds = auctionDAO.sweepOrphanAuctions();
-                for (String id : updatedIds) {
+                List<Auction> finishedAuctions = auctionDAO.sweepOrphanAuctions();
+                for (Auction auction : finishedAuctions) {
+                    // Process financial settlement for each orphaned auction that finished
+                    processFinancialSettlement(auction);
+                    
                     // Force clients to remove the ghost item from their UI
-                    ClientManager.broadcast("REMOVE_AUCTION", id, null);
+                    ClientManager.broadcast("REMOVE_AUCTION", auction.getId(), null);
                 }
                 return true;
             } catch (Exception e) {

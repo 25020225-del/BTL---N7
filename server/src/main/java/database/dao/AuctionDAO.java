@@ -3,6 +3,7 @@ package database.dao;
 import database.DatabaseManager;
 import model.auction.Auction;
 import model.item.Item;
+import model.user.User;
 import server.ServerExtension.ClientManager;
 
 import java.sql.Connection;
@@ -21,7 +22,7 @@ import static utils.ConsoleColors.YELLOW;
 public class AuctionDAO {
 
     public boolean addAuction(Auction auction) throws SQLException {
-        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url, winning_bidder_id, highest_max_bid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -37,6 +38,8 @@ public class AuctionDAO {
             pstmt.setString(9, auction.getStatus());
             pstmt.setString(10, auction.getSeller().getId());
             pstmt.setString(11, item.getImageUrl());
+            pstmt.setString(12, auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : null);
+            pstmt.setDouble(13, auction.getHighestMaxBid());
 
             return pstmt.executeUpdate() > 0;
         }
@@ -123,12 +126,12 @@ public class AuctionDAO {
      * Scans the database for orphaned auctions (expired but not updated in RAM)
      * and updates their status.
      *
-     * @return A list of auction IDs that were updated.
+     * @return A list of Auction objects that were transitioned to FINISHED, for financial settlement.
      * @throws SQLException if a database access error occurs.
      */
-    public List<String> sweepOrphanAuctions() throws SQLException {
-        List<String> updatedAuctionIds = new ArrayList<>();
-        String selectSql = "SELECT id, end_time, current_price, starting_price, start_time, status FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
+    public List<Auction> sweepOrphanAuctions() throws SQLException {
+        List<Auction> finishedAuctions = new ArrayList<>();
+        String selectSql = "SELECT id, end_time, current_price, starting_price, start_time, status, seller_id, winning_bidder_id, highest_max_bid FROM auctions WHERE status IN ('OPEN', 'RUNNING')";
         String updateSql = "UPDATE auctions SET status = ? WHERE id = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
@@ -148,12 +151,34 @@ public class AuctionDAO {
                 if (now.isAfter(endTime)) {
                     double currentPrice = rs.getDouble("current_price");
                     double startPrice = rs.getDouble("starting_price");
-                    String newStatus = (currentPrice > startPrice) ? Auction.STATUS_FINISHED : Auction.STATUS_CANCELED;
+                    String winningBidderId = rs.getString("winning_bidder_id");
+                    
+                    String newStatus = (winningBidderId != null && currentPrice > startPrice) ? Auction.STATUS_FINISHED : Auction.STATUS_CANCELED;
 
                     updateStmt.setString(1, newStatus);
                     updateStmt.setString(2, id);
                     updateStmt.executeUpdate();
-                    updatedAuctionIds.add(id);
+
+                    if (newStatus.equals(Auction.STATUS_FINISHED)) {
+                        // Create a minimal Auction object for financial settlement
+                        Auction auction = new Auction();
+                        auction.setId(id);
+                        auction.setCurrentPrice(currentPrice);
+                        auction.setHighestMaxBid(rs.getDouble("highest_max_bid"));
+                        
+                        User seller = new User();
+                        seller.setId(rs.getString("seller_id"));
+                        auction.setSeller(seller);
+                        
+                        if (winningBidderId != null) {
+                            User winner = new User();
+                            winner.setId(winningBidderId);
+                            auction.setWinningBidder(winner);
+                        }
+                        
+                        finishedAuctions.add(auction);
+                    }
+                    
                     System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
                 }
                 // Case 2: The auction should be running but is still OPEN in DB.
@@ -161,11 +186,10 @@ public class AuctionDAO {
                     updateStmt.setString(1, Auction.STATUS_RUNNING);
                     updateStmt.setString(2, id);
                     updateStmt.executeUpdate();
-                    updatedAuctionIds.add(id);
                     System.out.println("[System]: " + BLUE + "Swept and started orphaned database auction: " + YELLOW + id + RESET);
                 }
             }
         }
-        return updatedAuctionIds;
+        return finishedAuctions;
     }
 }

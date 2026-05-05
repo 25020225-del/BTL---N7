@@ -82,68 +82,58 @@ public class ServerBidderController {
                     return false;
                 }
 
-                // 3. Calculate new state using Model logic (Auction.java)
+                // 3. Execute logic in Model (Auction.java) to determine new state
                 // This ensures we follow DRY and use the exact logic from the Model.
-                // We use a dummy bid to calculate what the new state WOULD be.
-                double newCurrentPrice;
-                LocalDateTime newEndTime;
+                final BidTransaction bidTxn = auction.placeBid(currentUser, newMaxBid);
+                if (bidTxn == null) return false;
 
-                if (previousWinner == null) {
-                    newCurrentPrice = auction.getItem().getStartingPrice();
-                } else if (currentUser.getId().equals(previousWinner.getId())) {
-                    newCurrentPrice = auction.getCurrentPrice();
-                } else {
-                    if (newMaxBid > previousHighestMaxBid) {
-                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
-                    } else {
-                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
-                    }
-                }
+                // Capture the new state from RAM to persist to DB
+                final User newWinner = auction.getWinningBidder();
+                final double newHighestMaxBid = auction.getHighestMaxBid();
+                final double newCurrentPrice = auction.getCurrentPrice();
+                final LocalDateTime newEndTime = auction.getEndTime();
 
-                // Anti-sniping calculation logic (must match Auction.java)
-                newEndTime = auction.getEndTime();
-                if (java.time.LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
-                    LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
-                    if (proposedEndTime.isAfter(auction.getMaxEndTime())) {
-                        newEndTime = auction.getMaxEndTime();
-                    } else {
-                        newEndTime = proposedEndTime;
-                    }
-                }
-
-                // 4. Execute DB transaction FIRST
+                // 4. Execute DB transaction
                 try (Connection conn = DatabaseManager.getConnection()) {
                     conn.setAutoCommit(false); // Begin ACID transaction
 
                     try {
-                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId(), newEndTime);
+                        boolean isDbSuccess = bidDAO.executeBidTransaction(
+                                conn, 
+                                currentUser, 
+                                newMaxBid, 
+                                previousWinner, 
+                                previousHighestMaxBid, 
+                                newWinner,
+                                newHighestMaxBid,
+                                newCurrentPrice, 
+                                auction.getId(), 
+                                newEndTime
+                        );
 
                         if (isDbSuccess) {
                             conn.commit(); // Finalize all changes
-                            
-                            // 5. DB Success, now update RAM atomically INSIDE the lock
-                            auction.placeBid(currentUser, newMaxBid);
-                            
                             System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                             return true;
                         } else {
-                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
+                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance or transaction failed");
                             conn.rollback();
-                            // NO need to revert RAM because we never modified it!
+                            // Revert RAM state if DB failed
+                            auction.revertLastBid(previousWinner, previousHighestMaxBid, bidTxn);
                             return false;
                         }
 
                     } catch (SQLException e) {
                         conn.rollback();
-                        // NO need to revert RAM because we never modified it!
+                        // Revert RAM state if DB failed
+                        auction.revertLastBid(previousWinner, previousHighestMaxBid, bidTxn);
                         System.out.println("[Database]: Database TransactionError: " + RED + e.getMessage() + RESET);
                         return false;
                     }
                 } catch (SQLException e) {
+                    // Revert RAM state if connection failed
+                    auction.revertLastBid(previousWinner, previousHighestMaxBid, bidTxn);
                     System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
-                    // NO need to revert RAM because we never modified it!
                     return false;
                 }
             } // Lock is released here, after both DB and RAM are synced.
