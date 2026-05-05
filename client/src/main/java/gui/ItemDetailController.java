@@ -17,7 +17,9 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 import model.auction.Auction;
+import utils.TimeUtil;
 
+import java.beans.PropertyChangeListener;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -62,6 +64,7 @@ public class ItemDetailController {
     private Timeline timeline;
     private String currentAuctionId;
     private long endTimeMillis;
+    private PropertyChangeListener priceUpdateListener;
 
     @FXML
     public void initialize() {
@@ -69,7 +72,7 @@ public class ItemDetailController {
         setupChart();
 
         // Subscribe to the global Event Bus for real-time price updates
-        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, evt -> {
+        priceUpdateListener = evt -> {
             @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) evt.getNewValue();
             
@@ -85,7 +88,22 @@ public class ItemDetailController {
                     updateRealTimePrice(newPrice, winnerName);
                 });
             }
-        });
+        };
+
+        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+    }
+
+    /**
+     * Cleans up resources, listeners, and timers to prevent memory leaks.
+     */
+    public void dispose() {
+        if (priceUpdateListener != null) {
+            AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+        }
+        if (timeline != null) {
+            timeline.stop();
+        }
+        System.out.println("[System]: Item Detail Controller Disposed.");
     }
 
     /**
@@ -211,7 +229,7 @@ public class ItemDetailController {
         if (timeline != null) timeline.stop();
 
         timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            long remaining = endTimeMillis - System.currentTimeMillis();
+            long remaining = endTimeMillis - TimeUtil.getCurrentServerTime();
             if (remaining <= 0) {
                 lblTimeLeft.setText("Auction Finished");
                 btnPlaceBid.setDisable(true);

@@ -154,6 +154,16 @@ public class ServerBidderController {
                 if (!isBot) {
                     AutoBidEngine.triggerBotScan(auction);
                 }
+            } else {
+                // Task failed - could be Optimistic Locking conflict
+                if (!isBot) {
+                    // Send a direct error message to the specific client that placed the bid
+                    server.ServerExtension.ClientManager.sendToUser(
+                            currentUser.getId(), 
+                            "GENERAL_ERROR", 
+                            "Giá sản phẩm đã thay đổi bởi người dùng khác. Vui lòng cập nhật và thử lại!"
+                    );
+                }
             }
             return finalResult;
         }).exceptionally(ex -> {

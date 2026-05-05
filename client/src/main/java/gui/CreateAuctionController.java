@@ -128,22 +128,29 @@ public class CreateAuctionController extends javafx.scene.control.ScrollPane {
 
             int days = ca_durationDays.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationDays.getText().trim());
             int hours = ca_durationHours.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationHours.getText().trim());
-            long durationMinutes = (days * 24L * 60L) + (hours * 60L);
+            int totalDurationMinutes = (days * 24 * 60) + (hours * 60);
 
-            if (durationMinutes <= 0 || durationMinutes > 43200) {
+            if (totalDurationMinutes <= 0 || totalDurationMinutes > 43200) {
                 AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Duration", "Thời lượng đấu giá phải từ 1 phút đến tối đa 30 ngày.");
                 return;
             }
 
-            Auction auction = new Auction();
-            auction.setItem(new Item());
-            auction.getItem().setItemName(name);
-            auction.getItem().setDescription(desc);
-            auction.getItem().setStartingPrice(Double.parseDouble(startPrice));
-            auction.getItem().setFile(ImageCompressor.compressToBytes(imagefile, 0.05F));
-            auction.setBidIncrement(Double.parseDouble(bidInc));
-            auction.setEndTime(startDT.plusMinutes(durationMinutes));
-            auction.setStartTime(startDT);
+            // Image size and compression check
+            byte[] imageBytes = ImageCompressor.compressToBytes(imagefile, 0.05F);
+            if (imageBytes.length > 500 * 1024) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Image Too Large", "Ảnh sau khi nén vẫn lớn hơn 500KB. Vui lòng chọn ảnh khác hoặc liên hệ kỹ thuật để tăng độ nén!");
+                return;
+            }
+
+            // Standardized Model Initialization using Parametrized Constructors
+            String itemId = "ITEM-" + System.currentTimeMillis();
+            Item item = new Item(itemId, name, desc, Double.parseDouble(startPrice));
+            item.setFile(imageBytes);
+
+            String auctionId = "AUC-" + System.currentTimeMillis();
+            // Assuming current user context is available or needs to be passed. 
+            // For now, we use a placeholder or assume the server fills the User object correctly upon receipt.
+            Auction auction = new Auction(auctionId, item, new model.user.User(), Double.parseDouble(bidInc), startDT, startDT.plusMinutes(totalDurationMinutes));
 
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
 

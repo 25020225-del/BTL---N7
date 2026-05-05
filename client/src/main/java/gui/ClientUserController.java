@@ -45,6 +45,7 @@ public class ClientUserController {
 
     private Parent mainView;
     private CreateAuctionController createAuctionController;
+    private ItemDetailController currentDetailController;
     private Parent tableAuctionView;
     private Parent accountView;
     private Parent settingsView;
@@ -149,6 +150,10 @@ public class ClientUserController {
 
     @FXML
     public void handleBackToMarketplace() {
+        if (currentDetailController != null) {
+            currentDetailController.dispose();
+            currentDetailController = null;
+        }
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(tableAuctionView);
         MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
@@ -188,11 +193,16 @@ public class ClientUserController {
 
     private void openItemDetail(Auction auction) {
         try {
+            if (currentDetailController != null) {
+                currentDetailController.dispose();
+            }
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
             Parent detailView = loader.load();
 
             ItemDetailController detailController = loader.getController();
             detailController.setAuctionData(auction);
+            currentDetailController = detailController;
 
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(detailView);

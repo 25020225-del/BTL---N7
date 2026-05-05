@@ -100,6 +100,7 @@ public class AuctionMonitor {
             // Execute the blocking database update without holding any RAM locks.
             if (targetStatus != null) {
                 try {
+                    // Critical RAM-DB consistency check: only update RAM if DB update is successful
                     boolean dbSuccess = auctionDAO.updateAuctionStatus(auctionId, targetStatus);
                     
                     if (dbSuccess) {
@@ -118,6 +119,9 @@ public class AuctionMonitor {
                                 System.out.println("[System]: Auction " + YELLOW + auctionId + RESET + " finished with NO winner. CANCELED.");
                             }
                         }
+                    } else {
+                        // DB update failed, do NOT update RAM.
+                        System.out.println("[System](AuctionMonitor): " + RED + "FAILED" + RESET + " to update DB for auction " + YELLOW + auctionId + RESET + ". Skipping RAM update to maintain consistency.");
                     }
                 } catch (Exception e) {
                     System.out.println("[Database]: Failed to update auction " + auctionId + " to " + targetStatus + ": " + RED + e.getMessage() + RESET);
