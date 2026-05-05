@@ -34,12 +34,6 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
-
-      - name: Checkstyle & Build Common
-        run: mvn checkstyle:check clean install -f common/pom.xml
-
-      - name: Checkstyle & Build Client
-        run: mvn checkstyle:check clean install -f client/pom.xml
-
-      - name: Checkstyle & Build Server
-        run: mvn checkstyle:check clean install -f server/pom.xml
+      
+      - name: Checkstyle & Build All Modules
+        run: mvn checkstyle:check clean install
