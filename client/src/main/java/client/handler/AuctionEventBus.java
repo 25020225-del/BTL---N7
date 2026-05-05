@@ -11,6 +11,10 @@ public class AuctionEventBus {
     private static final PropertyChangeSupport support = new PropertyChangeSupport(new Object());
 
     public static final String PRICE_UPDATED = "PRICE_UPDATED";
+    public static final String AUCTION_CREATED = "AUCTION_CREATED";
+    public static final String DEPOSIT_SUCCESS = "DEPOSIT_SUCCESS";
+    public static final String GENERAL_ERROR = "GENERAL_ERROR";
+    public static final String GENERAL_SUCCESS = "GENERAL_SUCCESS";
 
     /**
      * Subscribes a listener to a specific event.

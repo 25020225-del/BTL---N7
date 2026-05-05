@@ -113,7 +113,7 @@ public class AuctionDAO {
     }
 
     public List<Map<String, Object>> getAuctionsByStatus(String... statuses) throws SQLException {
-        StringBuilder sql = new StringBuilder("SELECT id, item_name, description, starting_price, current_price, end_time, image_url FROM auctions WHERE status IN (");
+        StringBuilder sql = new StringBuilder("SELECT id, item_name, description, starting_price, current_price, end_time, image_url, seller_id FROM auctions WHERE status IN (");
         for (int i = 0; i < statuses.length; i++) {
             sql.append("?");
             if (i < statuses.length - 1) sql.append(", ");
@@ -130,12 +130,13 @@ public class AuctionDAO {
                 while (rs.next()) {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", rs.getString("id"));
-                    map.put("item_name", rs.getString("item_name"));
+                    map.put("itemName", rs.getString("item_name")); // Match frontend expectations
                     map.put("description", rs.getString("description"));
-                    map.put("starting_price", rs.getDouble("starting_price"));
-                    map.put("current_price", rs.getDouble("current_price"));
-                    map.put("end_time", rs.getString("end_time"));
-                    map.put("image_url", rs.getString("image_url"));
+                    map.put("startingPrice", rs.getDouble("starting_price"));
+                    map.put("currentPrice", rs.getDouble("current_price"));
+                    map.put("endTime", LocalDateTime.parse(rs.getString("end_time")).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                    map.put("imageUrl", rs.getString("image_url"));
+                    map.put("sellerId", rs.getString("seller_id"));
                     list.add(map);
                 }
             }

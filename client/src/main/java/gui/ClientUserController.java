@@ -1,5 +1,7 @@
 package gui;
 
+import client.handler.AuctionEventBus;
+import client.handler.ClientPaymentHandler;
 import client.handler.ResponseDispatcher;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
@@ -14,6 +16,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -355,9 +358,16 @@ public class ClientUserController {
                         String price = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
                         String imageUrl = (String) data.get("imageUrl");
                         long endTime = ((Number) data.get("endTime")).longValue();
+                        String sellerId = (String) data.get("sellerId");
 
                         MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTime);
                         item.getAuctionButton().setOnAction(e -> openItemDetail(data));
+                        
+                        // If current user is the seller, add Edit/Delete options
+                        if (currentUser.getId().equals(sellerId)) {
+                            item.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
+                        }
+                        
                         mainTilePane.getChildren().add(item);
                     }
                 } catch (Exception e) {
@@ -374,9 +384,14 @@ public class ClientUserController {
                     String price = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
                     String imageUrl = (String) data.get("imageUrl");
                     long endTime = ((Number) data.get("endTime")).longValue();
+                    String sellerId = (String) data.get("sellerId");
 
                     MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTime);
                     newItem.getAuctionButton().setOnAction(e -> openItemDetail(data));
+
+                    if (currentUser.getId().equals(sellerId)) {
+                        newItem.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
+                    }
 
                     newItem.setOpacity(0);
                     mainTilePane.getChildren().add(0, newItem);
@@ -393,9 +408,30 @@ public class ClientUserController {
                     mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
                 } catch (Exception e) {
                 }
-
+            } else if ("EDIT_SUCCESS".equals(command) || "DELETE_SUCCESS".equals(command)) {
+                AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
+                MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", ""); // Refresh list
             } else {
                 new ResponseDispatcher().dispatch(response, MainApplication.networkClient);
+            }
+        });
+    }
+
+    private void handleEditAuction(String auctionId) {
+        // For simplicity in this step, we'll just show a placeholder alert.
+        // In a real app, this would open a dialog to edit auction details.
+        AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Edit Auction", "Chức năng chỉnh sửa đang được phát triển. Bạn có thể xóa và tạo lại đấu giá mới.");
+    }
+
+    private void handleDeleteAuction(String auctionId) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Confirm Deletion");
+        confirm.setHeaderText("Delete Auction?");
+        confirm.setContentText("Are you sure you want to delete auction: " + auctionId + "?");
+        
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                MainApplication.networkClient.sendMessage("DELETE_AUCTION", auctionId);
             }
         });
     }
@@ -409,5 +445,33 @@ public class ClientUserController {
         setupSearch();
         MainApplication.networkClient.setOnMessageReceived(this::handleServerResponse);
         MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
+
+        // Register event bus listeners for decoupled UI notifications
+        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, evt -> {
+            Platform.runLater(() -> AlertHelper.showAlert(AlertType.INFORMATION, "Success", evt.getNewValue().toString()));
+        });
+
+        AuctionEventBus.addListener(AuctionEventBus.DEPOSIT_SUCCESS, evt -> {
+            Platform.runLater(() -> AlertHelper.showAlert(AlertType.INFORMATION, "Deposit Success", evt.getNewValue().toString()));
+        });
+
+        AuctionEventBus.addListener(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED, evt -> {
+            @SuppressWarnings("unchecked")
+            Map<String, String> data = (Map<String, String>) evt.getNewValue();
+            String orderId = data.get("orderId");
+
+            Platform.runLater(() -> {
+                Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                confirmAlert.setTitle("Payment Confirmation");
+                confirmAlert.setHeaderText("Have you completed your payment via PayPal?");
+                confirmAlert.setContentText("Order ID: " + orderId + "\nClick OK to update your balance.");
+
+                confirmAlert.showAndWait().ifPresent(response -> {
+                    if (response == ButtonType.OK) {
+                        MainApplication.networkClient.sendMessage("CONFIRM_DEPOSIT", orderId);
+                    }
+                });
+            });
+        });
     }
 }

@@ -82,17 +82,25 @@ public class CommandDispatcher {
         // Register Data Fetching operations
         FetchAuctionsHandler fetchHandler = new FetchAuctionsHandler(auctionDAO);
         handlers.put("FETCH_AUCTIONS", fetchHandler);
-        handlers.put("FETCH_PENDING_AUCTIONS", fetchHandler);
 
-        // Register Administrative operations
-        AdminActionHandler adminHandler = new AdminActionHandler(auctionDAO);
+        // Register Admin operations
+        AdminActionHandler adminHandler = new AdminActionHandler(auctionDAO, userDAO);
+        handlers.put("FETCH_PENDING_AUCTIONS", new FetchAuctionsHandler(auctionDAO));
         handlers.put("APPROVE_AUCTION", adminHandler);
         handlers.put("REJECT_AUCTION", adminHandler);
+        handlers.put("FETCH_USERS", adminHandler);
+        handlers.put("BLOCK_USER", adminHandler);
+        handlers.put("UNBLOCK_USER", adminHandler);
         
         // Register Bidding operations
         BidActionHandler bidHandler = new BidActionHandler(new controller.ServerBidderController(bidDAO), auctionDAO);
         handlers.put("PLACE_BID", bidHandler);
         handlers.put("SETUP_AUTOBID", bidHandler);
+
+        // Register Seller operations
+        SellerActionHandler sellerHandler = new SellerActionHandler(sellerCtrl, auctionDAO);
+        handlers.put("EDIT_AUCTION", sellerHandler);
+        handlers.put("DELETE_AUCTION", sellerHandler);
     }
 
     /**

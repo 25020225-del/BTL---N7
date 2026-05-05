@@ -65,71 +65,74 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        // 1. Acquire the lock OUTSIDE of the ThreadPool task to prevent Starvation.
-        // This ensures that the HikariCP worker pool isn't clogged with threads waiting for a lock.
-        synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-            
-            // 2. Perform non-mutating validation checks while holding the lock
-            final User previousWinner = auction.getWinningBidder();
-            final double previousHighestMaxBid = auction.getHighestMaxBid();
+        // 1. Wrap the entire process (Validation -> DB -> RAM) into the Callable task
+        // We move the synchronized block INSIDE the task to ensure atomicity without blocking the submission phase.
+        Callable<Boolean> bidTask = () -> {
+            // 2. Acquire the Striped Lock inside the worker thread.
+            // This ensures that only one thread can process a bid for this specific auction at a time.
+            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                
+                // 3. Perform REAL-TIME validation checks while holding the lock
+                final User previousWinner = auction.getWinningBidder();
+                final double previousHighestMaxBid = auction.getHighestMaxBid();
 
-            if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
-                System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
-                return CompletableFuture.completedFuture(false);
-            }
-            if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || java.time.LocalDateTime.now().isAfter(auction.getEndTime())) {
-                System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
-                return CompletableFuture.completedFuture(false);
-            }
-            double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
-            if (newMaxBid < minRequiredBid) {
-                System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
-                return CompletableFuture.completedFuture(false);
-            }
-
-            // 3. Virtual calculation for pre-DB persistence
-            User newWinner = previousWinner;
-            double newHighestMaxBid = previousHighestMaxBid;
-            double newCurrentPrice = auction.getCurrentPrice();
-            LocalDateTime newEndTime = auction.getEndTime();
-
-            if (previousWinner == null) {
-                newCurrentPrice = auction.getItem().getStartingPrice();
-                newHighestMaxBid = newMaxBid;
-                newWinner = currentUser;
-            } else if (currentUser.getId().equals(previousWinner.getId())) {
-                if (newMaxBid > previousHighestMaxBid) {
-                    newHighestMaxBid = newMaxBid;
+                if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
+                    System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
+                    return false;
                 }
-            } else {
-                if (newMaxBid > previousHighestMaxBid) {
-                    newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
-                    if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
+                if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || java.time.LocalDateTime.now().isAfter(auction.getEndTime())) {
+                    System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+                    return false;
+                }
+                
+                double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
+                if (newMaxBid < minRequiredBid) {
+                    System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+                    return false;
+                }
+
+                // 4. Mathematical calculation for the NEW state
+                User newWinner = previousWinner;
+                double newHighestMaxBid = previousHighestMaxBid;
+                double newCurrentPrice = auction.getCurrentPrice();
+                LocalDateTime newEndTime = auction.getEndTime();
+
+                if (previousWinner == null) {
+                    newCurrentPrice = auction.getItem().getStartingPrice();
                     newHighestMaxBid = newMaxBid;
                     newWinner = currentUser;
+                } else if (currentUser.getId().equals(previousWinner.getId())) {
+                    if (newMaxBid > previousHighestMaxBid) {
+                        newHighestMaxBid = newMaxBid;
+                    }
                 } else {
-                    newCurrentPrice = newMaxBid + auction.getBidIncrement();
-                    if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
+                    if (newMaxBid > previousHighestMaxBid) {
+                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
+                        newHighestMaxBid = newMaxBid;
+                        newWinner = currentUser;
+                    } else {
+                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
+                    }
                 }
-            }
 
-            // Anti-sniping calculation
-            if (LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
-                LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
-                if (proposedEndTime.isBefore(auction.getMaxEndTime())) {
-                    newEndTime = proposedEndTime;
-                } else {
-                    newEndTime = auction.getMaxEndTime();
+                // Anti-sniping calculation
+                if (LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
+                    LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
+                    if (proposedEndTime.isBefore(auction.getMaxEndTime())) {
+                        newEndTime = proposedEndTime;
+                    } else {
+                        newEndTime = auction.getMaxEndTime();
+                    }
                 }
-            }
 
-            final LocalDateTime finalNewEndTime = newEndTime;
-            final User finalNewWinner = newWinner;
-            final double finalNewHighestMaxBid = newHighestMaxBid;
-            final double finalNewCurrentPrice = newCurrentPrice;
+                final LocalDateTime finalNewEndTime = newEndTime;
+                final User finalNewWinner = newWinner;
+                final double finalNewHighestMaxBid = newHighestMaxBid;
+                final double finalNewCurrentPrice = newCurrentPrice;
 
-            // 4. Wrap ONLY the Database interaction into the Callable task
-            Callable<Boolean> bidTask = () -> {
+                // 5. Database Interaction
                 try (Connection conn = DatabaseManager.getConnection()) {
                     conn.setAutoCommit(false);
 
@@ -150,12 +153,9 @@ public class ServerBidderController {
                         if (isDbSuccess) {
                             conn.commit();
                             
-                            // 5. Update RAM ONLY after DB success.
-                            // Since we released the outer lock, we MUST re-acquire it briefly 
-                            // to ensure RAM consistency during the final mutation.
-                            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                                auction.placeBid(currentUser, newMaxBid);
-                            }
+                            // 6. Update RAM IMMEDIATELY while still holding the lock.
+                            // This guarantees that the next thread to acquire the lock will see the updated state.
+                            auction.placeBid(currentUser, newMaxBid);
                             
                             System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                             return true;
@@ -173,28 +173,28 @@ public class ServerBidderController {
                     System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
                     return false;
                 }
-            };
+            }
+        };
 
-            // Submit the task to TransactionManager and chain the broadcast logic
-            return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
-                if (finalResult) {
-                    Map<String, Object> updateData = new HashMap<>();
-                    updateData.put("auctionId", auction.getId());
-                    updateData.put("newPrice", auction.getCurrentPrice());
-                    updateData.put("winnerName", currentUser.getUserName());
+        // Submit the task to TransactionManager and chain the broadcast logic
+        return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
+            if (finalResult) {
+                Map<String, Object> updateData = new HashMap<>();
+                updateData.put("auctionId", auction.getId());
+                updateData.put("newPrice", auction.getCurrentPrice());
+                updateData.put("winnerName", currentUser.getUserName());
 
-                    server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
+                server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
 
-                    if (!isBot) {
-                        AutoBidEngine.triggerBotScan(auction);
-                    }
+                if (!isBot) {
+                    AutoBidEngine.triggerBotScan(auction);
                 }
-                return finalResult;
-            }).exceptionally(ex -> {
-                System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
-                return false;
-            });
-        }
+            }
+            return finalResult;
+        }).exceptionally(ex -> {
+            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
+            return false;
+        });
     }
 
     /**
@@ -213,11 +213,10 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        // Apply Striped Locking to ensure atomicity
-        synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-            
-            // Task: Save to DB FIRST, then update RAM if success
-            Callable<Boolean> saveAutoBidTask = () -> {
+        // Task: Save to DB FIRST, then update RAM if success
+        Callable<Boolean> saveAutoBidTask = () -> {
+            // Apply Striped Locking INSIDE the task to ensure atomicity
+            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                 try {
                     // 1. Save to DB
                     boolean saved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
@@ -235,18 +234,18 @@ public class ServerBidderController {
                     System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
                     return false;
                 }
-            };
+            }
+        };
 
-            return TransactionManager.submitTask(saveAutoBidTask).thenApply(success -> {
-                if (success) {
-                    // Immediately trigger a scan to see if the new bot should place a bid
-                    AutoBidEngine.triggerBotScan(auction);
-                }
-                return success;
-            }).exceptionally(ex -> {
-                System.out.println("[System]: Execution error while saving auto-bid: " + RED + ex.getMessage() + RESET);
-                return false;
-            });
-        }
+        return TransactionManager.submitTask(saveAutoBidTask).thenApply(success -> {
+            if (success) {
+                // Immediately trigger a scan to see if the new bot should place a bid
+                AutoBidEngine.triggerBotScan(auction);
+            }
+            return success;
+        }).exceptionally(ex -> {
+            System.out.println("[System]: Execution error while saving auto-bid: " + RED + ex.getMessage() + RESET);
+            return false;
+        });
     }
 }

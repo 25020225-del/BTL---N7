@@ -1,16 +1,11 @@
 package client.handler;
 
 import client.network.NetworkClient;
-import gui.process.AlertHelper;
-import javafx.application.Platform;
-import javafx.scene.control.Alert.AlertType;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-
-import static utils.ConsoleColors.*;
 
 /**
  * Handles auction-related responses and real-time updates broadcasted by the server.
@@ -45,9 +40,7 @@ public class ClientAuctionHandler implements ResponseHandler {
             log.info(message.getData().toString());
         } else if ("CREATE_SUCCESS".equals(command)) {
             log.info(message.getData().toString());
-            Platform.runLater(() -> {
-                AlertHelper.showAlert(AlertType.INFORMATION, "Success", message.getData().toString());
-            });
+            AuctionEventBus.fireEvent(AuctionEventBus.AUCTION_CREATED, message.getData());
         } else if ("CHAT".equals(command)) {
             log.info(message.getData().toString());
         }
