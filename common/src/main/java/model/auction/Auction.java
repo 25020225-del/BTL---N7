@@ -216,28 +216,28 @@ public class Auction extends Entity {
      *
      * @param bidder    The user placing the bid.
      * @param newMaxBid The maximum amount the user is willing to bid.
-     * @return {@code true} if the bid is valid and successfully placed; {@code false} otherwise.
+     * @return The created {@link BidTransaction} if the bid is valid and successfully placed; {@code null} otherwise.
      */
-    public synchronized boolean placeBid(User bidder, double newMaxBid) {
+    public synchronized BidTransaction placeBid(User bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
             System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
-            return false;
+            return null;
         }
 
         if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
             System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
-            return false;
+            return null;
         }
 
         if (newMaxBid < 0) {
             System.out.println("[Error]: " + RED + "Invalid Bid" + RESET);
-            return false;
+            return null;
         }
 
         double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
             System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
-            return false;
+            return null;
         }
 
         if (winningBidder == null) {
@@ -282,7 +282,36 @@ public class Auction extends Entity {
             }
         }
 
-        return true;
+        return transaction;
+    }
+
+    /**
+     * Reverts a specific failed bid transaction. This is typically used to roll back the in-memory
+     * state if the corresponding database transaction fails.
+     *
+     * @param previousWinner        The user who was winning before the failed bid.
+     * @param previousHighestMaxBid The highest max bid before the failed bid.
+     * @param failedTransaction     The specific bid transaction that failed and needs to be removed.
+     */
+    public synchronized void revertLastBid(User previousWinner, double previousHighestMaxBid, BidTransaction failedTransaction) {
+        // 1. Remove the specific failed transaction from bidHistory
+        if (failedTransaction != null) {
+            bidHistory.remove(failedTransaction);
+        }
+
+        // 2. Restore winning bidder and highest max bid to the state before the failed transaction
+        this.winningBidder = previousWinner;
+        this.highestMaxBid = previousHighestMaxBid;
+
+        // 3. Recalculate currentPrice based on the remaining bid history
+        if (bidHistory.isEmpty()) {
+            this.currentPrice = item.getStartingPrice();
+        } else {
+            // The currentPrice should be the bidAmount of the last valid transaction
+            this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
+        }
+        
+        System.out.println(YELLOW + "[System]: RAM State Reverted to Previous Winner: " + (previousWinner != null ? previousWinner.getUserName() : "None") + RESET);
     }
 
     /**
