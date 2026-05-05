@@ -202,34 +202,40 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        // Apply Striped Locking here as well to ensure atomic bot registration relative to bid processing
+        // Apply Striped Locking to ensure atomicity
         synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-            // Register bot in RAM first
-            boolean isSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
-
-            if (isSuccess) {
-                Callable<Boolean> saveAutoBidTask = () -> {
-                    try {
-                        return bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
-                    } catch (SQLException e) {
-                        System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
-                        return false;
-                    }
-                };
-
-                return TransactionManager.submitTask(saveAutoBidTask).thenApply(saved -> {
+            
+            // Task: Save to DB FIRST, then update RAM if success
+            Callable<Boolean> saveAutoBidTask = () -> {
+                try {
+                    // 1. Save to DB
+                    boolean saved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
+                    
                     if (saved) {
-                        System.out.println("[System]: Auto-Bid Configuration for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved.");
-                        // Immediately trigger a scan to see if the new bot should place a bid
-                        AutoBidEngine.triggerBotScan(auction);
+                        // 2. If DB success, update RAM
+                        boolean ramSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
+                        if (ramSuccess) {
+                            System.out.println("[System]: Auto-Bid Configuration for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved and registered.");
+                            return true;
+                        }
                     }
-                    return saved;
-                }).exceptionally(ex -> {
-                    System.out.println("[System]: Execution error while saving auto-bid: " + RED + ex.getMessage() + RESET);
                     return false;
-                });
-            }
-            return CompletableFuture.completedFuture(false);
+                } catch (SQLException e) {
+                    System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
+                    return false;
+                }
+            };
+
+            return TransactionManager.submitTask(saveAutoBidTask).thenApply(success -> {
+                if (success) {
+                    // Immediately trigger a scan to see if the new bot should place a bid
+                    AutoBidEngine.triggerBotScan(auction);
+                }
+                return success;
+            }).exceptionally(ex -> {
+                System.out.println("[System]: Execution error while saving auto-bid: " + RED + ex.getMessage() + RESET);
+                return false;
+            });
         }
     }
 }

@@ -44,6 +44,7 @@ public class ClientUserController {
 
     private Parent mainView;
     private Parent createAuctionView;
+    private SellerDashboardController sellerController; // Module nhỏ xử lý nghiệp vụ Seller
     private Parent tableAuctionView;
     private Parent accountView;
     private Parent settingsView;
@@ -119,8 +120,10 @@ public class ClientUserController {
         mainLoader.setController(this);
         mainView = mainLoader.load();
 
+        // Tách biệt logic Seller
         FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
-        sellerLoader.setController(this);
+        sellerController = new SellerDashboardController();
+        sellerLoader.setController(sellerController);
         createAuctionView = sellerLoader.load();
 
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
@@ -265,18 +268,16 @@ public class ClientUserController {
         File selectedFile = fileChooser.showOpenDialog(mainViewController.getScene().getWindow());
 
         if (selectedFile != null) {
-            // Kiểm tra dung lượng NGAY LẬP TỨC trước khi làm bất cứ việc gì
             if (selectedFile.length() > MAX_IMAGE_SIZE) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB để đảm bảo đường truyền mạng!");
-                return; // Thoát ngay, không lưu file này
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB!");
+                return;
             }
 
-            // Nếu qua được vòng kiểm duyệt thì mới gán vào biến toàn cục và hiển thị lên UI
-            this.imagefile = selectedFile;
-            log.info("Selected file: {}", imagefile.getName());
-
-            Image image = new Image(imagefile.toURI().toString());
-            CropImage.cropImage(ca_image, image, 720, 480);
+            // Đồng bộ với SellerController
+            if (sellerController != null) {
+                sellerController.setImageFile(selectedFile);
+            }
+            log.info("Selected file: {}", selectedFile.getName());
         }
     }
 
@@ -313,101 +314,6 @@ public class ClientUserController {
             return;
         }
         MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
-    }
-
-    /**
-     * Handles the submission of the Create Auction form.
-     * Validates inputs, processes dynamic start times (immediate vs scheduled),
-     * and calculates the end time based on the user-defined duration.
-     */
-    @FXML
-    public void handleSubmitAuction(javafx.event.ActionEvent event) {
-        try {
-            String name = ca_itemName.getText().trim();
-            String desc = ca_description.getText().trim();
-            String startPrice = ca_startPrice.getText().trim();
-            String bidInc = ca_bidIncrement.getText().trim();
-
-            if (name.isEmpty() || desc.isEmpty() || startPrice.isEmpty() || bidInc.isEmpty()) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Fields", "Please fill in all required fields.");
-                return;
-            }
-            if (imagefile == null) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Image", "Please select an image file.");
-                return;
-            }
-
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime startDT;
-
-            // Check if Start Time fields are completely empty
-            boolean isStartTimeEmpty = ca_startDate.getValue() == null ||
-                    ca_startHour.getText().trim().isEmpty() ||
-                    ca_startMinute.getText().trim().isEmpty();
-
-            if (isStartTimeEmpty) {
-                // If empty, default to current time (Server will dynamically update this upon Admin approval)
-                startDT = now;
-            } else {
-                startDT = LocalDateTime.of(
-                        ca_startDate.getValue(),
-                        LocalTime.of(Integer.parseInt(ca_startHour.getText().trim()), Integer.parseInt(ca_startMinute.getText().trim()))
-                );
-
-                // If user specifies a future date, it must be at least 24 hours from now to allow Admin review
-                if (startDT.isBefore(now.plusDays(1))) {
-                    AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Time", "Thời gian bắt đầu phải để trống (chờ duyệt xong chạy luôn) hoặc phải cách hiện tại ít nhất 1 ngày (24 giờ).");
-                    return;
-                }
-            }
-
-            int days = ca_durationDays.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationDays.getText().trim());
-            int hours = ca_durationHours.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationHours.getText().trim());
-            long durationMinutes = (days * 24L * 60L) + (hours * 60L);
-
-            // Constraint: Minimum 1 minute, Maximum 30 days (43200 minutes)
-            if (durationMinutes <= 0 || durationMinutes > 43200) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Duration", "Thời lượng đấu giá phải từ 1 phút đến tối đa 30 ngày.");
-                return;
-            }
-
-            Double.parseDouble(startPrice);
-            Double.parseDouble(bidInc);
-
-            Auction auction = new Auction();
-            auction.setItem(new Item());
-            auction.getItem().setItemName(name);
-            auction.getItem().setDescription(desc);
-            auction.getItem().setStartingPrice(Double.parseDouble(startPrice));
-            auction.getItem().setFile(ImageCompressor.compressToBytes(imagefile, 0.05F));
-            auction.setBidIncrement(Double.parseDouble(bidInc));
-
-            // Set calculated times
-            auction.setEndTime(startDT.plusMinutes(durationMinutes));
-            auction.setStartTime(startDT);
-
-            MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
-
-            // Reset UI
-            ca_itemName.clear();
-            ca_description.clear();
-            ca_startPrice.clear();
-            ca_bidIncrement.clear();
-            ca_startHour.clear();
-            ca_startMinute.clear();
-            ca_startDate.setValue(null);
-            ca_durationDays.clear();
-            ca_durationHours.clear();
-
-            if (marketplaceBtn != null) marketplaceBtn.fire();
-
-        } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Giá tiền và thời lượng phải là số hợp lệ.");
-        } catch (java.time.DateTimeException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Giờ bắt đầu phải từ 0–23 và phút từ 0–59.");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     /**

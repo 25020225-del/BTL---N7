@@ -66,8 +66,9 @@ public class AuctionMonitor {
      * Iterates through the in-memory auction list, finalizing those whose time has expired.
      */
     private void processRamAuctions() {
-        // Use a safe copy to iterate, preventing ConcurrentModificationException
-        for (Auction auction : List.copyOf(allAuctions)) {
+        // auctionList in AuctionManager is already a CopyOnWriteArrayList, 
+        // so we can iterate over it safely without manual copying or locking.
+        for (Auction auction : AuctionManager.getAuctionList()) {
 
             // Apply Striped Locking to ensure the daemon thread doesn't clash with incoming
             // bids that are concurrently modifying or reading the auction's state.
