@@ -53,59 +53,94 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        final User previousWinner;
-        final double previousHighestMaxBid;
-        final BidTransaction newTransaction;
-
-        // 1. Optmistic Locking Approach:
-        // Lock the auction just long enough to validate and update the RAM state.
-        // This avoids holding the lock during slow Database I/O, removing the bottleneck.
-        synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-            previousWinner = auction.getWinningBidder();
-            previousHighestMaxBid = auction.getHighestMaxBid();
-            
-            // Perform validation and update RAM immediately
-            newTransaction = auction.placeBid(currentUser, newMaxBid);
-            
-            if (newTransaction == null) {
-                return CompletableFuture.completedFuture(false); // Validation failed
-            }
-        }
-
-        // 2. Encapsulate DB I/O into a Callable to be processed asynchronously by the Worker thread.
+        // Encapsulate the entire atomic operation (Lock -> DB -> RAM) into a Callable
+        // to be processed asynchronously by the single-threaded TransactionManager.
         Callable<Boolean> bidTask = () -> {
-            try (Connection conn = DatabaseManager.getConnection()) {
-                conn.setAutoCommit(false); // Begin ACID transaction
+            // This entire block is now executed on the single worker thread,
+            // ensuring sequential processing without needing a lock at the controller level.
+            // However, for absolute safety against future changes (e.g., multi-threaded worker),
+            // the lock is acquired here, guaranteeing atomicity for this specific auction.
+            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                
+                // 1. Get current state from RAM for validation and DB transaction.
+                final User previousWinner = auction.getWinningBidder();
+                final double previousHighestMaxBid = auction.getHighestMaxBid();
 
-                try {
-                    // executeBidTransaction handles the complex deduction/refund logic
-                    boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newTransaction.getBidAmount(), auction.getId());
-
-                    if (isDbSuccess) {
-                        conn.commit(); // Finalize all changes
-                        System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
-                        return true;
-                    } else {
-                        System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
-                        conn.rollback();
-                        return false;
-                    }
-
-                } catch (SQLException e) {
-                    conn.rollback();
-                    System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
+                // 2. Perform pre-validation checks that don't modify state
+                if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
+                    System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
                     return false;
                 }
-            } catch (SQLException e) {
-                System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
-                return false;
-            }
+                if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || java.time.LocalDateTime.now().isAfter(auction.getEndTime())) {
+                    System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+                    return false;
+                }
+                double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
+                if (newMaxBid < minRequiredBid) {
+                    System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+                    return false;
+                }
+
+                // 3. Calculate the new current price based on bidding logic
+                double newCurrentPrice;
+                if (previousWinner == null) {
+                    newCurrentPrice = auction.getItem().getStartingPrice();
+                } else if (currentUser.getId().equals(previousWinner.getId())) {
+                    newCurrentPrice = auction.getCurrentPrice(); // Price doesn't change when outbidding self
+                } else {
+                    if (newMaxBid > previousHighestMaxBid) {
+                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > newMaxBid) {
+                            newCurrentPrice = newMaxBid;
+                        }
+                    } else {
+                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > previousHighestMaxBid) {
+                            newCurrentPrice = previousHighestMaxBid;
+                        }
+                    }
+                }
+
+                // 4. Execute DB transaction FIRST
+                try (Connection conn = DatabaseManager.getConnection()) {
+                    conn.setAutoCommit(false); // Begin ACID transaction
+
+                    try {
+                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId());
+
+                        if (isDbSuccess) {
+                            conn.commit(); // Finalize all changes
+                            
+                            // 5. DB Success, now update RAM atomically INSIDE the lock
+                            auction.placeBid(currentUser, newMaxBid);
+                            
+                            System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+                            return true;
+                        } else {
+                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
+                            conn.rollback();
+                            // NO need to revert RAM because we never modified it!
+                            return false;
+                        }
+
+                    } catch (SQLException e) {
+                        conn.rollback();
+                        // NO need to revert RAM because we never modified it!
+                        System.out.println("[Database]: Database TransactionError: " + RED + e.getMessage() + RESET);
+                        return false;
+                    }
+                } catch (SQLException e) {
+                    System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+                    // NO need to revert RAM because we never modified it!
+                    return false;
+                }
+            } // Lock is released here, after both DB and RAM are synced.
         };
 
-        // 3. Submit the task to TransactionManager.
+        // Submit the task to TransactionManager. The result is handled asynchronously.
         return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
             if (finalResult) {
-                // Success: Broadcast updates
+                // Broadcast price update to all connected clients
                 Map<String, Object> updateData = new HashMap<>();
                 updateData.put("auctionId", auction.getId());
                 updateData.put("newPrice", auction.getCurrentPrice());
@@ -113,22 +148,15 @@ public class ServerBidderController {
 
                 server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
 
+                // Trigger the auto-bid engine scan if this was a manual bid
                 if (!isBot) {
                     AutoBidEngine.triggerBotScan(auction);
                 }
-            } else {
-                // Failure: Rollback RAM synchronously
-                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                    auction.revertLastBid(previousWinner, previousHighestMaxBid, newTransaction);
-                }
             }
+            // No need for a failure case here, as RAM was never modified if DB failed.
             return finalResult;
         }).exceptionally(ex -> {
             System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
-            // Exception: Rollback RAM synchronously
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                auction.revertLastBid(previousWinner, previousHighestMaxBid, newTransaction);
-            }
             return false;
         });
     }

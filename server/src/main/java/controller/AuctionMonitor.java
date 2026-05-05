@@ -69,59 +69,64 @@ public class AuctionMonitor {
         // Use a safe copy to iterate, preventing ConcurrentModificationException
         for (Auction auction : List.copyOf(allAuctions)) {
 
-            // Automatically start auctions that are OPEN and have reached their start time.
-            if (auction.getStatus().equals(Auction.STATUS_OPEN) && LocalDateTime.now().isAfter(auction.getStartTime())) {
-                // Ensure the auction has not already ended
-                if (LocalDateTime.now().isBefore(auction.getEndTime())) {
-                    auction.setStatus(Auction.STATUS_RUNNING);
-                    System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " has started and is now " + GREEN + "RUNNING." + RESET);
+            // Apply Striped Locking to ensure the daemon thread doesn't clash with incoming
+            // bids that are concurrently modifying or reading the auction's state.
+            synchronized (server.ServerExtension.AuctionManager.getLockForAuction(auction.getId())) {
 
-                    // Asynchronously update the database to persist the new state
+                // Automatically start auctions that are OPEN and have reached their start time.
+                if (auction.getStatus().equals(Auction.STATUS_OPEN) && LocalDateTime.now().isAfter(auction.getStartTime())) {
+                    // Ensure the auction has not already ended
+                    if (LocalDateTime.now().isBefore(auction.getEndTime())) {
+                        auction.setStatus(Auction.STATUS_RUNNING);
+                        System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " has started and is now " + GREEN + "RUNNING." + RESET);
+
+                        // Asynchronously update the database to persist the new state
+                        Callable<Boolean> dbUpdateTask = () -> {
+                            try {
+                                return auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_RUNNING);
+                            } catch (Exception e) {
+                                System.out.println("[Database]: Failed to update auction to RUNNING: " + RED + e.getMessage() + RESET);
+                                return false;
+                            }
+                        };
+                        TransactionManager.submitTask(dbUpdateTask);
+                    }
+                }
+
+                // Check both RUNNING and OPEN statuses to handle auctions with zero bids
+                if (auction.getStatus().equals(Auction.STATUS_RUNNING) || auction.getStatus().equals(Auction.STATUS_OPEN)) {
+                    auction.closeAuctionIfTimeIsUp();
+                }
+
+                String status = auction.getStatus();
+                if (status.equals(Auction.STATUS_FINISHED) ||
+                        status.equals(Auction.STATUS_CANCELED) ||
+                        status.equals(Auction.STATUS_DELETED)) {
+
+                    // Remove from Server RAM to prevent memory leaks
+                    allAuctions.remove(auction);
+                    AuctionManager.removeAuctionLock(auction.getId());
+
+                    // Trigger financial settlement if the auction finished successfully
+                    if (status.equals(Auction.STATUS_FINISHED)) {
+                        processFinancialSettlement(auction);
+                    }
+
+                    // Persist the closed status to the SQLite Database asynchronously
                     Callable<Boolean> dbUpdateTask = () -> {
                         try {
-                            return auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_RUNNING);
+                            return auctionDAO.updateAuctionStatus(auction.getId(), status);
                         } catch (Exception e) {
-                            System.out.println("[Database]: Failed to update auction to RUNNING: " + RED + e.getMessage() + RESET);
                             return false;
                         }
                     };
                     TransactionManager.submitTask(dbUpdateTask);
+
+                    // Broadcast removal command to all connected clients
+                    ClientManager.broadcast("REMOVE_AUCTION", auction.getId(), null);
+
+                    System.out.println("[System]: " + BLUE + "Removed auction " + YELLOW + auction.getId() + RESET + " from RAM and updated DB to " + status);
                 }
-            }
-
-            // Check both RUNNING and OPEN statuses to handle auctions with zero bids
-            if (auction.getStatus().equals(Auction.STATUS_RUNNING) || auction.getStatus().equals(Auction.STATUS_OPEN)) {
-                auction.closeAuctionIfTimeIsUp();
-            }
-
-            String status = auction.getStatus();
-            if (status.equals(Auction.STATUS_FINISHED) ||
-                    status.equals(Auction.STATUS_CANCELED) ||
-                    status.equals(Auction.STATUS_DELETED)) {
-
-                // Remove from Server RAM to prevent memory leaks
-                allAuctions.remove(auction);
-                AuctionManager.removeAuctionLock(auction.getId());
-
-                // Trigger financial settlement if the auction finished successfully
-                if (status.equals(Auction.STATUS_FINISHED)) {
-                    processFinancialSettlement(auction);
-                }
-
-                // Persist the closed status to the SQLite Database asynchronously
-                Callable<Boolean> dbUpdateTask = () -> {
-                    try {
-                        return auctionDAO.updateAuctionStatus(auction.getId(), status);
-                    } catch (Exception e) {
-                        return false;
-                    }
-                };
-                TransactionManager.submitTask(dbUpdateTask);
-
-                // Broadcast removal command to all connected clients
-                ClientManager.broadcast("REMOVE_AUCTION", auction.getId(), null);
-
-                System.out.println("[System]: " + BLUE + "Removed auction " + YELLOW + auction.getId() + RESET + " from RAM and updated DB to " + status);
             }
         }
     }
