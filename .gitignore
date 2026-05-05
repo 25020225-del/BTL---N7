@@ -42,6 +42,7 @@ build/
 .DS_Store
 ### Custom App Files ###
 *.log
+DevelopmentTool/
 
 *.db
 *.db-wal
