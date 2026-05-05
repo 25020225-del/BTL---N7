@@ -1,5 +1,8 @@
 package client.network;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -15,6 +18,7 @@ import static utils.ConsoleColors.*;
  * establishing the appropriate network connection.
  */
 public class ServerDiscovery {
+    private static final Logger log = LoggerFactory.getLogger(ServerDiscovery.class);
 
     /**
      * Fetches the server's dynamic IP and Port from a remote JSONBin storage.
@@ -51,7 +55,7 @@ public class ServerDiscovery {
                 return new String[]{ip, port};
             }
         } catch (Exception e) {
-            System.out.println("[Error]:" + RED + " API Data Retrieval failed: " + e.getMessage() + RESET);
+            log.error("API Data Retrieval failed: {}", e.getMessage());
         }
         return null;
     }
@@ -65,7 +69,7 @@ public class ServerDiscovery {
      */
     public static NetworkClient establishConnection(Properties properties) {
         String binID = properties.getProperty("binID");
-        System.out.println("[System]: Fetching server address from remote storage...");
+        log.info("Fetching server address...");
 
         String[] serverInfo = getServerAddress(binID);
         String serverURL;
@@ -74,14 +78,14 @@ public class ServerDiscovery {
         if (serverInfo != null && serverInfo.length == 2) {
             serverURL = serverInfo[0];
             port = Integer.parseInt(serverInfo[1]);
-            System.out.println("[System]: " + GREEN + "Successfully retrieved server address" + RESET);
+            log.info("Successfully retrieved server address.");
         } else {
-            System.out.println("[System]: " + BLUE + "Could not get remote address. Switching to Localhost (Fallback)" + RESET);
+            log.warn("Could not get remote address. Switching to Localhost");
             serverURL = properties.getProperty("fallbackServerURL", "localhost");
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("[System]: Target server address is: " + YELLOW + serverURL + ":" + port + RESET);
+        log.debug("Target server address: {}:{}", serverURL, port);
 
         // SECURE CONNECTION ROUTING:
         // Automatically determine if the connection is local or remote.
@@ -95,21 +99,21 @@ public class ServerDiscovery {
 
         // Fallback mechanism if the main remote connection fails
         if (!client.isConnected() && !isLocal) {
-            System.out.println("\n[System]:" + BLUE + " Online server is unreachable. Automatically falling back to localhost..." + RESET);
+            log.warn("Online server is unreachable. Using localhost...");
 
             String fallbackURL = properties.getProperty("fallbackServerURL", "localhost");
             int fallbackPort = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
 
             // Local fallback uses standard ws://
             String fallbackFullUrl = "ws://" + fallbackURL + ":" + fallbackPort;
-            System.out.println("[System]: Connecting to fallback: " + YELLOW + fallbackFullUrl + RESET);
+            log.info("Connecting to fallback: {}", fallbackFullUrl);
 
             client = new NetworkClient(fallbackFullUrl);
         }
 
         if (!client.isConnected()) {
-            System.out.println("\n[System]: " + RED + "All connection attempts failed." + RESET);
-            System.out.println("[System]: " + BLUE + "Opening offline application..." + RESET);
+            log.warn("All connection attempts failed.");
+            log.info("Opening offline application...");
         }
 
         return client;

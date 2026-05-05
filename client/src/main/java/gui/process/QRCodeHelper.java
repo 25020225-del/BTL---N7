@@ -1,5 +1,7 @@
 package gui.process;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
@@ -7,8 +9,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
+import static utils.ConsoleColors.*;
 
 /**
  * A utility class for generating Quick Response (QR) codes.
@@ -16,6 +17,7 @@ import static utils.ConsoleColors.RESET;
  * and converts it directly into a JavaFX {@link Image} for UI rendering.
  */
 public final class QRCodeHelper {
+    private static final Logger log = LoggerFactory.getLogger(QRCodeHelper.class);
 
     /**
      * Private constructor to prevent instantiation of this utility class.
@@ -49,7 +51,7 @@ public final class QRCodeHelper {
             return image;
 
         } catch (Exception e) {
-            System.out.println("[Error]: QR code creation failed: " + RED + e.getMessage() + RESET);
+            log.error("QR code creation failed: {}", e.getMessage());
             return null;
         }
     }

@@ -26,7 +26,7 @@ public class ImageCompressor {
         // 1. Đọc ảnh gốc
         BufferedImage originalImage = ImageIO.read(file);
         if (originalImage == null) {
-            throw new IOException("Không thể đọc định dạng file này!");
+            throw new IOException("Cannot read file format: " + file.getAbsolutePath());
         }
 
         // 2. Xử lý trường hợp ảnh có nền trong suốt (Alpha channel)
@@ -47,7 +47,7 @@ public class ImageCompressor {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
 
-        if (!writers.hasNext()) throw new IllegalStateException("Hệ thống không hỗ trợ ghi định dạng JPG");
+        if (!writers.hasNext()) throw new IllegalStateException(".jpg format is not available");
         ImageWriter writer = writers.next();
 
         try (ImageOutputStream ios = ImageIO.createImageOutputStream(baos)) {

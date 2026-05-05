@@ -1,5 +1,7 @@
 package database;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -14,6 +16,7 @@ import static utils.ConsoleColors.*;
  * does not natively support high-concurrency writes.
  */
 public class TransactionManager {
+    private static Logger log = LoggerFactory.getLogger(TransactionManager.class);
 
     /**
      * Thread-safe queue containing database tasks awaiting execution.
@@ -29,18 +32,18 @@ public class TransactionManager {
     static {
         // Initialize the dedicated Database Worker Thread
         dbWorker = new Thread(() -> {
-            System.out.println("[Database]: " + GREEN + "Transaction Worker Thread started." + RESET);
+            log.info("Transaction Worker Thread started.");
             while (true) {
                 try {
                     // Block and wait for the next available task in the queue
                     Runnable task = queue.take();
                     task.run();
                 } catch (InterruptedException e) {
-                    System.out.println("[Database]: Worker Thread interrupted.");
+                    log.error("Worker Thread interrupted.");
                     Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
-                    System.out.println("[Database]: " + RED + "Error executing task: " + e.getMessage() + RESET);
+                    log.error("Error executing task: {}", e.getMessage());
                 }
             }
         });

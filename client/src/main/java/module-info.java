@@ -13,7 +13,7 @@ module org.example.demo {
     requires com.google.zxing;
     requires com.fasterxml.jackson.datatype.jsr310;
     requires java.security.sasl;
-    requires Java.WebSocket;
+    requires org.java_websocket;
     requires jcommander;
     requires org.slf4j;
 

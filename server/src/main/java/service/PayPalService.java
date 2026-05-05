@@ -1,5 +1,7 @@
 package service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -18,6 +20,7 @@ import static utils.ConsoleColors.RED;
 import static utils.ConsoleColors.RESET;
 
 public class PayPalService {
+    private static final Logger log = LoggerFactory.getLogger(PayPalService.class);
     private final String clientId;
     private final String secret;
     private final String baseUrl;
@@ -135,7 +138,7 @@ public class PayPalService {
             return "COMPLETED".equals(status);
         }
 
-        System.out.println("[PayPal]: Capture failed: " + RED + response.statusCode() + RESET);
+        log.warn("PayPal Capture failed: {}", response.statusCode());
         return false;
     }
 }

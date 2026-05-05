@@ -1,5 +1,7 @@
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import controller.ServerPaymentController;
 import model.user.User;
 import network.NetworkMessage;
@@ -22,6 +24,7 @@ import static utils.ConsoleColors.*;
  * It utilizes a background cleanup task to prevent memory leaks from abandoned transactions.
  */
 public class PaymentHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(PaymentHandler.class);
 
     /**
      * Service for interacting with the PayPal REST API.
@@ -75,7 +78,7 @@ public class PaymentHandler implements CommandHandler {
             }
 
             if (removedCount > 0) {
-                System.out.println("[Payment]: Deleted " + YELLOW + removedCount + RESET + " suspending transactions");
+                log.info("Deleted {} suspending transactions.",  removedCount);
             }
         }, 5, 5, TimeUnit.MINUTES);
     }
@@ -108,12 +111,12 @@ public class PaymentHandler implements CommandHandler {
                     handleConfirmDeposit(data, client, currentUser);
                     break;
                 default:
-                    System.out.println("[System](PaymentHandler.java): Invalid payment command: " + RED + command + RESET);
+                    log.warn("Invalid payment command: {}", command);
                     client.sendResponse("ERROR", "Invalid payment command: " + RED + command + RESET);
                     break;
             }
         } catch (Exception e) {
-            System.out.println("[System](PaymentHandler.java): Error: " + RED + e.getMessage() + RESET);
+            log.error("{}", e.getMessage());
             client.sendResponse("ERROR", "Server error: " + e.getMessage());
         }
     }
@@ -141,8 +144,7 @@ public class PaymentHandler implements CommandHandler {
             return;
         }
 
-        System.out.println("[System]: Creating deposit order of " + YELLOW + amountVND + RESET + " VND for \""
-                + YELLOW + currentUser.getName() + RESET + "\"");
+        log.info("Creating deposit order of {} VND for {}", amountVND, currentUser.getUserName());
 
         String[] orderInfo = payPalService.createOrder(amountVND);
         String orderId = orderInfo[0];

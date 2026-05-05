@@ -1,5 +1,7 @@
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.user.User;
 import network.NetworkMessage;
@@ -15,6 +17,7 @@ import static utils.ConsoleColors.*;
  * to verify credentials and persist new accounts.
  */
 public class AuthHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(AuthHandler.class);
 
     /**
      * Jackson object mapper used to convert generic network data into domain models.
@@ -53,7 +56,7 @@ public class AuthHandler implements CommandHandler {
         client.setClientName("#Guest" + ClientHandler.getcNC());
         ClientHandler.incrementcNC();
 
-        System.out.println("[System]: \"" + YELLOW + oldName + RESET + "\" signed out and reverted to " + client.getClientName());
+        log.info("{} signed out and reverted to {}", oldName, client.getClientName());
     }
 
     /**
@@ -78,7 +81,7 @@ public class AuthHandler implements CommandHandler {
                 client.sendResponse("LOGIN_FAIL", "Wrong username or password");
             }
         } catch (IllegalArgumentException e) {
-            System.out.println("[Error]: Mapping JSON to User (Login): " + RED + e.getMessage() + RESET);
+            log.warn("Mapping JSON to User (Login): {}", e.getMessage());
             client.sendResponse("ERROR", "Invalid login data");
         }
     }
@@ -114,7 +117,7 @@ public class AuthHandler implements CommandHandler {
                 client.sendResponse("REGISTER_FAIL", result);
             }
         } catch (IllegalArgumentException e) {
-            System.out.println("[Error]: Mapping JSON to User (Register): " + RED + e.getMessage() + RESET);
+            log.warn("Mapping JSON to User (Register): {}", e.getMessage());
             client.sendResponse("ERROR", "Invalid register data");
         }
     }
