@@ -3,6 +3,8 @@ package gui;
 import client.handler.AuctionEventBus;
 import client.handler.ClientPaymentHandler;
 import client.handler.ResponseDispatcher;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import gui.process.*;
 import gui.widget.IconButton;
 import gui.widget.MinimalItem;
@@ -14,22 +16,19 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import model.auction.Auction;
-import model.item.Item;
 import model.user.User;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import utils.JacksonConfig;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,17 +40,16 @@ import java.util.Map;
  */
 public class ClientUserController {
     private static final Logger log = LoggerFactory.getLogger(ClientUserController.class);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     private Parent mainView;
     private Parent createAuctionView;
-    private SellerDashboardController sellerController; // Module nhỏ xử lý nghiệp vụ Seller
+    private SellerDashboardController sellerController; 
     private Parent tableAuctionView;
     private Parent accountView;
     private Parent settingsView;
 
     private User currentUser;
-
-    private File imagefile;
 
     // FUN
     private int dih = 0;
@@ -63,34 +61,11 @@ public class ClientUserController {
     private VBox mainViewController;
 
     @FXML
-    private HBox searchBarContainer;
-    @FXML
     private TilePane mainTilePane;
     @FXML
     private TextField searchField;
     @FXML
     private Button searchButton;
-
-    @FXML
-    private TextField ca_itemName;
-    @FXML
-    private TextArea ca_description;
-    @FXML
-    private TextField ca_startPrice;
-    @FXML
-    private TextField ca_bidIncrement;
-    @FXML
-    private DatePicker ca_startDate;
-    @FXML
-    private TextField ca_startHour;
-    @FXML
-    private TextField ca_startMinute;
-    @FXML
-    private TextField ca_durationDays;
-    @FXML
-    private TextField ca_durationHours;
-    @FXML
-    private ImageView ca_image;
 
     @FXML
     private Label accName;
@@ -99,19 +74,12 @@ public class ClientUserController {
 
     private IconButton accountBtn;
     private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
-    private IconButton toggleSearchButton = new IconButton("mdi2f-file-find-outline", "Search", "Search", "special-button");
     private IconButton marketplaceBtn = new IconButton("mdi2s-storefront-outline", "Marketplace", "Marketplace", "special-button");
     private IconButton createAuctionBtn = new IconButton("mdi2a-archive-plus-outline", "Sell Item", "Create Auction", "special-button");
     private IconButton depositBtn = new IconButton("mdi2c-cash-plus", "Deposit 50k (Test)", "Deposit", "special-button");
     private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug", "Create Bot (Test)", "Test Create", "special-button");
     private IconButton settingsBtn = new IconButton("mdi2c-cog", "Settings", "Settings", "special-button");
 
-    /**
-     * Initializes the Unified User Controller and loads all required FXML layouts.
-     *
-     * @param user The currently authenticated user instance.
-     * @throws IOException If FXML files cannot be loaded.
-     */
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
         this.accountBtn = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
@@ -120,7 +88,6 @@ public class ClientUserController {
         mainLoader.setController(this);
         mainView = mainLoader.load();
 
-        // Tách biệt logic Seller
         FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
         sellerController = new SellerDashboardController();
         sellerLoader.setController(sellerController);
@@ -144,9 +111,6 @@ public class ClientUserController {
         MainApplication.setNewScene(mainView);
     }
 
-    /**
-     * Configures the side navigation dock menu.
-     */
     private void setMainDock() {
         Separator separator = new Separator();
         Region region = new Region();
@@ -182,14 +146,12 @@ public class ClientUserController {
         });
 
         depositBtn.setOnAction(event -> requestDeposit(50000));
-
         testCreateAuctionBtn.setOnAction(event -> UIService.createTestAuction());
 
         accountBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(accountView);
 
-            // FUN - Delegate to UIService to maintain MVC purity
             long currentTime = System.currentTimeMillis();
             if (niggardly == 0 || (currentTime - niggardly > 30000)) {
                 dih = 1;
@@ -207,9 +169,6 @@ public class ClientUserController {
         });
     }
 
-    /**
-     * Navigates the user back to the primary marketplace table view.
-     */
     @FXML
     public void handleBackToMarketplace() {
         mainViewController.getChildren().clear();
@@ -217,9 +176,6 @@ public class ClientUserController {
         MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
     }
 
-    /**
-     * Handles the user sign out process by clearing the session.
-     */
     @FXML
     public void handleSignOut() {
         log.info("\"{}\" is signing out.", currentUser.getUserName());
@@ -227,49 +183,28 @@ public class ClientUserController {
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
-    private void setMainViewController() {
-        mainTilePane.getChildren().clear();
-
-    }
-
-    /**
-     * Choose image from local storage.
-     */
     @FXML
     private void handleSelectImage() {
-        // Hạ giới hạn xuống 1MB để bảo vệ RAM của Server khi mã hóa và parse JSON
-        final int MAX_IMAGE_SIZE = 1 * 1024 * 1024;
-
+        final int MAX_IMAGE_SIZE = 1024 * 1024;
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Choose an image");
         fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
 
         File selectedFile = fileChooser.showOpenDialog(mainViewController.getScene().getWindow());
-
         if (selectedFile != null) {
             if (selectedFile.length() > MAX_IMAGE_SIZE) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB!");
+                AlertHelper.showAlert(AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB!");
                 return;
             }
-
-            // Đồng bộ với SellerController
             if (sellerController != null) {
                 sellerController.setImageFile(selectedFile);
             }
-            log.info("Selected file: {}", selectedFile.getName());
         }
     }
 
-    /**
-     * Initializes the local search functionality within the active marketplace grid.
-     */
     private void setupSearch() {
         if (searchField == null || mainTilePane == null) return;
-
-        searchField.setOnAction(event -> {
-            if (searchButton != null) searchButton.fire();
-        });
-
+        searchField.setOnAction(event -> { if (searchButton != null) searchButton.fire(); });
         if (searchButton != null) {
             searchButton.setOnAction(event -> {
                 String keyword = searchField.getText();
@@ -284,86 +219,77 @@ public class ClientUserController {
         }
     }
 
-    /**
-     * Requests a balance deposit from the server.
-     */
     public void requestDeposit(double amount) {
         if (amount <= 0) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
+            AlertHelper.showAlert(AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
             return;
         }
         MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
 
-    /**
-     * Navigates to the detailed view of a specific auction item.
-     */
-    private void openItemDetail(Map<String, Object> auctionData) {
+    private void openItemDetail(Auction auction) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
             Parent detailView = loader.load();
 
             ItemDetailController detailController = loader.getController();
-            detailController.setProductData(auctionData);
+            detailController.setAuctionData(auction);
 
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(detailView);
-
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    /**
-     * Global router for server messages intended to manipulate the User UI.
-     */
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             String command = response.getCommand();
 
             if ("FETCH_AUCTIONS_SUCCESS".equals(command)) {
                 try {
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> auctions = (List<Map<String, Object>>) response.getData();
+                    // MVC Fix: Use Jackson TypeReference for proper Domain Model mapping
+                    List<Auction> auctions = mapper.convertValue(
+                        response.getData(), 
+                        new TypeReference<List<Auction>>() {}
+                    );
 
                     mainTilePane.getChildren().clear();
 
-                    for (Map<String, Object> data : auctions) {
-                        String id = (String) data.get("id");
-                        String name = (String) data.get("itemName");
-                        String price = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
-                        String imageUrl = (String) data.get("imageUrl");
-                        long endTime = ((Number) data.get("endTime")).longValue();
-                        String sellerId = (String) data.get("sellerId");
+                    for (Auction auction : auctions) {
+                        // Use getters instead of Map.get()
+                        String id = auction.getId();
+                        String name = auction.getItem().getItemName();
+                        String price = String.format("%,.0f", auction.getCurrentPrice());
+                        String imageUrl = auction.getItem().getImageUrl();
+                        long endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                        String sellerId = auction.getSeller().getId();
 
-                        MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTime);
-                        item.getAuctionButton().setOnAction(e -> openItemDetail(data));
+                        MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTimeMillis);
+                        item.getAuctionButton().setOnAction(e -> openItemDetail(auction));
                         
-                        // If current user is the seller, add Edit/Delete options
                         if (currentUser.getId().equals(sellerId)) {
                             item.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
                         }
-                        
                         mainTilePane.getChildren().add(item);
                     }
                 } catch (Exception e) {
-                    System.out.println("[ClientAuctionHandler]: FETCH_AUCTIONS_SUCCESS parse error: " + e.getMessage());
+                    log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
                 }
 
             } else if ("NEW_AUCTION_ADDED".equals(command)) {
                 try {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> data = (Map<String, Object>) response.getData();
+                    Auction auction = mapper.convertValue(response.getData(), Auction.class);
 
-                    String id = (String) data.get("id");
-                    String name = (String) data.get("itemName");
-                    String price = String.format("%,.0f", ((Number) data.get("currentPrice")).doubleValue());
-                    String imageUrl = (String) data.get("imageUrl");
-                    long endTime = ((Number) data.get("endTime")).longValue();
-                    String sellerId = (String) data.get("sellerId");
+                    String id = auction.getId();
+                    String name = auction.getItem().getItemName();
+                    String price = String.format("%,.0f", auction.getCurrentPrice());
+                    String imageUrl = auction.getItem().getImageUrl();
+                    long endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                    String sellerId = auction.getSeller().getId();
 
-                    MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTime);
-                    newItem.getAuctionButton().setOnAction(e -> openItemDetail(data));
+                    MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTimeMillis);
+                    newItem.getAuctionButton().setOnAction(e -> openItemDetail(auction));
 
                     if (currentUser.getId().equals(sellerId)) {
                         newItem.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
@@ -376,17 +302,15 @@ public class ClientUserController {
                     ft.setToValue(1.0);
                     ft.play();
                 } catch (Exception e) {
+                    log.error("[Client] NEW_AUCTION_ADDED parse error: {}", e.getMessage());
                 }
 
             } else if ("REMOVE_AUCTION".equals(command)) {
-                try {
-                    String auctionIdToRemove = (String) response.getData();
-                    mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
-                } catch (Exception e) {
-                }
+                String auctionIdToRemove = (String) response.getData();
+                mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
             } else if ("EDIT_SUCCESS".equals(command) || "DELETE_SUCCESS".equals(command)) {
-                AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
-                MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", ""); // Refresh list
+                AlertHelper.showAlert(AlertType.INFORMATION, "Success", response.getData().toString());
+                MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
             } else {
                 new ResponseDispatcher().dispatch(response, MainApplication.networkClient);
             }
@@ -394,39 +318,26 @@ public class ClientUserController {
     }
 
     private void handleEditAuction(String auctionId) {
-        // Create a custom dialog for editing auction details
         Dialog<Map<String, String>> dialog = new Dialog<>();
         dialog.setTitle("Edit Auction");
         dialog.setHeaderText("Update details for auction: " + auctionId);
 
-        // Set the button types
         ButtonType saveButtonType = new ButtonType("Save Changes", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
-        // Create the form grid
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
+        grid.setHgap(10); grid.setVgap(10);
         grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
 
         TextField nameField = new TextField();
-        nameField.setPromptText("Item Name");
-        TextArea descField = new TextArea();
-        descField.setPromptText("Description");
-        descField.setPrefRowCount(3);
+        TextArea descField = new TextArea(); descField.setPrefRowCount(3);
         TextField priceField = new TextField();
-        priceField.setPromptText("New Starting Price");
 
-        grid.add(new Label("Item Name:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Description:"), 0, 1);
-        grid.add(descField, 1, 1);
-        grid.add(new Label("Starting Price:"), 0, 2);
-        grid.add(priceField, 1, 2);
+        grid.add(new Label("Item Name:"), 0, 0); grid.add(nameField, 1, 0);
+        grid.add(new Label("Description:"), 0, 1); grid.add(descField, 1, 1);
+        grid.add(new Label("Starting Price:"), 0, 2); grid.add(priceField, 1, 2);
 
         dialog.getDialogPane().setContent(grid);
-
-        // Convert the result to a map when the save button is clicked
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
                 Map<String, String> result = new HashMap<>();
@@ -440,29 +351,24 @@ public class ClientUserController {
         });
 
         dialog.showAndWait().ifPresent(data -> {
-            // Basic validation
             if (data.get("itemName").isEmpty() || data.get("startPrice").isEmpty()) {
                 AlertHelper.showAlert(AlertType.ERROR, "Validation Error", "Name and Price cannot be empty.");
                 return;
             }
-            
             try {
                 Double.parseDouble(data.get("startPrice"));
+                MainApplication.networkClient.sendMessage("EDIT_AUCTION", data);
             } catch (NumberFormatException e) {
                 AlertHelper.showAlert(AlertType.ERROR, "Validation Error", "Invalid price format.");
-                return;
             }
-
-            MainApplication.networkClient.sendMessage("EDIT_AUCTION", data);
         });
     }
 
     private void handleDeleteAuction(String auctionId) {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        Alert confirm = new Alert(AlertType.CONFIRMATION);
         confirm.setTitle("Confirm Deletion");
         confirm.setHeaderText("Delete Auction?");
         confirm.setContentText("Are you sure you want to delete auction: " + auctionId + "?");
-        
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 MainApplication.networkClient.sendMessage("DELETE_AUCTION", auctionId);
@@ -470,17 +376,12 @@ public class ClientUserController {
         });
     }
 
-    /**
-     * Bootstraps the controller logic upon initial navigation.
-     */
     public void start() {
         setMainDock();
-        setMainViewController();
         setupSearch();
         MainApplication.networkClient.setOnMessageReceived(this::handleServerResponse);
         MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
 
-        // Register event bus listeners for decoupled UI notifications
         AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, evt -> {
             Platform.runLater(() -> AlertHelper.showAlert(AlertType.INFORMATION, "Success", evt.getNewValue().toString()));
         });
@@ -495,11 +396,10 @@ public class ClientUserController {
             String orderId = data.get("orderId");
 
             Platform.runLater(() -> {
-                Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
                 confirmAlert.setTitle("Payment Confirmation");
                 confirmAlert.setHeaderText("Have you completed your payment via PayPal?");
                 confirmAlert.setContentText("Order ID: " + orderId + "\nClick OK to update your balance.");
-
                 confirmAlert.showAndWait().ifPresent(response -> {
                     if (response == ButtonType.OK) {
                         MainApplication.networkClient.sendMessage("CONFIRM_DEPOSIT", orderId);
