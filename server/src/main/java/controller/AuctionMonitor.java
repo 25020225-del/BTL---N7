@@ -103,6 +103,11 @@ public class AuctionMonitor {
                 allAuctions.remove(auction);
                 AuctionManager.removeAuctionLock(auction.getId());
 
+                // Trigger financial settlement if the auction finished successfully
+                if (status.equals(Auction.STATUS_FINISHED)) {
+                    processFinancialSettlement(auction);
+                }
+
                 // Persist the closed status to the SQLite Database asynchronously
                 Callable<Boolean> dbUpdateTask = () -> {
                     try {
@@ -127,9 +132,71 @@ public class AuctionMonitor {
      * and transfers the final closing price to the seller's wallet.
      */
     private void processFinancialSettlement(Auction auction) {
-        // Viết logic cộng tiền (currentPrice) cho auction.getSeller()
-        // Viết logic hoàn tiền (highestMaxBid - currentPrice) cho auction.getWinningBidder()
-        // Thông qua TransactionManager để đảm bảo tính ACID
+        if (auction.getWinningBidder() == null) {
+            return; // No winner, no settlement needed
+        }
+
+        Callable<Boolean> settlementTask = () -> {
+            String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
+            String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
+            String now = LocalDateTime.now().toString();
+
+            try (Connection conn = DatabaseManager.getConnection()) {
+                conn.setAutoCommit(false); // Start ACID transaction
+
+                try {
+                    // 1. Pay the seller the final auction price
+                    double sellerPayment = auction.getCurrentPrice();
+                    try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
+                        pstmt.setDouble(1, sellerPayment);
+                        pstmt.setString(2, auction.getSeller().getId());
+                        pstmt.executeUpdate();
+                    }
+
+                    try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+                        pstmt.setString(1, "W-IN-" + System.currentTimeMillis());
+                        pstmt.setString(2, auction.getSeller().getId());
+                        pstmt.setDouble(3, sellerPayment);
+                        pstmt.setString(4, "Payment received for completed auction: " + auction.getId());
+                        pstmt.setString(5, now);
+                        pstmt.executeUpdate();
+                    }
+
+                    // 2. Refund the winning bidder for the excess locked amount
+                    double refundAmount = auction.getHighestMaxBid() - auction.getCurrentPrice();
+                    if (refundAmount > 0) {
+                        try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
+                            pstmt.setDouble(1, refundAmount);
+                            pstmt.setString(2, auction.getWinningBidder().getId());
+                            pstmt.executeUpdate();
+                        }
+
+                        try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+                            pstmt.setString(1, "W-REF-" + (System.currentTimeMillis() + 1)); // +1 to ensure unique ID
+                            pstmt.setString(2, auction.getWinningBidder().getId());
+                            pstmt.setDouble(3, refundAmount);
+                            pstmt.setString(4, "Refund for excess max bid on auction: " + auction.getId());
+                            pstmt.setString(5, now);
+                            pstmt.executeUpdate();
+                        }
+                    }
+
+                    conn.commit(); // Finalize changes
+                    System.out.println("[System]: Financial settlement completed for auction " + YELLOW + auction.getId() + RESET);
+                    return true;
+
+                } catch (Exception e) {
+                    conn.rollback(); // Rollback if any error occurs
+                    System.out.println("[Database]: Error during financial settlement: " + RED + e.getMessage() + RESET);
+                    return false;
+                }
+            } catch (Exception e) {
+                System.out.println("[Database]: Connection error during settlement: " + RED + e.getMessage() + RESET);
+                return false;
+            }
+        };
+
+        TransactionManager.submitTask(settlementTask);
     }
 
     /**
