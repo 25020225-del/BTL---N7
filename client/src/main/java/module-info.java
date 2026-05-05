@@ -16,6 +16,7 @@ module org.example.demo {
     requires org.java_websocket;
     requires jcommander;
     requires org.slf4j;
+    requires net.coobird.thumbnailator;
 
     opens gui to javafx.fxml;
     exports gui;
