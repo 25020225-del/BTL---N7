@@ -199,13 +199,13 @@ public class AuctionDAO {
                     double startPrice = rs.getDouble("starting_price");
                     String winningBidderId = rs.getString("winning_bidder_id");
                     
-                    String newStatus = (winningBidderId != null && currentPrice > startPrice) ? Auction.STATUS_FINISHED : Auction.STATUS_CANCELED;
+                    String newStatus = (winningBidderId != null && currentPrice > startPrice) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
 
                     updateStmt.setString(1, newStatus);
                     updateStmt.setString(2, id);
                     updateStmt.executeUpdate();
 
-                    if (newStatus.equals(Auction.STATUS_FINISHED)) {
+                    if (newStatus.equals(Auction.STATUS_PAID)) {
                         // Create a minimal Auction object for financial settlement
                         Auction auction = new Auction();
                         auction.setId(id);

@@ -68,6 +68,7 @@ public class ServerSellerController {
 
         // Logic check: Cannot edit auctions that have already started or concluded
         if (auction.getStatus().equals(Auction.STATUS_RUNNING) ||
+                auction.getStatus().equals(Auction.STATUS_PAID) ||
                 auction.getStatus().equals(Auction.STATUS_FINISHED) ||
                 auction.getStatus().equals(Auction.STATUS_DELETED)) {
             System.out.println("[Error]: " + RED + "Cannot edit information while the auction is ongoing, finished, or deleted" + RESET);

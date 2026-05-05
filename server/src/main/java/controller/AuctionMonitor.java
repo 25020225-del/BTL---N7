@@ -100,7 +100,7 @@ public class AuctionMonitor {
                 }
 
                 String status = auction.getStatus();
-                if (status.equals(Auction.STATUS_FINISHED) ||
+                if (status.equals(Auction.STATUS_PAID) ||
                         status.equals(Auction.STATUS_CANCELED) ||
                         status.equals(Auction.STATUS_DELETED)) {
 
@@ -109,7 +109,7 @@ public class AuctionMonitor {
                     AuctionManager.removeAuctionLock(auction.getId());
 
                     // Trigger financial settlement if the auction finished successfully
-                    if (status.equals(Auction.STATUS_FINISHED)) {
+                    if (status.equals(Auction.STATUS_PAID)) {
                         processFinancialSettlement(auction);
                     }
 
