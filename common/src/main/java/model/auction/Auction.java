@@ -39,6 +39,7 @@ public class Auction extends Entity {
     private User winningBidder;
     private String status;
     private LocalDateTime endTime;
+    private LocalDateTime maxEndTime; // Hard-cap limit for Anti-Sniping
     private List<BidTransaction> bidHistory;
 
     // PriorityQueue to guarantee that auto-bids are processed based on their registration time
@@ -73,6 +74,10 @@ public class Auction extends Entity {
         this.bidIncrement = bidIncrement;
         this.startTime = startTime;
         this.endTime = endTime;
+        
+        // Anti-Sniping hard-cap: maximum 30 minutes extension from the initial end time
+        this.maxEndTime = endTime.plusMinutes(30);
+        
         this.bidHistory = new ArrayList<>();
 
         this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
@@ -173,6 +178,14 @@ public class Auction extends Entity {
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }
+    
+    public LocalDateTime getMaxEndTime() {
+        return maxEndTime;
+    }
+    
+    public void setMaxEndTime(LocalDateTime maxEndTime) {
+        this.maxEndTime = maxEndTime;
+    }
 
     public List<BidTransaction> getBidHistory() {
         return bidHistory;
@@ -255,10 +268,18 @@ public class Auction extends Entity {
         BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
         bidHistory.add(transaction);
 
-        // Anti-Sniping Algorithm: Extend time by 2 minutes if a bid is placed in the last minute
+        // Anti-Sniping Algorithm with Hard-Cap Limit
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
-            endTime = endTime.plusMinutes(2);
-            System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered)" + RESET);
+            LocalDateTime proposedEndTime = endTime.plusMinutes(2);
+            
+            // Ensure the new end time NEVER exceeds the hard-cap maxEndTime
+            if (proposedEndTime.isAfter(maxEndTime)) {
+                endTime = maxEndTime;
+                System.out.println(YELLOW + "[System]: Anti-sniping triggered but hit hard-cap limit. End time: " + endTime + RESET);
+            } else {
+                endTime = proposedEndTime;
+                System.out.println(YELLOW + "[System]: Time increased 2 minutes (Anti-sniping triggered). End time: " + endTime + RESET);
+            }
         }
 
         return true;
