@@ -29,9 +29,7 @@ public class ClientAdminController {
     private static final Logger log = LoggerFactory.getLogger(ClientAdminController.class);
 
     private Parent mainView;
-    private Parent adminView;
     private Parent tableView;
-    private User currentAdmin;
 
     @FXML
     private VBox mainDock;
@@ -59,16 +57,11 @@ public class ClientAdminController {
      * @throws IOException If the corresponding FXML files cannot be loaded.
      */
     public ClientAdminController(User user) throws IOException {
-        this.currentAdmin = user;
         this.account = new IconButton("mdi2a-account", "Admin: " + user.getName(), "Account");
 
         FXMLLoader mainViewloader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainViewloader.setController(this);
         mainView = mainViewloader.load();
-
-        FXMLLoader adminViewLoader = new FXMLLoader(getClass().getResource("AdminView.fxml"));
-        adminViewLoader.setController(this);
-        adminView = adminViewLoader.load();
 
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
         tableViewLoader.setController(this);

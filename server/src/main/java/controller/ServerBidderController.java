@@ -72,67 +72,17 @@ public class ServerBidderController {
             // This ensures that only one thread can process a bid for this specific auction at a time.
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                 
-                // 3. Perform REAL-TIME validation checks while holding the lock
+                // 3. Perform REAL-TIME validation checks and calculations via the Model (MVC)
                 final User previousWinner = auction.getWinningBidder();
                 final double previousHighestMaxBid = auction.getHighestMaxBid();
 
-                if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
-                    System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
-                    return false;
-                }
-                if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || java.time.LocalDateTime.now().isAfter(auction.getEndTime())) {
-                    System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
-                    return false;
-                }
-                
-                double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
-                if (newMaxBid < minRequiredBid) {
-                    System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+                Auction.BidResult result = auction.calculateBidResult(currentUser, newMaxBid);
+                if (result == null) {
+                    System.out.println("[Error]: " + RED + "Bid validation failed in Model" + RESET);
                     return false;
                 }
 
-                // 4. Mathematical calculation for the NEW state
-                User newWinner = previousWinner;
-                double newHighestMaxBid = previousHighestMaxBid;
-                double newCurrentPrice = auction.getCurrentPrice();
-                LocalDateTime newEndTime = auction.getEndTime();
-
-                if (previousWinner == null) {
-                    newCurrentPrice = auction.getItem().getStartingPrice();
-                    newHighestMaxBid = newMaxBid;
-                    newWinner = currentUser;
-                } else if (currentUser.getId().equals(previousWinner.getId())) {
-                    if (newMaxBid > previousHighestMaxBid) {
-                        newHighestMaxBid = newMaxBid;
-                    }
-                } else {
-                    if (newMaxBid > previousHighestMaxBid) {
-                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
-                        newHighestMaxBid = newMaxBid;
-                        newWinner = currentUser;
-                    } else {
-                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
-                    }
-                }
-
-                // Anti-sniping calculation
-                if (LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
-                    LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
-                    if (proposedEndTime.isBefore(auction.getMaxEndTime())) {
-                        newEndTime = proposedEndTime;
-                    } else {
-                        newEndTime = auction.getMaxEndTime();
-                    }
-                }
-
-                final LocalDateTime finalNewEndTime = newEndTime;
-                final User finalNewWinner = newWinner;
-                final double finalNewHighestMaxBid = newHighestMaxBid;
-                final double finalNewCurrentPrice = newCurrentPrice;
-
-                // 5. Database Interaction
+                // 4. Database Interaction
                 try (Connection conn = DatabaseManager.getConnection()) {
                     conn.setAutoCommit(false);
 
@@ -143,19 +93,19 @@ public class ServerBidderController {
                                 newMaxBid, 
                                 previousWinner, 
                                 previousHighestMaxBid, 
-                                finalNewWinner,
-                                finalNewHighestMaxBid,
-                                finalNewCurrentPrice, 
+                                result.newWinner,
+                                result.newHighestMaxBid,
+                                result.newCurrentPrice, 
                                 auction.getId(), 
-                                finalNewEndTime
+                                result.newEndTime
                         );
 
                         if (isDbSuccess) {
                             conn.commit();
                             
-                            // 6. Update RAM IMMEDIATELY while still holding the lock.
-                            // This guarantees that the next thread to acquire the lock will see the updated state.
-                            auction.placeBid(currentUser, newMaxBid);
+                            // 5. Update RAM IMMEDIATELY while still holding the lock.
+                            // The Model handles its own state transition.
+                            auction.applyBidResult(currentUser, result);
                             
                             System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                             return true;

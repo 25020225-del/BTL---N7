@@ -45,11 +45,8 @@ public class SellerActionHandler implements CommandHandler {
         
         Auction auction = null;
         try {
-            // 1. Get from Database
             auction = auctionDAO.getAuctionById(auctionId);
-            
             if (auction != null) {
-                // 2. Cross-reference with RAM to ensure we use the active object if it exists
                 for (Auction ramAuction : AuctionManager.getAuctionList()) {
                     if (ramAuction.getId().equals(auctionId)) {
                         auction = ramAuction;
@@ -67,14 +64,29 @@ public class SellerActionHandler implements CommandHandler {
             return;
         }
 
+        // Get new values from payload or keep existing ones
+        String newName = payload.containsKey("itemName") ? (String) payload.get("itemName") : auction.getItem().getItemName();
+        String newDesc = payload.containsKey("description") ? (String) payload.get("description") : auction.getItem().getDescription();
+        double newStartPrice = payload.containsKey("startPrice") ? Double.parseDouble(payload.get("startPrice").toString()) : auction.getItem().getStartingPrice();
+        
+        java.time.LocalDateTime newStartTime = auction.getStartTime();
+        if (payload.containsKey("newStartTime")) {
+            newStartTime = java.time.LocalDateTime.parse((String) payload.get("newStartTime"));
+        }
+        
+        java.time.LocalDateTime newEndTime = auction.getEndTime();
+        if (payload.containsKey("newEndTime")) {
+            newEndTime = java.time.LocalDateTime.parse((String) payload.get("newEndTime"));
+        }
+
         boolean success = sellerCtrl.editAuction(
                 client.getUser(),
                 auction,
-                (String) payload.get("newName"),
-                (String) payload.get("newDesc"),
-                ((Number) payload.get("newStartPrice")).doubleValue(),
-                java.time.LocalDateTime.parse((String) payload.get("newStartTime")),
-                java.time.LocalDateTime.parse((String) payload.get("newEndTime"))
+                newName,
+                newDesc,
+                newStartPrice,
+                newStartTime,
+                newEndTime
         );
 
         if (success) {

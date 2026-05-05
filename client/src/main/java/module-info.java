@@ -6,7 +6,7 @@ module org.example.demo {
     requires com.fasterxml.jackson.databind;
     requires com.fasterxml.jackson.annotation;
     requires com.fasterxml.jackson.core;
-    requires common;
+    requires transitive common;
     requires jdk.compiler;
     requires java.sql;
     requires org.kordamp.ikonli.javafx;

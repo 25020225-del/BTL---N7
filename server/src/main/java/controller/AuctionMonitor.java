@@ -82,45 +82,50 @@ public class AuctionMonitor {
                 if (auction.getStatus().equals(Auction.STATUS_OPEN) && LocalDateTime.now().isAfter(auction.getStartTime())) {
                     // Ensure the auction has not already ended
                     if (LocalDateTime.now().isBefore(auction.getEndTime())) {
-                        auction.setStatus(Auction.STATUS_RUNNING);
-                        System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " has started and is now " + GREEN + "RUNNING." + RESET);
-
-                        // Asynchronously update the database to persist the new state
-                        Callable<Boolean> dbUpdateTask = () -> {
-                            try {
-                                return auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_RUNNING);
-                            } catch (Exception e) {
-                                System.out.println("[Database]: Failed to update auction to RUNNING: " + RED + e.getMessage() + RESET);
-                                return false;
+                        // TASK 2: Update DB FIRST, then RAM
+                        try {
+                            boolean dbSuccess = auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_RUNNING);
+                            if (dbSuccess) {
+                                auction.setStatus(Auction.STATUS_RUNNING);
+                                System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " has started and is now " + GREEN + "RUNNING." + RESET);
                             }
-                        };
-                        TransactionManager.submitTask(dbUpdateTask);
+                        } catch (Exception e) {
+                            System.out.println("[Database]: Failed to start auction " + auction.getId() + ": " + RED + e.getMessage() + RESET);
+                        }
                     }
                 }
 
                 // Check both RUNNING and OPEN statuses to handle auctions with zero bids
                 if (auction.getStatus().equals(Auction.STATUS_RUNNING) || auction.getStatus().equals(Auction.STATUS_OPEN)) {
-                    auction.closeAuctionIfTimeIsUp();
+                    // We don't call auction.closeAuctionIfTimeIsUp() here because it updates RAM immediately.
+                    // Instead, we check the condition ourselves.
+                    if (LocalDateTime.now().isAfter(auction.getEndTime())) {
+                        String nextStatus = (auction.getWinningBidder() != null) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
+                        String oldStatus = auction.getStatus();
+
+                        try {
+                            // Update DB FIRST
+                            boolean dbSuccess = auctionDAO.updateAuctionStatus(auction.getId(), nextStatus);
+                            if (dbSuccess) {
+                                // Update RAM SECOND
+                                auction.setStatus(nextStatus);
+                                
+                                if (nextStatus.equals(Auction.STATUS_PAID)) {
+                                    processFinancialSettlement(auction);
+                                    System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " finished with winner: " + GREEN + auction.getWinningBidder().getUserName() + RESET);
+                                } else {
+                                    System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " finished with NO winner. CANCELED.");
+                                }
+                            }
+                        } catch (Exception e) {
+                            System.out.println("[Database]: Failed to close auction " + auction.getId() + ": " + RED + e.getMessage() + RESET);
+                        }
+                    }
                 }
 
                 String status = auction.getStatus();
 
-                // Step 1: Handle transition from FINISHED to final settlement state
-                if (status.equals(Auction.STATUS_FINISHED)) {
-                    // Logic check: only process financial settlement if there's a winner
-                    if (auction.getWinningBidder() != null) {
-                        auction.setStatus(Auction.STATUS_PAID);
-                        processFinancialSettlement(auction);
-                        System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " finished with winner: " + GREEN + auction.getWinningBidder().getUserName() + RESET);
-                    } else {
-                        auction.setStatus(Auction.STATUS_CANCELED);
-                        System.out.println("[System]: Auction " + YELLOW + auction.getId() + RESET + " finished with NO winner. CANCELED.");
-                    }
-                    // Update the local status variable for the next block
-                    status = auction.getStatus();
-                }
-
-                // Step 2: Handle cleanup and persistence for terminal states
+                // Step 2: Handle cleanup for terminal states (PAID, CANCELED, DELETED)
                 if (status.equals(Auction.STATUS_PAID) ||
                         status.equals(Auction.STATUS_CANCELED) ||
                         status.equals(Auction.STATUS_DELETED)) {
@@ -129,21 +134,10 @@ public class AuctionMonitor {
                     allAuctions.remove(auction);
                     AuctionManager.removeAuctionLock(auction.getId());
 
-                    // Persist the closed status to the SQLite Database asynchronously
-                    final String finalStatus = status;
-                    Callable<Boolean> dbUpdateTask = () -> {
-                        try {
-                            return auctionDAO.updateAuctionStatus(auction.getId(), finalStatus);
-                        } catch (Exception e) {
-                            return false;
-                        }
-                    };
-                    TransactionManager.submitTask(dbUpdateTask);
-
                     // Broadcast removal command to all connected clients
                     ClientManager.broadcast("REMOVE_AUCTION", auction.getId(), null);
 
-                    System.out.println("[System]: " + BLUE + "Removed auction " + YELLOW + auction.getId() + RESET + " from RAM and updated DB to " + status);
+                    System.out.println("[System]: " + BLUE + "Removed auction " + YELLOW + auction.getId() + RESET + " from RAM. (DB already updated)");
                 }
             }
         }
