@@ -67,7 +67,7 @@ public class MainApplication extends Application {
     }
 
     /**
-     * Dynamically swaps the root node of the primary active scene.
+     * Dynamically swaps the walletView node of the primary active scene.
      * This utility is widely used by controllers for navigating between different views
      * (e.g., from Login to the Main Dashboard).
      *

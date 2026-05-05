@@ -42,6 +42,7 @@ public class ClientUserController {
     private Parent settingsView;
 
     private CreateAuctionController  createAuctionView;
+    private WalletController walletView;
 
 
     private User currentUser;
@@ -66,6 +67,7 @@ public class ClientUserController {
     private IconButton toggleSearchButton   = new IconButton("mdi2f-file-find-outline",     "Search",                "Search",          "special-button");
     private IconButton marketplaceBtn       = new IconButton("mdi2s-storefront-outline",    "Marketplace",           "Marketplace",     "special-button");
     private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
+    private IconButton walletBtn            = new IconButton("mdi2w-wallet-bifold-outline", "Wallet",                "Wallet",          "special-button");
     private IconButton depositBtn           = new IconButton("mdi2c-cash-plus",             "Deposit 50k (Test)",    "Deposit",         "special-button");
     private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
     private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
@@ -86,6 +88,9 @@ public class ClientUserController {
 
         createAuctionView = new CreateAuctionController();
         createAuctionView.setOnAuctionCreated(() -> marketplaceBtn.fire());
+
+        walletView = new WalletController();
+        walletView.setOnAuctionCreated(() -> marketplaceBtn.fire());
 
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
         tableViewLoader.setController(this);
@@ -116,6 +121,7 @@ public class ClientUserController {
                 toggleList,
                 marketplaceBtn,
                 createAuctionBtn,
+                walletBtn,
                 depositBtn,
                 separator,
                 region,
@@ -139,6 +145,11 @@ public class ClientUserController {
         createAuctionBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(createAuctionView.getParent());
+        });
+
+        walletBtn.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(walletView.getParent());
         });
 
         depositBtn.setOnAction(event -> requestDeposit(50000));

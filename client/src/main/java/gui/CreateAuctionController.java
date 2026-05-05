@@ -28,6 +28,8 @@ public class CreateAuctionController {
     private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
     Parent createAuctionView;
 
+    private Runnable onAuctionCreated;
+
     private File imagefile;
 
     @FXML private TextField ca_itemName;
@@ -40,7 +42,8 @@ public class CreateAuctionController {
     @FXML private TextField ca_durationDays;
     @FXML private TextField ca_durationHours;
     @FXML private ImageView ca_image;
-    private Runnable onAuctionCreated;
+
+
     public CreateAuctionController(){
 
         FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));

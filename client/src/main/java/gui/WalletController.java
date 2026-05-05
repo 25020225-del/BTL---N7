@@ -3,12 +3,20 @@ package gui;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class WalletController {
+
+    private Runnable onAuctionCreated;
+
+    Parent walletView;
 
     @FXML private Label lblTotalBalance;
     @FXML private Label lblFrozenBalance;
@@ -23,6 +31,16 @@ public class WalletController {
 
     private double currentBalance = 0.0;
     private ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
+
+    public WalletController() {
+        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("WalletView.fxml"));
+        fxmlLoader.setController(this);
+        try {
+            walletView = fxmlLoader.load();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @FXML
     public void initialize() {
@@ -39,6 +57,18 @@ public class WalletController {
         updateBalanceUI();
     }
 
+
+    public void setOnAuctionCreated(Runnable callback) { // thêm method này
+        this.onAuctionCreated = callback;
+    }
+    public Parent getParent() {
+        return walletView;
+    }
+
+    @FXML
+    private void handleReturn() {
+        onAuctionCreated.run();
+    }
 
     @FXML
     private void handleDeposit() {
