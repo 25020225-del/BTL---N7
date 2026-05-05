@@ -73,10 +73,12 @@ public class ServerBidderController {
             Auction.BidResult result;
             User previousWinner;
             double previousHighestMaxBid;
+            double currentPriceAtCalculation;
             
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                 previousWinner = auction.getWinningBidder();
                 previousHighestMaxBid = auction.getHighestMaxBid();
+                currentPriceAtCalculation = auction.getCurrentPrice();
 
                 result = auction.calculateBidResult(currentUser, newMaxBid);
                 if (result == null) {
@@ -102,7 +104,8 @@ public class ServerBidderController {
                             result.newHighestMaxBid,
                             result.newCurrentPrice, 
                             auction.getId(), 
-                            result.newEndTime
+                            result.newEndTime,
+                            currentPriceAtCalculation // Pass current price for Optimistic Locking
                     );
 
                     if (isDbSuccess) {

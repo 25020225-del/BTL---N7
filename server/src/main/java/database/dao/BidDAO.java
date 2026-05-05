@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class BidDAO {
     private final WalletDAO walletDAO = new WalletDAO();
 
-    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, User newWinner, double newHighestMaxBid, double newCurrentPrice, String auctionId, LocalDateTime endTime) throws SQLException {
+    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, User newWinner, double newHighestMaxBid, double newCurrentPrice, String auctionId, LocalDateTime endTime, double currentPriceInDB) throws SQLException {
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
 
@@ -83,15 +83,21 @@ public class BidDAO {
         }
 
         // STEP 3: Update auction's current price, end_time, and winner info in DB
-        // We also need to store highest_max_bid and winning_bidder_id to ensure persistence
-        String updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? WHERE id = ?";
+        // We use Optimistic Locking by checking if the current_price has changed since we last read it in RAM.
+        String updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? WHERE id = ? AND current_price = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
             pstmt.setDouble(1, newCurrentPrice);
             pstmt.setString(2, endTime.toString());
             pstmt.setString(3, newWinner != null ? newWinner.getId() : null);
             pstmt.setDouble(4, newHighestMaxBid);
             pstmt.setString(5, auctionId);
-            pstmt.executeUpdate();
+            pstmt.setDouble(6, currentPriceInDB); // THE KEY: Optimistic Locking condition
+            
+            if (pstmt.executeUpdate() == 0) {
+                // If 0 rows updated, it means another thread changed current_price in the meantime.
+                System.out.println("[BidDAO]: Conflict detected! Current price in DB is different from " + currentPriceInDB);
+                return false; 
+            }
         }
 
         return true;
