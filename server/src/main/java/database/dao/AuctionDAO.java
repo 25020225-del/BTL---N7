@@ -3,6 +3,7 @@ package database.dao;
 import database.DatabaseManager;
 import model.auction.Auction;
 import model.item.Item;
+import model.item.ItemFactory;
 import model.user.User;
 import server.ServerExtension.ClientManager;
 
@@ -20,6 +21,51 @@ import static utils.ConsoleColors.RESET;
 import static utils.ConsoleColors.YELLOW;
 
 public class AuctionDAO {
+
+    public Auction getAuctionById(String auctionId) throws SQLException {
+        String sql = "SELECT * FROM auctions WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, auctionId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    Auction auction = new Auction();
+                    auction.setId(rs.getString("id"));
+                    
+                    model.item.Item item = ItemFactory.createItem(
+                            ItemFactory.TYPE_TANGIBLE,
+                            "ITM-" + System.currentTimeMillis(),
+                            rs.getString("item_name"),
+                            rs.getString("description"),
+                            rs.getDouble("starting_price")
+                    );
+                    item.setImageUrl(rs.getString("image_url"));
+                    auction.setItem(item);
+                    
+                    User seller = new User();
+                    seller.setId(rs.getString("seller_id"));
+                    auction.setSeller(seller);
+                    
+                    auction.setCurrentPrice(rs.getDouble("current_price"));
+                    auction.setHighestMaxBid(rs.getDouble("highest_max_bid"));
+                    auction.setBidIncrement(rs.getDouble("bid_increment"));
+                    auction.setStartTime(LocalDateTime.parse(rs.getString("start_time")));
+                    auction.setEndTime(LocalDateTime.parse(rs.getString("end_time")));
+                    auction.setStatus(rs.getString("status"));
+                    
+                    String winnerId = rs.getString("winning_bidder_id");
+                    if (winnerId != null) {
+                        User winner = new User();
+                        winner.setId(winnerId);
+                        auction.setWinningBidder(winner);
+                    }
+                    
+                    return auction;
+                }
+            }
+        }
+        return null;
+    }
 
     public boolean addAuction(Auction auction) throws SQLException {
         String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url, winning_bidder_id, highest_max_bid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";

@@ -182,14 +182,6 @@ public class Auction extends Entity {
     public LocalDateTime getMaxEndTime() {
         return maxEndTime;
     }
-    
-    public void setMaxEndTime(LocalDateTime maxEndTime) {
-        this.maxEndTime = maxEndTime;
-    }
-
-    public LocalDateTime getMaxEndTime() {
-        return maxEndTime;
-    }
 
     public void setMaxEndTime(LocalDateTime maxEndTime) {
         this.maxEndTime = maxEndTime;

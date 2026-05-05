@@ -5,9 +5,11 @@ import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.AuctionDAO;
+import model.auction.Auction;
 import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
+import server.ServerExtension.AuctionManager;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
@@ -103,6 +105,19 @@ public class AdminActionHandler implements CommandHandler {
                 String msg = newStatus.equals("OPEN") ? "Auction approved" : "Auction declined";
                 client.sendResponse("ADMIN_ACTION_SUCCESS", msg);
                 log.info("{} has changed the status of {} to {}", client.getUser().getUserName(), auctionId, newStatus);
+
+                // If approved, load the auction into RAM for monitoring
+                if (newStatus.equals("OPEN")) {
+                    try {
+                        Auction auction = auctionDAO.getAuctionById(auctionId);
+                        if (auction != null) {
+                            AuctionManager.addAuctionToMonitor(auction);
+                            System.out.println("[System]: Auction " + auctionId + " added to RAM monitor after Admin approval.");
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to load approved auction into RAM: {}", e.getMessage());
+                    }
+                }
             } else {
                 client.sendResponse("ERROR", "Cannot find this auction in database.");
             }

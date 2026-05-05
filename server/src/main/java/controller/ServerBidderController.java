@@ -11,6 +11,7 @@ import service.AutoBidEngine;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -80,16 +81,42 @@ public class ServerBidderController {
                     return false;
                 }
 
-                // 3. Execute logic in Model (Auction.java) to determine new state
-                // This ensures we follow DRY and use the exact logic from the Model.
-                final BidTransaction bidTxn = auction.placeBid(currentUser, newMaxBid);
-                if (bidTxn == null) return false;
+                // 3. Virtual calculation for pre-DB persistence
+                // This logic MUST match Auction.placeBid but without modifying the object
+                User newWinner = previousWinner;
+                double newHighestMaxBid = previousHighestMaxBid;
+                double newCurrentPrice = auction.getCurrentPrice();
+                LocalDateTime newEndTime = auction.getEndTime();
 
-                // Capture the new state from RAM to persist to DB
-                final User newWinner = auction.getWinningBidder();
-                final double newHighestMaxBid = auction.getHighestMaxBid();
-                final double newCurrentPrice = auction.getCurrentPrice();
-                final LocalDateTime newEndTime = auction.getEndTime();
+                if (previousWinner == null) {
+                    newCurrentPrice = auction.getItem().getStartingPrice();
+                    newHighestMaxBid = newMaxBid;
+                    newWinner = currentUser;
+                } else if (currentUser.getId().equals(previousWinner.getId())) {
+                    if (newMaxBid > previousHighestMaxBid) {
+                        newHighestMaxBid = newMaxBid;
+                    }
+                } else {
+                    if (newMaxBid > previousHighestMaxBid) {
+                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
+                        newHighestMaxBid = newMaxBid;
+                        newWinner = currentUser;
+                    } else {
+                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
+                    }
+                }
+
+                // Anti-sniping calculation
+                if (LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
+                    LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
+                    if (proposedEndTime.isBefore(auction.getMaxEndTime())) {
+                        newEndTime = proposedEndTime;
+                    } else {
+                        newEndTime = auction.getMaxEndTime();
+                    }
+                }
 
                 // 4. Execute DB transaction
                 try (Connection conn = DatabaseManager.getConnection()) {
@@ -111,26 +138,24 @@ public class ServerBidderController {
 
                         if (isDbSuccess) {
                             conn.commit(); // Finalize all changes
+                            
+                            // 5. DB Success, now update RAM atomically INSIDE the lock
+                            auction.placeBid(currentUser, newMaxBid);
+                            
                             System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                             return true;
                         } else {
                             System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance or transaction failed");
                             conn.rollback();
-                            // Revert RAM state if DB failed
-                            auction.revertLastBid(previousWinner, previousHighestMaxBid, bidTxn);
                             return false;
                         }
 
                     } catch (SQLException e) {
                         conn.rollback();
-                        // Revert RAM state if DB failed
-                        auction.revertLastBid(previousWinner, previousHighestMaxBid, bidTxn);
                         System.out.println("[Database]: Database TransactionError: " + RED + e.getMessage() + RESET);
                         return false;
                     }
                 } catch (SQLException e) {
-                    // Revert RAM state if connection failed
-                    auction.revertLastBid(previousWinner, previousHighestMaxBid, bidTxn);
                     System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
                     return false;
                 }
