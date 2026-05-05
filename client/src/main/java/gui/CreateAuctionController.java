@@ -24,9 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class CreateAuctionController {
+public class CreateAuctionController extends javafx.scene.control.ScrollPane {
     private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
-    Parent createAuctionView;
 
     private File imagefile;
 
@@ -42,11 +41,11 @@ public class CreateAuctionController {
     @FXML private ImageView ca_image;
     private Runnable onAuctionCreated;
     public CreateAuctionController(){
-
-        FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
-        sellerLoader.setController(this);
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
+        loader.setRoot(this);
+        loader.setController(this);
         try {
-            createAuctionView = sellerLoader.load();
+            loader.load();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -68,7 +67,7 @@ public class CreateAuctionController {
         fileChooser.setTitle("Choose an image");
         fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
 
-        File selectedFile = fileChooser.showOpenDialog(createAuctionView.getScene().getWindow());
+        File selectedFile = fileChooser.showOpenDialog(this.getScene().getWindow());
 
         if (selectedFile != null) {
             // Kiểm tra dung lượng NGAY LẬP TỨC trước khi làm bất cứ việc gì
@@ -84,10 +83,6 @@ public class CreateAuctionController {
             Image image = new Image(imagefile.toURI().toString());
             CropImage.cropImage(ca_image, image, 720, 480);
         }
-    }
-
-    public Parent getParent(){
-        return createAuctionView;
     }
 
     /**

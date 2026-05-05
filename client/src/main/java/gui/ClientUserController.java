@@ -44,14 +44,10 @@ public class ClientUserController {
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
     private Parent mainView;
-    private Parent createAuctionView;
-    private SellerDashboardController sellerController; 
+    private CreateAuctionController createAuctionController;
     private Parent tableAuctionView;
     private Parent accountView;
     private Parent settingsView;
-
-    private CreateAuctionController  createAuctionView;
-
 
     private User currentUser;
 
@@ -67,13 +63,6 @@ public class ClientUserController {
     @FXML private TilePane mainTilePane;
     @FXML private TextField searchField;
     @FXML private Button searchButton;
-
-    @FXML
-    private TilePane mainTilePane;
-    @FXML
-    private TextField searchField;
-    @FXML
-    private Button searchButton;
 
     @FXML
     private Label accName;
@@ -96,10 +85,7 @@ public class ClientUserController {
         mainLoader.setController(this);
         mainView = mainLoader.load();
 
-        FXMLLoader sellerLoader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
-        sellerController = new SellerDashboardController();
-        sellerLoader.setController(sellerController);
-        createAuctionView = sellerLoader.load();
+        createAuctionController = new CreateAuctionController();
 
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
         tableViewLoader.setController(this);
@@ -149,26 +135,11 @@ public class ClientUserController {
 
         createAuctionBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(createAuctionView.getParent());
+            mainViewController.getChildren().add(createAuctionController);
         });
 
         depositBtn.setOnAction(event -> requestDeposit(50000));
         testCreateAuctionBtn.setOnAction(event -> UIService.createTestAuction());
-
-            mainViewController.getChildren().clear();
-
-            long currentTime = System.currentTimeMillis();
-            if (niggardly == 0 || (currentTime - niggardly > 30000)) {
-                dih = 1;
-                niggardly = currentTime;
-            } else {
-                dih++;
-            }
-            dih = UIService.handleAccountTrollLogic(dih);
-            if (dih == 0) niggardly = 0;
-=======
->>>>>>> 086780d95c0db8f678d2291acb3205f9a469e85a
-        });
 
         settingsBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
@@ -188,25 +159,6 @@ public class ClientUserController {
         log.info("User \"{}\" is signing out.", currentUser.getName());
         MainApplication.networkClient.sendMessage("LOGOUT", "");
         MainApplication.setNewScene(MainApplication.rootLogin);
-    }
-
-    @FXML
-    private void handleSelectImage() {
-        final int MAX_IMAGE_SIZE = 1024 * 1024;
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Choose an image");
-        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
-
-        File selectedFile = fileChooser.showOpenDialog(mainViewController.getScene().getWindow());
-        if (selectedFile != null) {
-            if (selectedFile.length() > MAX_IMAGE_SIZE) {
-                AlertHelper.showAlert(AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB!");
-                return;
-            }
-            if (sellerController != null) {
-                sellerController.setImageFile(selectedFile);
-            }
-        }
     }
 
     private void setupSearch() {
@@ -241,8 +193,6 @@ public class ClientUserController {
 
             ItemDetailController detailController = loader.getController();
             detailController.setAuctionData(auction);
-
-            client.handler.ClientAuctionHandler.activeDetailController = detailController;
 
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(detailView);
