@@ -3,10 +3,7 @@ package gui;
 import client.handler.AuctionEventBus;
 import client.handler.ClientPaymentHandler;
 import client.handler.ResponseDispatcher;
-import gui.process.AlertHelper;
-import gui.process.CropImage;
-import gui.process.ImageCompressor;
-import gui.process.Search;
+import gui.process.*;
 import gui.widget.IconButton;
 import gui.widget.MinimalItem;
 import javafx.animation.FadeTransition;
@@ -186,43 +183,22 @@ public class ClientUserController {
 
         depositBtn.setOnAction(event -> requestDeposit(50000));
 
-        testCreateAuctionBtn.setOnAction(event -> {
-            String testItemName = "TEST_ITEM_" + (System.currentTimeMillis() % 10000);
-            Map<String, String> dummyData = new HashMap<>();
-            dummyData.put("itemName", testItemName);
-            dummyData.put("description", "Test description");
-            dummyData.put("startingPrice", "50000");
-            dummyData.put("bidIncrement", "5000");
-            dummyData.put("durationMinutes", "60");
-
-            log.debug("Sending CREATE_AUCTION for {}", testItemName);
-            MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
-        });
+        testCreateAuctionBtn.setOnAction(event -> UIService.createTestAuction());
 
         accountBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(accountView);
 
-            // FUN
-            long skibidi_toilet = System.currentTimeMillis();
-            if (niggardly == 0 || (skibidi_toilet - niggardly > 30000)) {
+            // FUN - Delegate to UIService to maintain MVC purity
+            long currentTime = System.currentTimeMillis();
+            if (niggardly == 0 || (currentTime - niggardly > 30000)) {
                 dih = 1;
-                niggardly = skibidi_toilet;
-            } else dih++;
-
-            if (dih == 67) {
-                try {
-                    String troll = "https://www.tiktok.com/@rven6166/video/7615455293991963934";
-
-                    if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
-                        java.awt.Desktop.getDesktop().browse(new java.net.URI(troll));
-                    }
-                } catch (Exception e) {
-                    log.error("{}", e.getMessage());
-                }
-                dih = 0;
-                niggardly = 0;
+                niggardly = currentTime;
+            } else {
+                dih++;
             }
+            dih = UIService.handleAccountTrollLogic(dih);
+            if (dih == 0) niggardly = 0;
         });
 
         settingsBtn.setOnAction(event -> {
