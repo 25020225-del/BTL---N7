@@ -143,6 +143,13 @@ public class NetworkClient {
         }
     }
 
+    public String getServerAddress() {
+        if (wsClient != null && wsClient.getRemoteSocketAddress() != null) {
+            return wsClient.getRemoteSocketAddress().getHostString() + ":" + wsClient.getRemoteSocketAddress().getPort();
+        }
+        return "Disconnected";
+    }
+
     // === INNER CLASS FOR WEBSOCKET EVENTS ===
 
     /**
