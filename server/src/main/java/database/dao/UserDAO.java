@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class UserDAO {
+    private final WalletDAO walletDAO = new WalletDAO();
 
     public boolean isUsernameExists(Connection conn, String userName) throws SQLException {
         String checkSql = "SELECT 1 FROM users WHERE username = ?";
@@ -32,11 +33,7 @@ public class UserDAO {
             insertUserStmt.executeUpdate();
         }
 
-        String insertWalletSql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
-        try (PreparedStatement insertWalletStmt = conn.prepareStatement(insertWalletSql)) {
-            insertWalletStmt.setString(1, userId);
-            insertWalletStmt.executeUpdate();
-        }
+        walletDAO.createWallet(conn, userId);
     }
 
     public User findUserByUsername(String userName) throws SQLException {

@@ -3,13 +3,12 @@ package controller;
 import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.AuctionDAO;
+import database.dao.WalletDAO;
 import model.auction.Auction;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -29,6 +28,7 @@ public class AuctionMonitor {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
     private final AuctionDAO auctionDAO = new AuctionDAO(); // Instantiate AuctionDAO
+    private final WalletDAO walletDAO = new WalletDAO(); // Instantiate WalletDAO
 
     /**
      * Constructs the monitor with a reference to the global active auction list in RAM.
@@ -142,8 +142,6 @@ public class AuctionMonitor {
         }
 
         Callable<Boolean> settlementTask = () -> {
-            String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
-            String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
             String now = LocalDateTime.now().toString();
 
             try (Connection conn = DatabaseManager.getConnection()) {
@@ -152,38 +150,30 @@ public class AuctionMonitor {
                 try {
                     // 1. Pay the seller the final auction price
                     double sellerPayment = auction.getCurrentPrice();
-                    try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
-                        pstmt.setDouble(1, sellerPayment);
-                        pstmt.setString(2, auction.getSeller().getId());
-                        pstmt.executeUpdate();
-                    }
+                    walletDAO.updateBalance(conn, auction.getSeller().getId(), sellerPayment);
 
-                    try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                        pstmt.setString(1, "W-IN-" + System.currentTimeMillis());
-                        pstmt.setString(2, auction.getSeller().getId());
-                        pstmt.setDouble(3, sellerPayment);
-                        pstmt.setString(4, "Payment received for completed auction: " + auction.getId());
-                        pstmt.setString(5, now);
-                        pstmt.executeUpdate();
-                    }
+                    walletDAO.addTransaction(
+                            conn,
+                            "W-IN-" + System.currentTimeMillis(),
+                            auction.getSeller().getId(),
+                            sellerPayment,
+                            "Payment received for completed auction: " + auction.getId(),
+                            now
+                    );
 
                     // 2. Refund the winning bidder for the excess locked amount
                     double refundAmount = auction.getHighestMaxBid() - auction.getCurrentPrice();
                     if (refundAmount > 0) {
-                        try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
-                            pstmt.setDouble(1, refundAmount);
-                            pstmt.setString(2, auction.getWinningBidder().getId());
-                            pstmt.executeUpdate();
-                        }
+                        walletDAO.updateBalance(conn, auction.getWinningBidder().getId(), refundAmount);
 
-                        try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                            pstmt.setString(1, "W-REF-" + (System.currentTimeMillis() + 1)); // +1 to ensure unique ID
-                            pstmt.setString(2, auction.getWinningBidder().getId());
-                            pstmt.setDouble(3, refundAmount);
-                            pstmt.setString(4, "Refund for excess max bid on auction: " + auction.getId());
-                            pstmt.setString(5, now);
-                            pstmt.executeUpdate();
-                        }
+                        walletDAO.addTransaction(
+                                conn,
+                                "W-REF-" + (System.currentTimeMillis() + 1), // +1 to ensure unique ID
+                                auction.getWinningBidder().getId(),
+                                refundAmount,
+                                "Refund for excess max bid on auction: " + auction.getId(),
+                                now
+                        );
                     }
 
                     conn.commit(); // Finalize changes

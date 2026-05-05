@@ -18,7 +18,7 @@ module org.example.demo {
     requires com.google.zxing;
     requires com.fasterxml.jackson.datatype.jsr310;
     requires java.security.sasl;
-    requires Java.WebSocket;
+    requires org.java_websocket;
     requires jcommander;
     requires org.slf4j;
 
@@ -143,6 +143,8 @@ import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.net.URI;
@@ -151,6 +153,8 @@ import java.util.Map;
 import static utils.ConsoleColors.*;
 
 public class ClientPaymentHandler implements ResponseHandler {
+    private static final Logger log =  LoggerFactory.getLogger(ClientPaymentHandler.class);
+
     @Override
     public void handle(NetworkMessage message, NetworkClient client) throws Exception {
         String command = message.getCommand();
@@ -162,7 +166,7 @@ public class ClientPaymentHandler implements ResponseHandler {
             String url = responseData.get("url");
             String orderId = responseData.get("orderId");
 
-            System.out.println("[Payment]: Open browser to complete payment: " + YELLOW + url + RESET);
+            log.info("Open {} to complete payment.", url);
 
             // Open the browser automatically
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
@@ -184,7 +188,7 @@ public class ClientPaymentHandler implements ResponseHandler {
                 });
             });
         } else if ("DEPOSIT_SUCCESS".equals(command)) {
-            System.out.println("[Payment]: " + GREEN + data.toString() + RESET);
+            log.info(data.toString());
             Platform.runLater(() -> {
                 AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", data.toString());
             });
@@ -201,13 +205,12 @@ package client.handler;
 import client.network.NetworkClient;
 import javafx.application.Platform;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.net.URI;
 import java.util.Map;
-
-import static utils.ConsoleColors.RESET;
-import static utils.ConsoleColors.YELLOW;
 
 /**
  * Handles system-level commands received from the server,
@@ -215,6 +218,8 @@ import static utils.ConsoleColors.YELLOW;
  * and time synchronization acknowledgments.
  */
 public class ClientSystemHandler implements ResponseHandler {
+    private static final Logger log = LoggerFactory.getLogger(ClientSystemHandler.class);
+
     @Override
     public void handle(NetworkMessage message, NetworkClient client) throws Exception {
         String command = message.getCommand();
@@ -223,10 +228,10 @@ public class ClientSystemHandler implements ResponseHandler {
             String url = (String) message.getData();
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(new URI(url));
-                System.out.println("[System]: Redirecting to: " + YELLOW + url + RESET);
+                log.info("Redirecting to {}", url);
             }
         } else if ("KICKED".equals(command)) {
-            System.out.println("[System]:" + YELLOW + " You have been kicked. Reason: " + message.getData() + RESET);
+            log.warn("Kicked. Reason: {}", message.getData());
 
             // Notify UI if applicable before shutting down
             if (client.getOnMessageReceived() != null) {
@@ -260,6 +265,8 @@ package client.handler;
 import client.network.NetworkClient;
 import javafx.application.Platform;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -271,6 +278,8 @@ import static utils.ConsoleColors.*;
  * to their appropriate dedicated handler classes.
  */
 public class ResponseDispatcher {
+    private static final Logger log = LoggerFactory.getLogger(ResponseDispatcher.class);
+
     private final Map<String, ResponseHandler> handlers = new HashMap<>();
 
     public ResponseDispatcher() {
@@ -301,7 +310,7 @@ public class ResponseDispatcher {
             try {
                 handler.handle(message, client);
             } catch (Exception e) {
-                System.out.println("[Error]: Client Dispatcher error for \"" + YELLOW + command + RESET + "\": " + RED + e.getMessage() + RESET);
+                log.error("Command \"{}\": {}", command, e.getMessage());
             }
         } else {
             // Unhandled commands are forwarded directly to the UI component if a callback is registered
@@ -430,10 +439,10 @@ public class NetworkClient {
                     }
                 } else {
                     // Handle failed connectBlocking() (server offline)
-                    log.warn("Failed at try {} - Connection refused by server.", (i + 1));
+                    log.warn("Failed at try {} - Connection refused", (i + 1));
                 }
             } catch (Exception e) {
-                log.error("Failed at try {} - ", e.getMessage());
+                log.warn("Failed at try {} - {}", (i+1), e.getMessage());
             }
 
             if (i < 4) {
@@ -472,7 +481,7 @@ public class NetworkClient {
      */
     public void sendMessage(String command, Object data) {
         if (!isConnected()) {
-            log.warn("Cannot send command: \"{}\" due to not being fully connected.", command);
+            log.warn("Cannot send command: \"{}\" due to not being connected.", command);
             return;
         }
 
@@ -550,7 +559,7 @@ public class NetworkClient {
 
         @Override
         public void onError(Exception ex) {
-            log.error("WebSocket Error: {}", ex.getMessage());
+            log.error("{}", ex.getMessage());
         }
     }
 }
@@ -560,6 +569,9 @@ public class NetworkClient {
 ======================================================================
 
 package client.network;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -576,6 +588,7 @@ import static utils.ConsoleColors.*;
  * establishing the appropriate network connection.
  */
 public class ServerDiscovery {
+    private static final Logger log = LoggerFactory.getLogger(ServerDiscovery.class);
 
     /**
      * Fetches the server's dynamic IP and Port from a remote JSONBin storage.
@@ -612,7 +625,7 @@ public class ServerDiscovery {
                 return new String[]{ip, port};
             }
         } catch (Exception e) {
-            System.out.println("[Error]:" + RED + " API Data Retrieval failed: " + e.getMessage() + RESET);
+            log.error("API Data Retrieval failed: {}", e.getMessage());
         }
         return null;
     }
@@ -626,7 +639,7 @@ public class ServerDiscovery {
      */
     public static NetworkClient establishConnection(Properties properties) {
         String binID = properties.getProperty("binID");
-        System.out.println("[System]: Fetching server address from remote storage...");
+        log.info("Fetching server address...");
 
         String[] serverInfo = getServerAddress(binID);
         String serverURL;
@@ -635,14 +648,14 @@ public class ServerDiscovery {
         if (serverInfo != null && serverInfo.length == 2) {
             serverURL = serverInfo[0];
             port = Integer.parseInt(serverInfo[1]);
-            System.out.println("[System]: " + GREEN + "Successfully retrieved server address" + RESET);
+            log.info("Successfully retrieved server address.");
         } else {
-            System.out.println("[System]: " + BLUE + "Could not get remote address. Switching to Localhost (Fallback)" + RESET);
+            log.warn("Could not get remote address. Switching to Localhost");
             serverURL = properties.getProperty("fallbackServerURL", "localhost");
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        System.out.println("[System]: Target server address is: " + YELLOW + serverURL + ":" + port + RESET);
+        log.debug("Target server address: {}:{}", serverURL, port);
 
         // SECURE CONNECTION ROUTING:
         // Automatically determine if the connection is local or remote.
@@ -656,21 +669,21 @@ public class ServerDiscovery {
 
         // Fallback mechanism if the main remote connection fails
         if (!client.isConnected() && !isLocal) {
-            System.out.println("\n[System]:" + BLUE + " Online server is unreachable. Automatically falling back to localhost..." + RESET);
+            log.warn("Online server is unreachable. Using localhost...");
 
             String fallbackURL = properties.getProperty("fallbackServerURL", "localhost");
             int fallbackPort = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
 
             // Local fallback uses standard ws://
             String fallbackFullUrl = "ws://" + fallbackURL + ":" + fallbackPort;
-            System.out.println("[System]: Connecting to fallback: " + YELLOW + fallbackFullUrl + RESET);
+            log.info("Connecting to fallback: {}", fallbackFullUrl);
 
             client = new NetworkClient(fallbackFullUrl);
         }
 
         if (!client.isConnected()) {
-            System.out.println("\n[System]: " + RED + "All connection attempts failed." + RESET);
-            System.out.println("[System]: " + BLUE + "Opening offline application..." + RESET);
+            log.warn("All connection attempts failed.");
+            log.info("Opening offline application...");
         }
 
         return client;
@@ -682,6 +695,9 @@ public class ServerDiscovery {
 ======================================================================
 
 package gui;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import gui.process.AlertHelper;
 import gui.widget.AdminAuctionItem;
@@ -705,6 +721,7 @@ import java.io.IOException;
  * and monitors the overall system statistics.
  */
 public class ClientAdminController {
+    private static final Logger log = LoggerFactory.getLogger(ClientAdminController.class);
 
     private Parent mainView;
     private Parent adminView;
@@ -790,7 +807,7 @@ public class ClientAdminController {
         itemList.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(tableView);
-            System.out.println("[System]: Loading pending auctions...");
+            log.info("Loading pending auctions...");
             // Request pending auctions from the server
             MainApplication.networkClient.sendMessage("FETCH_PENDING_AUCTIONS", "");
         });
@@ -838,7 +855,7 @@ public class ClientAdminController {
     public void start() {
         setMainDock();
         setMainViewController();
-        System.out.println("[System]: Admin view initialized successfully.");
+        log.info("Admin view initialized successfully.");
     }
 }
 
@@ -881,9 +898,6 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
 
 /**
  * The unified primary controller for standard users.
@@ -1040,7 +1054,7 @@ public class ClientUserController {
             dummyData.put("bidIncrement", "5000");
             dummyData.put("durationMinutes", "60");
 
-            log.info("[Debug]: Sending CREATE_AUCTION for {}", testItemName);
+            log.debug("Sending CREATE_AUCTION for {}", testItemName);
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
         });
 
@@ -1063,7 +1077,7 @@ public class ClientUserController {
                         java.awt.Desktop.getDesktop().browse(new java.net.URI(troll));
                     }
                 } catch (Exception e) {
-                    log.error("[System]: Error: " + RED + e.getMessage() + RESET);
+                    log.error("{}", e.getMessage());
                 }
                 dih = 0;
                 niggardly = 0;
@@ -1091,7 +1105,7 @@ public class ClientUserController {
      */
     @FXML
     public void handleSignOut() {
-        System.out.println("[System]: User \"" + currentUser.getName() + "\" is signing out.");
+        log.info("\"{}\" is signing out.", currentUser.getUserName());
         MainApplication.networkClient.sendMessage("LOGOUT", "");
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
@@ -1124,7 +1138,7 @@ public class ClientUserController {
 
             // Nếu qua được vòng kiểm duyệt thì mới gán vào biến toàn cục và hiển thị lên UI
             this.imagefile = selectedFile;
-            System.out.println("[System]: Selected image file: " + imagefile.getName());
+            log.info("Selected file: {}", imagefile.getName());
 
             Image image = new Image(imagefile.toURI().toString());
             CropImage.cropImage(ca_image, image, 720, 480);
@@ -1667,6 +1681,8 @@ public class Launcher {
 
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gui.process.AlertHelper;
@@ -1680,14 +1696,13 @@ import model.user.User;
 import network.NetworkMessage;
 import utils.JacksonConfig;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Controller responsible for managing the user login interface.
  * It handles capturing user credentials, validating inputs, dispatching authentication
  * requests to the server, and routing the user to the appropriate dashboard upon success.
  */
 public class LoginController {
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
 
     @FXML
     private TextField loginAccountName;
@@ -1742,7 +1757,7 @@ public class LoginController {
             User loginAttempt = new User("", username, password, "");
             networkClient.sendMessage("LOGIN", loginAttempt);
         } else {
-            System.out.println("[System]: " + RED + "Cannot connect to the server" + RESET);
+            log.warn("Cannot connect to server.");
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to the server");
         }
     }
@@ -1771,14 +1786,14 @@ public class LoginController {
             loginButton.setText("SIGN IN");
 
             String command = response.getCommand();
-            System.out.println("[Log]: Server Response: " + command);
+            log.debug("Server Response: {}", command);
 
             if ("LOGIN_SUCCESS".equals(command)) {
                 try {
                     // Deserialize the authenticated user data returned by the server
                     User loggedInUser = mapper.convertValue(response.getData(), User.class);
 
-                    System.out.println("[Log]: " + GREEN + loggedInUser.getName() + " successfully logged in" + RESET);
+                    log.info("{} successfully logged in", loggedInUser.getUserName());
 
                     // Clear sensitive fields from memory
                     loginAccountName.clear();
@@ -1787,14 +1802,14 @@ public class LoginController {
                     // Delegate routing to the MainController based on the user's role
                     MainController.start(loggedInUser);
                 } catch (Exception e) {
-                    System.out.println("[System]: Login error: " + RED + e.getMessage() + RESET);
+                    log.error("Login Error: {}", e.getMessage());
                 }
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
                 // Extract error message from server or use a default generic message
                 String errorMsg = response.getData() != null ? response.getData().toString() : "Username or password is incorrect!";
 
-                System.out.println("[System]: " + RED + "Login failed: " + errorMsg + RESET);
+                log.warn("Login failed: {}", errorMsg);
 
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "Login Failed", errorMsg);
             }
@@ -1808,6 +1823,8 @@ public class LoginController {
 
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
 import client.network.ServerDiscovery;
 import javafx.application.Application;
@@ -1833,6 +1850,7 @@ import static utils.ConsoleColors.*;
  * background network connection to the server, and loads the foundational UI components.
  */
 public class MainApplication extends Application {
+    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
 
     // Global UI references to allow seamless scene switching
     public static Stage primalStage;
@@ -1853,11 +1871,11 @@ public class MainApplication extends Application {
      */
     public static void main(String[] args) {
 
-        System.out.println(GREEN + "=================================");
-        System.out.println("|                               |");
-        System.out.println("|       CLIENT LOG TABLE        |");
-        System.out.println("|                               |");
-        System.out.println("=================================" + RESET);
+        System.out.println(GREEN + "===================================================================");
+        System.out.println(        "|                                                                 |");
+        System.out.println(        "|                               LOG                               |");
+        System.out.println(        "|                                                                 |");
+        System.out.println(        "===================================================================" + RESET);
         launch(args);
     }
 
@@ -1870,7 +1888,7 @@ public class MainApplication extends Application {
      */
     public static void setNewScene(Parent k) {
         if (k == null) {
-            System.out.println("parent is null");
+            log.warn("Parent is null");
         }
         if (primalStage != null && primalStage.getScene() != null) {
             primalStage.getScene().setRoot(k);
@@ -1886,10 +1904,10 @@ public class MainApplication extends Application {
     public void initProperties() throws IOException {
         InputStream input = MainApplication.class.getResourceAsStream("config.properties");
         if (input != null) {
-            System.out.println("[System]: Reading configuration file...");
+            log.info("Reading configuration file...");
             properties.load(input);
         } else {
-            System.out.println("[Error]: " + RED + "Cannot find config.properties" + RESET);
+            log.error("Cannot find config.properties.");
         }
     }
 
@@ -1944,7 +1962,7 @@ public class MainApplication extends Application {
 
         // Handle the native OS window close event (clicking the "X" button)
         primalStage.setOnCloseRequest(event -> {
-            System.out.println("[System]: Closing application...");
+            log.info("Closing application...");
             // Clean UI threads
             javafx.application.Platform.exit();
             // Kill process completely to ensure no background socket threads leak
@@ -1966,7 +1984,7 @@ public class MainApplication extends Application {
                     stage.setTitle("N7 Auction System - Client");
                     stage.setScene(sceneLogin);
 
-                    System.out.println("[System]: " + GREEN + "Application started successfully" + RESET);
+                    log.info("Application started successfully.");
 
                     // Warn the user if the app had to fallback to offline/localhost mode
                     if (!networkClient.isConnected()) {
@@ -2030,6 +2048,8 @@ public class MainController {
 
 package gui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
 import gui.process.AlertHelper;
 import gui.process.QRCodeHelper;
@@ -2053,6 +2073,7 @@ import static utils.ConsoleColors.*;
  * All new public registrations are defaulted to the standard "USER" role.
  */
 public class RegisterController {
+    private static final Logger log = LoggerFactory.getLogger(RegisterController.class);
 
     @FXML
     private TextField registerName;
@@ -2079,7 +2100,7 @@ public class RegisterController {
      */
     @FXML
     protected void onRegisterButtonClick() {
-        System.out.println("[Log]: Registration process started");
+        log.info("Registration process started.");
 
         String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
@@ -2114,12 +2135,12 @@ public class RegisterController {
 
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
-            System.out.println("[System]: Sending registration data to server...");
+            log.info("Sending registration data to server...");
             networkClient.sendMessage("REGISTER", newUser);
 
             registerButton.setDisable(true);
         } else {
-            System.out.println("[System]: " + RED + "Network is not initialized" + RESET);
+            log.warn("Network is not initialized.");
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Network Error", "Cannot connect to server");
         }
     }
@@ -2129,7 +2150,6 @@ public class RegisterController {
      */
     @FXML
     protected void onLoginViewButtonClick() {
-        System.out.println("[Log]: Navigating to Login UI");
         clearFields();
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
@@ -2149,7 +2169,7 @@ public class RegisterController {
 
             try {
                 if ("REGISTER_SUCCESS".equals(command)) {
-                    System.out.println("[System]: " + GREEN + "Registration successful. Initializing 2FA..." + RESET);
+                    log.info("Registration successful. Initializing 2FA...");
 
                     @SuppressWarnings("unchecked")
                     List<String> dataList = (List<String>) data;
@@ -2179,11 +2199,11 @@ public class RegisterController {
 
                 } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
                     String errorMsg = data != null ? data.toString() : "Unidentified error";
-                    System.out.println("[System]: " + RED + "Registration failed: " + errorMsg + RESET);
+                    log.warn("Registration failed: {}", errorMsg);
                     AlertHelper.showAlert(Alert.AlertType.ERROR, "Registration failed", errorMsg);
                 }
             } catch (Exception e) {
-                System.out.println("[System]: QR code generation error: " + RED + e.getMessage() + RESET);
+                log.error("QR Code Generation Error: {}", e.getMessage());
                 e.printStackTrace();
             }
         });
@@ -2224,11 +2244,21 @@ public class Transaction {
         this.note = new SimpleStringProperty(note);
     }
 
-    public String getDate() { return date.get(); }
-    public String getType() { return type.get(); }
-    public double getAmount() { return amount.get(); }
-    public String getStatus() { return status.get(); }
-    public String getNote() { return note.get(); }
+    public String getDate() {
+        return date.get();
+    }
+    public String getType() {
+        return type.get();
+    }
+    public double getAmount() {
+        return amount.get();
+    }
+    public String getStatus() {
+        return status.get();
+    }
+    public String getNote() {
+        return note.get();
+    }
 }
 
 ======================================================================
@@ -2491,14 +2521,19 @@ public class AnimateEffect {
 
 package gui.process;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javafx.geometry.Rectangle2D;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
 public class CropImage {
+    private static Logger log = LoggerFactory.getLogger(CropImage.class);
+
     public static void cropImage(ImageView imageView, Image image, int width, int height) {
         if (image == null || image.isError()) {
-            System.out.println("Ảnh bị lỗi hoặc null!");
+            log.warn("Image is null or error");
             return;
         }
 
@@ -2562,7 +2597,7 @@ public class ImageCompressor {
         // 1. Đọc ảnh gốc
         BufferedImage originalImage = ImageIO.read(file);
         if (originalImage == null) {
-            throw new IOException("Không thể đọc định dạng file này!");
+            throw new IOException("Cannot read file format: " + file.getAbsolutePath());
         }
 
         // 2. Xử lý trường hợp ảnh có nền trong suốt (Alpha channel)
@@ -2583,7 +2618,7 @@ public class ImageCompressor {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
 
-        if (!writers.hasNext()) throw new IllegalStateException("Hệ thống không hỗ trợ ghi định dạng JPG");
+        if (!writers.hasNext()) throw new IllegalStateException(".jpg format is not available");
         ImageWriter writer = writers.next();
 
         try (ImageOutputStream ios = ImageIO.createImageOutputStream(baos)) {
@@ -2612,6 +2647,9 @@ public class ImageCompressor {
 
 package gui.process;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javafx.scene.image.Image;
 
 import java.io.ByteArrayInputStream;
@@ -2627,6 +2665,7 @@ import static utils.ConsoleColors.*;
  * and decodes Base64 strings back to JavaFX Image objects.
  */
 public class ImageUtil {
+    private static final Logger log = LoggerFactory.getLogger(ImageUtil.class);
 
     /**
      * Reads a local file and encodes it into a Base64 string.
@@ -2636,7 +2675,7 @@ public class ImageUtil {
      */
     public static String encodeImageToBase64(File file) {
         if (file == null || !file.exists()) {
-            System.out.println("[Warning]: Image file not found or is null.");
+            log.warn("Image not found or is null.");
             return null;
         }
 
@@ -2645,12 +2684,12 @@ public class ImageUtil {
 
             // Check file size (e.g., limit to ~2MB) to prevent overwhelming the server/WebSocket
             if (fileContent.length > 2 * 1024 * 1024) {
-                System.out.println("[Warning]: " + YELLOW + "Image size exceeds 2MB. Transmission might be slow." + RESET);
+                log.warn("Image size exceeds 2MB. Transmission might be slow.");
             }
 
             return Base64.getEncoder().encodeToString(fileContent);
         } catch (Exception e) {
-            System.out.println("[Error]: Failed to encode image to Base64: " + RED + e.getMessage() + RESET);
+            log.error("Failed to encode image to Base64: {}", e.getMessage());
             return null;
         }
     }
@@ -2670,10 +2709,10 @@ public class ImageUtil {
             byte[] imageBytes = Base64.getDecoder().decode(base64String);
             return new Image(new ByteArrayInputStream(imageBytes));
         } catch (IllegalArgumentException e) {
-            System.out.println("[Error]: Invalid Base64 format received: " + RED + e.getMessage() + RESET);
+            log.warn("Invalid Base64 format received: {}", e.getMessage());
             return null;
         } catch (Exception e) {
-            System.out.println("[Error]: Failed to decode Base64 image: " + RED + e.getMessage() + RESET);
+            log.error("Failed to decode Base64 image: {}", e.getMessage());
             return null;
         }
     }
@@ -2685,6 +2724,8 @@ public class ImageUtil {
 
 package gui.process;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
@@ -2692,8 +2733,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
+import static utils.ConsoleColors.*;
 
 /**
  * A utility class for generating Quick Response (QR) codes.
@@ -2701,6 +2741,7 @@ import static utils.ConsoleColors.RESET;
  * and converts it directly into a JavaFX {@link Image} for UI rendering.
  */
 public final class QRCodeHelper {
+    private static final Logger log = LoggerFactory.getLogger(QRCodeHelper.class);
 
     /**
      * Private constructor to prevent instantiation of this utility class.
@@ -2734,7 +2775,7 @@ public final class QRCodeHelper {
             return image;
 
         } catch (Exception e) {
-            System.out.println("[Error]: QR code creation failed: " + RED + e.getMessage() + RESET);
+            log.error("QR code creation failed: {}", e.getMessage());
             return null;
         }
     }
@@ -2933,7 +2974,9 @@ public class CountdownClock extends Label {
      * Stops the active countdown timeline, halting any further UI updates.
      */
     public void stop() {
-        if (timeline != null) timeline.stop();
+        if (timeline != null) {
+            timeline.stop();
+        }
     }
 }
 
@@ -2947,8 +2990,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Tooltip;
 import org.kordamp.ikonli.javafx.FontIcon;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
+import static utils.ConsoleColors.*;
 
 /**
  * A custom JavaFX {@link Button} that seamlessly integrates a scalable {@link FontIcon}
@@ -5578,6 +5620,7 @@ nut dang xuất
 module common {
     requires com.fasterxml.jackson.databind;
     requires com.fasterxml.jackson.datatype.jsr310;
+    requires org.slf4j;
     opens model.auction to com.fasterxml.jackson.databind;
 
     exports network;
@@ -6472,12 +6515,16 @@ public class Item extends Entity {
 
 package model.item;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Factory class responsible for creating generalized categories of Items.
  * Implements the Factory Method Design Pattern to promote loose coupling
  * and adhere to the Open/Closed Principle.
  */
 public class ItemFactory {
+    private static Logger log = LoggerFactory.getLogger(ItemFactory.class);
 
     /**
      * Constants representing the broad item categories.
@@ -6499,7 +6546,7 @@ public class ItemFactory {
     public static Item createItem(String type, String id, String itemName, String description, double startingPrice) {
         // Fallback to a general physical item if the type is not provided
         if (type == null || type.trim().isEmpty()) {
-            System.out.println("[Warning]: Item type is null. Defaulting to TangibleItem.");
+            log.warn("Item type is null. Defaulting to TangibleItem.");
             return new TangibleItem(id, itemName, description, startingPrice);
         }
 
@@ -6511,7 +6558,7 @@ public class ItemFactory {
             case TYPE_SERVICE:
                 return new ServicePackage(id, itemName, description, startingPrice);
             default:
-                System.out.println("[Warning]: Unknown item type '" + type + "'. Defaulting to TangibleItem.");
+                log.warn("Unknown item type '{}'. Defaulting to TangibleItem.", type);
                 return new TangibleItem(id, itemName, description, startingPrice);
         }
     }
@@ -6841,6 +6888,9 @@ public final class ConsoleColors {
 
 package utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -6857,6 +6907,7 @@ import static utils.ConsoleColors.RESET;
  * Implements secure RSA-2048 for key exchange and AES-256-GCM for payload encryption.
  */
 public class CryptoUtil {
+    private static final Logger log = LoggerFactory.getLogger(CryptoUtil.class);
 
     private static final String RSA = "RSA";
     private static final String AES_ALGO = "AES";
@@ -6876,7 +6927,7 @@ public class CryptoUtil {
             keyGen.initialize(2048);
             return keyGen.generateKeyPair();
         } catch (NoSuchAlgorithmException e) {
-            System.out.println("[Crypto]: Error: " + RED + "RSA algorithm not found." + RESET);
+            log.error("RSA algorithm not found.");
             throw new RuntimeException("Cannot find RSA algorithm", e);
         }
     }
@@ -6890,7 +6941,7 @@ public class CryptoUtil {
             keyGen.init(256);
             return keyGen.generateKey();
         } catch (NoSuchAlgorithmException e) {
-            System.out.println("[Crypto]: " + RED + "AES algorithm not found." + RESET);
+            log.error("AES algorithm not found.");
             throw new RuntimeException("Cannot find AES algorithm", e);
         }
     }
@@ -6905,7 +6956,7 @@ public class CryptoUtil {
             byte[] encryptedKey = cipher.doFinal(aesKey.getEncoded());
             return Base64.getEncoder().encodeToString(encryptedKey);
         } catch (GeneralSecurityException e) {
-            System.out.println("[Crypto]: " + RED + "Error encrypting AES key." + RESET);
+            log.error("Error encrypting AES key.");
             throw new RuntimeException("RSA encrypting error", e);
         }
     }
@@ -6921,7 +6972,7 @@ public class CryptoUtil {
             byte[] decryptedKey = cipher.doFinal(Base64.getDecoder().decode(encryptedAesKeyBase64));
             return new SecretKeySpec(decryptedKey, 0, decryptedKey.length, AES_ALGO);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "Wrong key format or RSA decrypting error." + RESET);
+            log.error("Wrong key format or RSA decrypting error.");
             throw new RuntimeException("RSA decrypting error", e);
         }
     }
@@ -6950,7 +7001,7 @@ public class CryptoUtil {
 
             return Base64.getEncoder().encodeToString(cipherMessage);
         } catch (GeneralSecurityException e) {
-            System.out.println("[Crypto]: " + RED + "Error encrypting payload with AES-GCM." + RESET);
+            log.error("Error encrypting payload with AES-GCM.");
             throw new RuntimeException("Encrypting AES error", e);
         }
     }
@@ -6979,7 +7030,7 @@ public class CryptoUtil {
             byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
             return new String(decryptedBytes);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "AES Decryption failed (Data manipulated or corrupted)." + RESET);
+            log.error("AES Decryption failed (Data manipulated or corrupted).");
             throw new RuntimeException("Decrypting AES error", e);
         }
     }
@@ -6992,7 +7043,7 @@ public class CryptoUtil {
             KeyFactory keyFactory = KeyFactory.getInstance(RSA);
             return keyFactory.generatePublic(spec);
         } catch (NoSuchAlgorithmException | java.security.spec.InvalidKeySpecException | IllegalArgumentException e) {
-            System.out.println("[Crypto]: " + RED + "Server public key generating error." + RESET);
+            log.error("Server public key generating error.");
             throw new RuntimeException("Public key getting error", e);
         }
     }
@@ -7100,12 +7151,16 @@ public final class JacksonConfig {
 
 package utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Utility class to manage time synchronization between the Client and the Server.
  * Implements an NTP-like offset calculation to ensure countdowns and auction events
  * use the Server's authoritative time, regardless of the Client's local machine clock.
  */
 public class TimeUtil {
+    private static final Logger log = LoggerFactory.getLogger(TimeUtil.class);
 
     // The calculated difference in milliseconds between the Server and the Client.
     private static long timeOffset = 0;
@@ -7128,7 +7183,7 @@ public class TimeUtil {
         // Save the offset: how far ahead or behind the server is compared to local time
         timeOffset = estimatedRealServerTime - clientReceiveTime;
 
-        System.out.println("[Time Sync]: Network RTT: " + roundTripTime + "ms | Offset adjusted by " + timeOffset + "ms");
+        log.debug("Network RTT: {}ms | Offset adjusted by {}ms", roundTripTime, timeOffset);
     }
 
     /**
@@ -7390,6 +7445,8 @@ public class AuctionMonitor {
 
 package controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import model.auction.Auction;
 import model.user.Admin;
 import model.user.User;
@@ -7402,6 +7459,7 @@ import static utils.ConsoleColors.*;
  * and verifying user trust levels.
  */
 public class ServerAdminController {
+    private static final Logger log = LoggerFactory.getLogger(ServerAdminController.class);
 
     /**
      * Approves a pending auction request, transitioning its status to OPEN.
@@ -7412,12 +7470,12 @@ public class ServerAdminController {
      */
     public boolean approveAuction(Admin admin, Auction auction) {
         if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
-            System.out.println("[Security]: " + RED + "User does not have approval rights" + RESET);
+            log.warn("User does not have approval rights.");
             return false;
         }
 
         auction.setStatus(Auction.STATUS_OPEN);
-        System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has approved auction \"" + YELLOW + auction.getId() + RESET + "\"");
+        log.info("{} has approved auction {}.", admin.getUserName(), auction.getId());
 
         return true;
     }
@@ -7432,7 +7490,7 @@ public class ServerAdminController {
     public void verifySeller(Admin admin, User user) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             user.setGood(true);
-            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has verified User \"" + YELLOW + user.getName() + RESET + "\" as reputable");
+            log.info("{} has verified {} as reputable", admin.getUserName(), user.getUserName());
         }
     }
 
@@ -7445,7 +7503,7 @@ public class ServerAdminController {
     public void rejectAuctionRequest(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             auction.setStatus(Auction.STATUS_CANCELED);
-            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has rejected the auction request for \"" + YELLOW + auction.getId() + RESET + "\"");
+            log.info("{} has rejected the auction request for {}.", admin.getUserName(), auction.getId());
         }
     }
 
@@ -7459,7 +7517,7 @@ public class ServerAdminController {
     public void forceDeleteAuction(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
             auction.setStatus(Auction.STATUS_DELETED);
-            System.out.println("[System]: Admin \"" + YELLOW + admin.getName() + RESET + "\" has permanently deleted auction \"" + YELLOW + auction.getId() + RESET + "\"");
+            log.info("{} has deleted auction {}.", admin.getUserName(), auction.getId());
         }
     }
 }
@@ -7523,59 +7581,94 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        final User previousWinner;
-        final double previousHighestMaxBid;
-        final BidTransaction newTransaction;
-
-        // 1. Optmistic Locking Approach:
-        // Lock the auction just long enough to validate and update the RAM state.
-        // This avoids holding the lock during slow Database I/O, removing the bottleneck.
-        synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-            previousWinner = auction.getWinningBidder();
-            previousHighestMaxBid = auction.getHighestMaxBid();
-            
-            // Perform validation and update RAM immediately
-            newTransaction = auction.placeBid(currentUser, newMaxBid);
-            
-            if (newTransaction == null) {
-                return CompletableFuture.completedFuture(false); // Validation failed
-            }
-        }
-
-        // 2. Encapsulate DB I/O into a Callable to be processed asynchronously by the Worker thread.
+        // Encapsulate the entire atomic operation (Lock -> DB -> RAM) into a Callable
+        // to be processed asynchronously by the single-threaded TransactionManager.
         Callable<Boolean> bidTask = () -> {
-            try (Connection conn = DatabaseManager.getConnection()) {
-                conn.setAutoCommit(false); // Begin ACID transaction
+            // This entire block is now executed on the single worker thread,
+            // ensuring sequential processing without needing a lock at the controller level.
+            // However, for absolute safety against future changes (e.g., multi-threaded worker),
+            // the lock is acquired here, guaranteeing atomicity for this specific auction.
+            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                
+                // 1. Get current state from RAM for validation and DB transaction.
+                final User previousWinner = auction.getWinningBidder();
+                final double previousHighestMaxBid = auction.getHighestMaxBid();
 
-                try {
-                    // executeBidTransaction handles the complex deduction/refund logic
-                    boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newTransaction.getBidAmount(), auction.getId());
-
-                    if (isDbSuccess) {
-                        conn.commit(); // Finalize all changes
-                        System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
-                        return true;
-                    } else {
-                        System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
-                        conn.rollback();
-                        return false;
-                    }
-
-                } catch (SQLException e) {
-                    conn.rollback();
-                    System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
+                // 2. Perform pre-validation checks that don't modify state
+                if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
+                    System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
                     return false;
                 }
-            } catch (SQLException e) {
-                System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
-                return false;
-            }
+                if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || java.time.LocalDateTime.now().isAfter(auction.getEndTime())) {
+                    System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+                    return false;
+                }
+                double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
+                if (newMaxBid < minRequiredBid) {
+                    System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+                    return false;
+                }
+
+                // 3. Calculate the new current price based on bidding logic
+                double newCurrentPrice;
+                if (previousWinner == null) {
+                    newCurrentPrice = auction.getItem().getStartingPrice();
+                } else if (currentUser.getId().equals(previousWinner.getId())) {
+                    newCurrentPrice = auction.getCurrentPrice(); // Price doesn't change when outbidding self
+                } else {
+                    if (newMaxBid > previousHighestMaxBid) {
+                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > newMaxBid) {
+                            newCurrentPrice = newMaxBid;
+                        }
+                    } else {
+                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > previousHighestMaxBid) {
+                            newCurrentPrice = previousHighestMaxBid;
+                        }
+                    }
+                }
+
+                // 4. Execute DB transaction FIRST
+                try (Connection conn = DatabaseManager.getConnection()) {
+                    conn.setAutoCommit(false); // Begin ACID transaction
+
+                    try {
+                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId());
+
+                        if (isDbSuccess) {
+                            conn.commit(); // Finalize all changes
+                            
+                            // 5. DB Success, now update RAM atomically INSIDE the lock
+                            auction.placeBid(currentUser, newMaxBid);
+                            
+                            System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+                            return true;
+                        } else {
+                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
+                            conn.rollback();
+                            // NO need to revert RAM because we never modified it!
+                            return false;
+                        }
+
+                    } catch (SQLException e) {
+                        conn.rollback();
+                        // NO need to revert RAM because we never modified it!
+                        System.out.println("[Database]: Database TransactionError: " + RED + e.getMessage() + RESET);
+                        return false;
+                    }
+                } catch (SQLException e) {
+                    System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+                    // NO need to revert RAM because we never modified it!
+                    return false;
+                }
+            } // Lock is released here, after both DB and RAM are synced.
         };
 
-        // 3. Submit the task to TransactionManager.
+        // Submit the task to TransactionManager. The result is handled asynchronously.
         return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
             if (finalResult) {
-                // Success: Broadcast updates
+                // Broadcast price update to all connected clients
                 Map<String, Object> updateData = new HashMap<>();
                 updateData.put("auctionId", auction.getId());
                 updateData.put("newPrice", auction.getCurrentPrice());
@@ -7583,22 +7676,15 @@ public class ServerBidderController {
 
                 server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
 
+                // Trigger the auto-bid engine scan if this was a manual bid
                 if (!isBot) {
                     AutoBidEngine.triggerBotScan(auction);
                 }
-            } else {
-                // Failure: Rollback RAM synchronously
-                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                    auction.revertLastBid(previousWinner, previousHighestMaxBid, newTransaction);
-                }
             }
+            // No need for a failure case here, as RAM was never modified if DB failed.
             return finalResult;
         }).exceptionally(ex -> {
             System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
-            // Exception: Rollback RAM synchronously
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                auction.revertLastBid(previousWinner, previousHighestMaxBid, newTransaction);
-            }
             return false;
         });
     }
@@ -8172,6 +8258,8 @@ public class DatabaseManager {
 
 package database;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -8186,6 +8274,7 @@ import static utils.ConsoleColors.*;
  * does not natively support high-concurrency writes.
  */
 public class TransactionManager {
+    private static Logger log = LoggerFactory.getLogger(TransactionManager.class);
 
     /**
      * Thread-safe queue containing database tasks awaiting execution.
@@ -8201,18 +8290,18 @@ public class TransactionManager {
     static {
         // Initialize the dedicated Database Worker Thread
         dbWorker = new Thread(() -> {
-            System.out.println("[Database]: " + GREEN + "Transaction Worker Thread started." + RESET);
+            log.info("Transaction Worker Thread started.");
             while (true) {
                 try {
                     // Block and wait for the next available task in the queue
                     Runnable task = queue.take();
                     task.run();
                 } catch (InterruptedException e) {
-                    System.out.println("[Database]: Worker Thread interrupted.");
+                    log.error("Worker Thread interrupted.");
                     Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
-                    System.out.println("[Database]: " + RED + "Error executing task: " + e.getMessage() + RESET);
+                    log.error("Error executing task: {}", e.getMessage());
                 }
             }
         });
@@ -9132,6 +9221,8 @@ public class MultiThreadedServer {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import database.TransactionManager;
 import model.user.User;
@@ -9151,6 +9242,7 @@ import static utils.ConsoleColors.*;
  * ensuring that only users with the "ADMIN" role can execute these operations.
  */
 public class AdminActionHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
 
     /**
      * Entry point for handling administrative network messages.
@@ -9257,7 +9349,7 @@ public class AdminActionHandler implements CommandHandler {
                     return rows > 0;
                 }
             } catch (Exception e) {
-                System.out.println("[System](AdminActionHandler): Updating approval status failed: " + RED + e.getMessage() + RESET);
+                log.warn("Updating approval status failed: {}", e.getMessage());
                 return false;
             }
         };
@@ -9266,7 +9358,7 @@ public class AdminActionHandler implements CommandHandler {
             if (success) {
                 String msg = newStatus.equals("OPEN") ? "Auction approved" : "Auction declined";
                 client.sendResponse("ADMIN_ACTION_SUCCESS", msg);
-                System.out.println("[System]: Admin \"" + YELLOW + client.getUser().getName() + RESET + "\" has changed the status of " + auctionId + " to " + newStatus);
+                log.info("{} has changed the status of {} to {}", client.getUser().getUserName(), auctionId, newStatus);
             } else {
                 client.sendResponse("ERROR", "Cannot find this auction in database.");
             }
@@ -9284,6 +9376,8 @@ public class AdminActionHandler implements CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.auction.Auction;
 import model.item.Item;
@@ -9304,6 +9398,7 @@ import static utils.ConsoleColors.*;
  * Handles requests from clients to create new auction sessions.
  */
 public class AuctionActionHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(AuctionActionHandler.class);
 
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
@@ -9392,7 +9487,7 @@ public class AuctionActionHandler implements CommandHandler {
                 newAuction.setStatus(Auction.STATUS_RUNNING);
                 AuctionManager.addAuctionToMonitor(newAuction);
 
-                System.out.println("[System]: Seller \"" + YELLOW + authenticatedUser.getName() + RESET + "\" has created an auction.");
+                log.info("{} has created an auction.", authenticatedUser.getUserName());
 
                 String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
                 ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
@@ -9406,7 +9501,7 @@ public class AuctionActionHandler implements CommandHandler {
             }
 
         } catch (Exception e) {
-            System.out.println("[System](AuctionActionHandler): Error parsing creation data: " + RED + e.getMessage() + RESET);
+            log.warn("Error parsing creation data: {}", e.getMessage());
             client.sendResponse("ERROR", "Invalid data format provided for creating auction.");
         }
     }
@@ -9418,6 +9513,8 @@ public class AuctionActionHandler implements CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.user.User;
 import network.NetworkMessage;
@@ -9433,6 +9530,7 @@ import static utils.ConsoleColors.*;
  * to verify credentials and persist new accounts.
  */
 public class AuthHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(AuthHandler.class);
 
     /**
      * Jackson object mapper used to convert generic network data into domain models.
@@ -9471,7 +9569,7 @@ public class AuthHandler implements CommandHandler {
         client.setClientName("#Guest" + ClientHandler.getcNC());
         ClientHandler.incrementcNC();
 
-        System.out.println("[System]: \"" + YELLOW + oldName + RESET + "\" signed out and reverted to " + client.getClientName());
+        log.info("{} signed out and reverted to {}", oldName, client.getClientName());
     }
 
     /**
@@ -9496,7 +9594,7 @@ public class AuthHandler implements CommandHandler {
                 client.sendResponse("LOGIN_FAIL", "Wrong username or password");
             }
         } catch (IllegalArgumentException e) {
-            System.out.println("[Error]: Mapping JSON to User (Login): " + RED + e.getMessage() + RESET);
+            log.warn("Mapping JSON to User (Login): {}", e.getMessage());
             client.sendResponse("ERROR", "Invalid login data");
         }
     }
@@ -9532,7 +9630,7 @@ public class AuthHandler implements CommandHandler {
                 client.sendResponse("REGISTER_FAIL", result);
             }
         } catch (IllegalArgumentException e) {
-            System.out.println("[Error]: Mapping JSON to User (Register): " + RED + e.getMessage() + RESET);
+            log.warn("Mapping JSON to User (Register): {}", e.getMessage());
             client.sendResponse("ERROR", "Invalid register data");
         }
     }
@@ -9544,6 +9642,8 @@ public class AuthHandler implements CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import network.NetworkMessage;
 import server.ClientHandler;
 
@@ -9560,6 +9660,7 @@ import static utils.ConsoleColors.RESET;
  * to the appropriate handler based on the command string.
  */
 public class CommandDispatcher {
+    private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
     /**
      * A registry mapping unique command strings (e.g., "LOGIN", "CREATE_AUCTION")
@@ -9636,12 +9737,12 @@ public class CommandDispatcher {
                 handler.handle(message, client);
             } catch (Exception e) {
                 // Global error handling for unexpected runtime failures during command execution
-                System.out.println("[Error]: Error executing command " + command + ": " + RED + e.getMessage() + RESET);
+                log.error("Error executing command {}: {}", command, e.getMessage());
                 client.sendResponse("ERROR", "Internal server error while processing command");
             }
         } else {
             // Log and notify client of invalid/unsupported commands
-            System.out.println("[Error]: Unrecognized command: " + RED + command + RESET);
+            log.warn("Unrecognized command: {}", command);
             client.sendResponse("ERROR", "Unrecognized command");
         }
     }
@@ -9681,6 +9782,8 @@ public interface CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import database.DatabaseManager;
 import network.NetworkMessage;
 import server.ClientHandler;
@@ -9704,6 +9807,7 @@ import static utils.ConsoleColors.*;
  * including time conversions for countdown timers.
  */
 public class FetchAuctionsHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(FetchAuctionsHandler.class);
 
     /**
      * Processes FETCH_AUCTIONS and FETCH_PENDING_AUCTIONS commands.
@@ -9755,10 +9859,10 @@ public class FetchAuctionsHandler implements CommandHandler {
             }
 
             client.sendResponse("FETCH_AUCTIONS_SUCCESS", activeAuctions);
-            System.out.println("[System]: Sent auction list (" + command + ") to \"" + YELLOW + client.getClientName() + RESET + "\"");
+            log.info("Sent auction list to {}", client.getClientName());
 
         } catch (Exception e) {
-            System.out.println("[System](FetchAuctionHandler): Getting auction list error: " + RED + e.getMessage() + RESET);
+            log.warn("Getting auction list error: {}", e.getMessage());
             client.sendResponse("ERROR", "Cannot load auction list.");
         }
     }
@@ -9770,6 +9874,8 @@ public class FetchAuctionsHandler implements CommandHandler {
 
 package server.handler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import controller.ServerPaymentController;
 import model.user.User;
 import network.NetworkMessage;
@@ -9792,6 +9898,7 @@ import static utils.ConsoleColors.*;
  * It utilizes a background cleanup task to prevent memory leaks from abandoned transactions.
  */
 public class PaymentHandler implements CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(PaymentHandler.class);
 
     /**
      * Service for interacting with the PayPal REST API.
@@ -9845,7 +9952,7 @@ public class PaymentHandler implements CommandHandler {
             }
 
             if (removedCount > 0) {
-                System.out.println("[Payment]: Deleted " + YELLOW + removedCount + RESET + " suspending transactions");
+                log.info("Deleted {} suspending transactions.",  removedCount);
             }
         }, 5, 5, TimeUnit.MINUTES);
     }
@@ -9878,12 +9985,12 @@ public class PaymentHandler implements CommandHandler {
                     handleConfirmDeposit(data, client, currentUser);
                     break;
                 default:
-                    System.out.println("[System](PaymentHandler.java): Invalid payment command: " + RED + command + RESET);
+                    log.warn("Invalid payment command: {}", command);
                     client.sendResponse("ERROR", "Invalid payment command: " + RED + command + RESET);
                     break;
             }
         } catch (Exception e) {
-            System.out.println("[System](PaymentHandler.java): Error: " + RED + e.getMessage() + RESET);
+            log.error("{}", e.getMessage());
             client.sendResponse("ERROR", "Server error: " + e.getMessage());
         }
     }
@@ -9911,8 +10018,7 @@ public class PaymentHandler implements CommandHandler {
             return;
         }
 
-        System.out.println("[System]: Creating deposit order of " + YELLOW + amountVND + RESET + " VND for \""
-                + YELLOW + currentUser.getName() + RESET + "\"");
+        log.info("Creating deposit order of {} VND for {}", amountVND, currentUser.getUserName());
 
         String[] orderInfo = payPalService.createOrder(amountVND);
         String orderId = orderInfo[0];
@@ -10524,6 +10630,8 @@ public class CloudinaryService {
 
 package service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -10542,6 +10650,7 @@ import static utils.ConsoleColors.RED;
 import static utils.ConsoleColors.RESET;
 
 public class PayPalService {
+    private static final Logger log = LoggerFactory.getLogger(PayPalService.class);
     private final String clientId;
     private final String secret;
     private final String baseUrl;
@@ -10659,7 +10768,7 @@ public class PayPalService {
             return "COMPLETED".equals(status);
         }
 
-        System.out.println("[PayPal]: Capture failed: " + RED + response.statusCode() + RESET);
+        log.warn("PayPal Capture failed: {}", response.statusCode());
         return false;
     }
 }
@@ -10670,6 +10779,8 @@ public class PayPalService {
 
 package service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 
 import java.net.URLEncoder;
@@ -10684,6 +10795,7 @@ import static utils.ConsoleColors.RESET;
  * verifying time-sensitive tokens.
  */
 public class TOTPService {
+    private static final Logger log = LoggerFactory.getLogger(TOTPService.class);
 
     /**
      * Internal library instance used for core TOTP logic and key generation.
@@ -10717,7 +10829,7 @@ public class TOTPService {
             String encodedUsername = URLEncoder.encode(username, "UTF-8").replace("+", "%20");
             return "otpauth://totp/" + issuer + ":" + encodedUsername + "?secret=" + secretKey + "&issuer=" + issuer;
         } catch (Exception e) {
-            System.out.println("[Error]: URL Encoding failed: " + RED + e.getMessage() + RESET);
+            log.warn("URL Encoding failed: {}", e.getMessage());
             e.printStackTrace();
             // Fallback to a basic URI if encoding fails
             return "otpauth://totp/AuctionSystem-N7:" + username + "?secret=" + secretKey + "&issuer=AuctionSystem-N7";

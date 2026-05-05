@@ -74,10 +74,10 @@ public class Auction extends Entity {
         this.bidIncrement = bidIncrement;
         this.startTime = startTime;
         this.endTime = endTime;
-        
+
         // Anti-Sniping hard-cap: maximum 30 minutes extension from the initial end time
         this.maxEndTime = endTime.plusMinutes(30);
-        
+
         this.bidHistory = new ArrayList<>();
 
         this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
@@ -178,11 +178,11 @@ public class Auction extends Entity {
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }
-    
+
     public LocalDateTime getMaxEndTime() {
         return maxEndTime;
     }
-    
+
     public void setMaxEndTime(LocalDateTime maxEndTime) {
         this.maxEndTime = maxEndTime;
     }
@@ -271,7 +271,7 @@ public class Auction extends Entity {
         // Anti-Sniping Algorithm with Hard-Cap Limit
         if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
             LocalDateTime proposedEndTime = endTime.plusMinutes(2);
-            
+
             // Ensure the new end time NEVER exceeds the hard-cap maxEndTime
             if (proposedEndTime.isAfter(maxEndTime)) {
                 endTime = maxEndTime;
@@ -310,7 +310,7 @@ public class Auction extends Entity {
             // The currentPrice should be the bidAmount of the last valid transaction
             this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
         }
-        
+
         System.out.println(YELLOW + "[System]: RAM State Reverted to Previous Winner: " + (previousWinner != null ? previousWinner.getUserName() : "None") + RESET);
     }
 

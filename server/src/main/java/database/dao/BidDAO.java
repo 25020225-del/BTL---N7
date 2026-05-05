@@ -9,71 +9,57 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 
 public class BidDAO {
+    private final WalletDAO walletDAO = new WalletDAO();
 
     public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, double newCurrentPrice, String auctionId) throws SQLException {
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
-        String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
 
         if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
             // Case 1: User is outbidding themselves. Only deduct the difference.
             double amountToDeduct = newMaxBid - previousHighestMaxBid;
             if (amountToDeduct > 0) {
-                String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
-                try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
-                    pstmt.setDouble(1, amountToDeduct);
-                    pstmt.setString(2, currentUser.getId());
-                    pstmt.setDouble(3, amountToDeduct);
-                    if (pstmt.executeUpdate() == 0) return false; // Insufficient balance
-                }
+                if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return false; // Insufficient balance
+
                 // Log the incremental withdrawal
-                try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                    pstmt.setString(1, "W-INC-" + System.currentTimeMillis());
-                    pstmt.setString(2, currentUser.getId());
-                    pstmt.setDouble(3, -amountToDeduct);
-                    pstmt.setString(4, "Incremental auction bid for session: " + auctionId);
-                    pstmt.setString(5, now);
-                    pstmt.executeUpdate();
-                }
+                walletDAO.addTransaction(
+                        conn,
+                        "W-INC-" + System.currentTimeMillis(),
+                        currentUser.getId(),
+                        -amountToDeduct,
+                        "Incremental auction bid for session: " + auctionId,
+                        now
+                );
             }
         } else {
             // Case 2: A new user is bidding.
             // Refund previous winner
             if (previousWinner != null) {
-                String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
-                try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
-                    pstmt.setDouble(1, previousHighestMaxBid);
-                    pstmt.setString(2, previousWinner.getId());
-                    pstmt.executeUpdate();
-                }
+                walletDAO.updateBalance(conn, previousWinner.getId(), previousHighestMaxBid);
+
                 // Log the refund
-                try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                    pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
-                    pstmt.setString(2, previousWinner.getId());
-                    pstmt.setDouble(3, previousHighestMaxBid);
-                    pstmt.setString(4, "Refund for being outbid in session: " + auctionId);
-                    pstmt.setString(5, now);
-                    pstmt.executeUpdate();
-                }
+                walletDAO.addTransaction(
+                        conn,
+                        "W-REF-" + System.currentTimeMillis(),
+                        previousWinner.getId(),
+                        previousHighestMaxBid,
+                        "Refund for being outbid in session: " + auctionId,
+                        now
+                );
             }
 
             // Deduct full amount from new bidder
-            String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
-                pstmt.setDouble(1, newMaxBid);
-                pstmt.setString(2, currentUser.getId());
-                pstmt.setDouble(3, newMaxBid);
-                if (pstmt.executeUpdate() == 0) return false; // Insufficient balance
-            }
+            if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid)) return false; // Insufficient balance
+
             // Log the full withdrawal
-            try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
-                pstmt.setString(2, currentUser.getId());
-                pstmt.setDouble(3, -newMaxBid);
-                pstmt.setString(4, "Auction bid placed for session: " + auctionId);
-                pstmt.setString(5, now);
-                pstmt.executeUpdate();
-            }
+            walletDAO.addTransaction(
+                    conn,
+                    "W-OUT-" + System.currentTimeMillis(),
+                    currentUser.getId(),
+                    -newMaxBid,
+                    "Auction bid placed for session: " + auctionId,
+                    now
+            );
         }
 
         // STEP 2: Record the bid history
