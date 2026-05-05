@@ -1,6 +1,5 @@
 package gui;
 
-import com.sun.source.tree.ParenthesizedTree;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.process.ImageCompressor;
