@@ -5733,30 +5733,6 @@ public class Auction extends Entity {
     }
 
     /**
-     * Reverts the last placed bid. This is typically used to roll back the in-memory
-     * state if the corresponding database transaction fails.
-     *
-     * @param previousWinner The user who was winning before the failed bid.
-     * @param previousHighestMaxBid The highest max bid before the failed bid.
-     */
-    public synchronized void revertLastBid(User previousWinner, double previousHighestMaxBid) {
-        if (!bidHistory.isEmpty()) {
-            bidHistory.remove(bidHistory.size() - 1);
-        }
-        
-        this.winningBidder = previousWinner;
-        this.highestMaxBid = previousHighestMaxBid;
-        
-        if (previousWinner == null) {
-            this.currentPrice = item.getStartingPrice();
-        } else if (!bidHistory.isEmpty()) {
-            this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
-        } else {
-            this.currentPrice = item.getStartingPrice();
-        }
-    }
-
-    /**
      * Returns a summary string containing the core details of this auction session.
      *
      * @return Formatted information string.
@@ -7053,6 +7029,11 @@ public class AuctionMonitor {
                 allAuctions.remove(auction);
                 AuctionManager.removeAuctionLock(auction.getId());
 
+                // Trigger financial settlement if the auction finished successfully
+                if (status.equals(Auction.STATUS_FINISHED)) {
+                    processFinancialSettlement(auction);
+                }
+
                 // Persist the closed status to the SQLite Database asynchronously
                 Callable<Boolean> dbUpdateTask = () -> {
                     try {
@@ -7077,9 +7058,71 @@ public class AuctionMonitor {
      * and transfers the final closing price to the seller's wallet.
      */
     private void processFinancialSettlement(Auction auction) {
-        // Viết logic cộng tiền (currentPrice) cho auction.getSeller()
-        // Viết logic hoàn tiền (highestMaxBid - currentPrice) cho auction.getWinningBidder()
-        // Thông qua TransactionManager để đảm bảo tính ACID
+        if (auction.getWinningBidder() == null) {
+            return; // No winner, no settlement needed
+        }
+
+        Callable<Boolean> settlementTask = () -> {
+            String updateWalletSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
+            String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
+            String now = LocalDateTime.now().toString();
+
+            try (Connection conn = DatabaseManager.getConnection()) {
+                conn.setAutoCommit(false); // Start ACID transaction
+
+                try {
+                    // 1. Pay the seller the final auction price
+                    double sellerPayment = auction.getCurrentPrice();
+                    try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
+                        pstmt.setDouble(1, sellerPayment);
+                        pstmt.setString(2, auction.getSeller().getId());
+                        pstmt.executeUpdate();
+                    }
+
+                    try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+                        pstmt.setString(1, "W-IN-" + System.currentTimeMillis());
+                        pstmt.setString(2, auction.getSeller().getId());
+                        pstmt.setDouble(3, sellerPayment);
+                        pstmt.setString(4, "Payment received for completed auction: " + auction.getId());
+                        pstmt.setString(5, now);
+                        pstmt.executeUpdate();
+                    }
+
+                    // 2. Refund the winning bidder for the excess locked amount
+                    double refundAmount = auction.getHighestMaxBid() - auction.getCurrentPrice();
+                    if (refundAmount > 0) {
+                        try (PreparedStatement pstmt = conn.prepareStatement(updateWalletSql)) {
+                            pstmt.setDouble(1, refundAmount);
+                            pstmt.setString(2, auction.getWinningBidder().getId());
+                            pstmt.executeUpdate();
+                        }
+
+                        try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+                            pstmt.setString(1, "W-REF-" + (System.currentTimeMillis() + 1)); // +1 to ensure unique ID
+                            pstmt.setString(2, auction.getWinningBidder().getId());
+                            pstmt.setDouble(3, refundAmount);
+                            pstmt.setString(4, "Refund for excess max bid on auction: " + auction.getId());
+                            pstmt.setString(5, now);
+                            pstmt.executeUpdate();
+                        }
+                    }
+
+                    conn.commit(); // Finalize changes
+                    System.out.println("[System]: Financial settlement completed for auction " + YELLOW + auction.getId() + RESET);
+                    return true;
+
+                } catch (Exception e) {
+                    conn.rollback(); // Rollback if any error occurs
+                    System.out.println("[Database]: Error during financial settlement: " + RED + e.getMessage() + RESET);
+                    return false;
+                }
+            } catch (Exception e) {
+                System.out.println("[Database]: Connection error during settlement: " + RED + e.getMessage() + RESET);
+                return false;
+            }
+        };
+
+        TransactionManager.submitTask(settlementTask);
     }
 
     /**
@@ -7113,7 +7156,6 @@ public class AuctionMonitor {
         System.out.println("[System]: " + YELLOW + " Auction monitor has been shutdown." + RESET);
     }
 }
-
 
 ======================================================================
 /// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\controller\ServerAdminController.java ///
@@ -7211,6 +7253,7 @@ import service.AutoBidEngine;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -7258,46 +7301,81 @@ public class ServerBidderController {
         // and pushed to the database transaction queue at a time.
         synchronized (AuctionManager.getLockForAuction(auction.getId())) {
 
-            User previousWinner = auction.getWinningBidder();
-            double amountToRefund = auction.getHighestMaxBid();
+            // 1. Get current state from RAM for validation and DB transaction.
+            // Declared as final to be safely used inside the lambda.
+            final User previousWinner = auction.getWinningBidder();
+            final double previousHighestMaxBid = auction.getHighestMaxBid();
 
-            // Validate auction logic in RAM before hitting the database
-            boolean isRamSuccess = auction.placeBid(currentUser, newMaxBid);
-            if (!isRamSuccess) {
-                return CompletableFuture.completedFuture(false); // Bid is invalid (e.g., too low, auction closed)
+            // 2. Perform pre-validation checks that don't modify state
+            if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
+                System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
+                return CompletableFuture.completedFuture(false);
+            }
+            if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || LocalDateTime.now().isAfter(auction.getEndTime())) {
+                System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
+                return CompletableFuture.completedFuture(false);
+            }
+            double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
+            if (newMaxBid < minRequiredBid) {
+                System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
+                return CompletableFuture.completedFuture(false);
             }
 
             // Encapsulate the transaction logic into a task for the database worker thread
             Callable<Boolean> bidTask = () -> {
+                
+                // 3. Calculate the new current price based on bidding logic inside the lambda.
+                double newCurrentPrice;
+                if (previousWinner == null) {
+                    newCurrentPrice = auction.getItem().getStartingPrice();
+                } else if (currentUser.getId().equals(previousWinner.getId())) {
+                    newCurrentPrice = auction.getCurrentPrice(); // Price doesn't change when outbidding self
+                } else {
+                    if (newMaxBid > previousHighestMaxBid) {
+                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > newMaxBid) {
+                            newCurrentPrice = newMaxBid;
+                        }
+                    } else {
+                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
+                        if (newCurrentPrice > previousHighestMaxBid) {
+                            newCurrentPrice = previousHighestMaxBid;
+                        }
+                    }
+                }
+
                 try (Connection conn = DatabaseManager.getConnection()) {
                     conn.setAutoCommit(false); // Begin ACID transaction
 
                     try {
-                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, auction, newMaxBid, previousWinner, amountToRefund);
+                        // 4. Execute DB transaction FIRST
+                        boolean isDbSuccess = bidDAO.executeBidTransaction(conn, currentUser, newMaxBid, previousWinner, previousHighestMaxBid, newCurrentPrice, auction.getId());
 
                         if (isDbSuccess) {
                             conn.commit(); // Finalize all changes
+                            
+                            // 5. DB Success, now update RAM atomically
+                            // We call placeBid here because we know the DB is fully synced
+                            auction.placeBid(currentUser, newMaxBid);
+                            
                             System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
                             return true;
                         } else {
                             System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance");
                             conn.rollback();
-                            // Revert the bid placement in RAM as the DB transaction failed
-                            auction.revertLastBid(previousWinner, amountToRefund);
+                            // NO need to revert RAM because we never modified it!
                             return false;
                         }
 
                     } catch (SQLException e) {
                         conn.rollback();
-                        // Revert the bid placement in RAM as the DB transaction failed
-                        auction.revertLastBid(previousWinner, amountToRefund);
+                        // NO need to revert RAM because we never modified it!
                         System.out.println("[Database]: Database Transaction Error: " + RED + e.getMessage() + RESET);
                         return false;
                     }
                 } catch (SQLException e) {
                     System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
-                    // Revert the bid placement in RAM as the DB connection failed
-                    auction.revertLastBid(previousWinner, amountToRefund);
+                    // NO need to revert RAM because we never modified it!
                     return false;
                 }
             };
@@ -7321,8 +7399,6 @@ public class ServerBidderController {
                 return finalResult;
             }).exceptionally(ex -> {
                 System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
-                // Revert the bid placement in RAM as the task execution entirely failed
-                auction.revertLastBid(previousWinner, amountToRefund);
                 return false;
             });
         }
@@ -7375,7 +7451,6 @@ public class ServerBidderController {
         }
     }
 }
-
 
 ======================================================================
 /// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\controller\ServerPaymentController.java ///
@@ -8124,66 +8199,88 @@ import java.time.LocalDateTime;
 
 public class BidDAO {
 
-    public boolean executeBidTransaction(Connection conn, User currentUser, Auction auction, double newMaxBid, User previousWinner, double amountToRefund) throws SQLException {
-        // STEP 1: Atomic wallet deduction with balance check
-        String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
-        try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
-            pstmt.setDouble(1, newMaxBid);
-            pstmt.setString(2, currentUser.getId());
-            pstmt.setDouble(3, newMaxBid);
-            if (pstmt.executeUpdate() == 0) {
-                return false; // Insufficient balance
-            }
-        }
-
-        // STEP 2: Log the withdrawal transaction
+    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, double newCurrentPrice, String auctionId) throws SQLException {
+        // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
         String insertTxnSql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-            pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
-            pstmt.setString(2, currentUser.getId());
-            pstmt.setDouble(3, -newMaxBid);
-            pstmt.setString(4, "Auction bid placed for session: " + auction.getId());
-            pstmt.setString(5, now);
-            pstmt.executeUpdate();
-        }
 
-        // STEP 3: Refund the previous winner (if not the same user)
-        if (previousWinner != null && !previousWinner.getId().equals(currentUser.getId())) {
-            String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
-                pstmt.setDouble(1, amountToRefund);
-                pstmt.setString(2, previousWinner.getId());
-                pstmt.executeUpdate();
+        if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
+            // Case 1: User is outbidding themselves. Only deduct the difference.
+            double amountToDeduct = newMaxBid - previousHighestMaxBid;
+            if (amountToDeduct > 0) {
+                String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
+                    pstmt.setDouble(1, amountToDeduct);
+                    pstmt.setString(2, currentUser.getId());
+                    pstmt.setDouble(3, amountToDeduct);
+                    if (pstmt.executeUpdate() == 0) return false; // Insufficient balance
+                }
+                // Log the incremental withdrawal
+                try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+                    pstmt.setString(1, "W-INC-" + System.currentTimeMillis());
+                    pstmt.setString(2, currentUser.getId());
+                    pstmt.setDouble(3, -amountToDeduct);
+                    pstmt.setString(4, "Incremental auction bid for session: " + auctionId);
+                    pstmt.setString(5, now);
+                    pstmt.executeUpdate();
+                }
+            }
+        } else {
+            // Case 2: A new user is bidding.
+            // Refund previous winner
+            if (previousWinner != null) {
+                String refundSql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(refundSql)) {
+                    pstmt.setDouble(1, previousHighestMaxBid);
+                    pstmt.setString(2, previousWinner.getId());
+                    pstmt.executeUpdate();
+                }
+                // Log the refund
+                try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
+                    pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
+                    pstmt.setString(2, previousWinner.getId());
+                    pstmt.setDouble(3, previousHighestMaxBid);
+                    pstmt.setString(4, "Refund for being outbid in session: " + auctionId);
+                    pstmt.setString(5, now);
+                    pstmt.executeUpdate();
+                }
             }
 
-            // Log the refund transaction
+            // Deduct full amount from new bidder
+            String deductWalletSql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(deductWalletSql)) {
+                pstmt.setDouble(1, newMaxBid);
+                pstmt.setString(2, currentUser.getId());
+                pstmt.setDouble(3, newMaxBid);
+                if (pstmt.executeUpdate() == 0) return false; // Insufficient balance
+            }
+            // Log the full withdrawal
             try (PreparedStatement pstmt = conn.prepareStatement(insertTxnSql)) {
-                pstmt.setString(1, "W-REF-" + System.currentTimeMillis());
-                pstmt.setString(2, previousWinner.getId());
-                pstmt.setDouble(3, amountToRefund);
-                pstmt.setString(4, "Refund for price overrun during session: " + auction.getId());
+                pstmt.setString(1, "W-OUT-" + System.currentTimeMillis());
+                pstmt.setString(2, currentUser.getId());
+                pstmt.setDouble(3, -newMaxBid);
+                pstmt.setString(4, "Auction bid placed for session: " + auctionId);
                 pstmt.setString(5, now);
                 pstmt.executeUpdate();
             }
         }
 
-        // STEP 4: Record the bid history
+        // STEP 2: Record the bid history
         String bidLogSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(bidLogSql)) {
             pstmt.setString(1, "BID-" + System.currentTimeMillis());
-            pstmt.setString(2, auction.getId());
+            pstmt.setString(2, auctionId);
             pstmt.setString(3, currentUser.getId());
-            pstmt.setDouble(4, auction.getCurrentPrice());
+            pstmt.setDouble(4, newCurrentPrice);
             pstmt.setString(5, now);
             pstmt.executeUpdate();
         }
 
-        // STEP 5: Update auction current price
+        // STEP 3: Update auction's current price in DB
         String updateAuctionSql = "UPDATE auctions SET current_price = ? WHERE id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
-            pstmt.setDouble(1, auction.getCurrentPrice());
-            pstmt.setString(2, auction.getId());
+            pstmt.setDouble(1, newCurrentPrice);
+            pstmt.setString(2, auctionId);
             pstmt.executeUpdate();
         }
 
@@ -8203,7 +8300,6 @@ public class BidDAO {
         }
     }
 }
-
 
 ======================================================================
 /// FILE: D:\tailieuhoctap\laptrinhnangcao\th\btl\BTL---N7\server\src\main\java\database\dao\UserDAO.java ///

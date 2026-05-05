@@ -1,5 +1,6 @@
 package gui;
 
+import client.handler.AuctionEventBus;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.process.ImageUtil;
@@ -64,6 +65,25 @@ public class ItemDetailController {
     public void initialize() {
         System.out.println("[System]: Item Detail View Initialized.");
         setupChart();
+
+        // Subscribe to the global Event Bus for real-time price updates
+        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, evt -> {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) evt.getNewValue();
+            
+            String auctionId = (String) data.get("auctionId");
+            
+            // Only update the UI if the event belongs to the currently viewed auction
+            if (this.currentAuctionId != null && this.currentAuctionId.equals(auctionId)) {
+                double newPrice = ((Number) data.get("newPrice")).doubleValue();
+                String winnerName = (String) data.get("winnerName");
+
+                // Ensure UI modifications happen on the JavaFX Application Thread
+                Platform.runLater(() -> {
+                    updateRealTimePrice(newPrice, winnerName);
+                });
+            }
+        });
     }
 
     /**
@@ -136,24 +156,21 @@ public class ItemDetailController {
     }
 
     /**
-     * Triggered by the global ResponseDispatcher when a new bid is placed.
+     * Triggered internally by the Event Bus listener when a new bid is placed.
      * Updates the local UI dynamically.
      *
      * @param newPrice   The newly established price.
      * @param winnerName The username of the user who placed the bid.
      */
-    public void updateRealTimePrice(double newPrice, String winnerName) {
-        // Ensure UI updates run on the JavaFX Application Thread
-        Platform.runLater(() -> {
-            lblCurrentPrice.setText(String.format("%,.0f VND", newPrice));
-            lblLeader.setText(winnerName);
+    private void updateRealTimePrice(double newPrice, String winnerName) {
+        lblCurrentPrice.setText(String.format("%,.0f VND", newPrice));
+        lblLeader.setText(winnerName);
 
-            // Add a new dynamic node to the line chart
-            addPointToChart(newPrice);
+        // Add a new dynamic node to the line chart
+        addPointToChart(newPrice);
 
-            // Add an engaging visual highlight effect to the price label
-            gui.process.AnimateEffect.highlightText(lblCurrentPrice);
-        });
+        // Add an engaging visual highlight effect to the price label
+        gui.process.AnimateEffect.highlightText(lblCurrentPrice);
     }
 
     /**
