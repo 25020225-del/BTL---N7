@@ -37,7 +37,7 @@ public class BidDAO {
      *
      * @return a {@link BidCommitResult} on success, or {@code null} if validation fails or optimistic lock conflicts.
      */
-    public BidCommitResult executeBidTransactionSourceOfTruth(Connection conn, String auctionId, User currentUser, double newMaxBid) throws SQLException {
+    public BidCommitResult executeBidTransactionSourceOfTruth(Connection conn, String auctionId, User currentUser, double newMaxBid, double expectedCurrentPrice) throws SQLException {
         String selectSql = "SELECT starting_price, current_price, highest_max_bid, bid_increment, end_time, status, winning_bidder_id " +
                 "FROM auctions WHERE id = ?";
 
@@ -57,6 +57,9 @@ public class BidDAO {
                 }
                 startingPrice = rs.getDouble("starting_price");
                 currentPrice = rs.getDouble("current_price");
+                if (Double.compare(currentPrice, expectedCurrentPrice) != 0) {
+                    return null;
+                }
                 highestMaxBid = rs.getDouble("highest_max_bid");
                 bidIncrement = rs.getDouble("bid_increment");
                 endTime = LocalDateTime.parse(rs.getString("end_time"));

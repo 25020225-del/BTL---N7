@@ -63,6 +63,8 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
+        double expectedPrice = auction.getCurrentPrice();
+
         // 1. Wrap the entire process into a Callable task
         Callable<Boolean> bidTask = () -> {
             // DB is the single source of truth. Do NOT lock RAM while doing DB I/O.
@@ -70,7 +72,7 @@ public class ServerBidderController {
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
-                    commitResult = bidDAO.executeBidTransactionSourceOfTruth(conn, auction.getId(), currentUser, newMaxBid);
+                    commitResult = bidDAO.executeBidTransactionSourceOfTruth(conn, auction.getId(), currentUser, newMaxBid, expectedPrice);
 
                     if (commitResult != null) {
                         conn.commit();
