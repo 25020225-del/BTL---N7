@@ -1,20 +1,17 @@
 package server.handler;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.AuctionDAO;
 import model.auction.Auction;
 import model.user.User;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
-
-import static utils.ConsoleColors.*;
 
 /**
  * Handles administrative commands sent by clients.
@@ -58,7 +55,7 @@ public class AdminActionHandler implements CommandHandler {
             client.sendResponse("ERROR", "You do not have permission to perform this command.");
             return;
         }
-        
+
         // Cast to model.user.Admin if needed for controller calls
         model.user.Admin admin = new model.user.Admin(adminUser);
 
@@ -131,9 +128,9 @@ public class AdminActionHandler implements CommandHandler {
                         }
                         newStart = now;
                         newEnd = now.plusMinutes(duration);
-                        System.out.println("[System]: Admin approved late or immediate start. Recalculated new start time to NOW.");
+                        log.info("Admin approved late or immediate start. Recalculated new start time to NOW.");
                     } else {
-                        System.out.println("[System]: Admin approved early for a future scheduled auction. Kept original times.");
+                        log.info("Admin approved early for a future scheduled auction. Kept original times.");
                     }
                 }
 
@@ -160,7 +157,7 @@ public class AdminActionHandler implements CommandHandler {
                         Auction auction = auctionDAO.getAuctionById(auctionId);
                         if (auction != null) {
                             AuctionManager.addAuctionToMonitor(auction);
-                            System.out.println("[System]: Auction " + auctionId + " added to RAM monitor after Admin approval.");
+                            log.info("Auction {} added to RAM monitor after Admin approval.", auctionId);
                         }
                     } catch (Exception e) {
                         log.error("Failed to load approved auction into RAM: {}", e.getMessage());

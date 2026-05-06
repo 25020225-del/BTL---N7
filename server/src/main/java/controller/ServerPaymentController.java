@@ -4,6 +4,8 @@ import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.WalletDAO;
 import model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -11,14 +13,14 @@ import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Controller responsible for handling financial payment operations on the server side.
  * It primarily manages balance deposits and ensures that wallet updates and
  * transaction logging are performed atomically through the {@link TransactionManager}.
  */
 public class ServerPaymentController {
+    private static final Logger log = LoggerFactory.getLogger(ServerPaymentController.class);
+
     private final WalletDAO walletDAO;
 
     /**
@@ -45,7 +47,7 @@ public class ServerPaymentController {
             double verifiedAmount = verifyPayPalTransaction(payPalOrderId);
 
             if (verifiedAmount <= 0) {
-                System.out.println("[Security]: " + RED + "Payment verification failed for Order ID: " + payPalOrderId + RESET);
+                log.warn("Payment verification failed for Order ID: {}", payPalOrderId);
                 return false;
             }
 
@@ -69,16 +71,16 @@ public class ServerPaymentController {
                     );
 
                     conn.commit(); // Commit all changes as an atomic unit
-                    System.out.println("[System]: \"" + YELLOW + user.getName() + RESET + "\" has deposited " + GREEN + verifiedAmount + RESET + " VND (Verified)");
+                    log.info("{} has deposited {} VND (Verified).", user.getUserName(), verifiedAmount);
                     return true;
 
                 } catch (SQLException e) {
                     conn.rollback(); // Undo changes if any step fails
-                    System.out.println("[Database]: Deposit update error: " + RED + e.getMessage() + RESET);
+                    log.error("Deposit update error: {}", e.getMessage());
                     return false;
                 }
             } catch (SQLException e) {
-                System.out.println("[Database]: Lost connection to database: " + RED + e.getMessage() + RESET);
+                log.error("Lost connection to database: {}", e.getMessage());
                 return false;
             }
         };

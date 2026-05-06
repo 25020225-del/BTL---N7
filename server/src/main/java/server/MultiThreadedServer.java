@@ -25,7 +25,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RESET;
+import static utils.ConsoleColors.YELLOW;
 
 /**
  * The core entry point for the N7 Auction System Server.
@@ -98,7 +99,7 @@ public class MultiThreadedServer {
             if (responseCode == 200) {
                 log.debug("New IP - Port (JSON-Bin) synced: {}:{}", currentIp, currentPort);
             } else {
-                log.error(""+responseCode);
+                log.error("" + responseCode);
             }
         } catch (Exception e) {
             log.error("Connection error: {}", e.getMessage());
@@ -280,7 +281,7 @@ public class MultiThreadedServer {
 
         // 4. Initialize Command Dispatcher with all required dependencies
         commandDispatcher = new server.handler.CommandDispatcher(
-                userDAO, auctionDAO, bidDAO, walletDAO, 
+                userDAO, auctionDAO, bidDAO, walletDAO,
                 totpService, sellerCtrl, paymentCtrl
         );
 
