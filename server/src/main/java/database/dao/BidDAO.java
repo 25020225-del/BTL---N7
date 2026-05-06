@@ -37,7 +37,15 @@ public class BidDAO {
      *
      * @return a {@link BidCommitResult} on success, or {@code null} if validation fails or optimistic lock conflicts.
      */
-    public BidCommitResult executeBidTransactionSourceOfTruth(Connection conn, String auctionId, User currentUser, double newMaxBid, double expectedCurrentPrice) throws SQLException {
+    public BidCommitResult executeBidTransactionSourceOfTruth(
+            Connection conn,
+            String auctionId,
+            User currentUser,
+            double newMaxBid,
+            double expectedPrice,
+            double expectedMaxBid,
+            String expectedWinnerId
+    ) throws SQLException {
         String selectSql = "SELECT starting_price, current_price, highest_max_bid, bid_increment, end_time, status, winning_bidder_id " +
                 "FROM auctions WHERE id = ?";
 
@@ -57,15 +65,18 @@ public class BidDAO {
                 }
                 startingPrice = rs.getDouble("starting_price");
                 currentPrice = rs.getDouble("current_price");
-                if (Double.compare(currentPrice, expectedCurrentPrice) != 0) {
-                    return null;
-                }
                 highestMaxBid = rs.getDouble("highest_max_bid");
                 bidIncrement = rs.getDouble("bid_increment");
                 endTime = LocalDateTime.parse(rs.getString("end_time"));
                 status = rs.getString("status");
                 winningBidderId = rs.getString("winning_bidder_id"); // nullable
             }
+        }
+
+        if (Double.compare(currentPrice, expectedPrice) != 0 ||
+                Double.compare(highestMaxBid, expectedMaxBid) != 0 ||
+                (winningBidderId == null ? expectedWinnerId != null : !winningBidderId.equals(expectedWinnerId))) {
+            return null; // Trạng thái đã bị luồng khác thay đổi, Optimistic lock fail
         }
 
         // Build a minimal Auction snapshot for Model-calculation (MVC-compliant: core rules remain in Model).

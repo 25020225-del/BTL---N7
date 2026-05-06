@@ -63,7 +63,14 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        double expectedPrice = auction.getCurrentPrice();
+        double expectedPrice;
+        double expectedMaxBid;
+        String expectedWinnerId;
+        synchronized (server.ServerExtension.AuctionManager.getLockForAuction(auction.getId())) {
+            expectedPrice = auction.getCurrentPrice();
+            expectedMaxBid = auction.getHighestMaxBid();
+            expectedWinnerId = auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : null;
+        }
 
         // 1. Wrap the entire process into a Callable task
         Callable<Boolean> bidTask = () -> {
@@ -72,7 +79,15 @@ public class ServerBidderController {
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
-                    commitResult = bidDAO.executeBidTransactionSourceOfTruth(conn, auction.getId(), currentUser, newMaxBid, expectedPrice);
+                    commitResult = bidDAO.executeBidTransactionSourceOfTruth(
+                            conn,
+                            auction.getId(),
+                            currentUser,
+                            newMaxBid,
+                            expectedPrice,
+                            expectedMaxBid,
+                            expectedWinnerId
+                    );
 
                     if (commitResult != null) {
                         conn.commit();

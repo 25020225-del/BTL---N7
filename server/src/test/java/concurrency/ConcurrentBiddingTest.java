@@ -40,25 +40,27 @@ class ConcurrentBiddingTest {
         BidDAO bidDAO = new BidDAO();
         ServerBidderController controller = new ServerBidderController(bidDAO);
 
+        String runId = "T1-" + System.currentTimeMillis();
+
         // --- Arrange: create seller + 10 bidders with sufficient balance ---
         User seller = new User();
-        seller.setId("SELLER-T1");
-        seller.setUserName("seller");
+        seller.setId("SELLER-" + runId);
+        seller.setUserName("seller-" + runId);
 
         Item item = new Item();
-        item.setId("ITEM-T1");
+        item.setId("ITEM-" + runId);
         item.setItemName("Test Item");
         item.setStartingPrice(1000.0);
 
         LocalDateTime now = LocalDateTime.now().minusSeconds(5);
-        Auction auction = new Auction("AUC-T1", item, seller, 50.0, now, now.plusMinutes(10));
+        Auction auction = new Auction("AUC-" + runId, item, seller, 50.0, now, now.plusMinutes(10));
         auction.setStatus(Auction.STATUS_RUNNING);
 
         List<User> bidders = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             User u = new User();
-            u.setId("BIDDER-T1-" + i);
-            u.setUserName("bidder" + i);
+            u.setId("BIDDER-" + runId + "-" + i);
+            u.setUserName("bidder-" + runId + "-" + i);
             u.setName("Bidder " + i);
             bidders.add(u);
         }
@@ -97,11 +99,7 @@ class ConcurrentBiddingTest {
         }
 
         // Ensure auction exists in DB (after users exist)
-        try {
-            auctionDAO.addAuction(auction);
-        } catch (SQLException ignored) {
-            // If rerun and already exists, ignore.
-        }
+        assertTrue(auctionDAO.addAuction(auction), "Test requires inserting a fresh auction row");
 
         // --- Act: 10 concurrent bids all trying to set the same max bid ---
         ExecutorService exec = Executors.newFixedThreadPool(10);
