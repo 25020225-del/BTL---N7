@@ -11,12 +11,12 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<VBox prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.WalletController">
     <children>
         <HBox alignment="CENTER_LEFT" spacing="10.0">
             <children>
-                <Button mnemonicParsing="false" onAction="#handleReturn" style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại" />
-                <Label text="Ma Wallet">
+                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại" />
+                <Label text="MY WALLET">
                     <font><Font name="System Bold" size="24.0" /></font>
                 </Label>
             </children>
@@ -27,7 +27,7 @@
                 <VBox prefWidth="350.0" styleClass="balance-card" HBox.hgrow="ALWAYS">
                     <children>
                         <Label style="-fx-opacity: 0.8;" text="Số dư khả dụng" />
-                        <Label fx:id="lblTotalBalance" text="0.00">
+                        <Label fx:id="lblTotalBalance" text="0 N VND">
                             <font><Font name="System Bold" size="36.0" /></font>
                         </Label>
                         <Separator opacity="0.2">
@@ -46,18 +46,18 @@
                     </children>
                 </VBox>
 
-                <VBox prefWidth="400.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;" styleClass="product-card" HBox.hgrow="ALWAYS">
+                <VBox prefHeight="217.0" prefWidth="443.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;" styleClass="product-card" HBox.hgrow="ALWAYS">
                     <children>
-                        <Label text="Nạp ">
+                        <Label text="Nạp">
                             <font><Font name="System Bold" size="16.0" /></font>
                         </Label>
-                        <TextField fx:id="txtDepositAmount" prefHeight="40.0" promptText="Nhập số tiền ($)" />
+                        <TextField fx:id="txtDepositAmount" prefHeight="40.0" promptText="Nhập số tiền (N VND)" />
                         <HBox spacing="10.0">
                             <children>
-                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$10" />
-                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$50" />
-                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$100" />
-                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="\$500" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="+10 N VND" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="+50 N VND" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="+100 N VND" />
+                                <Button onAction="#addQuickAmount" styleClass="quick-amount-btn" text="+500 N VND" />
                             </children>
                         </HBox>
                         <Button maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="NẠP TIỀN NGAY" />

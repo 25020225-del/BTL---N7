@@ -1,5 +1,7 @@
 package gui;
 
+import javafx.scene.Scene;
+import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +20,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.*;
 import model.user.User;
 
+import javafx.event.ActionEvent;
 import java.io.IOException;
 
 /**
@@ -201,5 +204,35 @@ public class ClientAdminController {
         setMainDock();
         setMainViewController();
         log.info("Admin view initialized successfully.");
+    }
+
+    @FXML
+    private void handleManageUsers(ActionEvent event) {
+        try {
+
+            Parent userView = FXMLLoader.load(getClass().getResource("/gui/UsersManagement.fxml"));
+            Scene scene = new Scene(userView);
+
+            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            stage.setScene(scene);
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void handleBackToDashboard(ActionEvent event) {
+        try {
+            Parent adminView = FXMLLoader.load(getClass().getResource("/gui/AdminView.fxml"));
+            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            stage.setScene(new Scene(adminView));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void handleBanUser() {
+        // Chỗ code logic ban users
     }
 }

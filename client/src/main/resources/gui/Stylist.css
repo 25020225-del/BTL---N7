@@ -142,7 +142,7 @@
     -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 5, 0, 0, 2);
 }
 
-/* Nút Bán hàng
+/* Nút Bán hàng*/
 .button-sell {
     -fx-background-color: transparent;
     -fx-border-color: #3665f3;
@@ -162,4 +162,74 @@
     -fx-padding: 30;
     -fx-background-radius: 10;
     -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.1), 10, 0, 0, 5);
+}
+/* Thẻ hiển thị số dư lớn */
+.balance-card {
+    -fx-background-color: linear-gradient(to right, #3665f3, #2b50c7);
+    -fx-background-radius: 15;
+    -fx-padding: 25;
+    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.3), 10, 0, 0, 5);
+}
+
+.balance-card .label {
+    -fx-text-fill: white;
+}
+
+/* Các nút nạp tiền nhanh */
+.quick-amount-btn {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5;
+    -fx-cursor: hand;
+}
+
+.quick-amount-btn:hover {
+    -fx-border-color: #3665f3;
+    -fx-text-fill: #3665f3;
+}
+
+/* Trạng thái giao dịch trong bảng */
+.status-completed { -fx-text-fill: #28a745; -fx-font-weight: bold; }
+.status-pending { -fx-text-fill: #f39c12; -fx-font-weight: bold; }
+.status-hold { -fx-text-fill: #3665f3; -fx-font-weight: bold; }
+/* Nút Chặn (Ban) - Đỏ đặc trưng của eBay */
+.button-ban {
+    -fx-background-color: transparent;
+    -fx-border-color: #dd1e31;
+    -fx-text-fill: #dd1e31;
+    -fx-border-radius: 4;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+}
+
+.button-ban:hover {
+    -fx-background-color: #dd1e31;
+    -fx-text-fill: white;
+}
+
+/* Nút Quay lại (Back) */
+.button-back {
+    -fx-background-color: transparent;
+    -fx-text-fill: #3665f3;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.button-back:hover {
+    -fx-underline: true;
+}
+
+/* Biến Stat Card thành một nút bấm lớn */
+.stat-card-btn {
+    -fx-background-color: white;
+    -fx-padding: 15;
+    -fx-background-radius: 10;
+    -fx-border-color: transparent;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
+    -fx-cursor: hand;
+}
+
+.stat-card-btn:hover {
+    -fx-border-color: #3665f3;
+    -fx-background-color: #f0f5ff;
 }

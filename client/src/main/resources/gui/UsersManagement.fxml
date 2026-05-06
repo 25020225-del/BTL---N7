@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="600.0" prefWidth="900.0" spacing="20.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientAdminController">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="15.0">
+            <children>
+                <Button onAction="#handleBackToDashboard" styleClass="button-back" text="← Back to Dashboard" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label text="Quản lý Người dùng">
+                    <font>
+                        <Font name="System Bold" size="22.0" />
+                    </font>
+                </Label>
+                <Region HBox.hgrow="ALWAYS" />
+                <TextField promptText="Tìm theo tên/email..." styleClass="search-field" prefWidth="250.0" />
+            </children>
+        </HBox>
+
+        <VBox styleClass="product-card" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 15;">
+            <children>
+                <TableView fx:id="tableUsers" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colUserId" prefWidth="80.0" text="ID" />
+                        <TableColumn fx:id="colUsername" prefWidth="150.0" text="Username" />
+                        <TableColumn fx:id="colEmail" prefWidth="220.0" text="Email" />
+                        <TableColumn fx:id="colRole" prefWidth="120.0" text="Vai trò" />
+                        <TableColumn fx:id="colStatus" prefWidth="120.0" text="Trạng thái" />
+                        <TableColumn fx:id="colAction" prefWidth="150.0" text="Thao tác" />
+                    </columns>
+                </TableView>
+            </children>
+        </VBox>
+    </children>
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+</VBox>
