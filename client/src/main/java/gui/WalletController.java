@@ -99,13 +99,13 @@ public class WalletController {
     }
 
     private void updateBalanceUI() {
-        lblTotalBalance.setText(String.format("$%.2f", currentBalance));
+        lblTotalBalance.setText(String.format("%.0f N VND",currentBalance));
     }
     // nap nhanh
     @FXML
     private void addQuickAmount(javafx.event.ActionEvent event) {
         Button btn = (Button) event.getSource();
-        String text = btn.getText().replace("+$", "");
+        String text = btn.getText().replace(" N VND", "");
         txtDepositAmount.setText(text);
     }
 }
