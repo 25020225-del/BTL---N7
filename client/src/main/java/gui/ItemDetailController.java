@@ -80,7 +80,7 @@ public class ItemDetailController {
             
             // Only update the UI if the event belongs to the currently viewed auction
             if (this.currentAuctionId != null && this.currentAuctionId.equals(auctionId)) {
-                double newPrice = ((Number) data.get("newPrice")).doubleValue();
+                long newPrice = ((Number) data.get("newPrice")).longValue();
                 String winnerName = (String) data.get("winnerName");
 
                 // Ensure UI modifications happen on the JavaFX Application Thread
@@ -132,8 +132,8 @@ public class ItemDetailController {
         String name = auction.getItem().getItemName();
         String desc = auction.getItem().getDescription();
         String imageUrl = auction.getItem().getImageUrl();
-        double startPrice = auction.getItem().getStartingPrice();
-        double currentPrice = auction.getCurrentPrice();
+        long startPrice = auction.getItem().getStartingPrice();
+        long currentPrice = auction.getCurrentPrice();
         this.endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
         if (imageUrl == null) {
@@ -153,8 +153,8 @@ public class ItemDetailController {
         // Set UI text
         lblDetailTitle.setText(name);
         txtDescription.setText(desc);
-        lblStartPrice.setText(String.format("%,.0f VND", startPrice));
-        lblCurrentPrice.setText(String.format("%,.0f VND", currentPrice));
+        lblStartPrice.setText(String.format("%,d VND", startPrice));
+        lblCurrentPrice.setText(String.format("%,d VND", currentPrice));
         lblLeader.setText(leader);
 
         // Add the initial starting point to the chart
@@ -173,7 +173,7 @@ public class ItemDetailController {
      * @param newPrice   The newly established price.
      * @param winnerName The username of the user who placed the bid.
      */
-    private void updateRealTimePrice(double newPrice, String winnerName) {
+    private void updateRealTimePrice(long newPrice, String winnerName) {
         lblCurrentPrice.setText(String.format("%,.0f VND", newPrice));
         lblLeader.setText(winnerName);
 
@@ -187,14 +187,14 @@ public class ItemDetailController {
     /**
      * Adds a new data point to the active LineChart.
      */
-    private void addPointToChart(double price) {
+    private void addPointToChart(long price) {
         String currentTimeStr = LocalDateTime.now().format(timeFormatter);
         XYChart.Data<String, Number> newPoint = new XYChart.Data<>(currentTimeStr, price);
         priceSeries.getData().add(newPoint);
 
         // Optional: Keep chart clean by removing old nodes if there are too many (e.g., > 20)
         if (priceSeries.getData().size() > 20) {
-            priceSeries.getData().remove(0);
+            priceSeries.getData().removeFirst();
         }
     }
 
@@ -203,7 +203,7 @@ public class ItemDetailController {
      */
     private void handlePlaceBid() {
         try {
-            double bidAmount = Double.parseDouble(txtBidAmount.getText().replace(",", ""));
+            long bidAmount = Long.parseLong(txtBidAmount.getText().replace(",", ""));
 
             if (bidAmount <= 0) {
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Amount must be greater than 0");

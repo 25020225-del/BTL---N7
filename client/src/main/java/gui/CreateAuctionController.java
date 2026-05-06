@@ -164,7 +164,7 @@ public class CreateAuctionController extends javafx.scene.control.ScrollPane {
         } catch (java.time.DateTimeException e) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Giờ bắt đầu phải từ 0–23 và phút từ 0–59.");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
     }
 

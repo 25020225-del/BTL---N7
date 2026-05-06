@@ -236,73 +236,76 @@ public class ClientUserController {
         Platform.runLater(() -> {
             String command = response.getCommand();
 
-            if ("FETCH_AUCTIONS_SUCCESS".equals(command)) {
-                try {
-                    // MVC Fix: Use Jackson TypeReference for proper Domain Model mapping
-                    List<Auction> auctions = mapper.convertValue(
-                        response.getData(), 
-                        new TypeReference<List<Auction>>() {}
-                    );
+            switch (command) {
+                case "FETCH_AUCTIONS_SUCCESS" -> {
+                    try {
+                        // MVC Fix: Use Jackson TypeReference for proper Domain Model mapping
+                        List<Auction> auctions = mapper.convertValue(
+                                response.getData(),
+                                new TypeReference<List<Auction>>() {
+                                }
+                        );
 
-                    mainTilePane.getChildren().clear();
+                        mainTilePane.getChildren().clear();
 
-                    for (Auction auction : auctions) {
-                        // Use getters instead of Map.get()
+                        for (Auction auction : auctions) {
+                            // Use getters instead of Map.get()
+                            String id = auction.getId();
+                            String name = auction.getItem().getItemName();
+                            String price = String.format("%,d", auction.getCurrentPrice());
+                            String imageUrl = auction.getItem().getImageUrl();
+                            long endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                            String sellerId = auction.getSeller().getId();
+
+                            MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTimeMillis);
+                            item.getAuctionButton().setOnAction(e -> openItemDetail(auction));
+
+                            if (currentUser.getId().equals(sellerId)) {
+                                item.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
+                            }
+                            mainTilePane.getChildren().add(item);
+                        }
+                    } catch (Exception e) {
+                        log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
+                    }
+                }
+                case "NEW_AUCTION_ADDED" -> {
+                    try {
+                        Auction auction = mapper.convertValue(response.getData(), Auction.class);
+
                         String id = auction.getId();
                         String name = auction.getItem().getItemName();
-                        String price = String.format("%,.0f", auction.getCurrentPrice());
+                        String price = String.format("%,d", auction.getCurrentPrice());
                         String imageUrl = auction.getItem().getImageUrl();
                         long endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
                         String sellerId = auction.getSeller().getId();
 
-                        MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTimeMillis);
-                        item.getAuctionButton().setOnAction(e -> openItemDetail(auction));
-                        
+                        MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTimeMillis);
+                        newItem.getAuctionButton().setOnAction(e -> openItemDetail(auction));
+
                         if (currentUser.getId().equals(sellerId)) {
-                            item.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
+                            newItem.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
                         }
-                        mainTilePane.getChildren().add(item);
+
+                        newItem.setOpacity(0);
+                        mainTilePane.getChildren().add(0, newItem);
+
+                        FadeTransition ft = new FadeTransition(Duration.millis(500), newItem);
+                        ft.setToValue(1.0);
+                        ft.play();
+                    } catch (Exception e) {
+                        log.error("NEW_AUCTION_ADDED parse error: {}", e.getMessage());
                     }
-                } catch (Exception e) {
-                    log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
                 }
-
-            } else if ("NEW_AUCTION_ADDED".equals(command)) {
-                try {
-                    Auction auction = mapper.convertValue(response.getData(), Auction.class);
-
-                    String id = auction.getId();
-                    String name = auction.getItem().getItemName();
-                    String price = String.format("%,.0f", auction.getCurrentPrice());
-                    String imageUrl = auction.getItem().getImageUrl();
-                    long endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-                    String sellerId = auction.getSeller().getId();
-
-                    MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTimeMillis);
-                    newItem.getAuctionButton().setOnAction(e -> openItemDetail(auction));
-
-                    if (currentUser.getId().equals(sellerId)) {
-                        newItem.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
-                    }
-
-                    newItem.setOpacity(0);
-                    mainTilePane.getChildren().add(0, newItem);
-
-                    FadeTransition ft = new FadeTransition(Duration.millis(500), newItem);
-                    ft.setToValue(1.0);
-                    ft.play();
-                } catch (Exception e) {
-                    log.error("[Client] NEW_AUCTION_ADDED parse error: {}", e.getMessage());
+                case "REMOVE_AUCTION" -> {
+                    String auctionIdToRemove = (String) response.getData();
+                    mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
                 }
-
-            } else if ("REMOVE_AUCTION".equals(command)) {
-                String auctionIdToRemove = (String) response.getData();
-                mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
-            } else if ("EDIT_SUCCESS".equals(command) || "DELETE_SUCCESS".equals(command)) {
-                AlertHelper.showAlert(AlertType.INFORMATION, "Success", response.getData().toString());
-                MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
-            } else {
-                new ResponseDispatcher().dispatch(response, MainApplication.networkClient);
+                case "EDIT_SUCCESS", "DELETE_SUCCESS" -> {
+                    AlertHelper.showAlert(AlertType.INFORMATION, "Success", response.getData().toString());
+                    MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
+                }
+                case null, default -> new ResponseDispatcher().dispatch(response, MainApplication.networkClient);
             }
         });
     }
@@ -386,20 +389,9 @@ public class ClientUserController {
         });
 
         AuctionEventBus.addListener(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED, evt -> {
-            @SuppressWarnings("unchecked")
-            Map<String, String> data = (Map<String, String>) evt.getNewValue();
-            String orderId = data.get("orderId");
-
             Platform.runLater(() -> {
-                Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
-                confirmAlert.setTitle("Payment Confirmation");
-                confirmAlert.setHeaderText("Have you completed your payment via PayPal?");
-                confirmAlert.setContentText("Order ID: " + orderId + "\nClick OK to update your balance.");
-                confirmAlert.showAndWait().ifPresent(response -> {
-                    if (response == ButtonType.OK) {
-                        MainApplication.networkClient.sendMessage("CONFIRM_DEPOSIT", orderId);
-                    }
-                });
+                AlertHelper.showAlert(AlertType.INFORMATION, "Payment in process",
+                        "Payment gate has been opened.");
             });
         });
     }
