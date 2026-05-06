@@ -27,6 +27,7 @@ public class ResponseDispatcher {
         handlers.put("REDIRECT", systemHandler);
         handlers.put("KICKED", systemHandler);
         handlers.put("TIME_SYNC_ACK", systemHandler);
+        handlers.put("GENERAL_ERROR", systemHandler);
 
         ClientAuctionHandler auctionHandler = new ClientAuctionHandler();
         handlers.put("CLI_BROADCAST", auctionHandler);

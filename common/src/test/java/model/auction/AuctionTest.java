@@ -106,4 +106,51 @@ class AuctionTest {
 
         assertNull(secondResult, "Result should be null for bid below currentPrice + increment");
     }
+
+    @Test
+    @DisplayName("Should extend end time when bid is placed within last minute (Anti-sniping)")
+    void testAntiSniping() {
+        // Set end time to 30 seconds from now
+        LocalDateTime nearEnd = LocalDateTime.now().plusSeconds(30);
+        auction.setEndTime(nearEnd);
+
+        // Place a valid bid
+        Auction.BidResult result = auction.calculateBidResult(bidder1, 2000.0);
+        assertNotNull(result);
+        
+        // Anti-sniping in Auction.calculateBidResult(): newEndTime = oldEndTime.plusMinutes(2) (hard-capped by maxEndTime)
+        assertEquals(nearEnd.plusMinutes(2), result.newEndTime, "End time should be exactly 2 minutes later than previous end time");
+    }
+
+    @Test
+    @DisplayName("Should produce consistent bid results when calculated from the same snapshot (Concurrent Bid)")
+    void testConcurrentBidCalculation() {
+        // Simulate a scenario where two bidders bid the same amount simultaneously
+        // based on the same current price.
+        
+        // Bidder 1 bids 1500
+        Auction.BidResult result1 = auction.calculateBidResult(bidder1, 1500.0);
+        
+        // Bidder 2 also bids 1500 at the same time (before result1 is applied)
+        Auction.BidResult result2 = auction.calculateBidResult(bidder2, 1500.0);
+        
+        assertNotNull(result1);
+        assertNotNull(result2);
+        
+        // From the same snapshot (no winner yet), each bidder becomes the provisional winner of their own calculation.
+        assertEquals(bidder1, result1.newWinner);
+        assertEquals(bidder2, result2.newWinner);
+        assertEquals(1000.0, result1.newCurrentPrice);
+        assertEquals(1000.0, result2.newCurrentPrice);
+        assertEquals(1500.0, result1.newHighestMaxBid);
+        assertEquals(1500.0, result2.newHighestMaxBid);
+
+        // Once one result is applied, recalculating with the same bid amount should reflect the updated auction state.
+        auction.applyBidResult(bidder1, result1);
+
+        Auction.BidResult afterApply = auction.calculateBidResult(bidder2, 1500.0);
+        assertNotNull(afterApply, "Bid is still >= min required, so calculation should succeed");
+        assertEquals(bidder1, afterApply.newWinner, "Equal max bid should not dethrone the current winner");
+        assertEquals(1500.0, afterApply.newCurrentPrice, "Price should rise to the current highest max bid");
+    }
 }

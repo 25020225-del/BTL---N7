@@ -16,9 +16,11 @@ import static utils.ConsoleColors.*;
 public class ServerAdminController {
     private static final Logger log = LoggerFactory.getLogger(ServerAdminController.class);
     private final database.dao.UserDAO userDAO;
+    private final database.dao.AuctionDAO auctionDAO;
 
-    public ServerAdminController(database.dao.UserDAO userDAO) {
+    public ServerAdminController(database.dao.UserDAO userDAO, database.dao.AuctionDAO auctionDAO) {
         this.userDAO = userDAO;
+        this.auctionDAO = auctionDAO;
     }
 
     /**
@@ -78,10 +80,20 @@ public class ServerAdminController {
             return false;
         }
 
-        auction.setStatus(Auction.STATUS_OPEN);
-        log.info("{} has approved auction {}.", admin.getUserName(), auction.getId());
+        try {
+            boolean dbSuccess = auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_OPEN);
+            if (dbSuccess) {
+                auction.setStatus(Auction.STATUS_OPEN);
+                log.info("{} has approved auction {}.", admin.getUserName(), auction.getId());
+                return true;
+            } else {
+                log.error("Failed to update auction status in database for auction {}", auction.getId());
+            }
+        } catch (Exception e) {
+            log.error("Error approving auction {}: {}", auction.getId(), e.getMessage());
+        }
 
-        return true;
+        return false;
     }
 
     /**
@@ -93,8 +105,13 @@ public class ServerAdminController {
      */
     public void verifySeller(Admin admin, User user) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
-            user.setGood(true);
-            log.info("{} has verified {} as reputable", admin.getUserName(), user.getUserName());
+            try {
+                user.setGood(true);
+                userDAO.updateUserTrustLevel(user.getId(), true);
+                log.info("{} has verified {} as reputable", admin.getUserName(), user.getUserName());
+            } catch (Exception e) {
+                log.error("Error verifying seller {}: {}", user.getId(), e.getMessage());
+            }
         }
     }
 
@@ -106,8 +123,15 @@ public class ServerAdminController {
      */
     public void rejectAuctionRequest(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
-            auction.setStatus(Auction.STATUS_CANCELED);
-            log.info("{} has rejected the auction request for {}.", admin.getUserName(), auction.getId());
+            try {
+                boolean dbSuccess = auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_CANCELED);
+                if (dbSuccess) {
+                    auction.setStatus(Auction.STATUS_CANCELED);
+                    log.info("{} has rejected the auction request for {}.", admin.getUserName(), auction.getId());
+                }
+            } catch (Exception e) {
+                log.error("Error rejecting auction {}: {}", auction.getId(), e.getMessage());
+            }
         }
     }
 
@@ -120,8 +144,15 @@ public class ServerAdminController {
      */
     public void forceDeleteAuction(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
-            auction.setStatus(Auction.STATUS_DELETED);
-            log.info("{} has deleted auction {}.", admin.getUserName(), auction.getId());
+            try {
+                boolean dbSuccess = auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_DELETED);
+                if (dbSuccess) {
+                    auction.setStatus(Auction.STATUS_DELETED);
+                    log.info("{} has deleted auction {}.", admin.getUserName(), auction.getId());
+                }
+            } catch (Exception e) {
+                log.error("Error force deleting auction {}: {}", auction.getId(), e.getMessage());
+            }
         }
     }
 }
