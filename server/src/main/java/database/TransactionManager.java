@@ -2,9 +2,8 @@ package database;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.concurrent.*;
 
-import static utils.ConsoleColors.*;
+import java.util.concurrent.*;
 
 /**
  * Manages asynchronous database transaction execution using a ThreadPool worker pattern.

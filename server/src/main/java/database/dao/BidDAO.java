@@ -199,12 +199,13 @@ public class BidDAO {
 
         // ONLY lock money IF the currentUser actually becomes the NEW winning bidder
         if (newWinner != null && newWinner.getId().equals(currentUser.getId())) {
-            
+
             if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
                 // Case 1: User is outbidding themselves. Only deduct the difference.
                 double amountToDeduct = newMaxBid - previousHighestMaxBid;
                 if (amountToDeduct > 0) {
-                    if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return false; // Insufficient balance
+                    if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct))
+                        return false; // Insufficient balance
 
                     // Log the incremental withdrawal
                     walletDAO.addTransaction(
@@ -234,7 +235,8 @@ public class BidDAO {
                 }
 
                 // Deduct full amount from new bidder
-                if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid)) return false; // Insufficient balance
+                if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid))
+                    return false; // Insufficient balance
 
                 // Log the full withdrawal
                 walletDAO.addTransaction(
@@ -274,11 +276,11 @@ public class BidDAO {
             pstmt.setDouble(4, newHighestMaxBid);
             pstmt.setString(5, auctionId);
             pstmt.setDouble(6, currentPriceInDB); // THE KEY: Optimistic Locking condition
-            
+
             if (pstmt.executeUpdate() == 0) {
                 // If 0 rows updated, it means another thread changed current_price in the meantime.
                 System.out.println("[BidDAO]: Conflict detected! Current price in DB is different from " + currentPriceInDB);
-                return false; 
+                return false;
             }
         }
 

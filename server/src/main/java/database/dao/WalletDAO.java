@@ -13,9 +13,9 @@ public class WalletDAO {
     /**
      * Updates the balance of a user's wallet.
      *
-     * @param conn    The active database connection (should be part of a transaction).
-     * @param userId  The ID of the user whose wallet is being updated.
-     * @param amount  The amount to add (positive) or subtract (negative).
+     * @param conn   The active database connection (should be part of a transaction).
+     * @param userId The ID of the user whose wallet is being updated.
+     * @param amount The amount to add (positive) or subtract (negative).
      * @return true if the update was successful.
      * @throws SQLException if a database error occurs.
      */
@@ -31,9 +31,9 @@ public class WalletDAO {
     /**
      * Deducts an amount from a user's wallet only if they have sufficient funds.
      *
-     * @param conn    The active database connection.
-     * @param userId  The ID of the user.
-     * @param amount  The positive amount to deduct.
+     * @param conn   The active database connection.
+     * @param userId The ID of the user.
+     * @param amount The positive amount to deduct.
      * @return true if the deduction was successful.
      * @throws SQLException if a database error occurs.
      */

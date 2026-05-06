@@ -125,15 +125,18 @@ public class DatabaseManager {
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;");
-            } catch (SQLException ignored) {}
+            } catch (SQLException ignored) {
+            }
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN winning_bidder_id TEXT;");
-            } catch (SQLException ignored) {}
+            } catch (SQLException ignored) {
+            }
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN highest_max_bid REAL DEFAULT 0.0;");
-            } catch (SQLException ignored) {}
+            } catch (SQLException ignored) {
+            }
 
             log.info("Successfully upgraded auctions table");
 

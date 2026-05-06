@@ -1,12 +1,12 @@
 package service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import utils.JacksonConfig;
 
 import java.net.URI;
@@ -15,9 +15,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
-
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
 
 public class PayPalService {
     private static final Logger log = LoggerFactory.getLogger(PayPalService.class);

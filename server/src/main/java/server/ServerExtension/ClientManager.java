@@ -1,5 +1,7 @@
 package server.ServerExtension;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ClientHandler;
 
 import java.util.List;
@@ -16,6 +18,7 @@ import static utils.ConsoleColors.*;
  * administrative actions such as kicking or redirecting clients.
  */
 public class ClientManager {
+    private static final Logger log = LoggerFactory.getLogger(ClientManager.class);
 
     /**
      * A thread-safe list of all currently connected clients.
@@ -68,9 +71,7 @@ public class ClientManager {
                     try {
                         client.sendMessage(message);
                     } catch (Exception e) {
-                        System.out.println("[Error]: Error when trying to broadcast to \"" +
-                                YELLOW + client.getClientName() + RESET + "\": " +
-                                RED + e.getMessage() + RESET);
+                        log.error("Error when broadcasting to {}: {}", client.getClientName(), e.getMessage());
                     }
                 });
             }
@@ -92,7 +93,7 @@ public class ClientManager {
                     try {
                         client.sendResponse(command, data);
                     } catch (Exception e) {
-                        System.out.println("[Error]: Broadcasting error to \"" + YELLOW + client.getClientName() + RESET + "\"");
+                        log.error("Cannot broadcast to {}", client.getClientName());
                     }
                 });
             }

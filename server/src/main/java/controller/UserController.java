@@ -25,7 +25,7 @@ public class UserController {
 
     /**
      * Constructs the controller with the necessary services and DAOs.
-     * This implementation follows the Dependency Injection pattern to facilitate 
+     * This implementation follows the Dependency Injection pattern to facilitate
      * easier testing and decoupling.
      *
      * @param userDAO     The DAO responsible for user-related database transactions.

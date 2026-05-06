@@ -5,6 +5,8 @@ import database.TransactionManager;
 import database.dao.AuctionDAO;
 import database.dao.WalletDAO;
 import model.auction.Auction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
@@ -16,14 +18,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static utils.ConsoleColors.*;
-
 /**
  * A background daemon service that continuously monitors active auctions.
  * It manages real-time expiration in RAM and routinely sweeps the database
  * to clean up any "orphaned" or "ghost" auctions left over from previous server sessions.
  */
 public class AuctionMonitor {
+    private static final Logger log = LoggerFactory.getLogger(AuctionMonitor.class);
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private List<Auction> allAuctions;
@@ -49,7 +50,7 @@ public class AuctionMonitor {
      * handling both volatile RAM instances and persistent Database records.
      */
     public void startMonitoring() {
-        System.out.println("[System]:" + GREEN + " Auction monitor has been launched." + RESET);
+        log.info("Auction Monitor launched.");
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
@@ -60,7 +61,7 @@ public class AuctionMonitor {
                 sweepDatabaseForOrphans();
 
             } catch (Exception e) {
-                System.out.println("[System](AuctionMonitor): Error occurred during bidding scan process: " + RED + e.getMessage() + RESET);
+                log.error("Error occurred during bidding scan process: {}", e.getMessage());
                 e.printStackTrace();
             }
         }, 0, 10, TimeUnit.SECONDS); // Scans every 10 seconds
@@ -87,7 +88,7 @@ public class AuctionMonitor {
                     if (now.isBefore(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_RUNNING;
                     }
-                } 
+                }
                 // Check for auction end
                 else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
                     if (now.isAfter(auction.getEndTime())) {
@@ -102,29 +103,28 @@ public class AuctionMonitor {
                 try {
                     // Critical RAM-DB consistency check: only update RAM if DB update is successful
                     boolean dbSuccess = auctionDAO.updateAuctionStatus(auctionId, targetStatus);
-                    
+
                     if (dbSuccess) {
                         // --- PHASE 3: RAM State Update (LOCKED) ---
                         // Re-acquire the lock to apply the committed DB state back to RAM.
                         synchronized (AuctionManager.getLockForAuction(auctionId)) {
                             auction.setStatus(targetStatus);
-                            
+
                             if (targetStatus.equals(Auction.STATUS_PAID)) {
                                 processFinancialSettlement(auction);
-                                System.out.println("[System]: Auction " + YELLOW + auctionId + RESET + " finished with winner: " + 
-                                        GREEN + (auction.getWinningBidder() != null ? auction.getWinningBidder().getUserName() : "N/A") + RESET);
+                                log.info("Auction {} finished | Winner: {}", auctionId, (auction.getWinningBidder() != null ? auction.getWinningBidder().getUserName() : "N/A"));
                             } else if (targetStatus.equals(Auction.STATUS_RUNNING)) {
-                                System.out.println("[System]: Auction " + YELLOW + auctionId + RESET + " has started and is now " + GREEN + "RUNNING." + RESET);
+                                log.info("Auction {} is running.", auctionId);
                             } else {
-                                System.out.println("[System]: Auction " + YELLOW + auctionId + RESET + " finished with NO winner. CANCELED.");
+                                log.info("Auction {} finished.", auctionId);
                             }
                         }
                     } else {
                         // DB update failed, do NOT update RAM.
-                        System.out.println("[System](AuctionMonitor): " + RED + "FAILED" + RESET + " to update DB for auction " + YELLOW + auctionId + RESET + ". Skipping RAM update to maintain consistency.");
+                        log.warn("Failed to update database for auction {}. Skipping RAM update.", auctionId);
                     }
                 } catch (Exception e) {
-                    System.out.println("[Database]: Failed to update auction " + auctionId + " to " + targetStatus + ": " + RED + e.getMessage() + RESET);
+                    log.error("Failed to update auction {} to {}: {}", auctionId, targetStatus, e.getMessage());
                 }
             }
 
@@ -143,7 +143,7 @@ public class AuctionMonitor {
                     // Broadcast removal command to all connected clients
                     ClientManager.broadcast("REMOVE_AUCTION", auctionId, null);
 
-                    System.out.println("[System]: " + BLUE + "Removed auction " + YELLOW + auctionId + RESET + " from RAM. (DB already updated)");
+                    log.info("Removed auction {} from RAM.", auctionId);
                 }
             }
         }
@@ -195,16 +195,16 @@ public class AuctionMonitor {
                     }
 
                     conn.commit(); // Finalize changes
-                    System.out.println("[System]: Financial settlement completed for auction " + YELLOW + auction.getId() + RESET);
+                    log.info("Financial settlement completed for auction {}", auction.getId());
                     return true;
 
                 } catch (Exception e) {
                     conn.rollback(); // Rollback if any error occurs
-                    System.out.println("[Database]: Error during financial settlement: " + RED + e.getMessage() + RESET);
+                    log.error("Error during financial settlement: {}", e.getMessage());
                     return false;
                 }
             } catch (Exception e) {
-                System.out.println("[Database]: Connection error during settlement: " + RED + e.getMessage() + RESET);
+                log.error("Connection Error during settlement: {}", e.getMessage());
                 return false;
             }
         };
@@ -223,13 +223,13 @@ public class AuctionMonitor {
                 for (Auction auction : finishedAuctions) {
                     // Process financial settlement for each orphaned auction that finished
                     processFinancialSettlement(auction);
-                    
+
                     // Force clients to remove the ghost item from their UI
                     ClientManager.broadcast("REMOVE_AUCTION", auction.getId(), null);
                 }
                 return true;
             } catch (Exception e) {
-                System.out.println("[Database]: Orphan sweep error: " + RED + e.getMessage() + RESET);
+                log.error("Orphan sweep error: {}", e.getMessage());
                 return false;
             }
         };
@@ -243,6 +243,6 @@ public class AuctionMonitor {
      */
     public void stopMonitoring() {
         scheduler.shutdown();
-        System.out.println("[System]: " + YELLOW + " Auction monitor has been shutdown." + RESET);
+        log.info("Auction Monitor shutdown.");
     }
 }

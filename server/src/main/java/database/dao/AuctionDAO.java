@@ -5,7 +5,6 @@ import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
 import model.user.User;
-import server.ServerExtension.ClientManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -17,10 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static utils.ConsoleColors.BLUE;
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
-import static utils.ConsoleColors.YELLOW;
+import static utils.ConsoleColors.*;
 
 public class AuctionDAO {
 
@@ -33,7 +29,7 @@ public class AuctionDAO {
                 if (rs.next()) {
                     Auction auction = new Auction();
                     auction.setId(rs.getString("id"));
-                    
+
                     model.item.Item item = ItemFactory.createItem(
                             ItemFactory.TYPE_TANGIBLE,
                             "ITM-" + System.currentTimeMillis(),
@@ -43,26 +39,26 @@ public class AuctionDAO {
                     );
                     item.setImageUrl(rs.getString("image_url"));
                     auction.setItem(item);
-                    
+
                     User seller = new User();
                     // Cần khởi tạo hoặc inject AuctionDAO trước đó
                     seller.setId(rs.getString("seller_id"));
                     auction.setSeller(seller);
-                    
+
                     auction.setCurrentPrice(rs.getDouble("current_price"));
                     auction.setHighestMaxBid(rs.getDouble("highest_max_bid"));
                     auction.setBidIncrement(rs.getDouble("bid_increment"));
                     auction.setStartTime(LocalDateTime.parse(rs.getString("start_time")));
                     auction.setEndTime(LocalDateTime.parse(rs.getString("end_time")));
                     auction.setStatus(rs.getString("status"));
-                    
+
                     String winnerId = rs.getString("winning_bidder_id");
                     if (winnerId != null) {
                         User winner = new User();
                         winner.setId(winnerId);
                         auction.setWinningBidder(winner);
                     }
-                    
+
                     return auction;
                 }
             }
@@ -231,7 +227,7 @@ public class AuctionDAO {
                     double currentPrice = rs.getDouble("current_price");
                     double startPrice = rs.getDouble("starting_price");
                     String winningBidderId = rs.getString("winning_bidder_id");
-                    
+
                     String newStatus = (winningBidderId != null && currentPrice >= startPrice) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
 
                     updateStmt.setString(1, newStatus);
@@ -244,20 +240,20 @@ public class AuctionDAO {
                         auction.setId(id);
                         auction.setCurrentPrice(currentPrice);
                         auction.setHighestMaxBid(rs.getDouble("highest_max_bid"));
-                        
+
                         User seller = new User();
                         seller.setId(rs.getString("seller_id"));
                         auction.setSeller(seller);
-                        
+
                         if (winningBidderId != null) {
                             User winner = new User();
                             winner.setId(winningBidderId);
                             auction.setWinningBidder(winner);
                         }
-                        
+
                         finishedAuctions.add(auction);
                     }
-                    
+
                     System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
                 }
             }

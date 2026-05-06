@@ -4,14 +4,14 @@ import controller.ServerBidderController;
 import model.auction.Auction;
 import model.auction.AutoBid;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import static utils.ConsoleColors.*;
 
 /**
  * The core engine responsible for managing and executing automated bidding logic.
@@ -21,6 +21,7 @@ import static utils.ConsoleColors.*;
  * Part of the Auction System project.
  */
 public class AutoBidEngine {
+    private static final Logger log = LoggerFactory.getLogger(AutoBidEngine.class);
 
     /**
      * Fixed thread pool for managing concurrent bot execution.
@@ -88,8 +89,8 @@ public class AutoBidEngine {
                     auction.getCurrentPrice() + actualIncrement;
 
             // Check if the bot can afford to become the leader
-            if (bot.getMaxBid() >= requiredBid || 
-               (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(bot.getBidder().getId()) && bot.getMaxBid() > auction.getCurrentPrice())) {
+            if (bot.getMaxBid() >= requiredBid ||
+                    (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(bot.getBidder().getId()) && bot.getMaxBid() > auction.getCurrentPrice())) {
                 if (top1 == null) {
                     top1 = bot;
                 } else if (top2 == null) {
@@ -108,13 +109,13 @@ public class AutoBidEngine {
         if (top2 != null) {
             // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
             finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
-            
+
             // Clean up: Remove top2 and other losing bots from the queue to prevent infinite loops
             final double top2MaxBid = top2.getMaxBid();
             final String top1Id = top1.getBidder().getId();
-            
-            auction.getActiveAutoBids().removeIf(b -> 
-                b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
+
+            auction.getActiveAutoBids().removeIf(b ->
+                    b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
             );
         } else {
             // Only top1 is capable of bidding
@@ -137,17 +138,13 @@ public class AutoBidEngine {
         }
 
         final AutoBid winnerBot = top1;
-        System.out.println("[Auto-Bid Engine]: Bot of \""
-                + YELLOW + winnerBot.getBidder().getUserName() + RESET 
-                + "\" mathematically won. Submitting ONE DB transaction.");
+        log.info("Bot of {} mathematically won. Submitting transaction.", winnerBot.getBidder().getUserName());
 
         // 5. Submit exactly ONE task to the Database
         bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, finalPrice, true)
                 .thenAccept(success -> {
                     if (!success) {
-                        System.out.println("[Auto-Bid Engine]: Bot of \""
-                                + YELLOW + winnerBot.getBidder().getUserName() + RESET 
-                                + "\" failed (insufficient balance). Removing configuration.");
+                        log.info("Bot of {} failed (insufficient balance). Removing configuration.", winnerBot.getBidder().getUserName());
                         auction.getActiveAutoBids().removeIf(b ->
                                 b.getBidder().getId().equals(winnerBot.getBidder().getId())
                         );
@@ -156,7 +153,7 @@ public class AutoBidEngine {
                     }
                     // IMPORTANT: No recursive call on success. We avoided the infinite loop!
                 }).exceptionally(ex -> {
-                    System.out.println("[System]: Bot Engine execution failed: " + RED + ex.getMessage() + RESET);
+                    log.error("Bot Engine execution failed: {}", ex.getMessage());
                     return null;
                 });
     }

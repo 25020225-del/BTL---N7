@@ -5,6 +5,8 @@ import database.TransactionManager;
 import database.dao.BidDAO;
 import model.auction.Auction;
 import model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
 import service.AutoBidEngine;
 
@@ -15,8 +17,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Controller responsible for handling bidding operations on the server side.
  * It manages manual bid placements, automated bidding configurations,
@@ -24,12 +24,13 @@ import static utils.ConsoleColors.*;
  * atomically and asynchronously.
  */
 public class ServerBidderController {
+    private static final Logger log = LoggerFactory.getLogger(ServerBidderController.class);
 
     private final BidDAO bidDAO;
 
     /**
      * Constructs the controller with the necessary Data Access Objects.
-     * This implementation follows the Dependency Injection pattern to facilitate 
+     * This implementation follows the Dependency Injection pattern to facilitate
      * easier testing and decoupling.
      *
      * @param bidDAO The DAO responsible for bid-related database transactions.
@@ -59,7 +60,6 @@ public class ServerBidderController {
 
         // Prevent users from bidding on items they are selling
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[System]: " + RED + "You cannot bid on your own auction" + RESET);
             return CompletableFuture.completedFuture(false);
         }
 
@@ -93,16 +93,16 @@ public class ServerBidderController {
                         conn.commit();
                     } else {
                         conn.rollback();
-                        System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" transaction failed (insufficient balance or state changed)");
+                        log.info("User {} transaction failed (insufficient balance or state changed).", currentUser.getUserName());
                         return false;
                     }
                 } catch (SQLException e) {
                     conn.rollback();
-                    System.out.println("[Database]: Transaction Error: " + RED + e.getMessage() + RESET);
+                    log.error("Transaction Error: {}", e.getMessage());
                     return false;
                 }
             } catch (SQLException e) {
-                System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+                log.error("Database Connection Error: {}", e.getMessage());
                 return false;
             }
 
@@ -125,7 +125,7 @@ public class ServerBidderController {
                 }
             }
 
-            System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+            log.info("Successfully placed bid for {}.", currentUser.getUserName());
             return true;
         };
 
@@ -147,15 +147,15 @@ public class ServerBidderController {
                 if (!isBot) {
                     // Send a direct error message to the specific client that placed the bid
                     server.ServerExtension.ClientManager.sendToUser(
-                            currentUser.getId(), 
-                            "GENERAL_ERROR", 
+                            currentUser.getId(),
+                            "GENERAL_ERROR",
                             "Giá sản phẩm đã thay đổi bởi người dùng khác. Vui lòng cập nhật và thử lại!"
                     );
                 }
             }
             return finalResult;
         }).exceptionally(ex -> {
-            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
+            log.error("The transaction could not be executed via the queue: {}", ex.getMessage());
             return false;
         });
     }
@@ -172,7 +172,6 @@ public class ServerBidderController {
     public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, double maxBid, double increment) {
 
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[System]: " + RED + "You cannot set an auto-bid on your own auction" + RESET);
             return CompletableFuture.completedFuture(false);
         }
 
@@ -183,18 +182,18 @@ public class ServerBidderController {
                 try {
                     // 1. Save to DB
                     boolean saved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
-                    
+
                     if (saved) {
                         // 2. If DB success, update RAM
                         boolean ramSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
                         if (ramSuccess) {
-                            System.out.println("[System]: Auto-Bid Configuration for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved and registered.");
+                            log.info("Auto-Bid Configuration for {} has been saved and registered.", currentUser.getUserName());
                             return true;
                         }
                     }
                     return false;
                 } catch (SQLException e) {
-                    System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
+                    log.error("Failed to save auto-bid config: {}", e.getMessage());
                     return false;
                 }
             }
@@ -207,7 +206,7 @@ public class ServerBidderController {
             }
             return success;
         }).exceptionally(ex -> {
-            System.out.println("[System]: Execution error while saving auto-bid: " + RED + ex.getMessage() + RESET);
+            log.error("Execution error while saving auto-bid: {}", ex.getMessage());
             return false;
         });
     }

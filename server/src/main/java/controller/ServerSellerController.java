@@ -21,7 +21,7 @@ public class ServerSellerController {
 
     /**
      * Constructs the controller with the necessary Data Access Objects.
-     * This implementation follows the Dependency Injection pattern to facilitate 
+     * This implementation follows the Dependency Injection pattern to facilitate
      * easier testing and decoupling.
      *
      * @param auctionDAO The DAO responsible for auction-related database transactions.
