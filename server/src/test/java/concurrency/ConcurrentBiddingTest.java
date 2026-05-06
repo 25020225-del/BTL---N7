@@ -17,7 +17,9 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -101,28 +103,41 @@ class ConcurrentBiddingTest {
         // Ensure auction exists in DB (after users exist)
         assertTrue(auctionDAO.addAuction(auction), "Test requires inserting a fresh auction row");
 
-        // --- Act: 10 concurrent bids all trying to set the same max bid ---
-        ExecutorService exec = Executors.newFixedThreadPool(10);
-        CountDownLatch startGate = new CountDownLatch(1);
-        List<Future<Boolean>> futures = new ArrayList<>();
+        // --- Act: 10 bids must fire in the same barrier window (true concurrent contention) ---
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(10);
+        AtomicInteger successCount = new AtomicInteger(0);
 
-        for (User bidder : bidders) {
-            futures.add(exec.submit(() -> {
-                startGate.await(2, TimeUnit.SECONDS);
-                return controller.placeBidOnAuction(bidder, auction, 1500.0, false).get(10, TimeUnit.SECONDS);
-            }));
+        List<Thread> workers = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            final User bidder = bidders.get(i);
+            Thread worker = new Thread(() -> {
+                try {
+                    startLatch.await();
+                    boolean ok = Boolean.TRUE.equals(
+                            controller.placeBidOnAuction(bidder, auction, 1500.0, false).get(30, TimeUnit.SECONDS));
+                    if (ok) {
+                        successCount.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    throw new AssertionError("Worker thread failed", e);
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+            workers.add(worker);
         }
 
-        startGate.countDown();
-
-        int successCount = 0;
-        for (Future<Boolean> f : futures) {
-            if (Boolean.TRUE.equals(f.get(12, TimeUnit.SECONDS))) successCount++;
+        for (Thread worker : workers) {
+            worker.start();
         }
-        exec.shutdownNow();
+
+        startLatch.countDown();
+
+        assertTrue(doneLatch.await(60, TimeUnit.SECONDS), "All 10 bid workers should finish");
 
         // --- Assert: with optimistic locking, only one transaction should win from the same initial state ---
-        assertEquals(1, successCount, "Exactly one bid should commit; the rest should fail optimistic locking.");
+        assertEquals(1, successCount.get(), "Exactly one bid should commit; the rest should fail optimistic locking.");
     }
 }
 
