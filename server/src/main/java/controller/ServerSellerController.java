@@ -41,7 +41,7 @@ public class ServerSellerController {
      * @param durationMinutes The total time the auction will remain active.
      * @return A newly created {@link Auction} instance if successful; {@code null} if a database error occurs.
      */
-    public Auction addAuction(User currentUser, Item item, double bidIncrement, LocalDateTime startTime, int durationMinutes) {
+    public Auction addAuction(User currentUser, Item item, long bidIncrement, LocalDateTime startTime, int durationMinutes) {
         // Utilize the factory method to prepare the Auction object in RAM
         Auction newAuction = Auction.createNewAuction(item, currentUser, bidIncrement, startTime, durationMinutes);
 
@@ -70,7 +70,7 @@ public class ServerSellerController {
      * @param newEndTime    The updated scheduled end time.
      * @return {@code true} if the update was successful and permitted; {@code false} otherwise.
      */
-    public boolean editAuction(User currentUser, Auction auction, String newName, String newDesc, double newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime) {
+    public boolean editAuction(User currentUser, Auction auction, String newName, String newDesc, long newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime) {
         // Security check: Only the owner can edit the auction
         if (!auction.getSeller().getId().equals(currentUser.getId())) {
             System.out.println("[Security]: " + RED + "You are not the owner of this auction" + RESET);

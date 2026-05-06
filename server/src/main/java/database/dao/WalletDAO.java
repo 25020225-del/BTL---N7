@@ -19,10 +19,10 @@ public class WalletDAO {
      * @return true if the update was successful.
      * @throws SQLException if a database error occurs.
      */
-    public boolean updateBalance(Connection conn, String userId, double amount) throws SQLException {
+    public boolean updateBalance(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setDouble(1, amount);
+            pstmt.setLong(1, amount);
             pstmt.setString(2, userId);
             return pstmt.executeUpdate() > 0;
         }
@@ -37,12 +37,12 @@ public class WalletDAO {
      * @return true if the deduction was successful.
      * @throws SQLException if a database error occurs.
      */
-    public boolean deductBalance(Connection conn, String userId, double amount) throws SQLException {
+    public boolean deductBalance(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setDouble(1, amount);
+            pstmt.setLong(1, amount);
             pstmt.setString(2, userId);
-            pstmt.setDouble(3, amount);
+            pstmt.setLong(3, amount);
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -59,12 +59,12 @@ public class WalletDAO {
      * @return true if the insertion was successful.
      * @throws SQLException if a database error occurs.
      */
-    public boolean addTransaction(Connection conn, String id, String userId, double amount, String description, String createdAt) throws SQLException {
+    public boolean addTransaction(Connection conn, String id, String userId, long amount, String description, String createdAt) throws SQLException {
         String sql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, id);
             pstmt.setString(2, userId);
-            pstmt.setDouble(3, amount);
+            pstmt.setLong(3, amount);
             pstmt.setString(4, description);
             pstmt.setString(5, createdAt);
             return pstmt.executeUpdate() > 0;

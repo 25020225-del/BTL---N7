@@ -167,7 +167,7 @@ public class AuctionMonitor {
 
                 try {
                     // 1. Pay the seller the final auction price
-                    double sellerPayment = auction.getCurrentPrice();
+                    long sellerPayment = auction.getCurrentPrice();
                     walletDAO.updateBalance(conn, auction.getSeller().getId(), sellerPayment);
 
                     walletDAO.addTransaction(
@@ -180,7 +180,7 @@ public class AuctionMonitor {
                     );
 
                     // 2. Refund the winning bidder for the excess locked amount
-                    double refundAmount = auction.getHighestMaxBid() - auction.getCurrentPrice();
+                    long refundAmount = auction.getHighestMaxBid() - auction.getCurrentPrice();
                     if (refundAmount > 0) {
                         walletDAO.updateBalance(conn, auction.getWinningBidder().getId(), refundAmount);
 

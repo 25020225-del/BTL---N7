@@ -147,13 +147,13 @@ public class CreateAuctionController extends javafx.scene.control.ScrollPane {
 
             // Standardized Model Initialization using Parametrized Constructors
             String itemId = "ITEM-" + System.currentTimeMillis();
-            Item item = new Item(itemId, name, desc, Double.parseDouble(startPrice));
+            Item item = new Item(itemId, name, desc, Long.parseLong(startPrice));
             item.setFile(imageBytes);
 
             String auctionId = "AUC-" + System.currentTimeMillis();
             // Assuming current user context is available or needs to be passed. 
             // For now, we use a placeholder or assume the server fills the User object correctly upon receipt.
-            Auction auction = new Auction(auctionId, item, new model.user.User(), Double.parseDouble(bidInc), startDT, startDT.plusMinutes(totalDurationMinutes));
+            Auction auction = new Auction(auctionId, item, new model.user.User(), Long.parseLong(bidInc), startDT, startDT.plusMinutes(totalDurationMinutes));
 
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
 

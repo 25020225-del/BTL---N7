@@ -44,7 +44,7 @@ public class ServerPaymentController {
         // Wrap deposit logic into a Task to add to the asynchronous database worker queue
         Callable<Boolean> depositTask = () -> {
             // Verify the transaction with PayPal API (Mock)
-            double verifiedAmount = verifyPayPalTransaction(payPalOrderId);
+            long verifiedAmount = verifyPayPalTransaction(payPalOrderId);
 
             if (verifiedAmount <= 0) {
                 log.warn("Payment verification failed for Order ID: {}", payPalOrderId);
@@ -97,7 +97,7 @@ public class ServerPaymentController {
      * @param orderId The PayPal Order ID to verify.
      * @return The verified amount in VND.
      */
-    private double verifyPayPalTransaction(String orderId) {
+    private long verifyPayPalTransaction(String orderId) {
         try {
             // Simulate network latency for API call
             Thread.sleep(1000);
@@ -106,13 +106,13 @@ public class ServerPaymentController {
             // In a real app, this would use PayPal SDK to fetch order details.
             // For this project, we return a fixed set of valid amounts based on orderId length
             // or just random valid amounts for demonstration.
-            double[] validAmounts = {50000, 100000, 200000, 500000};
+            long[] validAmounts = {50000L, 100000L, 200000L, 500000L};
             int index = Math.abs(orderId.hashCode()) % validAmounts.length;
             return validAmounts[index];
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return 0;
+            return 0L;
         }
     }
 }

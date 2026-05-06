@@ -18,6 +18,7 @@ import java.util.Base64;
 
 public class PayPalService {
     private static final Logger log = LoggerFactory.getLogger(PayPalService.class);
+
     private final String clientId;
     private final String secret;
     private final String baseUrl;
@@ -67,7 +68,7 @@ public class PayPalService {
      *
      * @return String[]: [0] = Order ID, [1] = Payment URL.
      */
-    public String[] createOrder(double amountVND) throws Exception {
+    public String[] createOrder(long amountVND) throws Exception {
         // Assumed exchange rate | TODO: add dynamic foreign exchange rate API)
         double amountUSD = amountVND / 25000.0;
         String token = getAccessToken();

@@ -7,7 +7,7 @@ package model.finance;
  */
 public class Wallet {
     private String userId;
-    private double balance;
+    private long balance;
 
     /**
      * Default constructor.
@@ -21,7 +21,7 @@ public class Wallet {
      * @param userId  The unique identifier of the user who owns this wallet.
      * @param balance The initial monetary balance of the wallet.
      */
-    public Wallet(String userId, double balance) {
+    public Wallet(String userId, long balance) {
         this.userId = userId;
         this.balance = balance;
     }
@@ -34,11 +34,11 @@ public class Wallet {
         this.userId = userId;
     }
 
-    public double getBalance() {
+    public long getBalance() {
         return balance;
     }
 
-    public void setBalance(double balance) {
+    public void setBalance(long balance) {
         this.balance = balance;
     }
 
@@ -49,7 +49,7 @@ public class Wallet {
      * @param amount The target amount to check against the current balance.
      * @return {@code true} if the current balance is greater than or equal to the specified amount; {@code false} otherwise.
      */
-    public boolean hasEnoughBalance(double amount) {
+    public boolean hasEnoughBalance(long amount) {
         return this.balance >= amount;
     }
 }

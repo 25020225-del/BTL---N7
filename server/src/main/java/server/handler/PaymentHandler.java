@@ -133,9 +133,9 @@ public class PaymentHandler implements CommandHandler {
      * @throws Exception If an error occurs during order creation with PayPal.
      */
     private void handleCreateDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
-        double amountVND;
+        long amountVND;
         try {
-            amountVND = Double.parseDouble(data.toString());
+            amountVND = Long.parseLong(data.toString());
         } catch (NumberFormatException e) {
             client.sendResponse("ERROR", "Invalid currency format");
             return;
@@ -207,7 +207,7 @@ public class PaymentHandler implements CommandHandler {
      * Stores the monetary amount and the time of creation to facilitate garbage collection.
      */
     private static class DepositInfo {
-        private final double amountVND;
+        private final long amountVND;
         private final long createdAt;
 
         /**
@@ -216,12 +216,12 @@ public class PaymentHandler implements CommandHandler {
          * @param amountVND The amount in Vietnamese Dong.
          * @param createdAt The system time in milliseconds when the order was initiated.
          */
-        public DepositInfo(double amountVND, long createdAt) {
+        public DepositInfo(long amountVND, long createdAt) {
             this.amountVND = amountVND;
             this.createdAt = createdAt;
         }
 
-        public double getAmountVND() {
+        public long getAmountVND() {
             return amountVND;
         }
 

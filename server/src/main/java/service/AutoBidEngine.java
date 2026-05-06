@@ -73,7 +73,7 @@ public class AutoBidEngine {
 
         // 2. Sort bots: Highest maxBid first. If maxBid is tied, earlier registration time wins.
         bots.sort((b1, b2) -> {
-            int maxBidCompare = Double.compare(b2.getMaxBid(), b1.getMaxBid());
+            int maxBidCompare = Long.compare(b2.getMaxBid(), b1.getMaxBid());
             if (maxBidCompare != 0) return maxBidCompare;
             return b1.getTimeRegistered().compareTo(b2.getTimeRegistered());
         });
@@ -83,8 +83,8 @@ public class AutoBidEngine {
 
         // 3. Find the top 2 bots capable of bidding
         for (AutoBid bot : bots) {
-            double actualIncrement = Math.max(auction.getBidIncrement(), bot.getIncrement());
-            double requiredBid = (auction.getWinningBidder() == null) ?
+            long actualIncrement = Math.max(auction.getBidIncrement(), bot.getIncrement());
+            long requiredBid = (auction.getWinningBidder() == null) ?
                     auction.getItem().getStartingPrice() :
                     auction.getCurrentPrice() + actualIncrement;
 
@@ -103,15 +103,15 @@ public class AutoBidEngine {
         if (top1 == null) return; // No capable bot found
 
         // 4. Calculate the final winning price mathematically
-        double finalPrice;
-        double top1ActualIncrement = Math.max(auction.getBidIncrement(), top1.getIncrement());
+        long finalPrice;
+        long top1ActualIncrement = Math.max(auction.getBidIncrement(), top1.getIncrement());
 
         if (top2 != null) {
             // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
             finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
 
             // Clean up: Remove top2 and other losing bots from the queue to prevent infinite loops
-            final double top2MaxBid = top2.getMaxBid();
+            final long top2MaxBid = top2.getMaxBid();
             final String top1Id = top1.getBidder().getId();
 
             auction.getActiveAutoBids().removeIf(b ->
@@ -125,7 +125,7 @@ public class AutoBidEngine {
         }
 
         // Ensure final price is at least the minimum required to take the lead
-        double minRequired = (auction.getWinningBidder() == null) ?
+        long minRequired = (auction.getWinningBidder() == null) ?
                 auction.getItem().getStartingPrice() :
                 auction.getCurrentPrice() + top1ActualIncrement;
         finalPrice = Math.max(finalPrice, minRequired);

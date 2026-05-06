@@ -56,15 +56,15 @@ public class ServerBidderController {
      * @return A {@link CompletableFuture} that resolves to {@code true} if the bid
      * was successfully placed; {@code false} otherwise.
      */
-    public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, double newMaxBid, boolean isBot) {
+    public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, long newMaxBid, boolean isBot) {
 
         // Prevent users from bidding on items they are selling
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             return CompletableFuture.completedFuture(false);
         }
 
-        double expectedPrice;
-        double expectedMaxBid;
+        long expectedPrice;
+        long expectedMaxBid;
         String expectedWinnerId;
         synchronized (server.ServerExtension.AuctionManager.getLockForAuction(auction.getId())) {
             expectedPrice = auction.getCurrentPrice();
@@ -169,7 +169,7 @@ public class ServerBidderController {
      * @param increment   The minimum step to increase the price when outbidding others.
      * @return A {@link CompletableFuture} resolving to true if configured successfully.
      */
-    public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, double maxBid, double increment) {
+    public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, long maxBid, long increment) {
 
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             return CompletableFuture.completedFuture(false);
