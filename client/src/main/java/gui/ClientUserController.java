@@ -380,6 +380,11 @@ public class ClientUserController {
             Platform.runLater(() -> AlertHelper.showAlert(AlertType.INFORMATION, "Deposit Success", evt.getNewValue().toString()));
         });
 
+        AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR, evt -> {
+            String msg = evt.getNewValue() != null ? evt.getNewValue().toString() : "An unknown error occurred.";
+            Platform.runLater(() -> AlertHelper.showAlert(AlertType.ERROR, "System Error", msg));
+        });
+
         AuctionEventBus.addListener(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED, evt -> {
             @SuppressWarnings("unchecked")
             Map<String, String> data = (Map<String, String>) evt.getNewValue();

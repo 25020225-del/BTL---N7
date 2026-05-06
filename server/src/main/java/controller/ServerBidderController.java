@@ -4,14 +4,12 @@ import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.BidDAO;
 import model.auction.Auction;
-import model.finance.BidTransaction;
 import model.user.User;
 import server.ServerExtension.AuctionManager;
 import service.AutoBidEngine;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -67,48 +65,14 @@ public class ServerBidderController {
 
         // 1. Wrap the entire process into a Callable task
         Callable<Boolean> bidTask = () -> {
-            
-            // 2. RAM Validation & Calculation Phase (LOCKED)
-            // We only hold the RAM lock long enough to calculate the potential result.
-            Auction.BidResult result;
-            User previousWinner;
-            double previousHighestMaxBid;
-            double currentPriceAtCalculation;
-            
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                previousWinner = auction.getWinningBidder();
-                previousHighestMaxBid = auction.getHighestMaxBid();
-                currentPriceAtCalculation = auction.getCurrentPrice();
-
-                result = auction.calculateBidResult(currentUser, newMaxBid);
-                if (result == null) {
-                    System.out.println("[Error]: " + RED + "Bid validation failed in Model" + RESET);
-                    return false;
-                }
-            }
-            // LOCK RELEASED HERE - No RAM lock during DB I/O
-
-            // 3. Database Transaction Phase (UNLOCKED)
-            // This prevents I/O bottlenecks while holding the RAM lock.
-            boolean isDbSuccess = false;
+            // DB is the single source of truth. Do NOT lock RAM while doing DB I/O.
+            BidDAO.BidCommitResult commitResult;
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
-                    isDbSuccess = bidDAO.executeBidTransaction(
-                            conn, 
-                            currentUser, 
-                            newMaxBid, 
-                            previousWinner, 
-                            previousHighestMaxBid, 
-                            result.newWinner,
-                            result.newHighestMaxBid,
-                            result.newCurrentPrice, 
-                            auction.getId(), 
-                            result.newEndTime,
-                            currentPriceAtCalculation // Pass current price for Optimistic Locking
-                    );
+                    commitResult = bidDAO.executeBidTransactionSourceOfTruth(conn, auction.getId(), currentUser, newMaxBid);
 
-                    if (isDbSuccess) {
+                    if (commitResult != null) {
                         conn.commit();
                     } else {
                         conn.rollback();
@@ -125,20 +89,27 @@ public class ServerBidderController {
                 return false;
             }
 
-            // 4. RAM Update Phase (LOCKED)
-            // Re-acquire the lock to apply the committed DB state back to RAM.
-            if (isDbSuccess) {
-                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                    // Final safety check: Ensure RAM hasn't moved beyond our result in a way that makes it invalid
-                    // In a highly optimized system, we'd check versions here. 
-                    // For now, we apply the result as it's the committed truth from the DB.
-                    auction.applyBidResult(currentUser, result);
+            // RAM Update Phase: exactly ONE short synchronized block AFTER commit.
+            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                // Guard: avoid overwriting a newer in-RAM state (another bid may have committed & synced first).
+                if (auction.getCurrentPrice() <= commitResult.newCurrentPrice) {
+                    User winner = null;
+                    if (commitResult.newWinnerId != null) {
+                        winner = new User();
+                        winner.setId(commitResult.newWinnerId);
+                    }
+                    Auction.BidResult ramResult = new Auction.BidResult(
+                            winner,
+                            commitResult.newHighestMaxBid,
+                            commitResult.newCurrentPrice,
+                            commitResult.newEndTime
+                    );
+                    auction.applyBidResult(currentUser, ramResult);
                 }
-                System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
-                return true;
             }
-            
-            return false;
+
+            System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+            return true;
         };
 
         // Submit the task to TransactionManager and chain the broadcast logic

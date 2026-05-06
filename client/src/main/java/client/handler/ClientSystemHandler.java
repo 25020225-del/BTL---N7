@@ -52,7 +52,7 @@ public class ClientSystemHandler implements ResponseHandler {
             utils.TimeUtil.calibrateOffset(clientSendTime, serverTime, clientReceiveTime);
         } else if ("GENERAL_ERROR".equals(command)) {
             String errorMessage = message.getData() != null ? message.getData().toString() : "An unknown error occurred.";
-            Platform.runLater(() -> gui.process.AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.ERROR, "System Error", errorMessage));
+            AuctionEventBus.fireEvent(AuctionEventBus.GENERAL_ERROR, errorMessage);
         }
     }
 }
