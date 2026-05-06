@@ -139,4 +139,24 @@ public class PayPalService {
         log.warn("PayPal Capture failed: {}", response.statusCode());
         return false;
     }
+
+    /**
+     * Lấy trạng thái hiện tại của Order từ PayPal.
+     * Trạng thái trả về thường là: "CREATED", "APPROVED" (đã đồng ý trên web), "COMPLETED".
+     */
+    public String getOrderStatus(String orderId) throws Exception {
+        String token = getAccessToken();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v2/checkout/orders/" + orderId))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            JsonNode jsonResponse = mapper.readTree(response.body());
+            return jsonResponse.get("status").asText();
+        }
+        return "UNKNOWN";
+    }
 }

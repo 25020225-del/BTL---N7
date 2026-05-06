@@ -70,19 +70,39 @@ public class PaymentHandler implements CommandHandler {
     private void startCleanupTask() {
         cleanupScheduler.scheduleAtFixedRate(() -> {
             long now = System.currentTimeMillis();
-            int removedCount = 0;
 
             for (Map.Entry<String, DepositInfo> entry : pendingDeposits.entrySet()) {
-                if (now - entry.getValue().getCreatedAt() > EXPIRATION_TIME_MS) {
-                    pendingDeposits.remove(entry.getKey());
-                    removedCount++;
+                String orderId = entry.getKey();
+                DepositInfo info = entry.getValue();
+
+                // Clean if the order has waited for at least 15 minutes
+                if (now - info.getCreatedAt() > EXPIRATION_TIME_MS) {
+                    pendingDeposits.remove(orderId);
+                    log.info("Removed expired pending deposit: {}", orderId);
+                    continue;
+                }
+
+                // Automatically check order status from PayPal
+                try {
+                    String status = payPalService.getOrderStatus(orderId);
+                    if ("APPROVED".equals(status)) {
+                        log.info("Auto-detected APPROVED status for Order: {}. Attempting capture...", orderId);
+                        boolean isCaptured = payPalService.captureOrder(orderId);
+
+                        if (isCaptured) {
+                            paymentController.processDepositSuccess(info.getUser(), orderId).thenAccept(dbSuccess -> {
+                                if (dbSuccess) {
+                                    info.getClient().sendResponse("DEPOSIT_SUCCESS", "Thanh toán tự động thành công. Số dư đã được cập nhật.");
+                                    pendingDeposits.remove(orderId);
+                                }
+                            });
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Error polling PayPal order {}: {}", orderId, e.getMessage());
                 }
             }
-
-            if (removedCount > 0) {
-                log.info("Deleted {} suspending transactions.",  removedCount);
-            }
-        }, 5, 5, TimeUnit.MINUTES);
+        }, 10, 10, TimeUnit.SECONDS);
     }
 
     /**
@@ -152,8 +172,8 @@ public class PaymentHandler implements CommandHandler {
         String orderId = orderInfo[0];
         String approvalUrl = orderInfo[1];
 
-        // Store the transaction state in RAM with a timestamp to manage TTL
-        pendingDeposits.put(orderId, new DepositInfo(amountVND, System.currentTimeMillis()));
+        // Store the transaction state in RAM with client and user info
+        pendingDeposits.put(orderId, new DepositInfo(amountVND, System.currentTimeMillis(), client, currentUser));
 
         Map<String, String> responseData = new HashMap<>();
         responseData.put("orderId", orderId);
@@ -209,6 +229,8 @@ public class PaymentHandler implements CommandHandler {
     private static class DepositInfo {
         private final long amountVND;
         private final long createdAt;
+        private final ClientHandler client;
+        private final User user;
 
         /**
          * Constructs a new state object for a pending deposit.
@@ -216,9 +238,11 @@ public class PaymentHandler implements CommandHandler {
          * @param amountVND The amount in Vietnamese Dong.
          * @param createdAt The system time in milliseconds when the order was initiated.
          */
-        public DepositInfo(long amountVND, long createdAt) {
+        public DepositInfo(long amountVND, long createdAt, ClientHandler client, User user) {
             this.amountVND = amountVND;
             this.createdAt = createdAt;
+            this.client = client;
+            this.user = user;
         }
 
         public long getAmountVND() {
@@ -227,6 +251,14 @@ public class PaymentHandler implements CommandHandler {
 
         public long getCreatedAt() {
             return createdAt;
+        }
+
+        public ClientHandler getClient() {
+            return client;
+        }
+
+        public User getUser() {
+            return user;
         }
     }
 }
