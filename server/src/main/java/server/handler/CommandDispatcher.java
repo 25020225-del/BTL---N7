@@ -84,7 +84,8 @@ public class CommandDispatcher {
         handlers.put("FETCH_AUCTIONS", fetchHandler);
 
         // Register Admin operations
-        AdminActionHandler adminHandler = new AdminActionHandler(auctionDAO, userDAO);
+        controller.ServerAdminController adminCtrl = new controller.ServerAdminController(userDAO, auctionDAO);
+        AdminActionHandler adminHandler = new AdminActionHandler(auctionDAO, userDAO, adminCtrl);
         handlers.put("FETCH_PENDING_AUCTIONS", new FetchAuctionsHandler(auctionDAO));
         handlers.put("APPROVE_AUCTION", adminHandler);
         handlers.put("REJECT_AUCTION", adminHandler);

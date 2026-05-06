@@ -29,9 +29,8 @@ public class ClientAdminController {
     private static final Logger log = LoggerFactory.getLogger(ClientAdminController.class);
 
     private Parent mainView;
-    private Parent adminView;
     private Parent tableView;
-    private User currentAdmin;
+    private Parent settingsView;
 
     @FXML
     private VBox mainDock;
@@ -47,7 +46,7 @@ public class ClientAdminController {
     @FXML
     private Button searchButton;
 
-    private IconButton account = new IconButton("mdi2a-account", "Hello Admin", "Account", "special-button");
+    private IconButton account;
     private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
     private IconButton accountList = new IconButton("mdi2a-account-box-multiple-outline", "Accounts", "Manage Accounts", "special-button");
     private IconButton itemList = new IconButton("mdi2a-archive-settings-outline", "Items", "Manage Items", "special-button");
@@ -59,20 +58,19 @@ public class ClientAdminController {
      * @throws IOException If the corresponding FXML files cannot be loaded.
      */
     public ClientAdminController(User user) throws IOException {
-        this.currentAdmin = user;
-        this.account = new IconButton("mdi2a-account", "Admin: " + user.getName(), "Account");
+        this.account = new IconButton("mdi2a-account", "Admin: " + user.getName(), "Account","special-button");
 
         FXMLLoader mainViewloader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainViewloader.setController(this);
         mainView = mainViewloader.load();
 
-        FXMLLoader adminViewLoader = new FXMLLoader(getClass().getResource("AdminView.fxml"));
-        adminViewLoader.setController(this);
-        adminView = adminViewLoader.load();
-
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
         tableViewLoader.setController(this);
         tableView = tableViewLoader.load();
+
+        FXMLLoader settingsLoader = new FXMLLoader(getClass().getResource("SettingsView.fxml"));
+        settingsLoader.setController(this);
+        settingsView = settingsLoader.load();
 
         MainApplication.setNewScene(mainView);
     }
@@ -123,6 +121,23 @@ public class ClientAdminController {
             log.info("Loading user list...");
             MainApplication.networkClient.sendMessage("FETCH_USERS", "");
         });
+
+        account.setOnAction(event -> {
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(settingsView);
+        });
+    }
+
+    @FXML
+    private void handleBackToMarketplace(){
+        itemList.fire();
+    }
+
+    @FXML
+    private void handleSignOut(){
+        log.info("User \"{}\" is signing out.", "Admin");
+        MainApplication.networkClient.sendMessage("LOGOUT", "");
+        MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
     /**

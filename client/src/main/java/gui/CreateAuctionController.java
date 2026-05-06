@@ -4,28 +4,32 @@ import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.process.ImageCompressor;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.control.Alert;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.stage.FileChooser;
 import model.auction.Auction;
 import model.item.Item;
+
+import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 
-import static utils.ConsoleColors.GREEN;
-import static utils.ConsoleColors.RESET;
-import static utils.ConsoleColors.YELLOW;
+public class CreateAuctionController extends javafx.scene.control.ScrollPane {
+    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
 
-/**
- * Controller dedicated to Seller-specific operations.
- * Manages auction creation and seller dashboard logic.
- */
-public class SellerDashboardController {
-    private static final Logger log = LoggerFactory.getLogger(SellerDashboardController.class);
+    private Runnable onAuctionCreated;
+
+    private File imagefile;
 
     @FXML private TextField ca_itemName;
     @FXML private TextArea ca_description;
@@ -38,7 +42,51 @@ public class SellerDashboardController {
     @FXML private TextField ca_durationHours;
     @FXML private ImageView ca_image;
 
-    private File imagefile;
+
+    public CreateAuctionController(){
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
+        loader.setRoot(this);
+        loader.setController(this);
+        try {
+            loader.load();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void setOnAuctionCreated(Runnable callback) { // thêm method này
+        this.onAuctionCreated = callback;
+    }
+
+    /**
+     * Choose image from local storage.
+     */
+    @FXML
+    private void handleSelectImage(){
+        // Hạ giới hạn xuống 1MB để bảo vệ RAM của Server khi mã hóa và parse JSON
+        final int MAX_IMAGE_SIZE = 1 * 1024 * 1024;
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choose an image");
+        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+
+        File selectedFile = fileChooser.showOpenDialog(this.getScene().getWindow());
+
+        if (selectedFile != null) {
+            // Kiểm tra dung lượng NGAY LẬP TỨC trước khi làm bất cứ việc gì
+            if (selectedFile.length() > MAX_IMAGE_SIZE) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB để đảm bảo đường truyền mạng!");
+                return; // Thoát ngay, không lưu file này
+            }
+
+            // Nếu qua được vòng kiểm duyệt thì mới gán vào biến toàn cục và hiển thị lên UI
+            this.imagefile = selectedFile;
+            log.info("Selected image file: {}", imagefile.getName());
+
+            Image image = new Image(imagefile.toURI().toString());
+            CropImage.cropImage(ca_image, image, 720, 480);
+        }
+    }
 
     /**
      * Handles the submission of the Create Auction form.
@@ -83,22 +131,29 @@ public class SellerDashboardController {
 
             int days = ca_durationDays.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationDays.getText().trim());
             int hours = ca_durationHours.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationHours.getText().trim());
-            long durationMinutes = (days * 24L * 60L) + (hours * 60L);
+            int totalDurationMinutes = (days * 24 * 60) + (hours * 60);
 
-            if (durationMinutes <= 0 || durationMinutes > 43200) {
+            if (totalDurationMinutes <= 0 || totalDurationMinutes > 43200) {
                 AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Duration", "Thời lượng đấu giá phải từ 1 phút đến tối đa 30 ngày.");
                 return;
             }
 
-            Auction auction = new Auction();
-            auction.setItem(new Item());
-            auction.getItem().setItemName(name);
-            auction.getItem().setDescription(desc);
-            auction.getItem().setStartingPrice(Double.parseDouble(startPrice));
-            auction.getItem().setFile(ImageCompressor.compressToBytes(imagefile, 0.05F));
-            auction.setBidIncrement(Double.parseDouble(bidInc));
-            auction.setEndTime(startDT.plusMinutes(durationMinutes));
-            auction.setStartTime(startDT);
+            // Image size and compression check
+            byte[] imageBytes = ImageCompressor.compressToBytes(imagefile, 0.05F);
+            if (imageBytes.length > 500 * 1024) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Image Too Large", "Ảnh sau khi nén vẫn lớn hơn 500KB. Vui lòng chọn ảnh khác hoặc liên hệ kỹ thuật để tăng độ nén!");
+                return;
+            }
+
+            // Standardized Model Initialization using Parametrized Constructors
+            String itemId = "ITEM-" + System.currentTimeMillis();
+            Item item = new Item(itemId, name, desc, Double.parseDouble(startPrice));
+            item.setFile(imageBytes);
+
+            String auctionId = "AUC-" + System.currentTimeMillis();
+            // Assuming current user context is available or needs to be passed. 
+            // For now, we use a placeholder or assume the server fills the User object correctly upon receipt.
+            Auction auction = new Auction(auctionId, item, new model.user.User(), Double.parseDouble(bidInc), startDT, startDT.plusMinutes(totalDurationMinutes));
 
             MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
 
@@ -110,14 +165,6 @@ public class SellerDashboardController {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Time Error", "Giờ bắt đầu phải từ 0–23 và phút từ 0–59.");
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    public void setImageFile(File file) {
-        this.imagefile = file;
-        if (file != null) {
-            Image image = new Image(file.toURI().toString());
-            CropImage.cropImage(ca_image, image, 720, 480);
         }
     }
 

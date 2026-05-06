@@ -16,8 +16,12 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.util.Duration;
+import model.auction.Auction;
+import utils.TimeUtil;
 
+import java.beans.PropertyChangeListener;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
@@ -60,6 +64,7 @@ public class ItemDetailController {
     private Timeline timeline;
     private String currentAuctionId;
     private long endTimeMillis;
+    private PropertyChangeListener priceUpdateListener;
 
     @FXML
     public void initialize() {
@@ -67,7 +72,7 @@ public class ItemDetailController {
         setupChart();
 
         // Subscribe to the global Event Bus for real-time price updates
-        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, evt -> {
+        priceUpdateListener = evt -> {
             @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) evt.getNewValue();
             
@@ -83,7 +88,22 @@ public class ItemDetailController {
                     updateRealTimePrice(newPrice, winnerName);
                 });
             }
-        });
+        };
+
+        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+    }
+
+    /**
+     * Cleans up resources, listeners, and timers to prevent memory leaks.
+     */
+    public void dispose() {
+        if (priceUpdateListener != null) {
+            AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+        }
+        if (timeline != null) {
+            timeline.stop();
+        }
+        System.out.println("[System]: Item Detail Controller Disposed.");
     }
 
     /**
@@ -100,20 +120,21 @@ public class ItemDetailController {
     }
 
     /**
-     * Populates the UI with detailed auction data received from the server.
+     * Populates the UI with detailed auction data using the Domain Model.
+     * This ensures strict MVC compliance by avoiding raw Map parsing.
      *
-     * @param auctionData A map containing the auction details.
+     * @param auction The Auction domain object.
      */
-    public void setProductData(Map<String, Object> auctionData) {
-        this.currentAuctionId = (String) auctionData.get("id");
+    public void setAuctionData(Auction auction) {
+        this.currentAuctionId = auction.getId();
 
-        // Safely extract values
-        String name = (String) auctionData.get("itemName");
-        String desc = (String) auctionData.get("description");
-        String imageUrl = (String) auctionData.get("imageUrl");
-        double startPrice = ((Number) auctionData.get("startingPrice")).doubleValue();
-        double currentPrice = ((Number) auctionData.get("currentPrice")).doubleValue();
-        this.endTimeMillis = ((Number) auctionData.get("endTime")).longValue();
+        // Use getters for accurate Domain Model access
+        String name = auction.getItem().getItemName();
+        String desc = auction.getItem().getDescription();
+        String imageUrl = auction.getItem().getImageUrl();
+        double startPrice = auction.getItem().getStartingPrice();
+        double currentPrice = auction.getCurrentPrice();
+        this.endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
         if (imageUrl == null) {
             imageUrl = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
@@ -127,17 +148,7 @@ public class ItemDetailController {
             }
         });
 
-        String leader = auctionData.containsKey("winnerName") && auctionData.get("winnerName") != null
-                ? (String) auctionData.get("winnerName") : "None";
-
-        // Handle Base64 Image if available
-        if (auctionData.containsKey("imageData")) {
-            String base64Img = (String) auctionData.get("imageData");
-            Image img = ImageUtil.decodeBase64ToImage(base64Img);
-            if (img != null) {
-                imgLarge.setImage(img);
-            }
-        }
+        String leader = (auction.getWinningBidder() != null) ? auction.getWinningBidder().getUserName() : "None";
 
         // Set UI text
         lblDetailTitle.setText(name);
@@ -199,48 +210,37 @@ public class ItemDetailController {
                 return;
             }
 
-            // Create payload map for the server
-            Map<String, Object> payload = Map.of(
-                    "auctionId", currentAuctionId,
-                    "bidAmount", bidAmount,
-                    "isAutoBid", false
+            // Send bidding request to server
+            Map<String, Object> bidData = Map.of(
+                "auctionId", currentAuctionId,
+                "bidAmount", bidAmount
             );
-
-            System.out.println("[Log]: Submitting manual bid of " + bidAmount + " for " + currentAuctionId);
-            MainApplication.networkClient.sendMessage("PLACE_BID", payload);
-
-            txtBidAmount.clear();
+            MainApplication.networkClient.sendMessage("PLACE_BID", bidData);
 
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Please enter a valid numeric amount");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Invalid amount format");
         }
     }
 
     /**
-     * Manages the synchronized countdown timer for the auction end time.
+     * Synchronizes the UI countdown timer with the auction's remaining duration.
      */
     private void startCountdown() {
         if (timeline != null) timeline.stop();
 
-        timeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
-            // Utilize the NTP-style synchronized time utility
-            long diffMillis = endTimeMillis - utils.TimeUtil.getCurrentServerTime();
-
-            if (diffMillis <= 0) {
-                timeline.stop();
-                lblTimeLeft.setText("AUCTION HAS ENDED!");
-                lblTimeLeft.setStyle("-fx-text-fill: gray;");
+        timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            long remaining = endTimeMillis - TimeUtil.getCurrentServerTime();
+            if (remaining <= 0) {
+                lblTimeLeft.setText("Auction Finished");
                 btnPlaceBid.setDisable(true);
-                txtBidAmount.setDisable(true);
+                timeline.stop();
             } else {
-                long seconds = diffMillis / 1000;
-                long h = seconds / 3600;
-                long m = (seconds % 3600) / 60;
-                long s = seconds % 60;
-                lblTimeLeft.setText(String.format("Time left: %02d:%02d:%02d", h, m, s));
+                long hours = remaining / 3600000;
+                long mins = (remaining % 3600000) / 60000;
+                long secs = (remaining % 60000) / 1000;
+                lblTimeLeft.setText(String.format("%02d:%02d:%02d", hours, mins, secs));
             }
         }));
-
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
     }

@@ -210,14 +210,102 @@ public class Auction extends Entity {
     // --- BUSINESS LOGIC METHODS ---
 
     /**
-     * Processes a manual bid placed by a user.
-     * Evaluates constraints, resolves outbidding logic, and applies anti-sniping mechanisms
-     * (extending the auction time if a bid is placed near the deadline).
-     *
-     * @param bidder    The user placing the bid.
-     * @param newMaxBid The maximum amount the user is willing to bid.
-     * @return The created {@link BidTransaction} if the bid is valid and successfully placed; {@code null} otherwise.
+     * Container for holding the calculated results of a bid attempt before it is applied.
      */
+    public static class BidResult {
+        public final User newWinner;
+        public final double newHighestMaxBid;
+        public final double newCurrentPrice;
+        public final LocalDateTime newEndTime;
+
+        public BidResult(User newWinner, double newHighestMaxBid, double newCurrentPrice, LocalDateTime newEndTime) {
+            this.newWinner = newWinner;
+            this.newHighestMaxBid = newHighestMaxBid;
+            this.newCurrentPrice = newCurrentPrice;
+            this.newEndTime = newEndTime;
+        }
+    }
+
+    /**
+     * Calculates the potential outcome of a bid without modifying the auction state.
+     * This follows the MVC pattern by keeping business logic within the Model.
+     *
+     * @param bidder    The user attempting to bid.
+     * @param newMaxBid The maximum bid amount.
+     * @return A BidResult object containing the calculated state, or null if invalid.
+     */
+    public BidResult calculateBidResult(User bidder, double newMaxBid) {
+        if (status.equals(STATUS_DELETED) || !status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
+            return null;
+        }
+
+        double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
+        if (newMaxBid < minRequiredBid) {
+            return null;
+        }
+
+        User nextWinner = winningBidder;
+        double nextHighestMaxBid = highestMaxBid;
+        double nextCurrentPrice = currentPrice;
+        LocalDateTime nextEndTime = endTime;
+
+        if (winningBidder == null) {
+            nextCurrentPrice = item.getStartingPrice();
+            nextHighestMaxBid = newMaxBid;
+            nextWinner = bidder;
+        } else if (bidder.getId().equals(winningBidder.getId())) {
+            if (newMaxBid > highestMaxBid) {
+                nextHighestMaxBid = newMaxBid;
+            }
+        } else {
+            if (newMaxBid > highestMaxBid) {
+                nextCurrentPrice = highestMaxBid + bidIncrement;
+                if (nextCurrentPrice > newMaxBid) nextCurrentPrice = newMaxBid;
+                nextHighestMaxBid = newMaxBid;
+                nextWinner = bidder;
+            } else {
+                nextCurrentPrice = newMaxBid + bidIncrement;
+                if (nextCurrentPrice > highestMaxBid) nextCurrentPrice = highestMaxBid;
+            }
+        }
+
+        // Anti-Sniping calculation
+        if (LocalDateTime.now().plusMinutes(1).isAfter(nextEndTime)) {
+            LocalDateTime proposedEndTime = nextEndTime.plusMinutes(2);
+            if (proposedEndTime.isBefore(maxEndTime)) {
+                nextEndTime = proposedEndTime;
+            } else {
+                nextEndTime = maxEndTime;
+            }
+        }
+
+        return new BidResult(nextWinner, nextHighestMaxBid, nextCurrentPrice, nextEndTime);
+    }
+
+    /**
+     * Applies a pre-calculated BidResult to the auction state in RAM.
+     * This should be called AFTER the database transaction has been successfully committed.
+     *
+     * @param bidder    The user who placed the bid.
+     * @param result    The pre-calculated result to apply.
+     * @return The created BidTransaction.
+     */
+    public BidTransaction applyBidResult(User bidder, BidResult result) {
+        this.winningBidder = result.newWinner;
+        this.highestMaxBid = result.newHighestMaxBid;
+        this.currentPrice = result.newCurrentPrice;
+        this.endTime = result.newEndTime;
+
+        BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
+        bidHistory.add(transaction);
+        return transaction;
+    }
+
+    /**
+     * Processes a manual bid placed by a user.
+     * @deprecated Use calculateBidResult and applyBidResult for atomic DB-RAM sync in controllers.
+     */
+    @Deprecated
     public BidTransaction placeBid(User bidder, double newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
             return null;

@@ -4,14 +4,12 @@ import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.BidDAO;
 import model.auction.Auction;
-import model.finance.BidTransaction;
 import model.user.User;
 import server.ServerExtension.AuctionManager;
 import service.AutoBidEngine;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -65,115 +63,70 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        // 1. Wrap the entire process (Validation -> DB -> RAM) into the Callable task
-        // We move the synchronized block INSIDE the task to ensure atomicity without blocking the submission phase.
+        double expectedPrice;
+        double expectedMaxBid;
+        String expectedWinnerId;
+        synchronized (server.ServerExtension.AuctionManager.getLockForAuction(auction.getId())) {
+            expectedPrice = auction.getCurrentPrice();
+            expectedMaxBid = auction.getHighestMaxBid();
+            expectedWinnerId = auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : null;
+        }
+
+        // 1. Wrap the entire process into a Callable task
         Callable<Boolean> bidTask = () -> {
-            // 2. Acquire the Striped Lock inside the worker thread.
-            // This ensures that only one thread can process a bid for this specific auction at a time.
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                
-                // 3. Perform REAL-TIME validation checks while holding the lock
-                final User previousWinner = auction.getWinningBidder();
-                final double previousHighestMaxBid = auction.getHighestMaxBid();
+            // DB is the single source of truth. Do NOT lock RAM while doing DB I/O.
+            BidDAO.BidCommitResult commitResult;
+            try (Connection conn = DatabaseManager.getConnection()) {
+                conn.setAutoCommit(false);
+                try {
+                    commitResult = bidDAO.executeBidTransactionSourceOfTruth(
+                            conn,
+                            auction.getId(),
+                            currentUser,
+                            newMaxBid,
+                            expectedPrice,
+                            expectedMaxBid,
+                            expectedWinnerId
+                    );
 
-                if (auction.getStatus().equals(Auction.STATUS_DELETED)) {
-                    System.out.println("[Error]: " + RED + "The auction session has been deleted by Admin" + RESET);
-                    return false;
-                }
-                if (!auction.getStatus().equals(Auction.STATUS_RUNNING) || java.time.LocalDateTime.now().isAfter(auction.getEndTime())) {
-                    System.out.println("[Error]: " + RED + "Cannot place a bid. The auction is not running or has already ended" + RESET);
-                    return false;
-                }
-                
-                double minRequiredBid = (previousWinner == null) ? auction.getCurrentPrice() : (auction.getCurrentPrice() + auction.getBidIncrement());
-                if (newMaxBid < minRequiredBid) {
-                    System.out.println("[Error]: " + RED + "Bid must be greater than or equal to VND " + minRequiredBid + RESET);
-                    return false;
-                }
-
-                // 4. Mathematical calculation for the NEW state
-                User newWinner = previousWinner;
-                double newHighestMaxBid = previousHighestMaxBid;
-                double newCurrentPrice = auction.getCurrentPrice();
-                LocalDateTime newEndTime = auction.getEndTime();
-
-                if (previousWinner == null) {
-                    newCurrentPrice = auction.getItem().getStartingPrice();
-                    newHighestMaxBid = newMaxBid;
-                    newWinner = currentUser;
-                } else if (currentUser.getId().equals(previousWinner.getId())) {
-                    if (newMaxBid > previousHighestMaxBid) {
-                        newHighestMaxBid = newMaxBid;
-                    }
-                } else {
-                    if (newMaxBid > previousHighestMaxBid) {
-                        newCurrentPrice = previousHighestMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > newMaxBid) newCurrentPrice = newMaxBid;
-                        newHighestMaxBid = newMaxBid;
-                        newWinner = currentUser;
+                    if (commitResult != null) {
+                        conn.commit();
                     } else {
-                        newCurrentPrice = newMaxBid + auction.getBidIncrement();
-                        if (newCurrentPrice > previousHighestMaxBid) newCurrentPrice = previousHighestMaxBid;
-                    }
-                }
-
-                // Anti-sniping calculation
-                if (LocalDateTime.now().plusMinutes(1).isAfter(newEndTime)) {
-                    LocalDateTime proposedEndTime = newEndTime.plusMinutes(2);
-                    if (proposedEndTime.isBefore(auction.getMaxEndTime())) {
-                        newEndTime = proposedEndTime;
-                    } else {
-                        newEndTime = auction.getMaxEndTime();
-                    }
-                }
-
-                final LocalDateTime finalNewEndTime = newEndTime;
-                final User finalNewWinner = newWinner;
-                final double finalNewHighestMaxBid = newHighestMaxBid;
-                final double finalNewCurrentPrice = newCurrentPrice;
-
-                // 5. Database Interaction
-                try (Connection conn = DatabaseManager.getConnection()) {
-                    conn.setAutoCommit(false);
-
-                    try {
-                        boolean isDbSuccess = bidDAO.executeBidTransaction(
-                                conn, 
-                                currentUser, 
-                                newMaxBid, 
-                                previousWinner, 
-                                previousHighestMaxBid, 
-                                finalNewWinner,
-                                finalNewHighestMaxBid,
-                                finalNewCurrentPrice, 
-                                auction.getId(), 
-                                finalNewEndTime
-                        );
-
-                        if (isDbSuccess) {
-                            conn.commit();
-                            
-                            // 6. Update RAM IMMEDIATELY while still holding the lock.
-                            // This guarantees that the next thread to acquire the lock will see the updated state.
-                            auction.placeBid(currentUser, newMaxBid);
-                            
-                            System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
-                            return true;
-                        } else {
-                            System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" has insufficient balance or transaction failed");
-                            conn.rollback();
-                            return false;
-                        }
-                    } catch (SQLException e) {
                         conn.rollback();
-                        System.out.println("[Database]: Database TransactionError: " + RED + e.getMessage() + RESET);
+                        System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" transaction failed (insufficient balance or state changed)");
                         return false;
                     }
                 } catch (SQLException e) {
-                    System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+                    conn.rollback();
+                    System.out.println("[Database]: Transaction Error: " + RED + e.getMessage() + RESET);
                     return false;
                 }
+            } catch (SQLException e) {
+                System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+                return false;
             }
+
+            // RAM Update Phase: exactly ONE short synchronized block AFTER commit.
+            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                // Guard: avoid overwriting a newer in-RAM state (another bid may have committed & synced first).
+                if (auction.getCurrentPrice() <= commitResult.newCurrentPrice) {
+                    User winner = null;
+                    if (commitResult.newWinnerId != null) {
+                        winner = new User();
+                        winner.setId(commitResult.newWinnerId);
+                    }
+                    Auction.BidResult ramResult = new Auction.BidResult(
+                            winner,
+                            commitResult.newHighestMaxBid,
+                            commitResult.newCurrentPrice,
+                            commitResult.newEndTime
+                    );
+                    auction.applyBidResult(currentUser, ramResult);
+                }
+            }
+
+            System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+            return true;
         };
 
         // Submit the task to TransactionManager and chain the broadcast logic
@@ -188,6 +141,16 @@ public class ServerBidderController {
 
                 if (!isBot) {
                     AutoBidEngine.triggerBotScan(auction);
+                }
+            } else {
+                // Task failed - could be Optimistic Locking conflict
+                if (!isBot) {
+                    // Send a direct error message to the specific client that placed the bid
+                    server.ServerExtension.ClientManager.sendToUser(
+                            currentUser.getId(), 
+                            "GENERAL_ERROR", 
+                            "Giá sản phẩm đã thay đổi bởi người dùng khác. Vui lòng cập nhật và thử lại!"
+                    );
                 }
             }
             return finalResult;

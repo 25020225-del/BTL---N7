@@ -121,6 +121,7 @@ public class LoginController {
                     // Delegate routing to the MainController based on the user's role
                     MainController.start(loggedInUser);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     log.error("Login Error: {}", e.getMessage());
                 }
 

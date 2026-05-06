@@ -95,4 +95,16 @@ public class UserDAO {
             return pstmt.executeUpdate() > 0;
         }
     }
+
+    public boolean updateUserTrustLevel(String userId, boolean isGood) {
+        String sql = "UPDATE users SET is_good = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, isGood ? 1 : 0);
+            pstmt.setString(2, userId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
 }

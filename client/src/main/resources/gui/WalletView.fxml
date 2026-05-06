@@ -11,11 +11,11 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.WalletController">
+<VBox prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
     <children>
         <HBox alignment="CENTER_LEFT" spacing="10.0">
             <children>
-                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại" />
+                <Button mnemonicParsing="false" onAction="#handleReturn" style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại" />
                 <Label text="Ma Wallet">
                     <font><Font name="System Bold" size="24.0" /></font>
                 </Label>

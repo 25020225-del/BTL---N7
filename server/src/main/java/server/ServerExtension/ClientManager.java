@@ -195,6 +195,22 @@ public class ClientManager {
     }
 
     /**
+     * Sends a private command-based message to a specific user by their ID.
+     *
+     * @param userId  The unique identifier of the target user.
+     * @param command The identifier for the action.
+     * @param data    The data payload.
+     */
+    public static void sendToUser(String userId, String command, Object data) {
+        for (ClientHandler client : clients) {
+            if (client.getUser() != null && client.getUser().getId().equals(userId)) {
+                client.sendResponse(command, data);
+                return;
+            }
+        }
+    }
+
+    /**
      * Gracefully shuts down the broadcast thread pool.
      */
     public static void shutdown() {
