@@ -73,12 +73,6 @@ public class BidDAO {
             }
         }
 
-        if (Double.compare(currentPrice, expectedPrice) != 0 ||
-                Double.compare(highestMaxBid, expectedMaxBid) != 0 ||
-                (winningBidderId == null ? expectedWinnerId != null : !winningBidderId.equals(expectedWinnerId))) {
-            return null; // Trạng thái đã bị luồng khác thay đổi, Optimistic lock fail
-        }
-
         // Build a minimal Auction snapshot for Model-calculation (MVC-compliant: core rules remain in Model).
         Auction auctionSnapshot = new Auction();
         Item item = new Item();
@@ -164,7 +158,7 @@ public class BidDAO {
 
         // STEP 3: Update auction with optimistic locking (DB source-of-truth)
         final String updateAuctionSql;
-        if (winningBidderId == null) {
+        if (expectedWinnerId == null) {
             updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? " +
                     "WHERE id = ? AND current_price = ? AND highest_max_bid = ? AND winning_bidder_id IS NULL";
         } else {
@@ -178,10 +172,10 @@ public class BidDAO {
             pstmt.setString(3, result.newWinner != null ? result.newWinner.getId() : null);
             pstmt.setDouble(4, result.newHighestMaxBid);
             pstmt.setString(5, auctionId);
-            pstmt.setDouble(6, currentPrice);
-            pstmt.setDouble(7, highestMaxBid);
-            if (winningBidderId != null) {
-                pstmt.setString(8, winningBidderId);
+            pstmt.setDouble(6, expectedPrice);
+            pstmt.setDouble(7, expectedMaxBid);
+            if (expectedWinnerId != null) {
+                pstmt.setString(8, expectedWinnerId);
             }
 
             if (pstmt.executeUpdate() == 0) {
