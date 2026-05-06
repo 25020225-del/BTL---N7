@@ -157,6 +157,46 @@ public class AuctionDAO {
     }
 
     /**
+     * Optimistic transition OPEN → RUNNING: succeeds only if the row is still OPEN.
+     */
+    public boolean updateAuctionStatusOpenToRunning(String auctionId) throws SQLException {
+        String sql = "UPDATE auctions SET status = ? WHERE id = ? AND status = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, Auction.STATUS_RUNNING);
+            pstmt.setString(2, auctionId);
+            pstmt.setString(3, Auction.STATUS_OPEN);
+
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Terminal status update (PAID/CANCELED) with optimistic locking on {@code end_time}.
+     * Fails when anti-sniping or another writer changed {@code end_time} since the RAM snapshot was taken.
+     */
+    public boolean updateAuctionStatusEndingIfEndTimeMatches(
+            String auctionId,
+            String newStatus,
+            LocalDateTime expectedEndTimeInDb
+    ) throws SQLException {
+        String sql = "UPDATE auctions SET status = ? WHERE id = ? AND end_time = ? "
+                + "AND (status = ? OR status = ?)";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newStatus);
+            pstmt.setString(2, auctionId);
+            pstmt.setString(3, expectedEndTimeInDb.toString());
+            pstmt.setString(4, Auction.STATUS_RUNNING);
+            pstmt.setString(5, Auction.STATUS_OPEN);
+
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
      * Retrieves the scheduled start and end times for a specific auction.
      *
      * @param auctionId The unique identifier of the auction.
