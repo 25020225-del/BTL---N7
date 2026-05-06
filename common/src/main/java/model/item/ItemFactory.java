@@ -28,23 +28,21 @@ public class ItemFactory {
      * @param startingPrice The initial bidding price.
      * @return A specific subclass of Item corresponding to the requested type.
      */
-    public static Item createItem(String type, String id, String itemName, String description, double startingPrice) {
+    public static Item createItem(String type, String id, String itemName, String description, long startingPrice) {
         // Fallback to a general physical item if the type is not provided
         if (type == null || type.trim().isEmpty()) {
             log.warn("Item type is null. Defaulting to TangibleItem.");
             return new TangibleItem(id, itemName, description, startingPrice);
         }
 
-        switch (type.toUpperCase()) {
-            case TYPE_TANGIBLE:
-                return new TangibleItem(id, itemName, description, startingPrice);
-            case TYPE_DIGITAL:
-                return new DigitalItem(id, itemName, description, startingPrice);
-            case TYPE_SERVICE:
-                return new ServicePackage(id, itemName, description, startingPrice);
-            default:
+        return switch (type.toUpperCase()) {
+            case TYPE_TANGIBLE -> new TangibleItem(id, itemName, description, startingPrice);
+            case TYPE_DIGITAL -> new DigitalItem(id, itemName, description, startingPrice);
+            case TYPE_SERVICE -> new ServicePackage(id, itemName, description, startingPrice);
+            default -> {
                 log.warn("Unknown item type '{}'. Defaulting to TangibleItem.", type);
-                return new TangibleItem(id, itemName, description, startingPrice);
-        }
+                yield new TangibleItem(id, itemName, description, startingPrice);
+            }
+        };
     }
 }

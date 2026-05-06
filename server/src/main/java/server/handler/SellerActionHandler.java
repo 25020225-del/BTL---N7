@@ -67,7 +67,7 @@ public class SellerActionHandler implements CommandHandler {
         // Get new values from payload or keep existing ones
         String newName = payload.containsKey("itemName") ? (String) payload.get("itemName") : auction.getItem().getItemName();
         String newDesc = payload.containsKey("description") ? (String) payload.get("description") : auction.getItem().getDescription();
-        double newStartPrice = payload.containsKey("startPrice") ? Double.parseDouble(payload.get("startPrice").toString()) : auction.getItem().getStartingPrice();
+        long newStartPrice = payload.containsKey("startPrice") ? Long.parseLong(payload.get("startPrice").toString()) : auction.getItem().getStartingPrice();
         
         java.time.LocalDateTime newStartTime = auction.getStartTime();
         if (payload.containsKey("newStartTime")) {

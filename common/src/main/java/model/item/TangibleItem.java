@@ -6,8 +6,7 @@ package model.item;
  * Future extensions could include properties like weight, dimensions, and shipping methods.
  */
 public class TangibleItem extends Item {
-
-    public TangibleItem(String id, String itemName, String description, double startingPrice) {
+    public TangibleItem(String id, String itemName, String description, long startingPrice) {
         super(id, itemName, description, startingPrice);
     }
 

@@ -15,12 +15,12 @@ public class BidDAO {
 
     public static final class BidCommitResult {
         public final String auctionId;
-        public final double newCurrentPrice;
-        public final double newHighestMaxBid;
+        public final long newCurrentPrice;
+        public final long newHighestMaxBid;
         public final String newWinnerId; // nullable
         public final LocalDateTime newEndTime;
 
-        public BidCommitResult(String auctionId, double newCurrentPrice, double newHighestMaxBid, String newWinnerId, LocalDateTime newEndTime) {
+        public BidCommitResult(String auctionId, long newCurrentPrice, long newHighestMaxBid, String newWinnerId, LocalDateTime newEndTime) {
             this.auctionId = auctionId;
             this.newCurrentPrice = newCurrentPrice;
             this.newHighestMaxBid = newHighestMaxBid;
@@ -33,7 +33,7 @@ public class BidDAO {
      * Executes a bid transaction using the database as the single source of truth.
      * <p>
      * This method reads the auction state inside the transaction, computes the bid outcome using
-     * {@link Auction#calculateBidResult(User, double)}, and commits the final state with optimistic locking.
+     * {@link Auction#calculateBidResult(User, long)}, and commits the final state with optimistic locking.
      *
      * @return a {@link BidCommitResult} on success, or {@code null} if validation fails or optimistic lock conflicts.
      */
@@ -41,18 +41,18 @@ public class BidDAO {
             Connection conn,
             String auctionId,
             User currentUser,
-            double newMaxBid,
-            double expectedPrice,
-            double expectedMaxBid,
+            long newMaxBid,
+            long expectedPrice,
+            long expectedMaxBid,
             String expectedWinnerId
     ) throws SQLException {
         String selectSql = "SELECT starting_price, current_price, highest_max_bid, bid_increment, end_time, status, winning_bidder_id " +
                 "FROM auctions WHERE id = ?";
 
-        double startingPrice;
-        double currentPrice;
-        double highestMaxBid;
-        double bidIncrement;
+        long startingPrice;
+        long currentPrice;
+        long highestMaxBid;
+        long bidIncrement;
         LocalDateTime endTime;
         String status;
         String winningBidderId;
@@ -63,10 +63,10 @@ public class BidDAO {
                 if (!rs.next()) {
                     return null;
                 }
-                startingPrice = rs.getDouble("starting_price");
-                currentPrice = rs.getDouble("current_price");
-                highestMaxBid = rs.getDouble("highest_max_bid");
-                bidIncrement = rs.getDouble("bid_increment");
+                startingPrice = rs.getLong("starting_price");
+                currentPrice = rs.getLong("current_price");
+                highestMaxBid = rs.getLong("highest_max_bid");
+                bidIncrement = rs.getLong("bid_increment");
                 endTime = LocalDateTime.parse(rs.getString("end_time"));
                 status = rs.getString("status");
                 winningBidderId = rs.getString("winning_bidder_id"); // nullable
@@ -103,13 +103,13 @@ public class BidDAO {
             previousWinner = new User();
             previousWinner.setId(winningBidderId);
         }
-        double previousHighestMaxBid = highestMaxBid;
+        long previousHighestMaxBid = highestMaxBid;
 
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
         if (result.newWinner != null && result.newWinner.getId().equals(currentUser.getId())) {
             if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
-                double amountToDeduct = newMaxBid - previousHighestMaxBid;
+                long amountToDeduct = newMaxBid - previousHighestMaxBid;
                 if (amountToDeduct > 0) {
                     if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return null;
                     walletDAO.addTransaction(
@@ -151,7 +151,7 @@ public class BidDAO {
             pstmt.setString(1, "BID-" + System.currentTimeMillis());
             pstmt.setString(2, auctionId);
             pstmt.setString(3, currentUser.getId());
-            pstmt.setDouble(4, result.newCurrentPrice);
+            pstmt.setLong(4, result.newCurrentPrice);
             pstmt.setString(5, now);
             pstmt.executeUpdate();
         }
@@ -167,13 +167,13 @@ public class BidDAO {
         }
 
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
-            pstmt.setDouble(1, result.newCurrentPrice);
+            pstmt.setLong(1, result.newCurrentPrice);
             pstmt.setString(2, result.newEndTime.toString());
             pstmt.setString(3, result.newWinner != null ? result.newWinner.getId() : null);
-            pstmt.setDouble(4, result.newHighestMaxBid);
+            pstmt.setLong(4, result.newHighestMaxBid);
             pstmt.setString(5, auctionId);
-            pstmt.setDouble(6, expectedPrice);
-            pstmt.setDouble(7, expectedMaxBid);
+            pstmt.setLong(6, expectedPrice);
+            pstmt.setLong(7, expectedMaxBid);
             if (expectedWinnerId != null) {
                 pstmt.setString(8, expectedWinnerId);
             }
@@ -193,7 +193,7 @@ public class BidDAO {
         );
     }
 
-    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, User newWinner, double newHighestMaxBid, double newCurrentPrice, String auctionId, LocalDateTime endTime, double currentPriceInDB) throws SQLException {
+    public boolean executeBidTransaction(Connection conn, User currentUser, long newMaxBid, User previousWinner, long previousHighestMaxBid, User newWinner, long newHighestMaxBid, long newCurrentPrice, String auctionId, LocalDateTime endTime, long currentPriceInDB) throws SQLException {
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
 
@@ -202,7 +202,7 @@ public class BidDAO {
 
             if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
                 // Case 1: User is outbidding themselves. Only deduct the difference.
-                double amountToDeduct = newMaxBid - previousHighestMaxBid;
+                long amountToDeduct = newMaxBid - previousHighestMaxBid;
                 if (amountToDeduct > 0) {
                     if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct))
                         return false; // Insufficient balance
@@ -261,7 +261,7 @@ public class BidDAO {
             pstmt.setString(1, "BID-" + System.currentTimeMillis());
             pstmt.setString(2, auctionId);
             pstmt.setString(3, currentUser.getId());
-            pstmt.setDouble(4, newCurrentPrice);
+            pstmt.setLong(4, newCurrentPrice);
             pstmt.setString(5, now);
             pstmt.executeUpdate();
         }
@@ -270,12 +270,12 @@ public class BidDAO {
         // We use Optimistic Locking by checking if the current_price has changed since we last read it in RAM.
         String updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? WHERE id = ? AND current_price = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
-            pstmt.setDouble(1, newCurrentPrice);
+            pstmt.setLong(1, newCurrentPrice);
             pstmt.setString(2, endTime.toString());
             pstmt.setString(3, newWinner != null ? newWinner.getId() : null);
-            pstmt.setDouble(4, newHighestMaxBid);
+            pstmt.setLong(4, newHighestMaxBid);
             pstmt.setString(5, auctionId);
-            pstmt.setDouble(6, currentPriceInDB); // THE KEY: Optimistic Locking condition
+            pstmt.setLong(6, currentPriceInDB); // THE KEY: Optimistic Locking condition
 
             if (pstmt.executeUpdate() == 0) {
                 // If 0 rows updated, it means another thread changed current_price in the meantime.
@@ -287,15 +287,15 @@ public class BidDAO {
         return true;
     }
 
-    public boolean saveAutoBid(User currentUser, Auction auction, double maxBid, double increment) throws SQLException {
+    public boolean saveAutoBid(User currentUser, Auction auction, long maxBid, long increment) throws SQLException {
         String sql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
         try (Connection conn = database.DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, "AB-" + System.currentTimeMillis());
             pstmt.setString(2, auction.getId());
             pstmt.setString(3, currentUser.getId());
-            pstmt.setDouble(4, maxBid);
-            pstmt.setDouble(5, increment);
+            pstmt.setLong(4, maxBid);
+            pstmt.setLong(5, increment);
             return pstmt.executeUpdate() > 0;
         }
     }

@@ -37,7 +37,7 @@ public class BidActionHandler implements CommandHandler {
 
             Map<String, Object> bidData = (Map<String, Object>) data;
             String auctionId = (String) bidData.get("auctionId");
-            double amount = Double.parseDouble(bidData.get("bidAmount").toString());
+            long amount = Long.parseLong(bidData.get("bidAmount").toString());
             
             // Lấy isBot, nếu client không gửi lên thì mặc định là false (người dùng thật đặt giá)
             boolean isBot = false;

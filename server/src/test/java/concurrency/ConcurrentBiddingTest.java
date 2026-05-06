@@ -50,10 +50,10 @@ class ConcurrentBiddingTest {
         Item item = new Item();
         item.setId("ITEM-" + runId);
         item.setItemName("Test Item");
-        item.setStartingPrice(1000.0);
+        item.setStartingPrice(1000L);
 
         LocalDateTime now = LocalDateTime.now().minusSeconds(5);
-        Auction auction = new Auction("AUC-" + runId, item, seller, 50.0, now, now.plusMinutes(10));
+        Auction auction = new Auction("AUC-" + runId, item, seller, 50L, now, now.plusMinutes(10));
         auction.setStatus(Auction.STATUS_RUNNING);
 
         List<User> bidders = new ArrayList<>();
@@ -93,7 +93,7 @@ class ConcurrentBiddingTest {
                 try {
                     walletDAO.createWallet(conn, u.getId());
                 } catch (SQLException ignored) {}
-                walletDAO.updateBalance(conn, u.getId(), 100_000.0);
+                walletDAO.updateBalance(conn, u.getId(), 100_000L);
             }
             conn.commit();
         }
@@ -109,7 +109,7 @@ class ConcurrentBiddingTest {
         for (User bidder : bidders) {
             futures.add(exec.submit(() -> {
                 startGate.await(2, TimeUnit.SECONDS);
-                return controller.placeBidOnAuction(bidder, auction, 1500.0, false).get(10, TimeUnit.SECONDS);
+                return controller.placeBidOnAuction(bidder, auction, 1500L, false).get(10, TimeUnit.SECONDS);
             }));
         }
 

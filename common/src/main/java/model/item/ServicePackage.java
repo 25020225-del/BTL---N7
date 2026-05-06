@@ -6,8 +6,7 @@ package model.item;
  * Future extensions could include validity periods or service locations.
  */
 public class ServicePackage extends Item {
-
-    public ServicePackage(String id, String itemName, String description, double startingPrice) {
+    public ServicePackage(String id, String itemName, String description, long startingPrice) {
         super(id, itemName, description, startingPrice);
     }
 
