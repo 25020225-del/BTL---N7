@@ -149,8 +149,15 @@ public class BidDAO {
         }
 
         // STEP 3: Update auction with optimistic locking (DB source-of-truth)
-        String updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? " +
-                "WHERE id = ? AND current_price = ? AND highest_max_bid = ? AND winning_bidder_id IS ?";
+        final String updateAuctionSql;
+        if (winningBidderId == null) {
+            updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? " +
+                    "WHERE id = ? AND current_price = ? AND highest_max_bid = ? AND winning_bidder_id IS NULL";
+        } else {
+            updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? " +
+                    "WHERE id = ? AND current_price = ? AND highest_max_bid = ? AND winning_bidder_id = ?";
+        }
+
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
             pstmt.setDouble(1, result.newCurrentPrice);
             pstmt.setString(2, result.newEndTime.toString());
@@ -159,7 +166,9 @@ public class BidDAO {
             pstmt.setString(5, auctionId);
             pstmt.setDouble(6, currentPrice);
             pstmt.setDouble(7, highestMaxBid);
-            pstmt.setString(8, winningBidderId);
+            if (winningBidderId != null) {
+                pstmt.setString(8, winningBidderId);
+            }
 
             if (pstmt.executeUpdate() == 0) {
                 // Conflict: another transaction changed the auction state after we read it.
