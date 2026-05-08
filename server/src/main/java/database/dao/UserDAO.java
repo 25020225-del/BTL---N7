@@ -2,7 +2,6 @@ package database.dao;
 
 import database.DatabaseManager;
 import model.user.User;
-import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

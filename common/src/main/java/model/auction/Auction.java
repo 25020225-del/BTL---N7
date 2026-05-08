@@ -32,9 +32,9 @@ public class Auction extends Entity {
     private Item item;
     private User seller;
 
-    private double currentPrice;
-    private double highestMaxBid;
-    private double bidIncrement;
+    private long currentPrice;
+    private long highestMaxBid;
+    private long bidIncrement;
 
     private User winningBidder;
     private String status;
@@ -65,7 +65,7 @@ public class Auction extends Entity {
      * @param startTime    The starting time of the auction.
      * @param endTime      The scheduled ending time of the auction.
      */
-    public Auction(String id, Item item, User seller, double bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
+    public Auction(String id, Item item, User seller, long bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
         super(id);
         this.item = item;
         this.seller = seller;
@@ -98,7 +98,7 @@ public class Auction extends Entity {
      * @param durationMinutes The total active duration of the auction in minutes.
      * @return A newly initialized Auction instance.
      */
-    public static Auction createNewAuction(Item item, User seller, double bidIncrement, LocalDateTime startTime, int durationMinutes) {
+    public static Auction createNewAuction(Item item, User seller, long bidIncrement, LocalDateTime startTime, int durationMinutes) {
         String newId = "AUC-" + System.currentTimeMillis();
         LocalDateTime end = startTime.plusMinutes(durationMinutes);
 
@@ -131,27 +131,27 @@ public class Auction extends Entity {
         this.seller = seller;
     }
 
-    public double getCurrentPrice() {
+    public long getCurrentPrice() {
         return currentPrice;
     }
 
-    public void setCurrentPrice(double currentPrice) {
+    public void setCurrentPrice(long currentPrice) {
         this.currentPrice = currentPrice;
     }
 
-    public double getHighestMaxBid() {
+    public long getHighestMaxBid() {
         return highestMaxBid;
     }
 
-    public void setHighestMaxBid(double highestMaxBid) {
+    public void setHighestMaxBid(long highestMaxBid) {
         this.highestMaxBid = highestMaxBid;
     }
 
-    public double getBidIncrement() {
+    public long getBidIncrement() {
         return bidIncrement;
     }
 
-    public void setBidIncrement(double bidIncrement) {
+    public void setBidIncrement(long bidIncrement) {
         this.bidIncrement = bidIncrement;
     }
 
@@ -214,11 +214,11 @@ public class Auction extends Entity {
      */
     public static class BidResult {
         public final User newWinner;
-        public final double newHighestMaxBid;
-        public final double newCurrentPrice;
+        public final long newHighestMaxBid;
+        public final long newCurrentPrice;
         public final LocalDateTime newEndTime;
 
-        public BidResult(User newWinner, double newHighestMaxBid, double newCurrentPrice, LocalDateTime newEndTime) {
+        public BidResult(User newWinner, long newHighestMaxBid, long newCurrentPrice, LocalDateTime newEndTime) {
             this.newWinner = newWinner;
             this.newHighestMaxBid = newHighestMaxBid;
             this.newCurrentPrice = newCurrentPrice;
@@ -234,19 +234,19 @@ public class Auction extends Entity {
      * @param newMaxBid The maximum bid amount.
      * @return A BidResult object containing the calculated state, or null if invalid.
      */
-    public BidResult calculateBidResult(User bidder, double newMaxBid) {
+    public BidResult calculateBidResult(User bidder, long newMaxBid) {
         if (status.equals(STATUS_DELETED) || !status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
             return null;
         }
 
-        double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
+        long minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
             return null;
         }
 
         User nextWinner = winningBidder;
-        double nextHighestMaxBid = highestMaxBid;
-        double nextCurrentPrice = currentPrice;
+        long nextHighestMaxBid = highestMaxBid;
+        long nextCurrentPrice = currentPrice;
         LocalDateTime nextEndTime = endTime;
 
         if (winningBidder == null) {
@@ -306,7 +306,7 @@ public class Auction extends Entity {
      * @deprecated Use calculateBidResult and applyBidResult for atomic DB-RAM sync in controllers.
      */
     @Deprecated
-    public BidTransaction placeBid(User bidder, double newMaxBid) {
+    public BidTransaction placeBid(User bidder, long newMaxBid) {
         if (status.equals(STATUS_DELETED)) {
             return null;
         }
@@ -319,7 +319,7 @@ public class Auction extends Entity {
             return null;
         }
 
-        double minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
+        long minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
         if (newMaxBid < minRequiredBid) {
             return null;
         }
@@ -375,7 +375,7 @@ public class Auction extends Entity {
      * @param previousHighestMaxBid The highest max bid before the failed bid.
      * @param failedTransaction     The specific bid transaction that failed and needs to be removed.
      */
-    public void revertLastBid(User previousWinner, double previousHighestMaxBid, BidTransaction failedTransaction) {
+    public void revertLastBid(User previousWinner, long previousHighestMaxBid, BidTransaction failedTransaction) {
         // 1. Remove the specific failed transaction from bidHistory
         if (failedTransaction != null) {
             bidHistory.remove(failedTransaction);
@@ -414,7 +414,7 @@ public class Auction extends Entity {
      * @param userIncrement The incremental step amount to increase the price when outbidding.
      * @return {@code true} if the registration is successful; {@code false} if constraints fail.
      */
-    public boolean registerAutoBid(User bidder, double maxBid, double userIncrement) {
+    public boolean registerAutoBid(User bidder, long maxBid, long userIncrement) {
         if (!status.equals(STATUS_RUNNING)) {
             return false;
         }

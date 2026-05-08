@@ -6,8 +6,7 @@ package model.item;
  * Future extensions could include properties like download links or file sizes.
  */
 public class DigitalItem extends Item {
-
-    public DigitalItem(String id, String itemName, String description, double startingPrice) {
+    public DigitalItem(String id, String itemName, String description, long startingPrice) {
         super(id, itemName, description, startingPrice);
     }
 

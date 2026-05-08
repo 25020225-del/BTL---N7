@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class WalletController {
-
     private Runnable onAuctionCreated;
 
     Parent walletView;
@@ -25,11 +24,11 @@ public class WalletController {
     @FXML private TableView<Transaction> tableTransactions;
     @FXML private TableColumn<Transaction, String> colDate;
     @FXML private TableColumn<Transaction, String> colType;
-    @FXML private TableColumn<Transaction, Double> colAmount;
+    @FXML private TableColumn<Transaction, Long> colAmount;
     @FXML private TableColumn<Transaction, String> colStatus;
     @FXML private TableColumn<Transaction, String> colNote;
 
-    private double currentBalance = 0.0;
+    private long currentBalance = 0L;
     private ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
 
     public WalletController() {
@@ -52,13 +51,13 @@ public class WalletController {
 
         tableTransactions.setItems(transactionData);
 
-        transactionData.add(new Transaction("1975-10-20 10:00", "Đặt cọc", 200.0, "Success", "Pinecone : Konichiwa !!"));
+        transactionData.add(new Transaction("1975-10-20 10:00", "Đặt cọc", 200L, "Success", "Pinecone : Konichiwa !!"));
 
         updateBalanceUI();
     }
 
 
-    public void setOnAuctionCreated(Runnable callback) { // thêm method này
+    public void setOnAuctionCreated(Runnable callback) {
         this.onAuctionCreated = callback;
     }
     public Parent getParent() {
@@ -73,7 +72,7 @@ public class WalletController {
     @FXML
     private void handleDeposit() {
         try {
-            double amount = Double.parseDouble(txtDepositAmount.getText());
+            long amount = Long.parseLong(txtDepositAmount.getText());
             if (amount <= 0) throw new Exception();
 
             currentBalance += amount;
@@ -99,13 +98,13 @@ public class WalletController {
     }
 
     private void updateBalanceUI() {
-        lblTotalBalance.setText(String.format("$%.2f", currentBalance));
+        lblTotalBalance.setText(String.format("%d N VND",currentBalance));
     }
     // nap nhanh
     @FXML
     private void addQuickAmount(javafx.event.ActionEvent event) {
         Button btn = (Button) event.getSource();
-        String text = btn.getText().replace("+$", "");
+        String text = btn.getText().replace(" N VND", "");
         txtDepositAmount.setText(text);
     }
 }

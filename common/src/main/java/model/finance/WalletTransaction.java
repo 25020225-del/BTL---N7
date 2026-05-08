@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  */
 public class WalletTransaction extends Entity {
     private String userId;
-    private double amount;
+    private long amount;
     private String description;
     private LocalDateTime createdAt;
 
@@ -31,7 +31,7 @@ public class WalletTransaction extends Entity {
      *                    while a negative value indicates an outflow (withdrawal/bid).
      * @param description A brief explanation of the transaction's context or origin.
      */
-    public WalletTransaction(String id, String userId, double amount, String description) {
+    public WalletTransaction(String id, String userId, long amount, String description) {
         super(id);
         this.userId = userId;
         this.amount = amount;
@@ -47,11 +47,11 @@ public class WalletTransaction extends Entity {
         this.userId = userId;
     }
 
-    public double getAmount() {
+    public long getAmount() {
         return amount;
     }
 
-    public void setAmount(double amount) {
+    public void setAmount(long amount) {
         this.amount = amount;
     }
 

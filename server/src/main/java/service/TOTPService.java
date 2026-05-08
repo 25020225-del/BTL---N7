@@ -1,13 +1,10 @@
 package service;
 
+import com.warrenstrange.googleauth.GoogleAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.warrenstrange.googleauth.GoogleAuthenticator;
 
 import java.net.URLEncoder;
-
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
 
 /**
  * Service responsible for managing Time-based One-Time Password (TOTP) security.

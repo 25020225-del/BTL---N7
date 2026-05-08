@@ -5,7 +5,6 @@ import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
 import model.user.User;
-import server.ServerExtension.ClientManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -17,10 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static utils.ConsoleColors.BLUE;
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
-import static utils.ConsoleColors.YELLOW;
+import static utils.ConsoleColors.*;
 
 public class AuctionDAO {
 
@@ -33,36 +29,36 @@ public class AuctionDAO {
                 if (rs.next()) {
                     Auction auction = new Auction();
                     auction.setId(rs.getString("id"));
-                    
+
                     model.item.Item item = ItemFactory.createItem(
                             ItemFactory.TYPE_TANGIBLE,
                             "ITM-" + System.currentTimeMillis(),
                             rs.getString("item_name"),
                             rs.getString("description"),
-                            rs.getDouble("starting_price")
+                            rs.getLong("starting_price")
                     );
                     item.setImageUrl(rs.getString("image_url"));
                     auction.setItem(item);
-                    
+
                     User seller = new User();
                     // Cần khởi tạo hoặc inject AuctionDAO trước đó
                     seller.setId(rs.getString("seller_id"));
                     auction.setSeller(seller);
-                    
-                    auction.setCurrentPrice(rs.getDouble("current_price"));
-                    auction.setHighestMaxBid(rs.getDouble("highest_max_bid"));
-                    auction.setBidIncrement(rs.getDouble("bid_increment"));
+
+                    auction.setCurrentPrice(rs.getLong("current_price"));
+                    auction.setHighestMaxBid(rs.getLong("highest_max_bid"));
+                    auction.setBidIncrement(rs.getLong("bid_increment"));
                     auction.setStartTime(LocalDateTime.parse(rs.getString("start_time")));
                     auction.setEndTime(LocalDateTime.parse(rs.getString("end_time")));
                     auction.setStatus(rs.getString("status"));
-                    
+
                     String winnerId = rs.getString("winning_bidder_id");
                     if (winnerId != null) {
                         User winner = new User();
                         winner.setId(winnerId);
                         auction.setWinningBidder(winner);
                     }
-                    
+
                     return auction;
                 }
             }
@@ -79,30 +75,30 @@ public class AuctionDAO {
             pstmt.setString(1, auction.getId());
             pstmt.setString(2, item.getItemName());
             pstmt.setString(3, item.getDescription());
-            pstmt.setDouble(4, item.getStartingPrice());
-            pstmt.setDouble(5, auction.getCurrentPrice());
-            pstmt.setDouble(6, auction.getBidIncrement());
+            pstmt.setLong(4, item.getStartingPrice());
+            pstmt.setLong(5, auction.getCurrentPrice());
+            pstmt.setLong(6, auction.getBidIncrement());
             pstmt.setString(7, auction.getStartTime().toString());
             pstmt.setString(8, auction.getEndTime().toString());
             pstmt.setString(9, auction.getStatus());
             pstmt.setString(10, auction.getSeller().getId());
             pstmt.setString(11, item.getImageUrl());
             pstmt.setString(12, auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : null);
-            pstmt.setDouble(13, auction.getHighestMaxBid());
+            pstmt.setLong(13, auction.getHighestMaxBid());
 
             return pstmt.executeUpdate() > 0;
         }
     }
 
-    public boolean updateAuction(Auction auction, String newName, String newDesc, double newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime, String newStatus) throws SQLException {
+    public boolean updateAuction(Auction auction, String newName, String newDesc, long newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime, String newStatus) throws SQLException {
         String sql = "UPDATE auctions SET item_name = ?, description = ?, starting_price = ?, current_price = ?, start_time = ?, end_time = ?, status = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, newName);
             pstmt.setString(2, newDesc);
-            pstmt.setDouble(3, newStartPrice);
-            pstmt.setDouble(4, newStartPrice);
+            pstmt.setLong(3, newStartPrice);
+            pstmt.setLong(4, newStartPrice);
             pstmt.setString(5, newStartTime.toString());
             pstmt.setString(6, newEndTime.toString());
             pstmt.setString(7, newStatus);
@@ -132,8 +128,8 @@ public class AuctionDAO {
                     map.put("id", rs.getString("id"));
                     map.put("itemName", rs.getString("item_name")); // Match frontend expectations
                     map.put("description", rs.getString("description"));
-                    map.put("startingPrice", rs.getDouble("starting_price"));
-                    map.put("currentPrice", rs.getDouble("current_price"));
+                    map.put("startingPrice", rs.getLong("starting_price"));
+                    map.put("currentPrice", rs.getLong("current_price"));
                     map.put("endTime", LocalDateTime.parse(rs.getString("end_time")).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
                     map.put("imageUrl", rs.getString("image_url"));
                     map.put("sellerId", rs.getString("seller_id"));
@@ -268,10 +264,10 @@ public class AuctionDAO {
             try (ResultSet rs = selectStmt.executeQuery()) {
                 while (rs.next()) {
                     String id = rs.getString("id");
-                    double currentPrice = rs.getDouble("current_price");
-                    double startPrice = rs.getDouble("starting_price");
+                    long currentPrice = rs.getLong("current_price");
+                    long startPrice = rs.getLong("starting_price");
                     String winningBidderId = rs.getString("winning_bidder_id");
-                    
+
                     String newStatus = (winningBidderId != null && currentPrice >= startPrice) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
 
                     updateStmt.setString(1, newStatus);
@@ -283,21 +279,21 @@ public class AuctionDAO {
                         Auction auction = new Auction();
                         auction.setId(id);
                         auction.setCurrentPrice(currentPrice);
-                        auction.setHighestMaxBid(rs.getDouble("highest_max_bid"));
-                        
+                        auction.setHighestMaxBid(rs.getLong("highest_max_bid"));
+
                         User seller = new User();
                         seller.setId(rs.getString("seller_id"));
                         auction.setSeller(seller);
-                        
+
                         if (winningBidderId != null) {
                             User winner = new User();
                             winner.setId(winningBidderId);
                             auction.setWinningBidder(winner);
                         }
-                        
+
                         finishedAuctions.add(auction);
                     }
-                    
+
                     System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
                 }
             }

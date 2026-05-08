@@ -20,6 +20,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static utils.ConsoleColors.*;
+
 /**
  * A background daemon service that continuously monitors active auctions.
  * It manages real-time expiration in RAM and routinely sweeps the database
@@ -57,11 +59,15 @@ public class AuctionMonitor {
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
+                // 1. Process active auctions currently held in Server RAM
                 processRamAuctions();
+
+                // 2. Sweep the database for any orphaned/ghost auctions (e.g., from prior server crashes)
                 sweepDatabaseForOrphans();
 
             } catch (Exception e) {
-                log.error("Error occurred during auction scan process", e);
+                log.error("Error occurred during bidding scan process: {}", e.getMessage());
+                e.printStackTrace();
             }
         }, 0, 10, TimeUnit.SECONDS); // Scans every 10 seconds
     }
@@ -72,6 +78,7 @@ public class AuctionMonitor {
      * cause a wrongful close; DB updates use optimistic conditions where applicable.
      */
     private void processRamAuctions() {
+        // AuctionManager.getAuctionList() returns a CopyOnWriteArrayList, safe for concurrent iteration.
         for (Auction auction : AuctionManager.getAuctionList()) {
             String auctionId = auction.getId();
             String targetStatus = null;
@@ -82,12 +89,14 @@ public class AuctionMonitor {
                 String currentStatus = auction.getStatus();
                 LocalDateTime now = LocalDateTime.now();
 
+                // Check for auction start
                 if (currentStatus.equals(Auction.STATUS_OPEN) && now.isAfter(auction.getStartTime())) {
                     if (now.isBefore(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_RUNNING;
                     }
-                } else if (currentStatus.equals(Auction.STATUS_RUNNING)
-                        || currentStatus.equals(Auction.STATUS_OPEN)) {
+                } 
+                // Check for auction end
+                else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
                     if (now.isAfter(auction.getEndTime())) {
                         targetStatus = (auction.getWinningBidder() != null)
                                 ? Auction.STATUS_PAID
@@ -191,8 +200,11 @@ public class AuctionMonitor {
      * Executes financial settlements: refunds excess locked funds to the winner
      * and transfers the final closing price to the seller's wallet.
      */
-    // Thay thế processFinancialSettlement trong AuctionMonitor.java [cite: 58-74]
     private void processFinancialSettlement(Auction auction) {
+        if (auction.getWinningBidder() == null) {
+            return; // No winner, no settlement needed
+        }
+
         Callable<Boolean> settlementTask = () -> {
             String now = LocalDateTime.now().toString();
             String auctionId = auction.getId();
@@ -245,14 +257,21 @@ public class AuctionMonitor {
 
                     conn.commit();
                     log.info("Financial settlement (Locked Funds) completed for auction {}", auctionId);
+                    conn.commit(); // Finalize changes
+                    log.info("Financial settlement completed for auction {}", auction.getId());
                     return true;
+
                 } catch (Exception e) {
-                    conn.rollback();
-                    log.error("Settlement error for auction {}", auctionId, e);
+                    conn.rollback(); // Rollback if any error occurs
+                    log.error("Error during financial settlement: {}", e.getMessage());
                     return false;
                 }
+            } catch (Exception e) {
+                log.error("Connection Error during settlement: {}", e.getMessage());
+                return false;
             }
         };
+
         TransactionManager.submitTask(settlementTask);
     }
 
@@ -265,16 +284,20 @@ public class AuctionMonitor {
             try {
                 List<Auction> finishedAuctions = auctionDAO.sweepOrphanAuctions();
                 for (Auction auction : finishedAuctions) {
+                    // Process financial settlement for each orphaned auction that finished
                     processFinancialSettlement(auction);
+
+                    // Force clients to remove the ghost item from their UI
                     ClientManager.broadcast("REMOVE_AUCTION", auction.getId(), null);
                 }
                 return true;
             } catch (Exception e) {
-                log.error("Orphan sweep error", e);
+                log.error("Orphan sweep error: {}", e.getMessage());
                 return false;
             }
         };
 
+        // Push the sweeping task to the database thread queue
         TransactionManager.submitTask(dbSweepTask);
     }
 
@@ -283,6 +306,6 @@ public class AuctionMonitor {
      */
     public void stopMonitoring() {
         scheduler.shutdown();
-        log.info("Auction monitor has been shutdown.");
+        log.info("Auction Monitor shutdown.");
     }
 }

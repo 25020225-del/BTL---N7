@@ -13,25 +13,40 @@ import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
+import static utils.ConsoleColors.*;
+
 /**
  * Controller responsible for handling financial payment operations on the server side.
+ * It primarily manages balance deposits and ensures that wallet updates and
+ * transaction logging are performed atomically through the {@link TransactionManager}.
  */
 public class ServerPaymentController {
-
     private static final Logger log = LoggerFactory.getLogger(ServerPaymentController.class);
 
     private final WalletDAO walletDAO;
 
+    /**
+     * Constructs the controller with the necessary Data Access Objects.
+     *
+     * @param walletDAO The DAO responsible for wallet-related database transactions.
+     */
     public ServerPaymentController(WalletDAO walletDAO) {
         this.walletDAO = walletDAO;
     }
 
     /**
      * Processes a successful deposit notification from a payment gateway (e.g., PayPal).
+     * Encapsulates the balance update and history logging into a single ACID transaction.
+     *
+     * @param user          The user whose wallet will be credited.
+     * @param payPalOrderId The external order identifier provided by PayPal for tracking.
+     * @return A {@link CompletableFuture} resolving to true if the transaction succeeds.
      */
     public CompletableFuture<Boolean> processDepositSuccess(User user, String payPalOrderId) {
+        // Wrap deposit logic into a Task to add to the asynchronous database worker queue
         Callable<Boolean> depositTask = () -> {
-            double verifiedAmount = verifyPayPalTransaction(payPalOrderId);
+            // Verify the transaction with PayPal API (Mock)
+            long verifiedAmount = verifyPayPalTransaction(payPalOrderId);
 
             if (verifiedAmount <= 0) {
                 log.warn("Payment verification failed for Order ID: {}", payPalOrderId);
@@ -44,8 +59,10 @@ public class ServerPaymentController {
                 try {
                     String now = LocalDateTime.now().toString();
 
+                    // 1. Update the current wallet balance
                     walletDAO.updateBalance(conn, user.getId(), verifiedAmount);
 
+                    // 2. Persist the deposit record into the transaction history
                     walletDAO.addTransaction(
                             conn,
                             "DEP-" + System.currentTimeMillis(),
@@ -60,33 +77,44 @@ public class ServerPaymentController {
                     return true;
 
                 } catch (SQLException e) {
-                    conn.rollback();
-                    log.error("Deposit update error", e);
+                    conn.rollback(); // Undo changes if any step fails
+                    log.error("Deposit update error: {}", e.getMessage());
                     return false;
                 }
             } catch (SQLException e) {
-                log.error("Lost connection to database during deposit", e);
+                log.error("Lost connection to database: {}", e.getMessage());
                 return false;
             }
         };
 
+        // Submit the task to the TransactionManager and wait for the synchronous result
         return TransactionManager.submitTask(depositTask);
     }
 
     /**
      * Mocks an external PayPal API call to verify the actual amount paid for an order.
+     * This prevents "Price Manipulation" attacks where a client could manually send
+     * a fake amount to the server.
+     *
+     * @param orderId The PayPal Order ID to verify.
+     * @return The verified amount in VND.
      */
-    private double verifyPayPalTransaction(String orderId) {
+    private long verifyPayPalTransaction(String orderId) {
         try {
+            // Simulate network latency for API call
             Thread.sleep(1000);
 
-            double[] validAmounts = {50000, 100000, 200000, 500000};
+            // Mock verification logic: 
+            // In a real app, this would use PayPal SDK to fetch order details.
+            // For this project, we return a fixed set of valid amounts based on orderId length
+            // or just random valid amounts for demonstration.
+            long[] validAmounts = {50000L, 100000L, 200000L, 500000L};
             int index = Math.abs(orderId.hashCode()) % validAmounts.length;
             return validAmounts[index];
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return 0;
+            return 0L;
         }
     }
 }

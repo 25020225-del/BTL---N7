@@ -52,10 +52,10 @@ class ConcurrentBiddingTest {
         Item item = new Item();
         item.setId("ITEM-" + runId);
         item.setItemName("Test Item");
-        item.setStartingPrice(1000.0);
+        item.setStartingPrice(1000L);
 
         LocalDateTime now = LocalDateTime.now().minusSeconds(5);
-        Auction auction = new Auction("AUC-" + runId, item, seller, 50.0, now, now.plusMinutes(10));
+        Auction auction = new Auction("AUC-" + runId, item, seller, 50L, now, now.plusMinutes(10));
         auction.setStatus(Auction.STATUS_RUNNING);
 
         List<User> bidders = new ArrayList<>();
@@ -94,8 +94,9 @@ class ConcurrentBiddingTest {
                 // Create wallet row if missing; then set balance high enough
                 try {
                     walletDAO.createWallet(conn, u.getId());
-                } catch (SQLException ignored) {}
-                walletDAO.updateBalance(conn, u.getId(), 100_000.0);
+                } catch (SQLException ignored) {
+                }
+                walletDAO.updateBalance(conn, u.getId(), 100_000L);
             }
             conn.commit();
         }
@@ -108,37 +109,43 @@ class ConcurrentBiddingTest {
         CountDownLatch doneLatch = new CountDownLatch(10);
         AtomicInteger successCount = new AtomicInteger(0);
 
-        List<Thread> workers = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
-            final User bidder = bidders.get(i);
-            Thread worker = new Thread(() -> {
-                try {
-                    startLatch.await();
-                    boolean ok = Boolean.TRUE.equals(
-                            controller.placeBidOnAuction(bidder, auction, 1500.0, false).get(30, TimeUnit.SECONDS));
-                    if (ok) {
-                        successCount.incrementAndGet();
+        for (User bidder : bidders) {
+            futures.add(exec.submit(() -> {
+                startGate.await(2, TimeUnit.SECONDS);
+                return controller.placeBidOnAuction(bidder, auction, 1500L, false).get(10, TimeUnit.SECONDS);
+            }));
+            List<Thread> workers = new ArrayList<>();
+            for (int i = 0; i < 10; i++) {
+                final User bidder = bidders.get(i);
+                Thread worker = new Thread(() -> {
+                    try {
+                        startLatch.await();
+                        boolean ok = Boolean.TRUE.equals(
+                                controller.placeBidOnAuction(bidder, auction, 1500L, false).get(30, TimeUnit.SECONDS));
+                        if (ok) {
+                            successCount.incrementAndGet();
+                        }
+                    } catch (Exception e) {
+                        throw new AssertionError("Worker thread failed", e);
+                    } finally {
+                        doneLatch.countDown();
                     }
-                } catch (Exception e) {
-                    throw new AssertionError("Worker thread failed", e);
-                } finally {
-                    doneLatch.countDown();
-                }
-            });
-            workers.add(worker);
+                });
+                workers.add(worker);
+            }
+
+            for (Thread worker : workers) {
+                worker.start();
+            }
+
+            startLatch.countDown();
+
+            assertTrue(doneLatch.await(60, TimeUnit.SECONDS), "All 10 bid workers should finish");
+
+            // Concurrent first bids race on the same DB snapshot; retries may later submit valid follow-up bids after state moves.
+            assertTrue(successCount.get() >= 1 && successCount.get() <= bidders.size(),
+                    "At least one bid should succeed; count is bounded by contention + retry semantics");
         }
-
-        for (Thread worker : workers) {
-            worker.start();
-        }
-
-        startLatch.countDown();
-
-        assertTrue(doneLatch.await(60, TimeUnit.SECONDS), "All 10 bid workers should finish");
-
-        // Concurrent first bids race on the same DB snapshot; retries may later submit valid follow-up bids after state moves.
-        assertTrue(successCount.get() >= 1 && successCount.get() <= bidders.size(),
-                "At least one bid should succeed; count is bounded by contention + retry semantics");
     }
 }
 

@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
 public class AutoBid {
 
     private User bidder;
-    private double maxBid;
-    private double increment;
+    private long maxBid;
+    private long increment;
     private LocalDateTime timeRegistered;
 
     /**
@@ -30,7 +30,7 @@ public class AutoBid {
      * @param maxBid    The absolute maximum amount the user is willing to spend.
      * @param increment The amount to increase the bid by when outbidding others.
      */
-    public AutoBid(User bidder, double maxBid, double increment) {
+    public AutoBid(User bidder, long maxBid, long increment) {
         this.bidder = bidder;
         this.maxBid = maxBid;
         this.increment = increment;
@@ -45,19 +45,19 @@ public class AutoBid {
         this.bidder = bidder;
     }
 
-    public double getMaxBid() {
+    public long getMaxBid() {
         return maxBid;
     }
 
-    public void setMaxBid(double maxBid) {
+    public void setMaxBid(long maxBid) {
         this.maxBid = maxBid;
     }
 
-    public double getIncrement() {
+    public long getIncrement() {
         return increment;
     }
 
-    public void setIncrement(double increment) {
+    public void setIncrement(long increment) {
         this.increment = increment;
     }
 

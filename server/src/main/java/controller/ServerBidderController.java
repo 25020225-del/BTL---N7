@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
+import static utils.ConsoleColors.*;
+
 /**
  * Controller responsible for handling bidding operations on the server side.
  * It manages manual bid placements, automated bidding configurations,
@@ -33,6 +35,8 @@ public class ServerBidderController {
 
     /**
      * Constructs the controller with the necessary Data Access Objects.
+     * This implementation follows the Dependency Injection pattern to facilitate
+     * easier testing and decoupling.
      *
      * @param bidDAO The DAO responsible for bid-related database transactions.
      */
@@ -42,6 +46,13 @@ public class ServerBidderController {
 
     /**
      * Processes a bid placement attempt for a specific auction.
+     * This method executes a complex database transaction that includes:
+     * <ul>
+     *     <li>Atomic wallet balance deduction.</li>
+     *     <li>Auction state validation (RAM).</li>
+     *     <li>Refunding the previous leading bidder's max bid.</li>
+     *     <li>Persisting bid and wallet transaction logs.</li>
+     * </ul>
      *
      * @param currentUser The user attempting to place the bid.
      * @param auction     The target auction session.
@@ -50,8 +61,9 @@ public class ServerBidderController {
      * @return A {@link CompletableFuture} that resolves to {@code true} if the bid
      * was successfully placed; {@code false} otherwise.
      */
-    public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, double newMaxBid, boolean isBot) {
+    public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, long newMaxBid, boolean isBot) {
 
+        // Prevent users from bidding on items they are selling
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             log.warn("Cannot bid on own auction: {}", currentUser.getId());
             return CompletableFuture.completedFuture(false);
@@ -61,8 +73,8 @@ public class ServerBidderController {
             BidDAO.BidCommitResult commitResult = null;
 
             for (int attempt = 0; attempt < PLACE_BID_MAX_RETRIES; attempt++) {
-                double expectedPrice;
-                double expectedMaxBid;
+                long expectedPrice;
+                long expectedMaxBid;
                 String expectedWinnerId;
 
                 synchronized (AuctionManager.getLockForAuction(auction.getId())) {
@@ -110,7 +122,8 @@ public class ServerBidderController {
             }
 
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                if (auction.getCurrentPrice() <= commitResult.newCurrentPrice) {
+                // Guard: avoid overwriting a newer in-RAM state (another bid may have committed & synced first).
+                if (auction.getCurrentPrice() <= (long) commitResult.newCurrentPrice) {
                     User winner = null;
                     if (commitResult.newWinnerId != null) {
                         winner = new User();
@@ -118,8 +131,8 @@ public class ServerBidderController {
                     }
                     Auction.BidResult ramResult = new Auction.BidResult(
                             winner,
-                            commitResult.newHighestMaxBid,
-                            commitResult.newCurrentPrice,
+                            (long) commitResult.newHighestMaxBid,
+                            (long) commitResult.newCurrentPrice,
                             commitResult.newEndTime
                     );
                     auction.applyBidResult(currentUser, ramResult);
@@ -130,6 +143,7 @@ public class ServerBidderController {
             return true;
         };
 
+        // Submit the task to TransactionManager and chain the broadcast logic
         return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
             if (finalResult) {
                 Map<String, Object> updateData = new HashMap<>();
@@ -143,6 +157,7 @@ public class ServerBidderController {
                     AutoBidEngine.triggerBotScan(auction);
                 }
             } else {
+                // Task failed - could be Optimistic Locking conflict
                 if (!isBot) {
                     ClientManager.sendToUser(
                             currentUser.getId(),
@@ -153,36 +168,46 @@ public class ServerBidderController {
             }
             return finalResult;
         }).exceptionally(ex -> {
-            log.error("Transaction could not be executed via queue", ex);
+            log.error("The transaction could not be executed via the queue: {}", ex.getMessage());
             return false;
         });
     }
 
     /**
      * Registers an automated bidding configuration (bot) for a user asynchronously.
+     *
+     * @param currentUser The user setting up the bot.
+     * @param auction     The target auction session.
+     * @param maxBid      The maximum budget the user is willing to spend.
+     * @param increment   The minimum step to increase the price when outbidding others.
+     * @return A {@link CompletableFuture} resolving to true if configured successfully.
      */
-    public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, double maxBid, double increment) {
+    public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, long maxBid, long increment) {
 
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             log.warn("Cannot set auto-bid on own auction");
             return CompletableFuture.completedFuture(false);
         }
 
+        // Task: Save to DB FIRST, then update RAM if success
         Callable<Boolean> saveAutoBidTask = () -> {
+            // Apply Striped Locking INSIDE the task to ensure atomicity
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                 try {
+                    // 1. Save to DB
                     boolean saved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
 
                     if (saved) {
+                        // 2. If DB success, update RAM
                         boolean ramSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
                         if (ramSuccess) {
-                            log.info("Auto-Bid Configuration saved for user {}", currentUser.getName());
+                            log.info("Auto-Bid Configuration for {} has been saved and registered.", currentUser.getUserName());
                             return true;
                         }
                     }
                     return false;
                 } catch (SQLException e) {
-                    log.error("Failed to save auto-bid config", e);
+                    log.error("Failed to save auto-bid config: {}", e.getMessage());
                     return false;
                 }
             }
@@ -190,11 +215,12 @@ public class ServerBidderController {
 
         return TransactionManager.submitTask(saveAutoBidTask).thenApply(success -> {
             if (success) {
+                // Immediately trigger a scan to see if the new bot should place a bid
                 AutoBidEngine.triggerBotScan(auction);
             }
             return success;
         }).exceptionally(ex -> {
-            log.error("Execution error while saving auto-bid", ex);
+            log.error("Execution error while saving auto-bid: {}", ex.getMessage());
             return false;
         });
     }
