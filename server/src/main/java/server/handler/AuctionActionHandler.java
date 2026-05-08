@@ -93,13 +93,17 @@ public class AuctionActionHandler implements CommandHandler {
             }
 
             // Validate Start Time constraints
-            // Allowing a 5-minute leeway to account for network delay between Client's 'now' and Server's 'now'
-            if (reqStart.isAfter(now.plusMinutes(5)) && reqStart.isBefore(now.plusDays(1).minusMinutes(5))) {
-                client.sendResponse("ERROR", "Pre-set time must be 24 hours behind current time.");
+            // Cho phép seller hẹn giờ tùy ý trong tương lai. Chỉ chặn nếu thời gian ở trong quá khứ.
+            // Cho phép độ trễ mạng tối đa 5 phút.
+            if (reqStart.isBefore(now.minusMinutes(5))) {
+                client.sendResponse("ERROR", "Thời gian bắt đầu không hợp lệ (không được nằm trong quá khứ).");
                 return;
             }
-            //If the start time is in the past (or exactly 'now' from client), normalize it to server's exact 'now'
-            if (reqStart.isBefore(now.plusMinutes(5))) reqStart = now;
+
+            // Nếu gửi thời gian là "hiện tại" nhưng do độ trễ mạng khiến reqStart hơi nhỏ hơn now, tự làm tròn thành now
+            if (reqStart.isBefore(now)) {
+                reqStart = now;
+            }
 
             //-----------------------------------------------------------------------------------------------------
 
