@@ -5,7 +5,10 @@ import database.TransactionManager;
 import database.dao.BidDAO;
 import model.auction.Auction;
 import model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
+import server.ServerExtension.ClientManager;
 import service.AutoBidEngine;
 
 import java.sql.Connection;
@@ -25,11 +28,14 @@ import static utils.ConsoleColors.*;
  */
 public class ServerBidderController {
 
+    private static final Logger log = LoggerFactory.getLogger(ServerBidderController.class);
+    private static final int PLACE_BID_MAX_RETRIES = 3;
+
     private final BidDAO bidDAO;
 
     /**
      * Constructs the controller with the necessary Data Access Objects.
-     * This implementation follows the Dependency Injection pattern to facilitate 
+     * This implementation follows the Dependency Injection pattern to facilitate
      * easier testing and decoupling.
      *
      * @param bidDAO The DAO responsible for bid-related database transactions.
@@ -55,61 +61,69 @@ public class ServerBidderController {
      * @return A {@link CompletableFuture} that resolves to {@code true} if the bid
      * was successfully placed; {@code false} otherwise.
      */
-    public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, double newMaxBid, boolean isBot) {
+    public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, long newMaxBid, boolean isBot) {
 
         // Prevent users from bidding on items they are selling
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[System]: " + RED + "You cannot bid on your own auction" + RESET);
+            log.warn("Cannot bid on own auction: {}", currentUser.getId());
             return CompletableFuture.completedFuture(false);
         }
 
-        double expectedPrice;
-        double expectedMaxBid;
-        String expectedWinnerId;
-        synchronized (server.ServerExtension.AuctionManager.getLockForAuction(auction.getId())) {
-            expectedPrice = auction.getCurrentPrice();
-            expectedMaxBid = auction.getHighestMaxBid();
-            expectedWinnerId = auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : null;
-        }
-
-        // 1. Wrap the entire process into a Callable task
         Callable<Boolean> bidTask = () -> {
-            // DB is the single source of truth. Do NOT lock RAM while doing DB I/O.
-            BidDAO.BidCommitResult commitResult;
-            try (Connection conn = DatabaseManager.getConnection()) {
-                conn.setAutoCommit(false);
-                try {
-                    commitResult = bidDAO.executeBidTransactionSourceOfTruth(
-                            conn,
-                            auction.getId(),
-                            currentUser,
-                            newMaxBid,
-                            expectedPrice,
-                            expectedMaxBid,
-                            expectedWinnerId
-                    );
+            BidDAO.BidCommitResult commitResult = null;
 
-                    if (commitResult != null) {
-                        conn.commit();
-                    } else {
+            for (int attempt = 0; attempt < PLACE_BID_MAX_RETRIES; attempt++) {
+                long expectedPrice;
+                long expectedMaxBid;
+                String expectedWinnerId;
+
+                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                    expectedPrice = auction.getCurrentPrice();
+                    expectedMaxBid = auction.getHighestMaxBid();
+                    expectedWinnerId = auction.getWinningBidder() != null
+                            ? auction.getWinningBidder().getId()
+                            : null;
+                }
+
+                try (Connection conn = DatabaseManager.getConnection()) {
+                    conn.setAutoCommit(false);
+                    try {
+                        commitResult = bidDAO.executeBidTransactionSourceOfTruth(
+                                conn,
+                                auction.getId(),
+                                currentUser,
+                                newMaxBid,
+                                expectedPrice,
+                                expectedMaxBid,
+                                expectedWinnerId,
+                                isBot
+                        );
+
+                        if (commitResult != null) {
+                            conn.commit();
+                            break;
+                        }
                         conn.rollback();
-                        System.out.println("[System]: \"" + YELLOW + currentUser.getName() + RESET + "\" transaction failed (insufficient balance or state changed)");
+                        log.debug("Bid attempt {} optimistic conflict for user {}", attempt + 1, currentUser.getName());
+                    } catch (SQLException e) {
+                        conn.rollback();
+                        log.error("Transaction error placing bid", e);
                         return false;
                     }
                 } catch (SQLException e) {
-                    conn.rollback();
-                    System.out.println("[Database]: Transaction Error: " + RED + e.getMessage() + RESET);
+                    log.error("Connection error placing bid", e);
                     return false;
                 }
-            } catch (SQLException e) {
-                System.out.println("[Database]: Connection Error: " + RED + e.getMessage() + RESET);
+            }
+
+            if (commitResult == null) {
+                log.warn("Bid failed after {} retries (optimistic lock / validation): {}", PLACE_BID_MAX_RETRIES, currentUser.getName());
                 return false;
             }
 
-            // RAM Update Phase: exactly ONE short synchronized block AFTER commit.
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                 // Guard: avoid overwriting a newer in-RAM state (another bid may have committed & synced first).
-                if (auction.getCurrentPrice() <= commitResult.newCurrentPrice) {
+                if (auction.getCurrentPrice() <= (long) commitResult.newCurrentPrice) {
                     User winner = null;
                     if (commitResult.newWinnerId != null) {
                         winner = new User();
@@ -117,15 +131,15 @@ public class ServerBidderController {
                     }
                     Auction.BidResult ramResult = new Auction.BidResult(
                             winner,
-                            commitResult.newHighestMaxBid,
-                            commitResult.newCurrentPrice,
+                            (long) commitResult.newHighestMaxBid,
+                            (long) commitResult.newCurrentPrice,
                             commitResult.newEndTime
                     );
                     auction.applyBidResult(currentUser, ramResult);
                 }
             }
 
-            System.out.println("[System]: Successfully placed bid for \"" + YELLOW + currentUser.getName() + RESET + "\"");
+            log.info("Successfully placed bid for user {}", currentUser.getName());
             return true;
         };
 
@@ -137,7 +151,7 @@ public class ServerBidderController {
                 updateData.put("newPrice", auction.getCurrentPrice());
                 updateData.put("winnerName", currentUser.getUserName());
 
-                server.ServerExtension.ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
+                ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
 
                 if (!isBot) {
                     AutoBidEngine.triggerBotScan(auction);
@@ -145,17 +159,16 @@ public class ServerBidderController {
             } else {
                 // Task failed - could be Optimistic Locking conflict
                 if (!isBot) {
-                    // Send a direct error message to the specific client that placed the bid
-                    server.ServerExtension.ClientManager.sendToUser(
-                            currentUser.getId(), 
-                            "GENERAL_ERROR", 
+                    ClientManager.sendToUser(
+                            currentUser.getId(),
+                            "GENERAL_ERROR",
                             "Giá sản phẩm đã thay đổi bởi người dùng khác. Vui lòng cập nhật và thử lại!"
                     );
                 }
             }
             return finalResult;
         }).exceptionally(ex -> {
-            System.out.println("[System]: The transaction could not be executed via the queue: " + RED + ex.getMessage() + RESET);
+            log.error("The transaction could not be executed via the queue: {}", ex.getMessage());
             return false;
         });
     }
@@ -169,35 +182,36 @@ public class ServerBidderController {
      * @param increment   The minimum step to increase the price when outbidding others.
      * @return A {@link CompletableFuture} resolving to true if configured successfully.
      */
-    public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, double maxBid, double increment) {
+    public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, long maxBid, long increment) {
 
         if (auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[System]: " + RED + "You cannot set an auto-bid on your own auction" + RESET);
+            log.warn("Cannot set auto-bid on own auction");
             return CompletableFuture.completedFuture(false);
         }
 
-        // Task: Save to DB FIRST, then update RAM if success
+        // Task: Ghi nhận DB làm Nguồn Chân Lý (Source of Truth) TRƯỚC, update RAM SAU
         Callable<Boolean> saveAutoBidTask = () -> {
-            // Apply Striped Locking INSIDE the task to ensure atomicity
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                try {
-                    // 1. Save to DB
-                    boolean saved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
-                    
-                    if (saved) {
-                        // 2. If DB success, update RAM
-                        boolean ramSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
-                        if (ramSuccess) {
-                            System.out.println("[System]: Auto-Bid Configuration for \"" + YELLOW + currentUser.getName() + RESET + "\" has been saved and registered.");
-                            return true;
-                        }
+            boolean isDbSaved = false;
+
+            // 1. TƯƠNG TÁC DATABASE (Không giữ khóa RAM ở đây để chống Deadlock)
+            try {
+                isDbSaved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
+            } catch (SQLException e) {
+                log.error("Failed to save auto-bid config to DB: {}", e.getMessage());
+                return false;
+            }
+
+            // 2. ĐỒNG BỘ RAM CHỚP NHOÁNG (Chỉ thực hiện nếu DB đã commit thành công)
+            if (isDbSaved) {
+                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                    boolean ramSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
+                    if (ramSuccess) {
+                        log.info("Auto-Bid Configuration for {} has been saved and registered.", currentUser.getUserName());
+                        return true;
                     }
-                    return false;
-                } catch (SQLException e) {
-                    System.out.println("[Database]: Failed to save auto-bid config: " + RED + e.getMessage() + RESET);
-                    return false;
                 }
             }
+            return false;
         };
 
         return TransactionManager.submitTask(saveAutoBidTask).thenApply(success -> {
@@ -207,7 +221,7 @@ public class ServerBidderController {
             }
             return success;
         }).exceptionally(ex -> {
-            System.out.println("[System]: Execution error while saving auto-bid: " + RED + ex.getMessage() + RESET);
+            log.error("Execution error while saving auto-bid: {}", ex.getMessage());
             return false;
         });
     }

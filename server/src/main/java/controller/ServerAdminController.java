@@ -1,12 +1,10 @@
 package controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import model.auction.Auction;
 import model.user.Admin;
 import model.user.User;
-
-import static utils.ConsoleColors.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Controller responsible for handling administrative actions on the server side.

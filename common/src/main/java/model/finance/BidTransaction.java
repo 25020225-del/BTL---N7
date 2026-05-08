@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class BidTransaction extends Entity {
 
     private User bidder;
-    private double bidAmount;
+    private long bidAmount;
     private LocalDateTime timestamp;
 
     /**
@@ -30,7 +30,7 @@ public class BidTransaction extends Entity {
      * @param bidder    The user who placed the bid.
      * @param bidAmount The monetary value of the bid.
      */
-    public BidTransaction(String id, User bidder, double bidAmount) {
+    public BidTransaction(String id, User bidder, long bidAmount) {
         super(id);
         this.bidder = bidder;
         this.bidAmount = bidAmount;
@@ -45,11 +45,11 @@ public class BidTransaction extends Entity {
         this.bidder = bidder;
     }
 
-    public double getBidAmount() {
+    public long getBidAmount() {
         return bidAmount;
     }
 
-    public void setBidAmount(double bidAmount) {
+    public void setBidAmount(long bidAmount) {
         this.bidAmount = bidAmount;
     }
 

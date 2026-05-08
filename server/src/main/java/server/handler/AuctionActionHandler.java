@@ -68,8 +68,8 @@ public class AuctionActionHandler implements CommandHandler {
             String itemName = auction.getItem().getItemName();
             String description = auction.getItem().getDescription();
             String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
-            double startingPrice = auction.getItem().getStartingPrice();
-            double bidIncrement = auction.getBidIncrement();
+            long startingPrice = auction.getItem().getStartingPrice();
+            long bidIncrement = auction.getBidIncrement();
 
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime reqStart = auction.getStartTime();

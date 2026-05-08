@@ -20,7 +20,7 @@ public class BidDAO {
         public final String newWinnerId; // nullable
         public final LocalDateTime newEndTime;
 
-        public BidCommitResult(String auctionId, double newCurrentPrice, double newHighestMaxBid, String newWinnerId, LocalDateTime newEndTime) {
+        public BidCommitResult(String auctionId, long newCurrentPrice, long newHighestMaxBid, String newWinnerId, LocalDateTime newEndTime) {
             this.auctionId = auctionId;
             this.newCurrentPrice = newCurrentPrice;
             this.newHighestMaxBid = newHighestMaxBid;
@@ -33,26 +33,47 @@ public class BidDAO {
      * Executes a bid transaction using the database as the single source of truth.
      * <p>
      * This method reads the auction state inside the transaction, computes the bid outcome using
-     * {@link Auction#calculateBidResult(User, double)}, and commits the final state with optimistic locking.
+     * {@link Auction#calculateBidResult(User, long)}, and commits the final state with optimistic locking.
      *
      * @return a {@link BidCommitResult} on success, or {@code null} if validation fails or optimistic lock conflicts.
+     */
+    // Thêm hàm helper này vào BidDAO.java
+    /**
+     * Kiểm tra xem một user có đang kích hoạt Auto-Bid trong phiên đấu giá này không.
+     */
+    private boolean isAutoBidActive(Connection conn, String auctionId, String userId) throws SQLException {
+        String sql = "SELECT 1 FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, auctionId);
+            ps.setString(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+// Thay thế hàm executeBidTransactionSourceOfTruth hiện tại [cite: 391-432]
+    /**
+     * Executes a bid transaction using the database as the single source of truth.
+     * CẬP NHẬT: Xử lý logic tách biệt giữa luồng tiền của Người thật (Balance) và Bot (Locked Balance).
      */
     public BidCommitResult executeBidTransactionSourceOfTruth(
             Connection conn,
             String auctionId,
             User currentUser,
-            double newMaxBid,
-            double expectedPrice,
-            double expectedMaxBid,
-            String expectedWinnerId
+            long newMaxBid,
+            long expectedPrice,
+            long expectedMaxBid,
+            String expectedWinnerId,
+            boolean isBot // Thêm tham số này để nhận biết nguồn request
     ) throws SQLException {
         String selectSql = "SELECT starting_price, current_price, highest_max_bid, bid_increment, end_time, status, winning_bidder_id " +
                 "FROM auctions WHERE id = ?";
 
-        double startingPrice;
-        double currentPrice;
-        double highestMaxBid;
-        double bidIncrement;
+        long startingPrice;
+        long currentPrice;
+        long highestMaxBid;
+        long bidIncrement;
         LocalDateTime endTime;
         String status;
         String winningBidderId;
@@ -63,10 +84,10 @@ public class BidDAO {
                 if (!rs.next()) {
                     return null;
                 }
-                startingPrice = rs.getDouble("starting_price");
-                currentPrice = rs.getDouble("current_price");
-                highestMaxBid = rs.getDouble("highest_max_bid");
-                bidIncrement = rs.getDouble("bid_increment");
+                startingPrice = rs.getLong("starting_price");
+                currentPrice = rs.getLong("current_price");
+                highestMaxBid = rs.getLong("highest_max_bid");
+                bidIncrement = rs.getLong("bid_increment");
                 endTime = LocalDateTime.parse(rs.getString("end_time"));
                 status = rs.getString("status");
                 winningBidderId = rs.getString("winning_bidder_id"); // nullable
@@ -103,45 +124,34 @@ public class BidDAO {
             previousWinner = new User();
             previousWinner.setId(winningBidderId);
         }
-        double previousHighestMaxBid = highestMaxBid;
+        long previousHighestMaxBid = highestMaxBid;
 
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
         if (result.newWinner != null && result.newWinner.getId().equals(currentUser.getId())) {
             if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
-                double amountToDeduct = newMaxBid - previousHighestMaxBid;
+                long amountToDeduct = newMaxBid - previousHighestMaxBid;
                 if (amountToDeduct > 0) {
-                    if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return null;
-                    walletDAO.addTransaction(
-                            conn,
-                            "W-INC-" + System.currentTimeMillis(),
-                            currentUser.getId(),
-                            -amountToDeduct,
-                            "Incremental auction bid for session: " + auctionId,
-                            now
-                    );
+                    if (!isBot) { // <-- CHỈ TRỪ TIỀN NẾU LÀ NGƯỜI THẬT
+                        if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return null;
+                        walletDAO.addTransaction(conn, "W-INC-" + System.currentTimeMillis(), currentUser.getId(), -amountToDeduct, "Incremental auction bid for session: " + auctionId, now);
+                    }
                 }
             } else {
                 if (previousWinner != null) {
-                    walletDAO.updateBalance(conn, previousWinner.getId(), previousHighestMaxBid);
-                    walletDAO.addTransaction(
-                            conn,
-                            "W-REF-" + System.currentTimeMillis(),
-                            previousWinner.getId(),
-                            previousHighestMaxBid,
-                            "Refund for being outbid in session: " + auctionId,
-                            now
-                    );
+                    // KIỂM TRA LỖ HỔNG: Người cũ là Bot hay Người thật?
+                    boolean wasPreviousWinnerBot = isAutoBidActive(conn, auctionId, previousWinner.getId());
+
+                    if (!wasPreviousWinnerBot) { // <-- CHỈ HOÀN TIỀN VÀO BALANCE NẾU NGƯỜI CŨ LÀ NGƯỜI THẬT
+                        walletDAO.updateBalance(conn, previousWinner.getId(), previousHighestMaxBid);
+                        walletDAO.addTransaction(conn, "W-REF-" + System.currentTimeMillis(), previousWinner.getId(), previousHighestMaxBid, "Refund for being outbid in session: " + auctionId, now);
+                    }
                 }
-                if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid)) return null;
-                walletDAO.addTransaction(
-                        conn,
-                        "W-OUT-" + System.currentTimeMillis(),
-                        currentUser.getId(),
-                        -newMaxBid,
-                        "Auction bid placed for session: " + auctionId,
-                        now
-                );
+
+                if (!isBot) { // <-- CHỈ TRỪ TIỀN TỪ BALANCE NẾU LÀ NGƯỜI THẬT
+                    if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid)) return null;
+                    walletDAO.addTransaction(conn, "W-OUT-" + System.currentTimeMillis(), currentUser.getId(), -newMaxBid, "Auction bid placed for session: " + auctionId, now);
+                }
             }
         }
 
@@ -151,12 +161,12 @@ public class BidDAO {
             pstmt.setString(1, "BID-" + System.currentTimeMillis());
             pstmt.setString(2, auctionId);
             pstmt.setString(3, currentUser.getId());
-            pstmt.setDouble(4, result.newCurrentPrice);
+            pstmt.setLong(4, result.newCurrentPrice);
             pstmt.setString(5, now);
             pstmt.executeUpdate();
         }
 
-        // STEP 3: Update auction with optimistic locking (DB source-of-truth)
+        // STEP 3: Update auction with optimistic locking
         final String updateAuctionSql;
         if (expectedWinnerId == null) {
             updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? " +
@@ -167,20 +177,19 @@ public class BidDAO {
         }
 
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
-            pstmt.setDouble(1, result.newCurrentPrice);
+            pstmt.setLong(1, result.newCurrentPrice);
             pstmt.setString(2, result.newEndTime.toString());
             pstmt.setString(3, result.newWinner != null ? result.newWinner.getId() : null);
-            pstmt.setDouble(4, result.newHighestMaxBid);
+            pstmt.setLong(4, result.newHighestMaxBid);
             pstmt.setString(5, auctionId);
-            pstmt.setDouble(6, expectedPrice);
-            pstmt.setDouble(7, expectedMaxBid);
+            pstmt.setLong(6, expectedPrice);
+            pstmt.setLong(7, expectedMaxBid);
             if (expectedWinnerId != null) {
                 pstmt.setString(8, expectedWinnerId);
             }
 
             if (pstmt.executeUpdate() == 0) {
-                // Conflict: another transaction changed the auction state after we read it.
-                return null;
+                return null; // Optimistic lock conflict
             }
         }
 
@@ -193,18 +202,19 @@ public class BidDAO {
         );
     }
 
-    public boolean executeBidTransaction(Connection conn, User currentUser, double newMaxBid, User previousWinner, double previousHighestMaxBid, User newWinner, double newHighestMaxBid, double newCurrentPrice, String auctionId, LocalDateTime endTime, double currentPriceInDB) throws SQLException {
+    public boolean executeBidTransaction(Connection conn, User currentUser, long newMaxBid, User previousWinner, long previousHighestMaxBid, User newWinner, long newHighestMaxBid, long newCurrentPrice, String auctionId, LocalDateTime endTime, long currentPriceInDB) throws SQLException {
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
 
         // ONLY lock money IF the currentUser actually becomes the NEW winning bidder
         if (newWinner != null && newWinner.getId().equals(currentUser.getId())) {
-            
+
             if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
                 // Case 1: User is outbidding themselves. Only deduct the difference.
-                double amountToDeduct = newMaxBid - previousHighestMaxBid;
+                long amountToDeduct = newMaxBid - previousHighestMaxBid;
                 if (amountToDeduct > 0) {
-                    if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return false; // Insufficient balance
+                    if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct))
+                        return false; // Insufficient balance
 
                     // Log the incremental withdrawal
                     walletDAO.addTransaction(
@@ -234,7 +244,8 @@ public class BidDAO {
                 }
 
                 // Deduct full amount from new bidder
-                if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid)) return false; // Insufficient balance
+                if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid))
+                    return false; // Insufficient balance
 
                 // Log the full withdrawal
                 walletDAO.addTransaction(
@@ -259,7 +270,7 @@ public class BidDAO {
             pstmt.setString(1, "BID-" + System.currentTimeMillis());
             pstmt.setString(2, auctionId);
             pstmt.setString(3, currentUser.getId());
-            pstmt.setDouble(4, newCurrentPrice);
+            pstmt.setLong(4, newCurrentPrice);
             pstmt.setString(5, now);
             pstmt.executeUpdate();
         }
@@ -268,33 +279,69 @@ public class BidDAO {
         // We use Optimistic Locking by checking if the current_price has changed since we last read it in RAM.
         String updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? WHERE id = ? AND current_price = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(updateAuctionSql)) {
-            pstmt.setDouble(1, newCurrentPrice);
+            pstmt.setLong(1, newCurrentPrice);
             pstmt.setString(2, endTime.toString());
             pstmt.setString(3, newWinner != null ? newWinner.getId() : null);
-            pstmt.setDouble(4, newHighestMaxBid);
+            pstmt.setLong(4, newHighestMaxBid);
             pstmt.setString(5, auctionId);
-            pstmt.setDouble(6, currentPriceInDB); // THE KEY: Optimistic Locking condition
-            
+            pstmt.setLong(6, currentPriceInDB); // THE KEY: Optimistic Locking condition
+
             if (pstmt.executeUpdate() == 0) {
                 // If 0 rows updated, it means another thread changed current_price in the meantime.
                 System.out.println("[BidDAO]: Conflict detected! Current price in DB is different from " + currentPriceInDB);
-                return false; 
+                return false;
             }
         }
 
         return true;
     }
 
-    public boolean saveAutoBid(User currentUser, Auction auction, double maxBid, double increment) throws SQLException {
-        String sql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
-        try (Connection conn = database.DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, "AB-" + System.currentTimeMillis());
-            pstmt.setString(2, auction.getId());
-            pstmt.setString(3, currentUser.getId());
-            pstmt.setDouble(4, maxBid);
-            pstmt.setDouble(5, increment);
-            return pstmt.executeUpdate() > 0;
+    // Thay thế saveAutoBid trong BidDAO.java [cite: 458]
+    public boolean saveAutoBid(User currentUser, Auction auction, long maxBid, long increment) throws SQLException {
+        String checkSql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
+        String upsertSql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
+
+        try (Connection conn = database.DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                long oldMaxBid = 0;
+                // 1. Kiểm tra xem đã có cấu hình cũ chưa để tính chênh lệch
+                try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                    checkStmt.setString(1, auction.getId());
+                    checkStmt.setString(2, currentUser.getId());
+                    try (ResultSet rs = checkStmt.executeQuery()) {
+                        if (rs.next()) oldMaxBid = rs.getLong("max_bid");
+                    }
+                }
+
+                long difference = maxBid - oldMaxBid;
+                if (difference > 0) {
+                    // Khóa thêm tiền nếu tăng maxBid
+                    if (!walletDAO.lockBalance(conn, currentUser.getId(), difference)) {
+                        conn.rollback();
+                        return false; // Không đủ tiền khả dụng
+                    }
+                } else if (difference < 0) {
+                    // Hoàn lại tiền nếu giảm maxBid
+                    walletDAO.unlockBalance(conn, currentUser.getId(), Math.abs(difference));
+                }
+
+                // 2. Lưu cấu hình bot
+                try (PreparedStatement pstmt = conn.prepareStatement(upsertSql)) {
+                    pstmt.setString(1, "AB-" + System.currentTimeMillis());
+                    pstmt.setString(2, auction.getId());
+                    pstmt.setString(3, currentUser.getId());
+                    pstmt.setLong(4, maxBid);
+                    pstmt.setLong(5, increment);
+                    pstmt.executeUpdate();
+                }
+
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
         }
     }
 }

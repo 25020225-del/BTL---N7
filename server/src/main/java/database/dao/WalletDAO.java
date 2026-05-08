@@ -13,16 +13,16 @@ public class WalletDAO {
     /**
      * Updates the balance of a user's wallet.
      *
-     * @param conn    The active database connection (should be part of a transaction).
-     * @param userId  The ID of the user whose wallet is being updated.
-     * @param amount  The amount to add (positive) or subtract (negative).
+     * @param conn   The active database connection (should be part of a transaction).
+     * @param userId The ID of the user whose wallet is being updated.
+     * @param amount The amount to add (positive) or subtract (negative).
      * @return true if the update was successful.
      * @throws SQLException if a database error occurs.
      */
-    public boolean updateBalance(Connection conn, String userId, double amount) throws SQLException {
+    public boolean updateBalance(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET balance = balance + ? WHERE user_id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setDouble(1, amount);
+            pstmt.setLong(1, amount);
             pstmt.setString(2, userId);
             return pstmt.executeUpdate() > 0;
         }
@@ -31,18 +31,18 @@ public class WalletDAO {
     /**
      * Deducts an amount from a user's wallet only if they have sufficient funds.
      *
-     * @param conn    The active database connection.
-     * @param userId  The ID of the user.
-     * @param amount  The positive amount to deduct.
+     * @param conn   The active database connection.
+     * @param userId The ID of the user.
+     * @param amount The positive amount to deduct.
      * @return true if the deduction was successful.
      * @throws SQLException if a database error occurs.
      */
-    public boolean deductBalance(Connection conn, String userId, double amount) throws SQLException {
+    public boolean deductBalance(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setDouble(1, amount);
+            pstmt.setLong(1, amount);
             pstmt.setString(2, userId);
-            pstmt.setDouble(3, amount);
+            pstmt.setLong(3, amount);
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -59,12 +59,12 @@ public class WalletDAO {
      * @return true if the insertion was successful.
      * @throws SQLException if a database error occurs.
      */
-    public boolean addTransaction(Connection conn, String id, String userId, double amount, String description, String createdAt) throws SQLException {
+    public boolean addTransaction(Connection conn, String id, String userId, long amount, String description, String createdAt) throws SQLException {
         String sql = "INSERT INTO wallet_transactions (id, user_id, amount, description, created_at) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, id);
             pstmt.setString(2, userId);
-            pstmt.setDouble(3, amount);
+            pstmt.setLong(3, amount);
             pstmt.setString(4, description);
             pstmt.setString(5, createdAt);
             return pstmt.executeUpdate() > 0;
@@ -83,6 +83,49 @@ public class WalletDAO {
         String sql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, userId);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+    /**
+     * Chuyển tiền từ số dư khả dụng sang tạm giữ (Locking)
+     */
+    public boolean lockBalance(Connection conn, String userId, double amount) throws SQLException {
+        String sql = "UPDATE wallets SET balance = balance - ?, locked_balance = locked_balance + ? " +
+                "WHERE user_id = ? AND balance >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, amount);
+            pstmt.setDouble(2, amount);
+            pstmt.setString(3, userId);
+            pstmt.setDouble(4, amount);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Hoàn trả tiền từ tạm giữ về số dư khả dụng (Unlocking)
+     */
+    public boolean unlockBalance(Connection conn, String userId, double amount) throws SQLException {
+        String sql = "UPDATE wallets SET balance = balance + ?, locked_balance = locked_balance - ? " +
+                "WHERE user_id = ? AND locked_balance >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, amount);
+            pstmt.setDouble(2, amount);
+            pstmt.setString(3, userId);
+            pstmt.setDouble(4, amount);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Khấu trừ vĩnh viễn từ số tiền đã tạm giữ (Deducting from lock)
+     */
+    public boolean deductFromLocked(Connection conn, String userId, double amount) throws SQLException {
+        String sql = "UPDATE wallets SET locked_balance = locked_balance - ? " +
+                "WHERE user_id = ? AND locked_balance >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, amount);
+            pstmt.setString(2, userId);
+            pstmt.setDouble(3, amount);
             return pstmt.executeUpdate() > 0;
         }
     }

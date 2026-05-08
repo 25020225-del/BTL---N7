@@ -4,6 +4,8 @@ import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.WalletDAO;
 import model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -19,6 +21,8 @@ import static utils.ConsoleColors.*;
  * transaction logging are performed atomically through the {@link TransactionManager}.
  */
 public class ServerPaymentController {
+    private static final Logger log = LoggerFactory.getLogger(ServerPaymentController.class);
+
     private final WalletDAO walletDAO;
 
     /**
@@ -42,15 +46,15 @@ public class ServerPaymentController {
         // Wrap deposit logic into a Task to add to the asynchronous database worker queue
         Callable<Boolean> depositTask = () -> {
             // Verify the transaction with PayPal API (Mock)
-            double verifiedAmount = verifyPayPalTransaction(payPalOrderId);
+            long verifiedAmount = verifyPayPalTransaction(payPalOrderId);
 
             if (verifiedAmount <= 0) {
-                System.out.println("[Security]: " + RED + "Payment verification failed for Order ID: " + payPalOrderId + RESET);
+                log.warn("Payment verification failed for Order ID: {}", payPalOrderId);
                 return false;
             }
 
             try (Connection conn = DatabaseManager.getConnection()) {
-                conn.setAutoCommit(false); // Start Database Transaction
+                conn.setAutoCommit(false);
 
                 try {
                     String now = LocalDateTime.now().toString();
@@ -68,17 +72,17 @@ public class ServerPaymentController {
                             now
                     );
 
-                    conn.commit(); // Commit all changes as an atomic unit
-                    System.out.println("[System]: \"" + YELLOW + user.getName() + RESET + "\" has deposited " + GREEN + verifiedAmount + RESET + " VND (Verified)");
+                    conn.commit();
+                    log.info("User {} deposited {} VND (verified)", user.getName(), verifiedAmount);
                     return true;
 
                 } catch (SQLException e) {
                     conn.rollback(); // Undo changes if any step fails
-                    System.out.println("[Database]: Deposit update error: " + RED + e.getMessage() + RESET);
+                    log.error("Deposit update error: {}", e.getMessage());
                     return false;
                 }
             } catch (SQLException e) {
-                System.out.println("[Database]: Lost connection to database: " + RED + e.getMessage() + RESET);
+                log.error("Lost connection to database: {}", e.getMessage());
                 return false;
             }
         };
@@ -95,7 +99,7 @@ public class ServerPaymentController {
      * @param orderId The PayPal Order ID to verify.
      * @return The verified amount in VND.
      */
-    private double verifyPayPalTransaction(String orderId) {
+    private long verifyPayPalTransaction(String orderId) {
         try {
             // Simulate network latency for API call
             Thread.sleep(1000);
@@ -104,13 +108,13 @@ public class ServerPaymentController {
             // In a real app, this would use PayPal SDK to fetch order details.
             // For this project, we return a fixed set of valid amounts based on orderId length
             // or just random valid amounts for demonstration.
-            double[] validAmounts = {50000, 100000, 200000, 500000};
+            long[] validAmounts = {50000L, 100000L, 200000L, 500000L};
             int index = Math.abs(orderId.hashCode()) % validAmounts.length;
             return validAmounts[index];
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return 0;
+            return 0L;
         }
     }
 }

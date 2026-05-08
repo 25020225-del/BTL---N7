@@ -1,12 +1,12 @@
 package service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import utils.JacksonConfig;
 
 import java.net.URI;
@@ -16,11 +16,9 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
-
 public class PayPalService {
     private static final Logger log = LoggerFactory.getLogger(PayPalService.class);
+
     private final String clientId;
     private final String secret;
     private final String baseUrl;
@@ -70,7 +68,7 @@ public class PayPalService {
      *
      * @return String[]: [0] = Order ID, [1] = Payment URL.
      */
-    public String[] createOrder(double amountVND) throws Exception {
+    public String[] createOrder(long amountVND) throws Exception {
         // Assumed exchange rate | TODO: add dynamic foreign exchange rate API)
         double amountUSD = amountVND / 25000.0;
         String token = getAccessToken();
@@ -140,5 +138,25 @@ public class PayPalService {
 
         log.warn("PayPal Capture failed: {}", response.statusCode());
         return false;
+    }
+
+    /**
+     * Lấy trạng thái hiện tại của Order từ PayPal.
+     * Trạng thái trả về thường là: "CREATED", "APPROVED" (đã đồng ý trên web), "COMPLETED".
+     */
+    public String getOrderStatus(String orderId) throws Exception {
+        String token = getAccessToken();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v2/checkout/orders/" + orderId))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            JsonNode jsonResponse = mapper.readTree(response.body());
+            return jsonResponse.get("status").asText();
+        }
+        return "UNKNOWN";
     }
 }

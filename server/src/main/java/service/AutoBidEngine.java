@@ -4,14 +4,14 @@ import controller.ServerBidderController;
 import model.auction.Auction;
 import model.auction.AutoBid;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import static utils.ConsoleColors.*;
 
 /**
  * The core engine responsible for managing and executing automated bidding logic.
@@ -21,6 +21,7 @@ import static utils.ConsoleColors.*;
  * Part of the Auction System project.
  */
 public class AutoBidEngine {
+    private static final Logger log = LoggerFactory.getLogger(AutoBidEngine.class);
 
     /**
      * Fixed thread pool for managing concurrent bot execution.
@@ -59,20 +60,24 @@ public class AutoBidEngine {
      *
      * @param auction The active auction session being processed.
      */
-    private static void processNextBot(Auction auction) {
+    static void processNextBot(Auction auction) {
         if (!auction.getStatus().equals(Auction.STATUS_RUNNING)) {
             return;
         }
 
-        PriorityQueue<AutoBid> originalBots = auction.getActiveAutoBids();
-        if (originalBots.isEmpty()) return;
+        // Lấy tham chiếu của hàng đợi bots hiện tại
+        java.util.Queue<AutoBid> botQueue = auction.getActiveAutoBids();
+        List<AutoBid> bots;
 
-        // 1. Copy bots into a List for RAM-based mathematical sorting and evaluation
-        List<AutoBid> bots = new ArrayList<>(originalBots);
+        // 1. KHÓA HÀNG ĐỢI KHI ĐỌC/COPY ĐỂ TRÁNH ConcurrentModificationException
+        synchronized (botQueue) {
+            if (botQueue.isEmpty()) return;
+            bots = new ArrayList<>(botQueue);
+        }
 
         // 2. Sort bots: Highest maxBid first. If maxBid is tied, earlier registration time wins.
         bots.sort((b1, b2) -> {
-            int maxBidCompare = Double.compare(b2.getMaxBid(), b1.getMaxBid());
+            int maxBidCompare = Long.compare(b2.getMaxBid(), b1.getMaxBid());
             if (maxBidCompare != 0) return maxBidCompare;
             return b1.getTimeRegistered().compareTo(b2.getTimeRegistered());
         });
@@ -82,14 +87,13 @@ public class AutoBidEngine {
 
         // 3. Find the top 2 bots capable of bidding
         for (AutoBid bot : bots) {
-            double actualIncrement = Math.max(auction.getBidIncrement(), bot.getIncrement());
-            double requiredBid = (auction.getWinningBidder() == null) ?
+            long actualIncrement = Math.max(auction.getBidIncrement(), bot.getIncrement());
+            long requiredBid = (auction.getWinningBidder() == null) ?
                     auction.getItem().getStartingPrice() :
                     auction.getCurrentPrice() + actualIncrement;
 
-            // Check if the bot can afford to become the leader
-            if (bot.getMaxBid() >= requiredBid || 
-               (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(bot.getBidder().getId()) && bot.getMaxBid() > auction.getCurrentPrice())) {
+            if (bot.getMaxBid() >= requiredBid ||
+                    (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(bot.getBidder().getId()) && bot.getMaxBid() > auction.getCurrentPrice())) {
                 if (top1 == null) {
                     top1 = bot;
                 } else if (top2 == null) {
@@ -102,20 +106,22 @@ public class AutoBidEngine {
         if (top1 == null) return; // No capable bot found
 
         // 4. Calculate the final winning price mathematically
-        double finalPrice;
-        double top1ActualIncrement = Math.max(auction.getBidIncrement(), top1.getIncrement());
+        long finalPrice;
+        long top1ActualIncrement = Math.max(auction.getBidIncrement(), top1.getIncrement());
 
         if (top2 != null) {
             // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
             finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
-            
-            // Clean up: Remove top2 and other losing bots from the queue to prevent infinite loops
-            final double top2MaxBid = top2.getMaxBid();
+
+            final long top2MaxBid = top2.getMaxBid();
             final String top1Id = top1.getBidder().getId();
-            
-            auction.getActiveAutoBids().removeIf(b -> 
-                b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
-            );
+
+            // 5A. KHÓA HÀNG ĐỢI KHI XÓA PHẦN TỬ THUA CUỘC
+            synchronized (botQueue) {
+                botQueue.removeIf(b ->
+                        b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
+                );
+            }
         } else {
             // Only top1 is capable of bidding
             finalPrice = (auction.getWinningBidder() == null) ?
@@ -124,7 +130,7 @@ public class AutoBidEngine {
         }
 
         // Ensure final price is at least the minimum required to take the lead
-        double minRequired = (auction.getWinningBidder() == null) ?
+        long minRequired = (auction.getWinningBidder() == null) ?
                 auction.getItem().getStartingPrice() :
                 auction.getCurrentPrice() + top1ActualIncrement;
         finalPrice = Math.max(finalPrice, minRequired);
@@ -137,26 +143,26 @@ public class AutoBidEngine {
         }
 
         final AutoBid winnerBot = top1;
-        System.out.println("[Auto-Bid Engine]: Bot of \""
-                + YELLOW + winnerBot.getBidder().getUserName() + RESET 
-                + "\" mathematically won. Submitting ONE DB transaction.");
+        log.info("Bot of {} mathematically won. Submitting transaction.", winnerBot.getBidder().getUserName());
 
-        // 5. Submit exactly ONE task to the Database
+        // 6. Submit exactly ONE task to the Database
         bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, finalPrice, true)
                 .thenAccept(success -> {
                     if (!success) {
-                        System.out.println("[Auto-Bid Engine]: Bot of \""
-                                + YELLOW + winnerBot.getBidder().getUserName() + RESET 
-                                + "\" failed (insufficient balance). Removing configuration.");
-                        auction.getActiveAutoBids().removeIf(b ->
-                                b.getBidder().getId().equals(winnerBot.getBidder().getId())
-                        );
+                        log.info("Bot of {} failed (insufficient balance). Removing configuration.", winnerBot.getBidder().getUserName());
+
+                        // 5B. KHÓA HÀNG ĐỢI KHI XÓA BOT BỊ LỖI THANH TOÁN
+                        synchronized (botQueue) {
+                            botQueue.removeIf(b ->
+                                    b.getBidder().getId().equals(winnerBot.getBidder().getId())
+                            );
+                        }
+
                         // Re-trigger scan to allow the next best bot to take over
                         processNextBot(auction);
                     }
-                    // IMPORTANT: No recursive call on success. We avoided the infinite loop!
                 }).exceptionally(ex -> {
-                    System.out.println("[System]: Bot Engine execution failed: " + RED + ex.getMessage() + RESET);
+                    log.error("Bot Engine execution failed: {}", ex.getMessage());
                     return null;
                 });
     }

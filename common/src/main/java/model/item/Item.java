@@ -10,7 +10,7 @@ import model.base.Entity;
 public class Item extends Entity {
     private String itemName;
     private String description;
-    private double startingPrice;
+    private long startingPrice;
     private String imageUrl;
     private byte[] file;
     private String approvalStatus;
@@ -32,7 +32,7 @@ public class Item extends Entity {
      * @param description   A detailed description of the item's condition, features, etc.
      * @param startingPrice The initial starting price for the auction.
      */
-    public Item(String id, String itemName, String description, double startingPrice) {
+    public Item(String id, String itemName, String description, long startingPrice) {
         super(id);
         this.itemName = itemName;
         this.description = description;
@@ -56,11 +56,11 @@ public class Item extends Entity {
         this.description = description;
     }
 
-    public double getStartingPrice() {
+    public long getStartingPrice() {
         return startingPrice;
     }
 
-    public void setStartingPrice(double startingPrice) {
+    public void setStartingPrice(long startingPrice) {
         this.startingPrice = startingPrice;
     }
 

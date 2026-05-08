@@ -5,6 +5,8 @@ import database.dao.UserDAO;
 import model.user.Admin;
 import model.user.User;
 import org.mindrot.jbcrypt.BCrypt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import service.TOTPService;
 
 import java.sql.Connection;
@@ -20,12 +22,14 @@ import static utils.ConsoleColors.*;
  */
 public class UserController {
 
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
     private final TOTPService totpService;
     private final UserDAO userDAO;
 
     /**
      * Constructs the controller with the necessary services and DAOs.
-     * This implementation follows the Dependency Injection pattern to facilitate 
+     * This implementation follows the Dependency Injection pattern to facilitate
      * easier testing and decoupling.
      *
      * @param userDAO     The DAO responsible for user-related database transactions.
@@ -75,21 +79,21 @@ public class UserController {
                 conn.commit();
 
                 String qrUrl = totpService.getQRUrl(userName, secretKey);
-                System.out.println("[System]: \"" + YELLOW + userName + RESET + "\" has just created an account. 2FA Enabled.");
+                log.info("User {} registered. 2FA enabled.", userName);
                 return "SUCCESS|" + secretKey + "|" + qrUrl;
 
             } catch (SQLException e) {
                 conn.rollback();
                 // 2. Catch SQLite Unique Constraint error specifically for username
                 if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed: users.username")) {
-                    System.out.println("[System](UserController): Registration failed, username \"" + YELLOW + userName + RESET + "\" already exists");
+                    log.info("Registration failed: username {} already exists", userName);
                     return "[Error]: Username \"" + userName + "\" already exists.";
                 }
                 throw e;
             }
 
         } catch (SQLException e) {
-            System.out.println("[Database](UserController): Database error during registration: " + RED + e.getMessage() + RESET);
+            log.error("Database error during registration", e);
             return "[Error]: Database connection failed. Please try again later.";
         }
     }
@@ -107,7 +111,7 @@ public class UserController {
             User user = userDAO.findUserByUsername(userName);
 
             if (user != null && BCrypt.checkpw(password, user.getPassword())) {
-                System.out.println("[System]: \"" + YELLOW + user.getName() + RESET + "\" (" + YELLOW + user.getRole() + RESET + ") has logged in.");
+                log.info("User {} ({}) logged in.", user.getName(), user.getRole());
 
                 if (user.getRole().equalsIgnoreCase("ADMIN")) {
                     return new Admin(user.getId(), user.getUserName(), user.getPassword(), user.getName());
@@ -116,10 +120,10 @@ public class UserController {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("[Database](UserController): Database error during login: " + RED + e.getMessage() + RESET);
+            log.error("Database error during login", e);
         }
 
-        System.out.println("[System](UserController): Login failed for \"" + YELLOW + userName + RESET + "\"");
+        log.info("Login failed for username {}", userName);
         return null;
     }
 }
