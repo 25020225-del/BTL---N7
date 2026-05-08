@@ -310,7 +310,7 @@ public class MainApplication extends Application {
                             if (networkClient != null && networkClient.isConnected()) {
                                 networkClient.sendMessage("TIME_SYNC", System.currentTimeMillis());
                             }
-                        }, 10, 10, TimeUnit.MINUTES);
+                        }, 0, 5, TimeUnit.SECONDS); // Chỉnh 10 phút thành 5 giây
                         log.info("Connection established: " + networkClient.getServerAddress());
                     }
                 } catch (IOException e) {
