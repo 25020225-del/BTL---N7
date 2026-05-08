@@ -233,3 +233,18 @@
     -fx-border-color: #3665f3;
     -fx-background-color: #f0f5ff;
 }
+/* Style chung cho nhãn trạng thái */
+.status-label {
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+/* Các biến thể màu sắc */
+.status-won { -fx-background-color: #28a745; }      /* Xanh lá: Thắng/Thành công */
+.status-lost { -fx-background-color: #dc3545; }     /* Đỏ: Thua/Thất bại */
+.status-pending { -fx-background-color: #ffc107; -fx-text-fill: #212529; } /* Vàng: Đang chờ */
+.status-ongoing { -fx-background-color: #17a2b8; }  /* Xanh biển: Đang diễn ra */
+.status-sold { -fx-background-color: #6f42c1; }     /* Tím: Đã bán (cho Seller) */
