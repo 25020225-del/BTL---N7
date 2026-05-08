@@ -41,7 +41,6 @@ class ConcurrentBiddingTest {
         AuctionDAO auctionDAO = new AuctionDAO();
         BidDAO bidDAO = new BidDAO();
         ServerBidderController controller = new ServerBidderController(bidDAO);
-
         String runId = "T1-" + System.currentTimeMillis();
 
         // --- Arrange: create seller + 10 bidders with sufficient balance ---
@@ -53,11 +52,9 @@ class ConcurrentBiddingTest {
         item.setId("ITEM-" + runId);
         item.setItemName("Test Item");
         item.setStartingPrice(1000L);
-
         LocalDateTime now = LocalDateTime.now().minusSeconds(5);
         Auction auction = new Auction("AUC-" + runId, item, seller, 50L, now, now.plusMinutes(10));
         auction.setStatus(Auction.STATUS_RUNNING);
-
         List<User> bidders = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             User u = new User();
@@ -70,7 +67,6 @@ class ConcurrentBiddingTest {
         // Seed users + wallets directly (users table has FK dependencies)
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
-
             // Seller
             try (var ps = conn.prepareStatement(
                     "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good, is_totp_enabled, is_blocked) " +
@@ -109,43 +105,36 @@ class ConcurrentBiddingTest {
         CountDownLatch doneLatch = new CountDownLatch(10);
         AtomicInteger successCount = new AtomicInteger(0);
 
-        for (User bidder : bidders) {
-            futures.add(exec.submit(() -> {
-                startGate.await(2, TimeUnit.SECONDS);
-                return controller.placeBidOnAuction(bidder, auction, 1500L, false).get(10, TimeUnit.SECONDS);
-            }));
-            List<Thread> workers = new ArrayList<>();
-            for (int i = 0; i < 10; i++) {
-                final User bidder = bidders.get(i);
-                Thread worker = new Thread(() -> {
-                    try {
-                        startLatch.await();
-                        boolean ok = Boolean.TRUE.equals(
-                                controller.placeBidOnAuction(bidder, auction, 1500L, false).get(30, TimeUnit.SECONDS));
-                        if (ok) {
-                            successCount.incrementAndGet();
-                        }
-                    } catch (Exception e) {
-                        throw new AssertionError("Worker thread failed", e);
-                    } finally {
-                        doneLatch.countDown();
+        // [FIXED]: Sử dụng cách tạo Thread thủ công, bỏ phần thừa thãi của ExecutorService
+        List<Thread> workers = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            final User bidder = bidders.get(i);
+            Thread worker = new Thread(() -> {
+                try {
+                    startLatch.await();
+                    boolean ok = Boolean.TRUE.equals(
+                            controller.placeBidOnAuction(bidder, auction, 1500L, false).get(30, TimeUnit.SECONDS));
+                    if (ok) {
+                        successCount.incrementAndGet();
                     }
-                });
-                workers.add(worker);
-            }
-
-            for (Thread worker : workers) {
-                worker.start();
-            }
-
-            startLatch.countDown();
-
-            assertTrue(doneLatch.await(60, TimeUnit.SECONDS), "All 10 bid workers should finish");
-
-            // Concurrent first bids race on the same DB snapshot; retries may later submit valid follow-up bids after state moves.
-            assertTrue(successCount.get() >= 1 && successCount.get() <= bidders.size(),
-                    "At least one bid should succeed; count is bounded by contention + retry semantics");
+                } catch (Exception e) {
+                    throw new AssertionError("Worker thread failed", e);
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+            workers.add(worker);
         }
+
+        for (Thread worker : workers) {
+            worker.start();
+        }
+
+        startLatch.countDown();
+        assertTrue(doneLatch.await(60, TimeUnit.SECONDS), "All 10 bid workers should finish");
+
+        // Concurrent first bids race on the same DB snapshot; retries may later submit valid follow-up bids after state moves.
+        assertTrue(successCount.get() >= 1 && successCount.get() <= bidders.size(),
+                "At least one bid should succeed; count is bounded by contention + retry semantics");
     }
 }
-

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.PriorityQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 import static utils.ConsoleColors.*;
 
@@ -42,17 +42,18 @@ public class Auction extends Entity {
     private LocalDateTime maxEndTime; // Hard-cap limit for Anti-Sniping
     private List<BidTransaction> bidHistory;
 
-    // PriorityQueue to guarantee that auto-bids are processed based on their registration time
-    private PriorityQueue<AutoBid> activeAutoBids;
+    // PriorityBlockingQueue to guarantee thread-safe operations and process auto-bids chronologically
+    private PriorityBlockingQueue<AutoBid> activeAutoBids;
     private LocalDateTime startTime;
 
     /**
      * Default constructor.
-     * Initializes the auto-bid queue with a time-based comparator to prioritize earlier registrations.
+     * Initializes the thread-safe auto-bid queue with a time-based comparator to prioritize earlier registrations.
      */
     public Auction() {
         super();
-        this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
+        // PriorityBlockingQueue requires an initial capacity when using a custom Comparator
+        this.activeAutoBids = new PriorityBlockingQueue<>(11, Comparator.comparing(AutoBid::getTimeRegistered));
     }
 
     /**
@@ -80,7 +81,7 @@ public class Auction extends Entity {
 
         this.bidHistory = new ArrayList<>();
 
-        this.activeAutoBids = new PriorityQueue<>(Comparator.comparing(AutoBid::getTimeRegistered));
+        this.activeAutoBids = new PriorityBlockingQueue<>(11, Comparator.comparing(AutoBid::getTimeRegistered));
 
         if (seller.isGood()) {
             this.status = STATUS_OPEN;
@@ -178,7 +179,7 @@ public class Auction extends Entity {
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }
-    
+
     public LocalDateTime getMaxEndTime() {
         return maxEndTime;
     }
@@ -203,7 +204,7 @@ public class Auction extends Entity {
         this.startTime = startTime;
     }
 
-    public PriorityQueue<AutoBid> getActiveAutoBids() {
+    public PriorityBlockingQueue<AutoBid> getActiveAutoBids() {
         return activeAutoBids;
     }
 
@@ -407,7 +408,7 @@ public class Auction extends Entity {
 
     /**
      * Registers a new automated bidding bot (AutoBid) for a user on this auction.
-     * The bot is placed into a PriorityQueue for chronological processing.
+     * The bot is placed into a PriorityBlockingQueue for chronological, thread-safe processing.
      *
      * @param bidder        The user configuring the auto-bid.
      * @param maxBid        The absolute maximum amount the user is willing to spend.

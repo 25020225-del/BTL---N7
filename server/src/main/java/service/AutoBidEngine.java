@@ -65,11 +65,15 @@ public class AutoBidEngine {
             return;
         }
 
-        PriorityQueue<AutoBid> originalBots = auction.getActiveAutoBids();
-        if (originalBots.isEmpty()) return;
+        // Lấy tham chiếu của hàng đợi bots hiện tại
+        java.util.Queue<AutoBid> botQueue = auction.getActiveAutoBids();
+        List<AutoBid> bots;
 
-        // 1. Copy bots into a List for RAM-based mathematical sorting and evaluation
-        List<AutoBid> bots = new ArrayList<>(originalBots);
+        // 1. KHÓA HÀNG ĐỢI KHI ĐỌC/COPY ĐỂ TRÁNH ConcurrentModificationException
+        synchronized (botQueue) {
+            if (botQueue.isEmpty()) return;
+            bots = new ArrayList<>(botQueue);
+        }
 
         // 2. Sort bots: Highest maxBid first. If maxBid is tied, earlier registration time wins.
         bots.sort((b1, b2) -> {
@@ -88,7 +92,6 @@ public class AutoBidEngine {
                     auction.getItem().getStartingPrice() :
                     auction.getCurrentPrice() + actualIncrement;
 
-            // Check if the bot can afford to become the leader
             if (bot.getMaxBid() >= requiredBid ||
                     (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(bot.getBidder().getId()) && bot.getMaxBid() > auction.getCurrentPrice())) {
                 if (top1 == null) {
@@ -110,13 +113,15 @@ public class AutoBidEngine {
             // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
             finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
 
-            // Clean up: Remove top2 and other losing bots from the queue to prevent infinite loops
             final long top2MaxBid = top2.getMaxBid();
             final String top1Id = top1.getBidder().getId();
 
-            auction.getActiveAutoBids().removeIf(b ->
-                    b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
-            );
+            // 5A. KHÓA HÀNG ĐỢI KHI XÓA PHẦN TỬ THUA CUỘC
+            synchronized (botQueue) {
+                botQueue.removeIf(b ->
+                        b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
+                );
+            }
         } else {
             // Only top1 is capable of bidding
             finalPrice = (auction.getWinningBidder() == null) ?
@@ -140,18 +145,22 @@ public class AutoBidEngine {
         final AutoBid winnerBot = top1;
         log.info("Bot of {} mathematically won. Submitting transaction.", winnerBot.getBidder().getUserName());
 
-        // 5. Submit exactly ONE task to the Database
+        // 6. Submit exactly ONE task to the Database
         bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, finalPrice, true)
                 .thenAccept(success -> {
                     if (!success) {
                         log.info("Bot of {} failed (insufficient balance). Removing configuration.", winnerBot.getBidder().getUserName());
-                        auction.getActiveAutoBids().removeIf(b ->
-                                b.getBidder().getId().equals(winnerBot.getBidder().getId())
-                        );
+
+                        // 5B. KHÓA HÀNG ĐỢI KHI XÓA BOT BỊ LỖI THANH TOÁN
+                        synchronized (botQueue) {
+                            botQueue.removeIf(b ->
+                                    b.getBidder().getId().equals(winnerBot.getBidder().getId())
+                            );
+                        }
+
                         // Re-trigger scan to allow the next best bot to take over
                         processNextBot(auction);
                     }
-                    // IMPORTANT: No recursive call on success. We avoided the infinite loop!
                 }).exceptionally(ex -> {
                     log.error("Bot Engine execution failed: {}", ex.getMessage());
                     return null;

@@ -189,28 +189,29 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        // Task: Save to DB FIRST, then update RAM if success
+        // Task: Ghi nhận DB làm Nguồn Chân Lý (Source of Truth) TRƯỚC, update RAM SAU
         Callable<Boolean> saveAutoBidTask = () -> {
-            // Apply Striped Locking INSIDE the task to ensure atomicity
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                try {
-                    // 1. Save to DB
-                    boolean saved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
+            boolean isDbSaved = false;
 
-                    if (saved) {
-                        // 2. If DB success, update RAM
-                        boolean ramSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
-                        if (ramSuccess) {
-                            log.info("Auto-Bid Configuration for {} has been saved and registered.", currentUser.getUserName());
-                            return true;
-                        }
+            // 1. TƯƠNG TÁC DATABASE (Không giữ khóa RAM ở đây để chống Deadlock)
+            try {
+                isDbSaved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
+            } catch (SQLException e) {
+                log.error("Failed to save auto-bid config to DB: {}", e.getMessage());
+                return false;
+            }
+
+            // 2. ĐỒNG BỘ RAM CHỚP NHOÁNG (Chỉ thực hiện nếu DB đã commit thành công)
+            if (isDbSaved) {
+                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                    boolean ramSuccess = auction.registerAutoBid(currentUser, maxBid, increment);
+                    if (ramSuccess) {
+                        log.info("Auto-Bid Configuration for {} has been saved and registered.", currentUser.getUserName());
+                        return true;
                     }
-                    return false;
-                } catch (SQLException e) {
-                    log.error("Failed to save auto-bid config: {}", e.getMessage());
-                    return false;
                 }
             }
+            return false;
         };
 
         return TransactionManager.submitTask(saveAutoBidTask).thenApply(success -> {
