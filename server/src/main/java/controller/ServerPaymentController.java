@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
+import static utils.ConsoleColors.*;
+
 /**
  * Controller responsible for handling financial payment operations on the server side.
  * It primarily manages balance deposits and ensures that wallet updates and
@@ -52,7 +54,7 @@ public class ServerPaymentController {
             }
 
             try (Connection conn = DatabaseManager.getConnection()) {
-                conn.setAutoCommit(false); // Start Database Transaction
+                conn.setAutoCommit(false);
 
                 try {
                     String now = LocalDateTime.now().toString();
@@ -70,8 +72,8 @@ public class ServerPaymentController {
                             now
                     );
 
-                    conn.commit(); // Commit all changes as an atomic unit
-                    log.info("{} has deposited {} VND (Verified).", user.getUserName(), verifiedAmount);
+                    conn.commit();
+                    log.info("User {} deposited {} VND (verified)", user.getName(), verifiedAmount);
                     return true;
 
                 } catch (SQLException e) {

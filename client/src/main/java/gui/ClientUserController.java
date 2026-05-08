@@ -50,9 +50,8 @@ public class ClientUserController {
     private Parent accountView;
     private Parent settingsView;
 
-    private CreateAuctionController  createAuctionView;
+    private CreateAuctionController createAuctionView; // Có thể thừa, nhưng anh giữ nguyên cấu trúc của em
     private WalletController walletView;
-
 
     private User currentUser;
 
@@ -100,8 +99,10 @@ public class ClientUserController {
 
         createAuctionController = new CreateAuctionController();
 
+        // [KIẾN TRÚC MỚI] Khởi tạo Custom Control WalletController
         walletView = new WalletController();
-        walletView.setOnAuctionCreated(() -> marketplaceBtn.fire());
+        // [FIX] Cập nhật tên hàm thành setOnReturnAction cho đúng chuẩn bên WalletController
+        walletView.setOnReturnAction(() -> marketplaceBtn.fire());
 
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
         tableViewLoader.setController(this);
@@ -155,9 +156,11 @@ public class ClientUserController {
             mainViewController.getChildren().add(createAuctionController);
         });
 
+        // [FIX TRỌNG TÂM] Vì walletView giờ đã extends VBox nên nó CHÍNH LÀ một Node.
+        // Chỉ cần add thẳng walletView vào mainViewController, không gọi .getParent() nữa.
         walletBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(walletView.getParent());
+            mainViewController.getChildren().add(walletView);
         });
 
         depositBtn.setOnAction(event -> requestDeposit(50000));

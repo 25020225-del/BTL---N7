@@ -5,12 +5,14 @@ import database.TransactionManager;
 import database.dao.AuctionDAO;
 import database.dao.WalletDAO;
 import model.auction.Auction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -18,12 +20,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static utils.ConsoleColors.*;
+
 /**
  * A background daemon service that continuously monitors active auctions.
  * It manages real-time expiration in RAM and routinely sweeps the database
  * to clean up any "orphaned" or "ghost" auctions left over from previous server sessions.
  */
 public class AuctionMonitor {
+
     private static final Logger log = LoggerFactory.getLogger(AuctionMonitor.class);
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -50,7 +55,7 @@ public class AuctionMonitor {
      * handling both volatile RAM instances and persistent Database records.
      */
     public void startMonitoring() {
-        log.info("Auction Monitor launched.");
+        log.info("Auction monitor has been launched.");
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
@@ -69,16 +74,17 @@ public class AuctionMonitor {
 
     /**
      * Iterates through the in-memory auction list, finalizing those whose time has expired.
-     * This method follows the "Release Lock During I/O" pattern to prevent performance bottlenecks.
+     * Uses a guarded Phase 2 check so anti-sniping (end time extension while unlocked) cannot
+     * cause a wrongful close; DB updates use optimistic conditions where applicable.
      */
     private void processRamAuctions() {
         // AuctionManager.getAuctionList() returns a CopyOnWriteArrayList, safe for concurrent iteration.
         for (Auction auction : AuctionManager.getAuctionList()) {
             String auctionId = auction.getId();
             String targetStatus = null;
+            LocalDateTime snapshotEndAtDecision = null;
 
-            // --- PHASE 1: RAM State Check (LOCKED) ---
-            // Briefly hold the lock to determine if a status transition is needed.
+            // PHASE 1: Decide transition under lock + capture end snapshot for expiry paths
             synchronized (AuctionManager.getLockForAuction(auctionId)) {
                 String currentStatus = auction.getStatus();
                 LocalDateTime now = LocalDateTime.now();
@@ -88,63 +94,103 @@ public class AuctionMonitor {
                     if (now.isBefore(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_RUNNING;
                     }
-                }
+                } 
                 // Check for auction end
                 else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
                     if (now.isAfter(auction.getEndTime())) {
-                        targetStatus = (auction.getWinningBidder() != null) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
+                        targetStatus = (auction.getWinningBidder() != null)
+                                ? Auction.STATUS_PAID
+                                : Auction.STATUS_CANCELED;
+                        snapshotEndAtDecision = auction.getEndTime();
                     }
                 }
             }
 
-            // --- PHASE 2: Database I/O (UNLOCKED) ---
-            // Execute the blocking database update without holding any RAM locks.
-            if (targetStatus != null) {
-                try {
-                    // Critical RAM-DB consistency check: only update RAM if DB update is successful
-                    boolean dbSuccess = auctionDAO.updateAuctionStatus(auctionId, targetStatus);
+            if (targetStatus == null) {
+                finalizeRamCleanupIfTerminal(auction, auctionId);
+                continue;
+            }
 
-                    if (dbSuccess) {
-                        // --- PHASE 3: RAM State Update (LOCKED) ---
-                        // Re-acquire the lock to apply the committed DB state back to RAM.
-                        synchronized (AuctionManager.getLockForAuction(auctionId)) {
-                            auction.setStatus(targetStatus);
+            boolean dbSuccess;
 
-                            if (targetStatus.equals(Auction.STATUS_PAID)) {
-                                processFinancialSettlement(auction);
-                                log.info("Auction {} finished | Winner: {}", auctionId, (auction.getWinningBidder() != null ? auction.getWinningBidder().getUserName() : "N/A"));
-                            } else if (targetStatus.equals(Auction.STATUS_RUNNING)) {
-                                log.info("Auction {} is running.", auctionId);
-                            } else {
-                                log.info("Auction {} finished.", auctionId);
-                            }
+            try {
+                if (Auction.STATUS_RUNNING.equals(targetStatus)) {
+                    synchronized (AuctionManager.getLockForAuction(auctionId)) {
+                        if (!auction.getStatus().equals(Auction.STATUS_OPEN)) {
+                            finalizeRamCleanupIfTerminal(auction, auctionId);
+                            continue;
                         }
-                    } else {
-                        // DB update failed, do NOT update RAM.
-                        log.warn("Failed to update database for auction {}. Skipping RAM update.", auctionId);
+                        LocalDateTime now = LocalDateTime.now();
+                        if (!now.isAfter(auction.getStartTime()) || !now.isBefore(auction.getEndTime())) {
+                            finalizeRamCleanupIfTerminal(auction, auctionId);
+                            continue;
+                        }
                     }
-                } catch (Exception e) {
-                    log.error("Failed to update auction {} to {}: {}", auctionId, targetStatus, e.getMessage());
+                    dbSuccess = auctionDAO.updateAuctionStatusOpenToRunning(auctionId);
+                } else {
+                    synchronized (AuctionManager.getLockForAuction(auctionId)) {
+                        LocalDateTime now = LocalDateTime.now();
+                        if (snapshotEndAtDecision == null) {
+                            finalizeRamCleanupIfTerminal(auction, auctionId);
+                            continue;
+                        }
+                        if (now.isBefore(auction.getEndTime())) {
+                            log.debug("Skipping close for auction {}: still before end time (anti-sniping / clock race)", auctionId);
+                            finalizeRamCleanupIfTerminal(auction, auctionId);
+                            continue;
+                        }
+                        if (auction.getEndTime().isAfter(snapshotEndAtDecision)) {
+                            log.debug("Skipping close for auction {}: end time was extended since decision snapshot", auctionId);
+                            finalizeRamCleanupIfTerminal(auction, auctionId);
+                            continue;
+                        }
+                    }
+                    dbSuccess = auctionDAO.updateAuctionStatusEndingIfEndTimeMatches(
+                            auctionId,
+                            targetStatus,
+                            snapshotEndAtDecision);
                 }
+
+                if (dbSuccess) {
+                    synchronized (AuctionManager.getLockForAuction(auctionId)) {
+                        auction.setStatus(targetStatus);
+
+                        if (Auction.STATUS_PAID.equals(targetStatus)) {
+                            processFinancialSettlement(auction);
+                            log.info("Auction {} finished with winner: {}",
+                                    auctionId,
+                                    auction.getWinningBidder() != null ? auction.getWinningBidder().getUserName() : "N/A");
+                        } else if (Auction.STATUS_RUNNING.equals(targetStatus)) {
+                            log.info("Auction {} has started and is now RUNNING.", auctionId);
+                        } else {
+                            log.info("Auction {} finished with NO winner. CANCELED.", auctionId);
+                        }
+                    }
+                } else {
+                    log.warn("Optimistic DB update failed for auction {} to status {} — state may have changed concurrently; RAM not updated.",
+                            auctionId, targetStatus);
+                }
+            } catch (Exception e) {
+                log.error("Failed to update auction {} to {}", auctionId, targetStatus, e);
             }
 
-            // --- PHASE 4: RAM Cleanup for Terminal States (LOCKED) ---
-            // Terminal states require removal from the active monitoring list.
-            synchronized (AuctionManager.getLockForAuction(auctionId)) {
-                String finalStatus = auction.getStatus();
-                if (finalStatus.equals(Auction.STATUS_PAID) ||
-                        finalStatus.equals(Auction.STATUS_CANCELED) ||
-                        finalStatus.equals(Auction.STATUS_DELETED)) {
+            finalizeRamCleanupIfTerminal(auction, auctionId);
+        }
+    }
 
-                    // Remove from Server RAM to prevent memory leaks
-                    allAuctions.remove(auction);
-                    AuctionManager.removeAuctionLock(auctionId);
+    private void finalizeRamCleanupIfTerminal(Auction auction, String auctionId) {
+        synchronized (AuctionManager.getLockForAuction(auctionId)) {
+            String finalStatus = auction.getStatus();
+            if (finalStatus.equals(Auction.STATUS_PAID)
+                    || finalStatus.equals(Auction.STATUS_CANCELED)
+                    || finalStatus.equals(Auction.STATUS_DELETED)) {
 
-                    // Broadcast removal command to all connected clients
-                    ClientManager.broadcast("REMOVE_AUCTION", auctionId, null);
+                allAuctions.remove(auction);
+                AuctionManager.removeAuctionLock(auctionId);
 
-                    log.info("Removed auction {} from RAM.", auctionId);
-                }
+                ClientManager.broadcast("REMOVE_AUCTION", auctionId, null);
+
+                log.info("Removed auction {} from RAM. (DB already updated)", auctionId);
             }
         }
     }
@@ -161,39 +207,56 @@ public class AuctionMonitor {
 
         Callable<Boolean> settlementTask = () -> {
             String now = LocalDateTime.now().toString();
+            String auctionId = auction.getId();
 
             try (Connection conn = DatabaseManager.getConnection()) {
-                conn.setAutoCommit(false); // Start ACID transaction
-
+                conn.setAutoCommit(false);
                 try {
-                    // 1. Pay the seller the final auction price
-                    long sellerPayment = auction.getCurrentPrice();
-                    walletDAO.updateBalance(conn, auction.getSeller().getId(), sellerPayment);
+                    // 1. Xử lý người thắng cuộc (Winner)
+                    if (auction.getWinningBidder() != null) {
+                        long finalPrice = auction.getCurrentPrice();
+                        long lockedAmount = auction.getHighestMaxBid();
+                        String winnerId = auction.getWinningBidder().getId();
 
-                    walletDAO.addTransaction(
-                            conn,
-                            "W-IN-" + System.currentTimeMillis(),
-                            auction.getSeller().getId(),
-                            sellerPayment,
-                            "Payment received for completed auction: " + auction.getId(),
-                            now
-                    );
+                        // Khấu trừ giá cuối cùng từ tiền tạm giữ của winner
+                        walletDAO.deductFromLocked(conn, winnerId, finalPrice);
+                        // Hoàn lại phần dư (MaxBid - FinalPrice) cho winner
+                        long refundAmount = lockedAmount - finalPrice;
+                        if (refundAmount > 0) {
+                            walletDAO.unlockBalance(conn, winnerId, refundAmount);
+                        }
 
-                    // 2. Refund the winning bidder for the excess locked amount
-                    long refundAmount = auction.getHighestMaxBid() - auction.getCurrentPrice();
-                    if (refundAmount > 0) {
-                        walletDAO.updateBalance(conn, auction.getWinningBidder().getId(), refundAmount);
-
-                        walletDAO.addTransaction(
-                                conn,
-                                "W-REF-" + (System.currentTimeMillis() + 1), // +1 to ensure unique ID
-                                auction.getWinningBidder().getId(),
-                                refundAmount,
-                                "Refund for excess max bid on auction: " + auction.getId(),
-                                now
-                        );
+                        // Trả tiền cho người bán (Seller)
+                        walletDAO.updateBalance(conn, auction.getSeller().getId(), finalPrice);
+                        walletDAO.addTransaction(conn, "W-IN-" + System.currentTimeMillis(),
+                                auction.getSeller().getId(), finalPrice,
+                                "Payment received for auction: " + auctionId, now);
                     }
 
+                    // 2. Xử lý những người dùng Auto-Bid đã thua (Losers)
+                    // Cần Query tất cả các Auto-Bid của phiên này ngoại trừ người thắng
+                    String loserSql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ?";
+                    try (PreparedStatement pstmt = conn.prepareStatement(loserSql)) {
+                        pstmt.setString(1, auctionId);
+                        pstmt.setString(2, auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : "NONE");
+                        try (ResultSet rs = pstmt.executeQuery()) {
+                            while (rs.next()) {
+                                String loserId = rs.getString("bidder_id");
+                                double loserMaxBid = rs.getDouble("max_bid");
+                                // Hoàn trả toàn bộ tiền tạm giữ cho người thua
+                                walletDAO.unlockBalance(conn, loserId, loserMaxBid);
+                            }
+                        }
+                    }
+
+                    // 3. Vô hiệu hóa bot sau khi kết thúc
+                    try (PreparedStatement pstmt = conn.prepareStatement("UPDATE auto_bids SET is_active = 0 WHERE auction_id = ?")) {
+                        pstmt.setString(1, auctionId);
+                        pstmt.executeUpdate();
+                    }
+
+                    conn.commit();
+                    log.info("Financial settlement (Locked Funds) completed for auction {}", auctionId);
                     conn.commit(); // Finalize changes
                     log.info("Financial settlement completed for auction {}", auction.getId());
                     return true;

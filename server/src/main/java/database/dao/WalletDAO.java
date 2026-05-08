@@ -86,4 +86,47 @@ public class WalletDAO {
             return pstmt.executeUpdate() > 0;
         }
     }
+    /**
+     * Chuyển tiền từ số dư khả dụng sang tạm giữ (Locking)
+     */
+    public boolean lockBalance(Connection conn, String userId, double amount) throws SQLException {
+        String sql = "UPDATE wallets SET balance = balance - ?, locked_balance = locked_balance + ? " +
+                "WHERE user_id = ? AND balance >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, amount);
+            pstmt.setDouble(2, amount);
+            pstmt.setString(3, userId);
+            pstmt.setDouble(4, amount);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Hoàn trả tiền từ tạm giữ về số dư khả dụng (Unlocking)
+     */
+    public boolean unlockBalance(Connection conn, String userId, double amount) throws SQLException {
+        String sql = "UPDATE wallets SET balance = balance + ?, locked_balance = locked_balance - ? " +
+                "WHERE user_id = ? AND locked_balance >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, amount);
+            pstmt.setDouble(2, amount);
+            pstmt.setString(3, userId);
+            pstmt.setDouble(4, amount);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Khấu trừ vĩnh viễn từ số tiền đã tạm giữ (Deducting from lock)
+     */
+    public boolean deductFromLocked(Connection conn, String userId, double amount) throws SQLException {
+        String sql = "UPDATE wallets SET locked_balance = locked_balance - ? " +
+                "WHERE user_id = ? AND locked_balance >= ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, amount);
+            pstmt.setString(2, userId);
+            pstmt.setDouble(3, amount);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
 }

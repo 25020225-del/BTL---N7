@@ -15,8 +15,8 @@ public class BidDAO {
 
     public static final class BidCommitResult {
         public final String auctionId;
-        public final long newCurrentPrice;
-        public final long newHighestMaxBid;
+        public final double newCurrentPrice;
+        public final double newHighestMaxBid;
         public final String newWinnerId; // nullable
         public final LocalDateTime newEndTime;
 
@@ -37,6 +37,26 @@ public class BidDAO {
      *
      * @return a {@link BidCommitResult} on success, or {@code null} if validation fails or optimistic lock conflicts.
      */
+    // Thêm hàm helper này vào BidDAO.java
+    /**
+     * Kiểm tra xem một user có đang kích hoạt Auto-Bid trong phiên đấu giá này không.
+     */
+    private boolean isAutoBidActive(Connection conn, String auctionId, String userId) throws SQLException {
+        String sql = "SELECT 1 FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, auctionId);
+            ps.setString(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+// Thay thế hàm executeBidTransactionSourceOfTruth hiện tại [cite: 391-432]
+    /**
+     * Executes a bid transaction using the database as the single source of truth.
+     * CẬP NHẬT: Xử lý logic tách biệt giữa luồng tiền của Người thật (Balance) và Bot (Locked Balance).
+     */
     public BidCommitResult executeBidTransactionSourceOfTruth(
             Connection conn,
             String auctionId,
@@ -44,7 +64,8 @@ public class BidDAO {
             long newMaxBid,
             long expectedPrice,
             long expectedMaxBid,
-            String expectedWinnerId
+            String expectedWinnerId,
+            boolean isBot // Thêm tham số này để nhận biết nguồn request
     ) throws SQLException {
         String selectSql = "SELECT starting_price, current_price, highest_max_bid, bid_increment, end_time, status, winning_bidder_id " +
                 "FROM auctions WHERE id = ?";
@@ -111,37 +132,26 @@ public class BidDAO {
             if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
                 long amountToDeduct = newMaxBid - previousHighestMaxBid;
                 if (amountToDeduct > 0) {
-                    if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return null;
-                    walletDAO.addTransaction(
-                            conn,
-                            "W-INC-" + System.currentTimeMillis(),
-                            currentUser.getId(),
-                            -amountToDeduct,
-                            "Incremental auction bid for session: " + auctionId,
-                            now
-                    );
+                    if (!isBot) { // <-- CHỈ TRỪ TIỀN NẾU LÀ NGƯỜI THẬT
+                        if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return null;
+                        walletDAO.addTransaction(conn, "W-INC-" + System.currentTimeMillis(), currentUser.getId(), -amountToDeduct, "Incremental auction bid for session: " + auctionId, now);
+                    }
                 }
             } else {
                 if (previousWinner != null) {
-                    walletDAO.updateBalance(conn, previousWinner.getId(), previousHighestMaxBid);
-                    walletDAO.addTransaction(
-                            conn,
-                            "W-REF-" + System.currentTimeMillis(),
-                            previousWinner.getId(),
-                            previousHighestMaxBid,
-                            "Refund for being outbid in session: " + auctionId,
-                            now
-                    );
+                    // KIỂM TRA LỖ HỔNG: Người cũ là Bot hay Người thật?
+                    boolean wasPreviousWinnerBot = isAutoBidActive(conn, auctionId, previousWinner.getId());
+
+                    if (!wasPreviousWinnerBot) { // <-- CHỈ HOÀN TIỀN VÀO BALANCE NẾU NGƯỜI CŨ LÀ NGƯỜI THẬT
+                        walletDAO.updateBalance(conn, previousWinner.getId(), previousHighestMaxBid);
+                        walletDAO.addTransaction(conn, "W-REF-" + System.currentTimeMillis(), previousWinner.getId(), previousHighestMaxBid, "Refund for being outbid in session: " + auctionId, now);
+                    }
                 }
-                if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid)) return null;
-                walletDAO.addTransaction(
-                        conn,
-                        "W-OUT-" + System.currentTimeMillis(),
-                        currentUser.getId(),
-                        -newMaxBid,
-                        "Auction bid placed for session: " + auctionId,
-                        now
-                );
+
+                if (!isBot) { // <-- CHỈ TRỪ TIỀN TỪ BALANCE NẾU LÀ NGƯỜI THẬT
+                    if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid)) return null;
+                    walletDAO.addTransaction(conn, "W-OUT-" + System.currentTimeMillis(), currentUser.getId(), -newMaxBid, "Auction bid placed for session: " + auctionId, now);
+                }
             }
         }
 
@@ -156,7 +166,7 @@ public class BidDAO {
             pstmt.executeUpdate();
         }
 
-        // STEP 3: Update auction with optimistic locking (DB source-of-truth)
+        // STEP 3: Update auction with optimistic locking
         final String updateAuctionSql;
         if (expectedWinnerId == null) {
             updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? " +
@@ -179,8 +189,7 @@ public class BidDAO {
             }
 
             if (pstmt.executeUpdate() == 0) {
-                // Conflict: another transaction changed the auction state after we read it.
-                return null;
+                return null; // Optimistic lock conflict
             }
         }
 
@@ -287,16 +296,52 @@ public class BidDAO {
         return true;
     }
 
+    // Thay thế saveAutoBid trong BidDAO.java [cite: 458]
     public boolean saveAutoBid(User currentUser, Auction auction, long maxBid, long increment) throws SQLException {
-        String sql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
-        try (Connection conn = database.DatabaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, "AB-" + System.currentTimeMillis());
-            pstmt.setString(2, auction.getId());
-            pstmt.setString(3, currentUser.getId());
-            pstmt.setLong(4, maxBid);
-            pstmt.setLong(5, increment);
-            return pstmt.executeUpdate() > 0;
+        String checkSql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
+        String upsertSql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
+
+        try (Connection conn = database.DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                long oldMaxBid = 0;
+                // 1. Kiểm tra xem đã có cấu hình cũ chưa để tính chênh lệch
+                try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                    checkStmt.setString(1, auction.getId());
+                    checkStmt.setString(2, currentUser.getId());
+                    try (ResultSet rs = checkStmt.executeQuery()) {
+                        if (rs.next()) oldMaxBid = rs.getLong("max_bid");
+                    }
+                }
+
+                long difference = maxBid - oldMaxBid;
+                if (difference > 0) {
+                    // Khóa thêm tiền nếu tăng maxBid
+                    if (!walletDAO.lockBalance(conn, currentUser.getId(), difference)) {
+                        conn.rollback();
+                        return false; // Không đủ tiền khả dụng
+                    }
+                } else if (difference < 0) {
+                    // Hoàn lại tiền nếu giảm maxBid
+                    walletDAO.unlockBalance(conn, currentUser.getId(), Math.abs(difference));
+                }
+
+                // 2. Lưu cấu hình bot
+                try (PreparedStatement pstmt = conn.prepareStatement(upsertSql)) {
+                    pstmt.setString(1, "AB-" + System.currentTimeMillis());
+                    pstmt.setString(2, auction.getId());
+                    pstmt.setString(3, currentUser.getId());
+                    pstmt.setLong(4, maxBid);
+                    pstmt.setLong(5, increment);
+                    pstmt.executeUpdate();
+                }
+
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
         }
     }
 }

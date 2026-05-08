@@ -66,10 +66,8 @@ class AutoBidEngineTest {
         CapturingBidderController ctrl = new CapturingBidderController();
         AutoBidEngine.setBidderController(ctrl);
 
-        // Act: invoke the private method synchronously to avoid thread pool nondeterminism
-        Method m = AutoBidEngine.class.getDeclaredMethod("processNextBot", Auction.class);
-        m.setAccessible(true);
-        m.invoke(null, auction);
+        // Act: Gọi trực tiếp hàm đã được mở quyền package-private
+        AutoBidEngine.processNextBot(auction);
 
         // Assert
         assertNotNull(ctrl.lastBidder.get(), "Engine should submit exactly one bid");

@@ -4,6 +4,9 @@ import database.dao.AuctionDAO;
 import model.auction.Auction;
 import model.item.Item;
 import model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import server.ServerExtension.AuctionManager;
 
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -17,11 +20,13 @@ import static utils.ConsoleColors.*;
  */
 public class ServerSellerController {
 
+    private static final Logger log = LoggerFactory.getLogger(ServerSellerController.class);
+
     private final AuctionDAO auctionDAO;
 
     /**
      * Constructs the controller with the necessary Data Access Objects.
-     * This implementation follows the Dependency Injection pattern to facilitate
+     * This implementation follows the Dependency Injection pattern to facilitate 
      * easier testing and decoupling.
      *
      * @param auctionDAO The DAO responsible for auction-related database transactions.
@@ -47,11 +52,11 @@ public class ServerSellerController {
 
         try {
             if (auctionDAO.addAuction(newAuction)) {
-                System.out.println("[System]: User \"" + YELLOW + currentUser.getName() + RESET + "\" created auction: " + item.getItemName());
+                log.info("User {} created auction: {}", currentUser.getName(), item.getItemName());
                 return newAuction;
             }
         } catch (SQLException e) {
-            System.out.println("[Error]: Database error during addAuction: " + utils.ConsoleColors.RED + e.getMessage() + utils.ConsoleColors.RESET);
+            log.error("Database error during addAuction", e);
         }
         return null;
     }
@@ -73,38 +78,39 @@ public class ServerSellerController {
     public boolean editAuction(User currentUser, Auction auction, String newName, String newDesc, long newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime) {
         // Security check: Only the owner can edit the auction
         if (!auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[Security]: " + RED + "You are not the owner of this auction" + RESET);
+            log.warn("Edit denied: not owner of auction {}", auction.getId());
             return false;
         }
 
-        // Logic check: Cannot edit auctions that have already started or concluded
-        if (auction.getStatus().equals(Auction.STATUS_RUNNING) ||
-                auction.getStatus().equals(Auction.STATUS_PAID) ||
-                auction.getStatus().equals(Auction.STATUS_FINISHED) ||
-                auction.getStatus().equals(Auction.STATUS_DELETED)) {
-            System.out.println("[Error]: " + RED + "Cannot edit information while the auction is ongoing, finished, or deleted" + RESET);
+        if (auction.getStatus().equals(Auction.STATUS_RUNNING)
+                || auction.getStatus().equals(Auction.STATUS_PAID)
+                || auction.getStatus().equals(Auction.STATUS_FINISHED)
+                || auction.getStatus().equals(Auction.STATUS_DELETED)) {
+            log.warn("Cannot edit auction {} in status {}", auction.getId(), auction.getStatus());
             return false;
         }
 
-        // If an auction was previously canceled, editing it resets it to PENDING for re-approval
-        String newStatus = auction.getStatus().equals(Auction.STATUS_CANCELED) ? Auction.STATUS_PENDING : auction.getStatus();
+        String newStatus = auction.getStatus().equals(Auction.STATUS_CANCELED)
+                ? Auction.STATUS_PENDING
+                : auction.getStatus();
 
         try {
             if (auctionDAO.updateAuction(auction, newName, newDesc, newStartPrice, newStartTime, newEndTime, newStatus)) {
-                // Synchronize the RAM object with the Database updates
-                auction.getItem().setItemName(newName);
-                auction.getItem().setDescription(newDesc);
-                auction.getItem().setStartingPrice(newStartPrice);
-                auction.setCurrentPrice(newStartPrice);
-                auction.setStartTime(newStartTime);
-                auction.setEndTime(newEndTime);
-                auction.setStatus(newStatus);
+                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                    auction.getItem().setItemName(newName);
+                    auction.getItem().setDescription(newDesc);
+                    auction.getItem().setStartingPrice(newStartPrice);
+                    auction.setCurrentPrice(newStartPrice);
+                    auction.setStartTime(newStartTime);
+                    auction.setEndTime(newEndTime);
+                    auction.setStatus(newStatus);
+                }
 
-                System.out.println("[System]: Auction \"" + YELLOW + auction.getId() + RESET + "\" updated successfully");
+                log.info("Auction {} updated successfully", auction.getId());
                 return true;
             }
         } catch (SQLException e) {
-            System.out.println("[Error]: Database error during editAuction: " + RED + e.getMessage() + RESET);
+            log.error("Database error during editAuction for {}", auction.getId(), e);
         }
         return false;
     }
@@ -120,18 +126,18 @@ public class ServerSellerController {
     public boolean deleteAuction(User currentUser, Auction auction) {
         // Security check: Only the owner can delete the auction
         if (!auction.getSeller().getId().equals(currentUser.getId())) {
-            System.out.println("[Security]: " + RED + "You do not have permission to delete this product" + RESET);
+            log.warn("Delete denied: user {} not owner", currentUser.getId());
             return false;
         }
 
         try {
             if (auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_DELETED)) {
                 auction.setStatus(Auction.STATUS_DELETED);
-                System.out.println("[System]: Auction \"" + YELLOW + auction.getId() + RESET + "\" has been deleted by " + YELLOW + currentUser.getName() + RESET);
+                log.info("Auction {} deleted by {}", auction.getId(), currentUser.getName());
                 return true;
             }
         } catch (SQLException e) {
-            System.out.println("[Error]: Database error during deleteAuction: " + RED + e.getMessage() + RESET);
+            log.error("Database error during deleteAuction for {}", auction.getId(), e);
         }
         return false;
     }
