@@ -41,21 +41,33 @@ public class BidDAO {
     /**
      * Kiểm tra xem một user có đang kích hoạt Auto-Bid trong phiên đấu giá này không.
      */
-    private boolean isAutoBidActive(Connection conn, String auctionId, String userId) throws SQLException {
-        String sql = "SELECT 1 FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
+
+
+    /**
+     * Truy vấn lịch sử giao dịch để biết chính xác lượt bid cũ là do Người hay Bot đặt.
+     */
+    private boolean wasPreviousBidBot(Connection conn, String auctionId, String previousWinnerId) {
+        if (previousWinnerId == null) return false;
+        String sql = "SELECT is_bot FROM bid_transactions WHERE auction_id = ? AND bidder_id = ? ORDER BY bid_time DESC LIMIT 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, auctionId);
-            ps.setString(2, userId);
+            ps.setString(2, previousWinnerId);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+                if (rs.next()) {
+                    return rs.getInt("is_bot") == 1;
+                }
             }
+        } catch (SQLException e) {
+            // Fallback an toàn nếu lỗi hoặc cột chưa kịp tạo
         }
+        return false;
     }
 
-// Thay thế hàm executeBidTransactionSourceOfTruth hiện tại [cite: 391-432]
+    // ================= HÀM XỬ LÝ CHÍNH ĐÃ FIX =================
+
     /**
      * Executes a bid transaction using the database as the single source of truth.
-     * CẬP NHẬT: Xử lý logic tách biệt giữa luồng tiền của Người thật (Balance) và Bot (Locked Balance).
+     * Đã Fix: Thống nhất cơ chế Locking Funds cho cả Human và Bot.
      */
     public BidCommitResult executeBidTransactionSourceOfTruth(
             Connection conn,
@@ -65,11 +77,11 @@ public class BidDAO {
             long expectedPrice,
             long expectedMaxBid,
             String expectedWinnerId,
-            boolean isBot // Thêm tham số này để nhận biết nguồn request
+            boolean isBot
     ) throws SQLException {
+
         String selectSql = "SELECT starting_price, current_price, highest_max_bid, bid_increment, end_time, status, winning_bidder_id " +
                 "FROM auctions WHERE id = ?";
-
         long startingPrice;
         long currentPrice;
         long highestMaxBid;
@@ -81,20 +93,17 @@ public class BidDAO {
         try (PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
             selectStmt.setString(1, auctionId);
             try (ResultSet rs = selectStmt.executeQuery()) {
-                if (!rs.next()) {
-                    return null;
-                }
+                if (!rs.next()) return null;
                 startingPrice = rs.getLong("starting_price");
                 currentPrice = rs.getLong("current_price");
                 highestMaxBid = rs.getLong("highest_max_bid");
                 bidIncrement = rs.getLong("bid_increment");
                 endTime = LocalDateTime.parse(rs.getString("end_time"));
                 status = rs.getString("status");
-                winningBidderId = rs.getString("winning_bidder_id"); // nullable
+                winningBidderId = rs.getString("winning_bidder_id");
             }
         }
 
-        // Build a minimal Auction snapshot for Model-calculation (MVC-compliant: core rules remain in Model).
         Auction auctionSnapshot = new Auction();
         Item item = new Item();
         item.setStartingPrice(startingPrice);
@@ -104,7 +113,6 @@ public class BidDAO {
         auctionSnapshot.setBidIncrement(bidIncrement);
         auctionSnapshot.setEndTime(endTime);
         auctionSnapshot.setStatus(status);
-        // maxEndTime is not persisted; keep it non-null to avoid NPE and preserve "hard-cap" behavior locally.
         auctionSnapshot.setMaxEndTime(endTime.plusMinutes(30));
 
         if (winningBidderId != null) {
@@ -114,11 +122,8 @@ public class BidDAO {
         }
 
         Auction.BidResult result = auctionSnapshot.calculateBidResult(currentUser, newMaxBid);
-        if (result == null) {
-            return null;
-        }
+        if (result == null) return null;
 
-        // Wallet logic needs previous state (from DB, not RAM).
         User previousWinner = null;
         if (winningBidderId != null) {
             previousWinner = new User();
@@ -126,43 +131,47 @@ public class BidDAO {
         }
         long previousHighestMaxBid = highestMaxBid;
 
+        boolean wasPreviousWinnerBot = wasPreviousBidBot(conn, auctionId, winningBidderId);
+
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
+
         if (result.newWinner != null && result.newWinner.getId().equals(currentUser.getId())) {
             if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
                 long amountToDeduct = newMaxBid - previousHighestMaxBid;
                 if (amountToDeduct > 0) {
-                    if (!isBot) { // <-- CHỈ TRỪ TIỀN NẾU LÀ NGƯỜI THẬT
-                        if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return null;
-                        walletDAO.addTransaction(conn, "W-INC-" + System.currentTimeMillis(), currentUser.getId(), -amountToDeduct, "Incremental auction bid for session: " + auctionId, now);
+                    if (!isBot) {
+                        // THAY ĐỔI 1: Chỉ LOCK tiền từ Balance, KHÔNG deduct thẳng
+                        if (!walletDAO.lockBalance(conn, currentUser.getId(), amountToDeduct)) return null;
+                        walletDAO.addTransaction(conn, "W-LCK-" + java.util.UUID.randomUUID().toString(), currentUser.getId(), -newMaxBid, "Lock funds for auction bid: " + auctionId, now);
                     }
                 }
             } else {
                 if (previousWinner != null) {
-                    // KIỂM TRA LỖ HỔNG: Người cũ là Bot hay Người thật?
-                    boolean wasPreviousWinnerBot = isAutoBidActive(conn, auctionId, previousWinner.getId());
-
-                    if (!wasPreviousWinnerBot) { // <-- CHỈ HOÀN TIỀN VÀO BALANCE NẾU NGƯỜI CŨ LÀ NGƯỜI THẬT
-                        walletDAO.updateBalance(conn, previousWinner.getId(), previousHighestMaxBid);
-                        walletDAO.addTransaction(conn, "W-REF-" + System.currentTimeMillis(), previousWinner.getId(), previousHighestMaxBid, "Refund for being outbid in session: " + auctionId, now);
+                    // THAY ĐỔI 2: Dựa vào Lịch sử thực tế để Unlock thay vì trạng thái Bot hiện tại
+                    if (!wasPreviousWinnerBot) {
+                        walletDAO.unlockBalance(conn, previousWinner.getId(), previousHighestMaxBid);
+                        walletDAO.addTransaction(conn, "W-UNL-" + java.util.UUID.randomUUID().toString(), previousWinner.getId(), previousHighestMaxBid, "Unlock funds (outbid) in session: " + auctionId, now);
                     }
                 }
 
-                if (!isBot) { // <-- CHỈ TRỪ TIỀN TỪ BALANCE NẾU LÀ NGƯỜI THẬT
-                    if (!walletDAO.deductBalance(conn, currentUser.getId(), newMaxBid)) return null;
-                    walletDAO.addTransaction(conn, "W-OUT-" + System.currentTimeMillis(), currentUser.getId(), -newMaxBid, "Auction bid placed for session: " + auctionId, now);
+                if (!isBot) {
+                    // THAY ĐỔI 1: Chỉ LOCK tiền từ Balance
+                    if (!walletDAO.lockBalance(conn, currentUser.getId(), newMaxBid)) return null;
+                    walletDAO.addTransaction(conn, "W-LCK-" + System.currentTimeMillis(), currentUser.getId(), -newMaxBid, "Lock funds for auction bid: " + auctionId, now);
                 }
             }
         }
 
-        // STEP 2: Record the bid history
-        String bidLogSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time) VALUES (?, ?, ?, ?, ?)";
+        // STEP 2: Record the bid history with is_bot flag
+        String bidLogSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time, is_bot) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(bidLogSql)) {
-            pstmt.setString(1, "BID-" + System.currentTimeMillis());
+            pstmt.setString(1, "BID-" + java.util.UUID.randomUUID().toString());
             pstmt.setString(2, auctionId);
             pstmt.setString(3, currentUser.getId());
             pstmt.setLong(4, result.newCurrentPrice);
             pstmt.setString(5, now);
+            pstmt.setInt(6, isBot ? 1 : 0);
             pstmt.executeUpdate();
         }
 
@@ -217,14 +226,7 @@ public class BidDAO {
                         return false; // Insufficient balance
 
                     // Log the incremental withdrawal
-                    walletDAO.addTransaction(
-                            conn,
-                            "W-INC-" + System.currentTimeMillis(),
-                            currentUser.getId(),
-                            -amountToDeduct,
-                            "Incremental auction bid for session: " + auctionId,
-                            now
-                    );
+                    walletDAO.addTransaction(conn, "W-LCK-" + java.util.UUID.randomUUID().toString(), currentUser.getId(), -amountToDeduct, "Lock incremental funds for session: " + auctionId, now);
                 }
             } else {
                 // Case 2: A new user is bidding and becoming the winner.

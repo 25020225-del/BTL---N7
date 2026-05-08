@@ -174,10 +174,17 @@ public class DatabaseManager {
                     "bidder_id TEXT NOT NULL, " +
                     "bid_amount REAL NOT NULL, " +
                     "bid_time TEXT NOT NULL, " +
+                    "is_bot INTEGER DEFAULT 0, " +
                     "FOREIGN KEY (auction_id) REFERENCES auctions(id), " +
                     "FOREIGN KEY (bidder_id) REFERENCES users(id)" +
                     ");";
             stmt.execute(createBidTransactionsTable);
+            try {
+                stmt.execute("ALTER TABLE bid_transactions ADD COLUMN is_bot INTEGER DEFAULT 0;");
+                log.info("Successfully added is_bot column to bid_transactions");
+            } catch (SQLException ignored) {
+                // Cột đã tồn tại, bỏ qua an toàn
+            }
 
             String createAutoBidsTable = "CREATE TABLE IF NOT EXISTS auto_bids (" +
                     "id TEXT PRIMARY KEY, " +
