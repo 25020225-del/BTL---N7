@@ -130,7 +130,7 @@ public class BidDAO {
         String now = LocalDateTime.now().toString();
         if (result.newWinner != null && result.newWinner.getId().equals(currentUser.getId())) {
             if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
-                double amountToDeduct = newMaxBid - previousHighestMaxBid;
+                long amountToDeduct = newMaxBid - previousHighestMaxBid;
                 if (amountToDeduct > 0) {
                     if (!isBot) { // <-- CHỈ TRỪ TIỀN NẾU LÀ NGƯỜI THẬT
                         if (!walletDAO.deductBalance(conn, currentUser.getId(), amountToDeduct)) return null;
@@ -297,24 +297,24 @@ public class BidDAO {
     }
 
     // Thay thế saveAutoBid trong BidDAO.java [cite: 458]
-    public boolean saveAutoBid(User currentUser, Auction auction, double maxBid, double increment) throws SQLException {
+    public boolean saveAutoBid(User currentUser, Auction auction, long maxBid, long increment) throws SQLException {
         String checkSql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
         String upsertSql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
 
         try (Connection conn = database.DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                double oldMaxBid = 0;
+                long oldMaxBid = 0;
                 // 1. Kiểm tra xem đã có cấu hình cũ chưa để tính chênh lệch
                 try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
                     checkStmt.setString(1, auction.getId());
                     checkStmt.setString(2, currentUser.getId());
                     try (ResultSet rs = checkStmt.executeQuery()) {
-                        if (rs.next()) oldMaxBid = rs.getDouble("max_bid");
+                        if (rs.next()) oldMaxBid = rs.getLong("max_bid");
                     }
                 }
 
-                double difference = maxBid - oldMaxBid;
+                long difference = maxBid - oldMaxBid;
                 if (difference > 0) {
                     // Khóa thêm tiền nếu tăng maxBid
                     if (!walletDAO.lockBalance(conn, currentUser.getId(), difference)) {

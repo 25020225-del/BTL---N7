@@ -214,14 +214,14 @@ public class AuctionMonitor {
                 try {
                     // 1. Xử lý người thắng cuộc (Winner)
                     if (auction.getWinningBidder() != null) {
-                        double finalPrice = auction.getCurrentPrice();
-                        double lockedAmount = auction.getHighestMaxBid();
+                        long finalPrice = auction.getCurrentPrice();
+                        long lockedAmount = auction.getHighestMaxBid();
                         String winnerId = auction.getWinningBidder().getId();
 
                         // Khấu trừ giá cuối cùng từ tiền tạm giữ của winner
                         walletDAO.deductFromLocked(conn, winnerId, finalPrice);
                         // Hoàn lại phần dư (MaxBid - FinalPrice) cho winner
-                        double refundAmount = lockedAmount - finalPrice;
+                        long refundAmount = lockedAmount - finalPrice;
                         if (refundAmount > 0) {
                             walletDAO.unlockBalance(conn, winnerId, refundAmount);
                         }
