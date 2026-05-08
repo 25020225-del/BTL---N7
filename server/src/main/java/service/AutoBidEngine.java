@@ -60,7 +60,7 @@ public class AutoBidEngine {
      *
      * @param auction The active auction session being processed.
      */
-    private static void processNextBot(Auction auction) {
+    static void processNextBot(Auction auction) {
         if (!auction.getStatus().equals(Auction.STATUS_RUNNING)) {
             return;
         }

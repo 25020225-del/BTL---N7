@@ -29,13 +29,13 @@ class ConcurrencyBidTest {
         // Fixed window so subject vs replay share identical timelines (avoids flaky anti-sniping / now() coupling).
         LocalDateTime start = LocalDateTime.of(2030, 6, 1, 10, 0, 0);
         LocalDateTime end = LocalDateTime.of(2030, 12, 1, 23, 0, 0);
-        Auction a = new Auction("AUC-CONC-STRESS", item, seller, 50.0, start, end);
+        Auction a = new Auction("AUC-CONC-STRESS", item, seller, 50L, start, end);
         a.setStatus(Auction.STATUS_RUNNING);
         return a;
     }
 
-    private static double bidForIndex(int idx) {
-        return 2000.0 + idx * 25.0;
+    private static long bidForIndex(int idx) {
+        return 2000L + idx * 25L;
     }
 
     @Test
@@ -44,7 +44,7 @@ class ConcurrencyBidTest {
         seller.setId("SELLER-C");
 
         Item item = new Item();
-        item.setStartingPrice(1000.0);
+        item.setStartingPrice(1000L);
 
         List<User> bidders = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
