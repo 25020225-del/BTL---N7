@@ -13,6 +13,9 @@ import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * The core engine responsible for managing and executing automated bidding logic.
  * It processes registered bots asynchronously using a priority-based approach
@@ -28,6 +31,9 @@ public class AutoBidEngine {
      */
     private static final int MAX_BOTPOOL_SIZE = 50;
     private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
+    private static final ConcurrentHashMap<String, AtomicBoolean> activeScans = new ConcurrentHashMap<>();
+
+
 
     /**
      * Controller used to handle the actual bid placement and wallet transactions.
@@ -51,7 +57,18 @@ public class AutoBidEngine {
      * @param auction The auction session to be scanned for potential bot actions.
      */
     public static void triggerBotScan(Auction auction) {
-        botPool.submit(() -> processNextBot(auction));
+        AtomicBoolean isScanning = activeScans.computeIfAbsent(auction.getId(), k -> new AtomicBoolean(false));
+
+        // Cơ chế Non-blocking Lock: Nếu đã có thread quét phiên này rồi, các thread khác sẽ bị từ chối ngay lập tức
+        if (isScanning.compareAndSet(false, true)) {
+            botPool.submit(() -> {
+                try {
+                    processNextBot(auction);
+                } finally {
+                    isScanning.set(false); // Release lock khi quét xong
+                }
+            });
+        }
     }
 
     /**
