@@ -37,10 +37,11 @@ public class BidDAO {
      *
      * @return a {@link BidCommitResult} on success, or {@code null} if validation fails or optimistic lock conflicts.
      */
-    // Thêm hàm helper này vào BidDAO.java
-    /**
-     * Kiểm tra xem một user có đang kích hoạt Auto-Bid trong phiên đấu giá này không.
-     */
+    public static class InsufficientFundsException extends RuntimeException {
+        public InsufficientFundsException(String message) {
+            super(message);
+        }
+    }
 
 
     /**
@@ -141,9 +142,10 @@ public class BidDAO {
                 long amountToDeduct = newMaxBid - previousHighestMaxBid;
                 if (amountToDeduct > 0) {
                     if (!isBot) {
-                        // THAY ĐỔI 1: Chỉ LOCK tiền từ Balance, KHÔNG deduct thẳng
-                        if (!walletDAO.lockBalance(conn, currentUser.getId(), amountToDeduct)) return null;
-                        walletDAO.addTransaction(conn, "W-LCK-" + java.util.UUID.randomUUID().toString(), currentUser.getId(), -newMaxBid, "Lock funds for auction bid: " + auctionId, now);
+                        if (!walletDAO.lockBalance(conn, currentUser.getId(), amountToDeduct)) {
+                            throw new InsufficientFundsException("Số dư không đủ");
+                        }
+                        walletDAO.addTransaction(conn, "W-LCK-" + java.util.UUID.randomUUID().toString(), currentUser.getId(), -amountToDeduct, "Lock incremental funds for session: " + auctionId, now);
                     }
                 }
             } else {
@@ -156,9 +158,10 @@ public class BidDAO {
                 }
 
                 if (!isBot) {
-                    // THAY ĐỔI 1: Chỉ LOCK tiền từ Balance
-                    if (!walletDAO.lockBalance(conn, currentUser.getId(), newMaxBid)) return null;
-                    walletDAO.addTransaction(conn, "W-LCK-" + System.currentTimeMillis(), currentUser.getId(), -newMaxBid, "Lock funds for auction bid: " + auctionId, now);
+                    if (!walletDAO.lockBalance(conn, currentUser.getId(), newMaxBid)) {
+                        throw new InsufficientFundsException("Số dư không đủ");
+                    }
+                    walletDAO.addTransaction(conn, "W-LCK-" + java.util.UUID.randomUUID().toString(), currentUser.getId(), -newMaxBid, "Lock funds for auction bid: " + auctionId, now);
                 }
             }
         }

@@ -46,13 +46,6 @@ public class ServerBidderController {
 
     /**
      * Processes a bid placement attempt for a specific auction.
-     * This method executes a complex database transaction that includes:
-     * <ul>
-     *     <li>Atomic wallet balance deduction.</li>
-     *     <li>Auction state validation (RAM).</li>
-     *     <li>Refunding the previous leading bidder's max bid.</li>
-     *     <li>Persisting bid and wallet transaction logs.</li>
-     * </ul>
      *
      * @param currentUser The user attempting to place the bid.
      * @param auction     The target auction session.
@@ -69,7 +62,7 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        Callable<Boolean> bidTask = () -> {
+        Callable<String> bidTask = () -> {
             BidDAO.BidCommitResult commitResult = null;
 
             for (int attempt = 0; attempt < PLACE_BID_MAX_RETRIES; attempt++) {
@@ -89,14 +82,7 @@ public class ServerBidderController {
                     conn.setAutoCommit(false);
                     try {
                         commitResult = bidDAO.executeBidTransactionSourceOfTruth(
-                                conn,
-                                auction.getId(),
-                                currentUser,
-                                newMaxBid,
-                                expectedPrice,
-                                expectedMaxBid,
-                                expectedWinnerId,
-                                isBot
+                                conn, auction.getId(), currentUser, newMaxBid, expectedPrice, expectedMaxBid, expectedWinnerId, isBot
                         );
 
                         if (commitResult != null) {
@@ -105,20 +91,22 @@ public class ServerBidderController {
                         }
                         conn.rollback();
                         log.debug("Bid attempt {} optimistic conflict for user {}", attempt + 1, currentUser.getName());
+                    } catch (BidDAO.InsufficientFundsException e) {
+                        conn.rollback();
+                        return "INSUFFICIENT_FUNDS";
                     } catch (SQLException e) {
                         conn.rollback();
-                        log.error("Transaction error placing bid", e);
-                        return false;
+                        return "SQL_ERROR";
                     }
                 } catch (SQLException e) {
-                    log.error("Connection error placing bid", e);
-                    return false;
+                    return "SQL_ERROR";
                 }
-            }
+            } // <-- FIX 1: Đã đóng ngoặc nhọn của vòng lặp for ở đây
 
+            // FIX 2: Trả về String thay vì boolean
             if (commitResult == null) {
                 log.warn("Bid failed after {} retries (optimistic lock / validation): {}", PLACE_BID_MAX_RETRIES, currentUser.getName());
-                return false;
+                return "CONFLICT";
             }
 
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
@@ -140,12 +128,12 @@ public class ServerBidderController {
             }
 
             log.info("Successfully placed bid for user {}", currentUser.getName());
-            return true;
+            return "SUCCESS";
         };
 
-        // Submit the task to TransactionManager and chain the broadcast logic
+        // FIX 3: Xử lý logic theo String finalResult trả về
         return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
-            if (finalResult) {
+            if ("SUCCESS".equals(finalResult)) {
                 Map<String, Object> updateData = new HashMap<>();
                 updateData.put("auctionId", auction.getId());
                 updateData.put("newPrice", auction.getCurrentPrice());
@@ -156,17 +144,19 @@ public class ServerBidderController {
                 if (!isBot) {
                     AutoBidEngine.triggerBotScan(auction);
                 }
-            } else {
-                // Task failed - could be Optimistic Locking conflict
+                return true;
+            } else if ("INSUFFICIENT_FUNDS".equals(finalResult)) {
                 if (!isBot) {
-                    ClientManager.sendToUser(
-                            currentUser.getId(),
-                            "GENERAL_ERROR",
-                            "Giá sản phẩm đã thay đổi bởi người dùng khác. Vui lòng cập nhật và thử lại!"
-                    );
+                    ClientManager.sendToUser(currentUser.getId(), "ERROR", "Số dư khả dụng không đủ để thực hiện đặt giá!");
                 }
+                return false;
+            } else {
+                // Các lỗi còn lại (CONFLICT, SQL_ERROR)
+                if (!isBot) {
+                    ClientManager.sendToUser(currentUser.getId(), "ERROR", "Giá sản phẩm đã thay đổi bởi người dùng khác. Vui lòng cập nhật và thử lại!");
+                }
+                return false;
             }
-            return finalResult;
         }).exceptionally(ex -> {
             log.error("The transaction could not be executed via the queue: {}", ex.getMessage());
             return false;
@@ -175,12 +165,6 @@ public class ServerBidderController {
 
     /**
      * Registers an automated bidding configuration (bot) for a user asynchronously.
-     *
-     * @param currentUser The user setting up the bot.
-     * @param auction     The target auction session.
-     * @param maxBid      The maximum budget the user is willing to spend.
-     * @param increment   The minimum step to increase the price when outbidding others.
-     * @return A {@link CompletableFuture} resolving to true if configured successfully.
      */
     public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, long maxBid, long increment) {
 
@@ -189,7 +173,6 @@ public class ServerBidderController {
             return CompletableFuture.completedFuture(false);
         }
 
-        // Task: Ghi nhận DB làm Nguồn Chân Lý (Source of Truth) TRƯỚC, update RAM SAU
         Callable<Boolean> saveAutoBidTask = () -> {
             boolean isDbSaved = false;
 
@@ -216,7 +199,6 @@ public class ServerBidderController {
 
         return TransactionManager.submitTask(saveAutoBidTask).thenApply(success -> {
             if (success) {
-                // Immediately trigger a scan to see if the new bot should place a bid
                 AutoBidEngine.triggerBotScan(auction);
             }
             return success;
