@@ -27,6 +27,8 @@ import javafx.stage.Stage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static utils.ConsoleColors.*;
 
@@ -304,6 +306,11 @@ public class MainApplication extends Application {
                                 "Network Issue", "Cannot connect to server. Running offline version.");
                     }
                     else {
+                        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
+                            if (networkClient != null && networkClient.isConnected()) {
+                                networkClient.sendMessage("TIME_SYNC", System.currentTimeMillis());
+                            }
+                        }, 0, 5, TimeUnit.SECONDS); // Chỉnh 10 phút thành 5 giây
                         log.info("Connection established: " + networkClient.getServerAddress());
                     }
                 } catch (IOException e) {

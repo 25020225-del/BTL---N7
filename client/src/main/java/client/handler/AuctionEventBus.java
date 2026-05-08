@@ -31,6 +31,15 @@ public class AuctionEventBus {
     }
 
     /**
+     * Unsubscribes all the listener with the same name.
+     */
+    public static void removeAllListeners(String propertyName) {
+        for (PropertyChangeListener l : support.getPropertyChangeListeners(propertyName)) {
+            support.removePropertyChangeListener(propertyName, l);
+        }
+    }
+
+    /**
      * Fires an event to all registered listeners.
      */
     public static void fireEvent(String propertyName, Object newValue) {

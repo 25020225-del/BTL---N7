@@ -14,6 +14,7 @@ import javafx.scene.layout.VBox;
  * Displayed primarily in the Marketplace grid layout.
  */
 public class MinimalItem extends VBox {
+    private final String DEFAULT_IMAGEURL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
     private Label nameLabel;
     private Label priceLabel;
     private ImageView imageView;
@@ -38,13 +39,13 @@ public class MinimalItem extends VBox {
         imageView = new ImageView();
 
         if (imageUrl == null) {
-            imageUrl = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
+            imageUrl = DEFAULT_IMAGEURL;
         }
         Image image = new Image(imageUrl, true);
         image.progressProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal.doubleValue() == 1.0 && !image.isError()) {
                 javafx.application.Platform.runLater(() -> {
-                            CropImage.cropImage(imageView, image, 100, 100);
+                            CropImage.cropImage(imageView, image, 210, 210);
                         }
                 );
             }

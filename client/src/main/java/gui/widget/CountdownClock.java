@@ -34,12 +34,9 @@ public class CountdownClock extends Label {
 
         timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
             long diff = endTime - utils.TimeUtil.getCurrentServerTime();
-
+            this.setText(formatTime(diff));
             if (diff <= 0) {
-                this.setText("00:00:00");
                 timeline.stop();
-            } else {
-                this.setText(formatTime(diff));
             }
         }));
 
@@ -54,6 +51,10 @@ public class CountdownClock extends Label {
      */
     public long getEndTime() {
         return endTime;
+    }
+
+    public void setEndTime(long endTime) {
+        this.endTime = endTime;
     }
 
     /**
