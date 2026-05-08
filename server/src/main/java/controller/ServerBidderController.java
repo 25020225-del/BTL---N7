@@ -83,7 +83,8 @@ public class ServerBidderController {
                                 newMaxBid,
                                 expectedPrice,
                                 expectedMaxBid,
-                                expectedWinnerId
+                                expectedWinnerId,
+                                isBot
                         );
 
                         if (commitResult != null) {

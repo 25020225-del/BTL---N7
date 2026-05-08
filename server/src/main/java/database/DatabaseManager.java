@@ -100,6 +100,7 @@ public class DatabaseManager {
             String createWalletsTable = "CREATE TABLE IF NOT EXISTS wallets (" +
                     "user_id TEXT PRIMARY KEY, " +
                     "balance REAL DEFAULT 0.0, " +
+                    "locked_balance REAL DEFAULT 0.0, " +
                     "FOREIGN KEY (user_id) REFERENCES users(id)" +
                     ");";
             stmt.execute(createWalletsTable);
@@ -118,6 +119,7 @@ public class DatabaseManager {
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
+                stmt.execute("ALTER TABLE wallets ADD COLUMN locked_balance REAL DEFAULT 0.0;");
                 log.info("Successfully upgraded user table");
             } catch (SQLException ignored) {
                 // Columns already exist

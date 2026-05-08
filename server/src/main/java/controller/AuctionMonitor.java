@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -189,59 +191,68 @@ public class AuctionMonitor {
      * Executes financial settlements: refunds excess locked funds to the winner
      * and transfers the final closing price to the seller's wallet.
      */
+    // Thay thế processFinancialSettlement trong AuctionMonitor.java [cite: 58-74]
     private void processFinancialSettlement(Auction auction) {
-        if (auction.getWinningBidder() == null) {
-            return;
-        }
-
         Callable<Boolean> settlementTask = () -> {
             String now = LocalDateTime.now().toString();
+            String auctionId = auction.getId();
 
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
-
                 try {
-                    double sellerPayment = auction.getCurrentPrice();
-                    walletDAO.updateBalance(conn, auction.getSeller().getId(), sellerPayment);
+                    // 1. Xử lý người thắng cuộc (Winner)
+                    if (auction.getWinningBidder() != null) {
+                        double finalPrice = auction.getCurrentPrice();
+                        double lockedAmount = auction.getHighestMaxBid();
+                        String winnerId = auction.getWinningBidder().getId();
 
-                    walletDAO.addTransaction(
-                            conn,
-                            "W-IN-" + System.currentTimeMillis(),
-                            auction.getSeller().getId(),
-                            sellerPayment,
-                            "Payment received for completed auction: " + auction.getId(),
-                            now
-                    );
+                        // Khấu trừ giá cuối cùng từ tiền tạm giữ của winner
+                        walletDAO.deductFromLocked(conn, winnerId, finalPrice);
+                        // Hoàn lại phần dư (MaxBid - FinalPrice) cho winner
+                        double refundAmount = lockedAmount - finalPrice;
+                        if (refundAmount > 0) {
+                            walletDAO.unlockBalance(conn, winnerId, refundAmount);
+                        }
 
-                    double refundAmount = auction.getHighestMaxBid() - auction.getCurrentPrice();
-                    if (refundAmount > 0) {
-                        walletDAO.updateBalance(conn, auction.getWinningBidder().getId(), refundAmount);
+                        // Trả tiền cho người bán (Seller)
+                        walletDAO.updateBalance(conn, auction.getSeller().getId(), finalPrice);
+                        walletDAO.addTransaction(conn, "W-IN-" + System.currentTimeMillis(),
+                                auction.getSeller().getId(), finalPrice,
+                                "Payment received for auction: " + auctionId, now);
+                    }
 
-                        walletDAO.addTransaction(
-                                conn,
-                                "W-REF-" + (System.currentTimeMillis() + 1),
-                                auction.getWinningBidder().getId(),
-                                refundAmount,
-                                "Refund for excess max bid on auction: " + auction.getId(),
-                                now
-                        );
+                    // 2. Xử lý những người dùng Auto-Bid đã thua (Losers)
+                    // Cần Query tất cả các Auto-Bid của phiên này ngoại trừ người thắng
+                    String loserSql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ?";
+                    try (PreparedStatement pstmt = conn.prepareStatement(loserSql)) {
+                        pstmt.setString(1, auctionId);
+                        pstmt.setString(2, auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : "NONE");
+                        try (ResultSet rs = pstmt.executeQuery()) {
+                            while (rs.next()) {
+                                String loserId = rs.getString("bidder_id");
+                                double loserMaxBid = rs.getDouble("max_bid");
+                                // Hoàn trả toàn bộ tiền tạm giữ cho người thua
+                                walletDAO.unlockBalance(conn, loserId, loserMaxBid);
+                            }
+                        }
+                    }
+
+                    // 3. Vô hiệu hóa bot sau khi kết thúc
+                    try (PreparedStatement pstmt = conn.prepareStatement("UPDATE auto_bids SET is_active = 0 WHERE auction_id = ?")) {
+                        pstmt.setString(1, auctionId);
+                        pstmt.executeUpdate();
                     }
 
                     conn.commit();
-                    log.info("Financial settlement completed for auction {}", auction.getId());
+                    log.info("Financial settlement (Locked Funds) completed for auction {}", auctionId);
                     return true;
-
                 } catch (Exception e) {
                     conn.rollback();
-                    log.error("Error during financial settlement for auction {}", auction.getId(), e);
+                    log.error("Settlement error for auction {}", auctionId, e);
                     return false;
                 }
-            } catch (Exception e) {
-                log.error("Connection error during settlement for auction {}", auction.getId(), e);
-                return false;
             }
         };
-
         TransactionManager.submitTask(settlementTask);
     }
 
