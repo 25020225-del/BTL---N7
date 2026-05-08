@@ -1,12 +1,15 @@
 package gui.widget;
 
+import gui.MainApplication;
 import gui.process.CropImage;
 import javafx.geometry.Insets;
+import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 /**
@@ -76,6 +79,19 @@ public class MinimalItem extends VBox {
         );
     }
 
+    public MinimalItem(String id, String nameString, String priceString) {
+
+        this.setPrefSize(260, 370);
+        this.setPadding(new Insets(20));
+        this.setSpacing(10);
+        this.setId(id);
+        this.nameLabel = new Label(nameString);
+        this.priceLabel = new Label(priceString + " VND");
+        this.getChildren().addAll(
+                nameLabel,
+                priceLabel
+        );
+    }
     /**
      * Adds seller-specific management options (Edit/Delete) to this item.
      * These options are presented via a right-click context menu.
@@ -94,6 +110,29 @@ public class MinimalItem extends VBox {
         this.setOnContextMenuRequested(e -> contextMenu.show(this, e.getScreenX(), e.getScreenY()));
     }
 
+    public void addAdminOptions(String id) {
+        // Initialize UI components
+        Button btnApprove = new Button("Approve");
+        Button btnReject = new Button("Reject");
+
+        // Apply inline styling
+        btnApprove.setStyle("-fx-background-color: green; -fx-text-fill: white;");
+        btnReject.setStyle("-fx-background-color: red; -fx-text-fill: white;");
+
+        // Attach event handlers for approval and rejection
+        btnApprove.setOnAction(e -> {
+            MainApplication.networkClient.sendMessage("APPROVE_AUCTION", id);
+            this.setDisable(true); // Disable the widget to prevent multiple submissions
+        });
+
+        btnReject.setOnAction(e -> {
+            MainApplication.networkClient.sendMessage("REJECT_AUCTION", id);
+            this.setDisable(true); // Disable the widget to prevent multiple submissions
+        });
+
+        HBox btnGroup = new HBox(10, btnApprove, btnReject);
+        this.getChildren().add(btnGroup);
+    }
     /**
      * Retrieves the primary interaction button for this item card.
      *

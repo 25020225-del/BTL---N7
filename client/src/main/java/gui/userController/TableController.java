@@ -2,6 +2,7 @@ package gui.userController;
 
 import gui.MainApplication;
 import gui.process.Search;
+import gui.widget.AdminUserItem;
 import gui.widget.MinimalItem;
 import javafx.animation.FadeTransition;
 import javafx.fxml.FXML;
@@ -74,11 +75,20 @@ public class TableController {
     public void addNewAuction(Map<String, Object> auction) {
         MinimalItem newItem = buildMinimalItem(auction);
         newItem.setOpacity(0);
-        mainTilePane.getChildren().add(0, newItem);
+        mainTilePane.getChildren().addFirst(newItem);
 
         FadeTransition ft = new FadeTransition(Duration.millis(500), newItem);
         ft.setToValue(1.0);
         ft.play();
+    }
+
+    public void addNewAuction(MinimalItem item) {
+        mainTilePane.getChildren().addFirst(item);
+    }
+
+
+    public void addNewUser(AdminUserItem user) {
+        mainTilePane.getChildren().addFirst(user);
     }
 
     public void addAllAuction(List<Map<String, Object>> auctions) {
@@ -86,6 +96,10 @@ public class TableController {
         for(Map<String, Object> auction : auctions) {
             mainTilePane.getChildren().add(buildMinimalItem(auction));
         }
+    }
+
+    public void deleteAllAuction(){
+        mainTilePane.getChildren().clear();
     }
 
     public void removeAuction(String auctionIdToRemove) {
