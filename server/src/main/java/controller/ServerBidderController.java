@@ -13,6 +13,7 @@ import service.AutoBidEngine;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -150,6 +151,9 @@ public class ServerBidderController {
                 updateData.put("auctionId", auction.getId());
                 updateData.put("newPrice", auction.getCurrentPrice());
                 updateData.put("winnerName", currentUser.getUserName());
+                updateData.put("newEndTime", auction.getEndTime()
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant().toEpochMilli());
 
                 ClientManager.broadcast("UPDATE_AUCTION_PRICE", updateData, null);
 

@@ -63,8 +63,8 @@ public class CreateAuctionController extends javafx.scene.control.ScrollPane {
      */
     @FXML
     private void handleSelectImage(){
-        // Hạ giới hạn xuống 1MB để bảo vệ RAM của Server khi mã hóa và parse JSON
-        final int MAX_IMAGE_SIZE = 1 * 1024 * 1024;
+        // Hạ giới hạn xuống 10MB để bảo vệ RAM của Server khi mã hóa và parse JSON
+        final int MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Choose an image");
@@ -75,7 +75,7 @@ public class CreateAuctionController extends javafx.scene.control.ScrollPane {
         if (selectedFile != null) {
             // Kiểm tra dung lượng NGAY LẬP TỨC trước khi làm bất cứ việc gì
             if (selectedFile.length() > MAX_IMAGE_SIZE) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 1MB để đảm bảo đường truyền mạng!");
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 10MB để đảm bảo đường truyền mạng!");
                 return; // Thoát ngay, không lưu file này
             }
 
@@ -138,12 +138,8 @@ public class CreateAuctionController extends javafx.scene.control.ScrollPane {
                 return;
             }
 
-            // Image size and compression check
+            // compression
             byte[] imageBytes = ImageCompressor.compressToBytes(imagefile, 0.05F);
-            if (imageBytes.length > 500 * 1024) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Image Too Large", "Ảnh sau khi nén vẫn lớn hơn 500KB. Vui lòng chọn ảnh khác hoặc liên hệ kỹ thuật để tăng độ nén!");
-                return;
-            }
 
             // Standardized Model Initialization using Parametrized Constructors
             String itemId = "ITEM-" + System.currentTimeMillis();
