@@ -2,6 +2,7 @@ package gui;
 
 import client.handler.AuctionEventBus;
 import client.handler.ClientPaymentHandler;
+import client.handler.ClientSystemHandler;
 import client.handler.ResponseDispatcher;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +20,8 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 import model.auction.Auction;
+import model.item.Item;
+import model.item.ItemFactory;
 import model.user.User;
 import network.NetworkMessage;
 import org.slf4j.Logger;
@@ -27,6 +30,7 @@ import utils.JacksonConfig;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
@@ -54,11 +58,6 @@ public class ClientUserController {
     private WalletController walletView;
 
     private User currentUser;
-
-    // FUN
-    private int dih = 0;
-    private long niggardly = 0;
-    private File imagefile;
 
     @FXML private VBox mainDock;
     @FXML private VBox mainViewController;
@@ -131,7 +130,6 @@ public class ClientUserController {
                 marketplaceBtn,
                 createAuctionBtn,
                 walletBtn,
-                depositBtn,
                 separator,
                 region,
                 settingsBtn,
@@ -163,9 +161,6 @@ public class ClientUserController {
             mainViewController.getChildren().add(walletView);
         });
 
-        depositBtn.setOnAction(event -> requestDeposit(50000));
-        testCreateAuctionBtn.setOnAction(event -> UIService.createTestAuction());
-
         settingsBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(settingsView);
@@ -187,6 +182,12 @@ public class ClientUserController {
     public void handleSignOut() {
         log.info("User \"{}\" is signing out.", currentUser.getName());
         MainApplication.networkClient.sendMessage("LOGOUT", "");
+        AuctionEventBus.removeAllListeners(AuctionEventBus.AUCTION_CREATED);
+        AuctionEventBus.removeAllListeners(AuctionEventBus.DEPOSIT_SUCCESS);
+        AuctionEventBus.removeAllListeners(AuctionEventBus.GENERAL_ERROR);
+        AuctionEventBus.removeAllListeners(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED);
+        createAuctionView = null;
+        currentDetailController = null;
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
@@ -207,32 +208,18 @@ public class ClientUserController {
         }
     }
 
-    public void requestDeposit(double amount) {
-        if (amount <= 0) {
-            AlertHelper.showAlert(AlertType.ERROR, "Error", "Deposit amount must be greater than 0");
-            return;
-        }
-        MainApplication.networkClient.sendMessage("CREATE_DEPOSIT", amount);
-    }
 
     private void openItemDetail(Auction auction) {
-        try {
-            if (currentDetailController != null) {
-                currentDetailController.dispose();
-            }
-
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
-            Parent detailView = loader.load();
-
-            ItemDetailController detailController = loader.getController();
-            detailController.setAuctionData(auction);
-            currentDetailController = detailController;
-
-            mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(detailView);
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (currentDetailController != null) {
+            currentDetailController.dispose();
         }
+
+        ItemDetailController detailController = new ItemDetailController(currentUser);
+        detailController.setAuctionData(auction);
+        currentDetailController = detailController;
+
+        mainViewController.getChildren().clear();
+        mainViewController.getChildren().add(detailController.getParent());
     }
 
     private void handleServerResponse(NetworkMessage response) {
@@ -242,31 +229,15 @@ public class ClientUserController {
             switch (command) {
                 case "FETCH_AUCTIONS_SUCCESS" -> {
                     try {
-                        // MVC Fix: Use Jackson TypeReference for proper Domain Model mapping
-                        List<Auction> auctions = mapper.convertValue(
+                        List<Map<String, Object>> auctions = mapper.convertValue(
                                 response.getData(),
-                                new TypeReference<List<Auction>>() {
-                                }
+                                new TypeReference<List<Map<String, Object>>>() {}
                         );
 
                         mainTilePane.getChildren().clear();
 
-                        for (Auction auction : auctions) {
-                            // Use getters instead of Map.get()
-                            String id = auction.getId();
-                            String name = auction.getItem().getItemName();
-                            String price = String.format("%,d", auction.getCurrentPrice());
-                            String imageUrl = auction.getItem().getImageUrl();
-                            long endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-                            String sellerId = auction.getSeller().getId();
-
-                            MinimalItem item = new MinimalItem(id, imageUrl, name, price, endTimeMillis);
-                            item.getAuctionButton().setOnAction(e -> openItemDetail(auction));
-
-                            if (currentUser.getId().equals(sellerId)) {
-                                item.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
-                            }
-                            mainTilePane.getChildren().add(item);
+                        for (Map<String, Object> auction : auctions) {
+                            mainTilePane.getChildren().add(buildMinimalItem(auction));
                         }
                     } catch (Exception e) {
                         log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
@@ -274,22 +245,12 @@ public class ClientUserController {
                 }
                 case "NEW_AUCTION_ADDED" -> {
                     try {
-                        Auction auction = mapper.convertValue(response.getData(), Auction.class);
+                        Map<String, Object> auction = mapper.convertValue(
+                                response.getData(),
+                                new TypeReference<Map<String, Object>>() {}
+                        );
 
-                        String id = auction.getId();
-                        String name = auction.getItem().getItemName();
-                        String price = String.format("%,d", auction.getCurrentPrice());
-                        String imageUrl = auction.getItem().getImageUrl();
-                        long endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-                        String sellerId = auction.getSeller().getId();
-
-                        MinimalItem newItem = new MinimalItem(id, imageUrl, name, price, endTimeMillis);
-                        newItem.getAuctionButton().setOnAction(e -> openItemDetail(auction));
-
-                        if (currentUser.getId().equals(sellerId)) {
-                            newItem.addSellerOptions(this::handleEditAuction, this::handleDeleteAuction);
-                        }
-
+                        MinimalItem newItem = buildMinimalItem(auction);
                         newItem.setOpacity(0);
                         mainTilePane.getChildren().add(0, newItem);
 
@@ -297,7 +258,7 @@ public class ClientUserController {
                         ft.setToValue(1.0);
                         ft.play();
                     } catch (Exception e) {
-                        log.error("NEW_AUCTION_ADDED parse error: {}", e.getMessage());
+                        log.error("[Client] NEW_AUCTION_ADDED parse error: {}", e.getMessage());
                     }
                 }
                 case "REMOVE_AUCTION" -> {
@@ -313,63 +274,48 @@ public class ClientUserController {
         });
     }
 
-    private void handleEditAuction(String auctionId) {
-        Dialog<Map<String, String>> dialog = new Dialog<>();
-        dialog.setTitle("Edit Auction");
-        dialog.setHeaderText("Update details for auction: " + auctionId);
+    private MinimalItem buildMinimalItem(Map<String, Object> map) {
+        String id       = (String) map.get("id");
+        String name     = (String) map.get("itemName");
+        String imageUrl = (String) map.get("imageUrl");
+        String sellerId = (String) map.get("sellerId");
+        double price    = ((Number) map.get("currentPrice")).doubleValue();
+        long endTime    = ((Number) map.get("endTime")).longValue();
 
-        ButtonType saveButtonType = new ButtonType("Save Changes", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+        Auction auction = auctionFromMap(map);
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10); grid.setVgap(10);
-        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
-
-        TextField nameField = new TextField();
-        TextArea descField = new TextArea(); descField.setPrefRowCount(3);
-        TextField priceField = new TextField();
-
-        grid.add(new Label("Item Name:"), 0, 0); grid.add(nameField, 1, 0);
-        grid.add(new Label("Description:"), 0, 1); grid.add(descField, 1, 1);
-        grid.add(new Label("Starting Price:"), 0, 2); grid.add(priceField, 1, 2);
-
-        dialog.getDialogPane().setContent(grid);
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == saveButtonType) {
-                Map<String, String> result = new HashMap<>();
-                result.put("auctionId", auctionId);
-                result.put("itemName", nameField.getText());
-                result.put("description", descField.getText());
-                result.put("startPrice", priceField.getText());
-                return result;
-            }
-            return null;
-        });
-
-        dialog.showAndWait().ifPresent(data -> {
-            if (data.get("itemName").isEmpty() || data.get("startPrice").isEmpty()) {
-                AlertHelper.showAlert(AlertType.ERROR, "Validation Error", "Name and Price cannot be empty.");
-                return;
-            }
-            try {
-                Double.parseDouble(data.get("startPrice"));
-                MainApplication.networkClient.sendMessage("EDIT_AUCTION", data);
-            } catch (NumberFormatException e) {
-                AlertHelper.showAlert(AlertType.ERROR, "Validation Error", "Invalid price format.");
-            }
-        });
+        MinimalItem item = new MinimalItem(id, imageUrl, name,
+                String.format("%,.0f", price), endTime);
+        item.getAuctionButton().setOnAction(e -> openItemDetail(auction));
+        return item;
     }
 
-    private void handleDeleteAuction(String auctionId) {
-        Alert confirm = new Alert(AlertType.CONFIRMATION);
-        confirm.setTitle("Confirm Deletion");
-        confirm.setHeaderText("Delete Auction?");
-        confirm.setContentText("Are you sure you want to delete auction: " + auctionId + "?");
-        confirm.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                MainApplication.networkClient.sendMessage("DELETE_AUCTION", auctionId);
-            }
-        });
+    private Auction auctionFromMap(Map<String, Object> map) {
+        Auction auction = new Auction();
+        auction.setId((String) map.get("id"));
+
+        Item item = ItemFactory.createItem(
+                ItemFactory.TYPE_TANGIBLE,
+                "ITM-" + map.get("id"),
+                (String) map.get("itemName"),
+                null,
+                0
+        );
+        item.setImageUrl((String) map.get("imageUrl"));
+        auction.setItem(item);
+
+        User seller = new User();
+        seller.setId((String) map.get("sellerId"));
+        auction.setSeller(seller);
+
+        auction.setCurrentPrice(((Number) map.get("currentPrice")).longValue());
+        auction.setEndTime(
+                Instant.ofEpochMilli(((Number) map.get("endTime")).longValue())
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDateTime()
+        );
+
+        return auction;
     }
 
     public void start() {

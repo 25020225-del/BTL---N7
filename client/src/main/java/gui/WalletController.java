@@ -1,5 +1,9 @@
 package gui;
 
+import client.handler.AuctionEventBus;
+import client.handler.ClientPaymentHandler;
+import gui.process.AlertHelper;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -7,15 +11,22 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox; // Import đúng layout gốc
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
+
+import static gui.MainApplication.networkClient;
 
 /**
  * WalletController acts as both a Controller and a Custom Node (VBox).
  */
 public class WalletController extends VBox {
+    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
+
     private Runnable onReturnAction;
 
     @FXML private Label lblTotalBalance;
@@ -28,6 +39,8 @@ public class WalletController extends VBox {
     @FXML private TableColumn<Transaction, Long> colAmount;
     @FXML private TableColumn<Transaction, String> colStatus;
     @FXML private TableColumn<Transaction, String> colNote;
+
+    @FXML private Button btnDeposit;
 
     private long currentBalance = 0L;
     private ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
@@ -71,37 +84,36 @@ public class WalletController extends VBox {
 
     @FXML
     private void handleDeposit() {
+        String input = txtDepositAmount.getText().trim();
+        double amount;
         try {
-            String text = txtDepositAmount.getText().replaceAll("[^\\d]", "");
-            long amount = Long.parseLong(text);
-            if (amount <= 0) throw new Exception();
-
-            currentBalance += amount;
-
-            String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-            transactionData.add(0, new Transaction(now, "Nạp tiền", amount, "Completed", "Nạp tiền hệ thống"));
-
-            updateBalanceUI();
-            txtDepositAmount.clear();
-
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Thành công");
-            alert.setHeaderText(null);
-            alert.setContentText("Đã nạp " + amount + " VND thành công!");
-            alert.showAndWait();
-
-        } catch (Exception e) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setHeaderText(null);
-            alert.setContentText("Vui lòng nhập số tiền hợp lệ!");
-            alert.showAndWait();
+            amount = Double.parseDouble(input);
+            if (amount <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException e) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi", "Vui lòng nhập số tiền hợp lệ!");
+            return;
         }
+        btnDeposit.setDisable(true);
+
+        new Thread(() -> {
+            try {
+                Thread.sleep(2000);
+            }
+            catch (InterruptedException e) {
+                log.error(e.getMessage(), e);
+            }
+            Platform.runLater(() -> {
+                btnDeposit.setDisable(false);
+            });
+        }).start();
+        networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
 
     private void updateBalanceUI() {
         lblTotalBalance.setText(String.format("%d N VND", currentBalance));
         lblFrozenBalance.setText("0 N VND");
     }
+
 
     @FXML
     private void addQuickAmount(javafx.event.ActionEvent event) {
