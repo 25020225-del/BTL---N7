@@ -34,7 +34,7 @@ public class MinimalItem extends VBox {
         this.setPrefSize(260, 370);
         this.setPadding(new Insets(20));
         this.setSpacing(10);
-
+        this.setUserData(id + imageUrl + nameString + priceString + dateString);
         // Attach the auction ID to this Node to easily target and remove it when it expires
         imageView = new ImageView();
 

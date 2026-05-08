@@ -17,6 +17,7 @@ import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
 import model.user.User;
+import org.apache.commons.text.similarity.JaroWinklerSimilarity;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -58,10 +59,12 @@ public class TableController {
 
     @FXML
     private void Search(){
+        JaroWinklerSimilarity jws = new JaroWinklerSimilarity();
         String keyword = searchField.getText();
         for (Node node : mainTilePane.getChildren()) {
             if (node instanceof MinimalItem item) {
-                boolean match = Search.searchText(keyword, item);
+                String itemContent = (String) item.getUserData();
+                boolean match = Search.SearchText(itemContent, keyword);
                 item.setVisible(match);
                 item.setManaged(match);
             }
