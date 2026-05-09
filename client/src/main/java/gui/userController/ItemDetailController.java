@@ -5,6 +5,7 @@ import gui.MainApplication;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.widget.CountdownClock;
+import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -20,6 +21,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 import model.auction.Auction;
 import model.user.User;
 import utils.TimeUtil;
@@ -54,6 +56,9 @@ public class ItemDetailController {
     @FXML private TextField txtBidAmount;
     @FXML private Button btnPlaceBid;
     @FXML private TextArea txtDescription;
+
+    @FXML private TextField txtMaxBid;
+    @FXML private TextField txtBidIncrement;
 
     @FXML private VBox vbBidHandle;
     @FXML private VBox vbAuctionControl;
@@ -250,6 +255,10 @@ public class ItemDetailController {
      */
     @FXML
     private void handlePlaceBid() {
+        vbBidHandle.setDisable(true);
+        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
+        pauseTransition.setOnFinished(event -> {vbBidHandle.setDisable(false);});
+        pauseTransition.play();
         try {
             long bidAmount = Long.parseLong(txtBidAmount.getText().replace(",", ""));
 
@@ -270,6 +279,20 @@ public class ItemDetailController {
         }
     }
 
+    @FXML
+    private void handleAutoBid() {
+        vbBidHandle.setDisable(true);
+        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
+        pauseTransition.setOnFinished(event -> {vbBidHandle.setDisable(false);});
+        pauseTransition.play();
+        try {
+            long maxBid = Long.parseLong(txtMaxBid.getText().replace(",", ""));
+            long bidIncrement = Long.parseLong(txtBidIncrement.getText().replace(",", ""));
+        } catch (NumberFormatException e) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Invalid format");
+        }
+        //Updating...
+    }
 
     @FXML
     private void handleEditAuction() {
