@@ -17,6 +17,8 @@ module org.example.demo {
     requires jcommander;
     requires org.slf4j;
     requires net.coobird.thumbnailator;
+    requires org.apache.commons.text;
+    requires java.string.similarity;
 
     opens gui to javafx.fxml;
     exports gui;
@@ -24,4 +26,6 @@ module org.example.demo {
     opens gui.widget to javafx.fxml;
     exports gui.process;
     opens gui.process to javafx.fxml;
+    exports gui.userController;
+    opens gui.userController to javafx.fxml;
 }

@@ -1,5 +1,7 @@
 package gui;
 
+import gui.userController.TableController;
+import gui.widget.MinimalItem;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
@@ -32,22 +34,12 @@ public class ClientAdminController {
     private static final Logger log = LoggerFactory.getLogger(ClientAdminController.class);
 
     private Parent mainView;
-    private Parent tableView;
     private Parent settingsView;
 
-    @FXML
-    private VBox mainDock;
-    @FXML
-    private VBox mainViewController;
+    @FXML private VBox mainDock;
+    @FXML private VBox mainViewController;
 
-    @FXML
-    private HBox searchBarContainer;
-    @FXML
-    private TilePane mainTilePane;
-    @FXML
-    private TextField searchField;
-    @FXML
-    private Button searchButton;
+    private TableController tableView;
 
     private IconButton account;
     private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
@@ -67,9 +59,7 @@ public class ClientAdminController {
         mainViewloader.setController(this);
         mainView = mainViewloader.load();
 
-        FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
-        tableViewLoader.setController(this);
-        tableView = tableViewLoader.load();
+        tableView = new TableController();
 
         FXMLLoader settingsLoader = new FXMLLoader(getClass().getResource("SettingsView.fxml"));
         settingsLoader.setController(this);
@@ -112,7 +102,7 @@ public class ClientAdminController {
 
         itemList.setOnAction(event -> {
             mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(tableView);
+            mainViewController.getChildren().add(tableView.getParent());
             log.info("Loading pending auctions...");
             // Request pending auctions from the server
             MainApplication.networkClient.sendMessage("FETCH_PENDING_AUCTIONS", "");
@@ -120,7 +110,7 @@ public class ClientAdminController {
 
         accountList.setOnAction(event -> {
             mainViewController.getChildren().clear();
-            mainViewController.getChildren().add(tableView);
+            mainViewController.getChildren().add(tableView.getParent());
             log.info("Loading user list...");
             MainApplication.networkClient.sendMessage("FETCH_USERS", "");
         });
@@ -153,23 +143,23 @@ public class ClientAdminController {
 
                 // 1. Render the list of pending auctions
                 if ("FETCH_AUCTIONS_SUCCESS".equals(command)) {
-                    mainTilePane.getChildren().clear();
-
                     @SuppressWarnings("unchecked")
                     java.util.List<java.util.Map<String, Object>> auctions =
                             (java.util.List<java.util.Map<String, Object>>) response.getData();
 
+                    tableView.deleteAllAuction();
                     for (java.util.Map<String, Object> data : auctions) {
                         String id = (String) data.get("id");
                         String name = (String) data.get("itemName");
 
-                        mainTilePane.getChildren().add(new AdminAuctionItem(id, name));
+                        MinimalItem item = new MinimalItem(id,name,"");
+                        item.addAdminOptions(id);
+                        tableView.addNewAuction(item);
                     }
                 }
                 // 2. Render the list of users
                 else if ("FETCH_USERS_SUCCESS".equals(command)) {
-                    mainTilePane.getChildren().clear();
-
+                    tableView.deleteAllAuction();
                     @SuppressWarnings("unchecked")
                     java.util.List<java.util.Map<String, Object>> users =
                             (java.util.List<java.util.Map<String, Object>>) response.getData();
@@ -181,7 +171,7 @@ public class ClientAdminController {
                         String role = (String) data.get("role");
                         boolean isBlocked = (boolean) data.get("is_blocked");
 
-                        mainTilePane.getChildren().add(new AdminUserItem(id, username, name, role, isBlocked));
+                        tableView.addNewUser(new AdminUserItem(id,username,name,role,isBlocked));
                     }
                 }
                 // 3. Handle successful approval or rejection

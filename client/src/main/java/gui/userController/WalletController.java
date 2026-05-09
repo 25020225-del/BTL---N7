@@ -1,7 +1,7 @@
-package gui;
+package gui.userController;
 
-import client.handler.AuctionEventBus;
-import client.handler.ClientPaymentHandler;
+import gui.MainApplication;
+import gui.Transaction;
 import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -15,9 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 import static gui.MainApplication.networkClient;
 
