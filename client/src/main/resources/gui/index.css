@@ -271,3 +271,6 @@
 .status-completed { -fx-text-fill: #28a745; -fx-font-weight: bold; }
 .status-pending { -fx-text-fill: #f39c12; -fx-font-weight: bold; }
 .status-hold { -fx-text-fill: #3665f3; -fx-font-weight: bold; }
+#myava1 {
+    -fx-fill: url("images/logo3.jpg");
+}
