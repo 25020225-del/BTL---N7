@@ -5,6 +5,7 @@ import client.handler.ClientPaymentHandler;
 import client.handler.ResponseDispatcher;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.tools.javac.Main;
 import gui.process.*;
 import gui.userController.CreateAuctionController;
 import gui.userController.ItemDetailController;
@@ -185,6 +186,7 @@ public class ClientUserController {
         ItemDetailController detailController = new ItemDetailController(currentUser);
         detailController.setAuctionData(auction);
         currentDetailController = detailController;
+        MainApplication.networkClient.sendMessage("FETCH_TRANSACTIONS",auction.getId());
 
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(detailController.getParent());
@@ -204,6 +206,17 @@ public class ClientUserController {
                         tableView.addAllAuction(auctions);
                     } catch (Exception e) {
                         log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
+                    }
+                }
+                case "FETCH_TRANSACTION_SUCCESS" -> {
+                    try {
+                        List<Map<String,Object>> transHistory = mapper.convertValue(
+                                response.getData(),
+                                new TypeReference<List<Map<String,Object>>>() {}
+                        );
+                        currentDetailController.setTransActionHistoryData(transHistory);
+                    } catch (Exception e) {
+                        log.error("[Client] FETCH_TRANSACTION_SUCCESS parse error: {}", e.getMessage());
                     }
                 }
                 case "NEW_AUCTION_ADDED" -> {
