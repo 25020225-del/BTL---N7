@@ -1,11 +1,10 @@
-package gui;
+package gui.userController;
 
 import client.handler.AuctionEventBus;
+import gui.MainApplication;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
-import gui.process.ImageUtil;
 import gui.widget.CountdownClock;
-import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -21,10 +20,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.util.Duration;
 import model.auction.Auction;
 import model.user.User;
-import utils.TimeUtil;
 
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
@@ -75,7 +72,7 @@ public class ItemDetailController {
     private PropertyChangeListener priceUpdateListener;
 
     public ItemDetailController(User currentUser) {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/Productdetail.fxml"));
         this.currentUser = currentUser;
         loader.setController(this);
         try {
