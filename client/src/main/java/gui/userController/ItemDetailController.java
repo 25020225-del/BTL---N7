@@ -199,17 +199,17 @@ public class ItemDetailController {
         // Add the initial starting point to the chart
         addPointToChart(startPrice, LocalDateTime.now());
 
-        // Configure Bidding Button Action
-        btnPlaceBid.setOnAction(e -> handlePlaceBid());
 
         startCountdown();
     }
 
     public void setTransActionHistoryData(List<Map<String, Object>> transActionHistoryData) {
         for(Map<String, Object> map : transActionHistoryData){
-            String bidAmount = (String) map.get("bid_amount");
+            Number amountNum = (Number) map.get("bid_amount");
+            Long amount = amountNum.longValue();
             String bidTime = (String) map.get("bid_time");
             LocalDateTime time = LocalDateTime.parse(bidTime);
+            addPointToChart(amount, time);
         }
     }
 
@@ -248,6 +248,7 @@ public class ItemDetailController {
     /**
      * Handles the manual bid placement logic.
      */
+    @FXML
     private void handlePlaceBid() {
         try {
             long bidAmount = Long.parseLong(txtBidAmount.getText().replace(",", ""));

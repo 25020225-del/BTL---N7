@@ -208,14 +208,16 @@ public class ClientUserController {
                         log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
                     }
                 }
-                case "FETCH_TRANSACTION_SUCCESS" -> {
+                case "FETCH_TRANSACTIONS_SUCCESS" -> {
                     try {
                         List<Map<String,Object>> transHistory = mapper.convertValue(
                                 response.getData(),
                                 new TypeReference<List<Map<String,Object>>>() {}
                         );
                         currentDetailController.setTransActionHistoryData(transHistory);
+                        log.info("[Client] FETCH_TRANSACTION_SUCCESS");
                     } catch (Exception e) {
+                        e.printStackTrace();
                         log.error("[Client] FETCH_TRANSACTION_SUCCESS parse error: {}", e.getMessage());
                     }
                 }

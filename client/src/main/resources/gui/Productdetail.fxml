@@ -83,7 +83,7 @@
                                         <Label text="Bidding amount:" />
                                         <HBox spacing="10.0">
                                             <TextField fx:id="txtBidAmount" promptText="Enter amount..." HBox.hgrow="ALWAYS" />
-                                            <Button fx:id="btnPlaceBid" mnemonicParsing="false" style="-fx-background-color: #3665f3;" text="PLACE BID" textFill="WHITE">
+                                            <Button fx:id="btnPlaceBid" mnemonicParsing="false" onAction="#handlePlaceBid" style="-fx-background-color: #3665f3;" text="PLACE BID" textFill="WHITE">
                                                 <font>
                                                     <Font name="System Bold" size="14.0" />
                                                 </font>

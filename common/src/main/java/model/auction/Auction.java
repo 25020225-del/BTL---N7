@@ -20,6 +20,8 @@ import static utils.ConsoleColors.*;
  */
 public class Auction extends Entity {
 
+
+
     // Auction lifecycle states
     public static final String STATUS_PENDING = "PENDING_APPROVAL";
     public static final String STATUS_OPEN = "OPEN";
@@ -40,7 +42,7 @@ public class Auction extends Entity {
     private String status;
     private LocalDateTime endTime;
     private LocalDateTime maxEndTime; // Hard-cap limit for Anti-Sniping
-    private List<BidTransaction> bidHistory;
+    private List<BidTransaction> bidHistory = new ArrayList<>();
 
     // PriorityBlockingQueue to guarantee thread-safe operations and process auto-bids chronologically
     private PriorityBlockingQueue<AutoBid> activeAutoBids;
