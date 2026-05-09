@@ -1,5 +1,6 @@
 package gui;
 
+import javafx.scene.shape.Circle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
@@ -22,6 +23,8 @@ import utils.JacksonConfig;
  */
 public class LoginController {
     private static final Logger log = LoggerFactory.getLogger(LoginController.class);
+    @FXML
+    private Circle myava1;
 
     @FXML
     private TextField loginAccountName;

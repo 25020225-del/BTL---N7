@@ -248,3 +248,6 @@
 .status-pending { -fx-background-color: #ffc107; -fx-text-fill: #212529; } /* Vàng: Đang chờ */
 .status-ongoing { -fx-background-color: #17a2b8; }  /* Xanh biển: Đang diễn ra */
 .status-sold { -fx-background-color: #6f42c1; }     /* Tím: Đã bán (cho Seller) */
+#myava1 {
+    -fx-fill: url("gui/images/logo3.jpg.png");
+}
