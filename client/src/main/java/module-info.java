@@ -26,8 +26,6 @@ module org.example.demo {
     opens gui.widget to javafx.fxml;
     exports gui.process;
     opens gui.process to javafx.fxml;
-
     exports gui.userController;
     opens gui.userController to javafx.fxml;
-
 }
