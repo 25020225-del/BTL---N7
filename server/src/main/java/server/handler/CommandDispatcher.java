@@ -1,6 +1,5 @@
 package server.handler;
 
-import controller.ServerBidderController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import network.NetworkMessage;
@@ -9,16 +8,13 @@ import server.ClientHandler;
 import java.util.HashMap;
 import java.util.Map;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
-
 /**
  * The central command router for the server application.
  * This class implements the Command Pattern by maintaining a registry of {@link CommandHandler}
  * implementations. It decodes incoming {@link NetworkMessage} objects and dispatches them
  * to the appropriate handler based on the command string.
  */
-public class CommandDispatcher {
+public class    CommandDispatcher {
     private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
     private final Map<String, CommandHandler> handlers = new HashMap<>();
@@ -97,6 +93,9 @@ public class CommandDispatcher {
         BidActionHandler bidHandler = new BidActionHandler(new controller.ServerBidderController(bidDAO), auctionDAO);
         handlers.put("PLACE_BID", bidHandler);
         handlers.put("SETUP_AUTOBID", bidHandler);
+
+        FetchTransactionHandler fetchTransactionHandler = new FetchTransactionHandler(bidDAO);
+        handlers.put("FETCH_TRANSACTIONS", fetchTransactionHandler);
 
         // Register Seller operations
         SellerActionHandler sellerHandler = new SellerActionHandler(sellerCtrl, auctionDAO);

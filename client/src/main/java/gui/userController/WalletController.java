@@ -1,8 +1,9 @@
-package gui;
+package gui.userController;
 
-import client.handler.AuctionEventBus;
-import client.handler.ClientPaymentHandler;
+import gui.MainApplication;
+import gui.Transaction;
 import gui.process.AlertHelper;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -11,13 +12,11 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox; // Import đúng layout gốc
+import javafx.util.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 import static gui.MainApplication.networkClient;
 
@@ -94,18 +93,12 @@ public class WalletController extends VBox {
             return;
         }
         btnDeposit.setDisable(true);
+        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
+        pauseTransition.setOnFinished(event -> {
+            btnDeposit.setDisable(false);
+        });
+        pauseTransition.play();
 
-        new Thread(() -> {
-            try {
-                Thread.sleep(2000);
-            }
-            catch (InterruptedException e) {
-                log.error(e.getMessage(), e);
-            }
-            Platform.runLater(() -> {
-                btnDeposit.setDisable(false);
-            });
-        }).start();
         networkClient.sendMessage("CREATE_DEPOSIT", amount);
     }
 

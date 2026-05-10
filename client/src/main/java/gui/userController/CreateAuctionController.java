@@ -1,11 +1,11 @@
-package gui;
+package gui.userController;
 
+import gui.MainApplication;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.process.ImageCompressor;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
 import javafx.scene.control.Alert;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.TextArea;
@@ -44,7 +44,7 @@ public class CreateAuctionController extends javafx.scene.control.ScrollPane {
 
 
     public CreateAuctionController(){
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("CreateAuction.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/CreateAuction.fxml"));
         loader.setRoot(this);
         loader.setController(this);
         try {

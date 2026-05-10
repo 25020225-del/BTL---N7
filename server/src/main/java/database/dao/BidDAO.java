@@ -1,5 +1,6 @@
 package database.dao;
 
+import database.DatabaseManager;
 import model.auction.Auction;
 import model.item.Item;
 import model.user.User;
@@ -9,6 +10,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class BidDAO {
     private final WalletDAO walletDAO = new WalletDAO();
@@ -348,5 +353,24 @@ public class BidDAO {
                 throw e;
             }
         }
+    }
+
+    public List<Map<String, Object>> getAllTrancactionsFromAuctionID(String auctionId) throws SQLException {
+        String sql = "SELECT bid_amount, bid_time FROM bid_transactions WHERE auction_id = ? ORDER BY bid_time ASC";
+        List<Map<String, Object>> list = new ArrayList<>();
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, auctionId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("bid_amount", rs.getLong("bid_amount"));
+                    row.put("bid_time", rs.getString("bid_time"));
+                    list.add(row);
+                }
+            }
+        }
+        return list;
     }
 }

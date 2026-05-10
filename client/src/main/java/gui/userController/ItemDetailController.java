@@ -1,11 +1,11 @@
-package gui;
+package gui.userController;
 
 import client.handler.AuctionEventBus;
+import gui.MainApplication;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
-import gui.process.ImageUtil;
 import gui.widget.CountdownClock;
-import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -56,6 +57,9 @@ public class ItemDetailController {
     @FXML private Button btnPlaceBid;
     @FXML private TextArea txtDescription;
 
+    @FXML private TextField txtMaxBid;
+    @FXML private TextField txtBidIncrement;
+
     @FXML private VBox vbBidHandle;
     @FXML private VBox vbAuctionControl;
 
@@ -75,7 +79,7 @@ public class ItemDetailController {
     private PropertyChangeListener priceUpdateListener;
 
     public ItemDetailController(User currentUser) {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("Productdetail.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/Productdetail.fxml"));
         this.currentUser = currentUser;
         loader.setController(this);
         try {
@@ -198,12 +202,20 @@ public class ItemDetailController {
         lblLeader.setText(leader);
 
         // Add the initial starting point to the chart
-        addPointToChart(startPrice);
+        addPointToChart(startPrice, LocalDateTime.now());
 
-        // Configure Bidding Button Action
-        btnPlaceBid.setOnAction(e -> handlePlaceBid());
 
         startCountdown();
+    }
+
+    public void setTransActionHistoryData(List<Map<String, Object>> transActionHistoryData) {
+        for(Map<String, Object> map : transActionHistoryData){
+            Number amountNum = (Number) map.get("bid_amount");
+            Long amount = amountNum.longValue();
+            String bidTime = (String) map.get("bid_time");
+            LocalDateTime time = LocalDateTime.parse(bidTime);
+            addPointToChart(amount, time);
+        }
     }
 
     /**
@@ -214,11 +226,11 @@ public class ItemDetailController {
      * @param winnerName The username of the user who placed the bid.
      */
     private void updateRealTimePrice(long newPrice, String winnerName) {
-        lblCurrentPrice.setText(String.format("%,.0f VND", newPrice));
+        lblCurrentPrice.setText(String.format("%d VND", newPrice));
         lblLeader.setText(winnerName);
 
         // Add a new dynamic node to the line chart
-        addPointToChart(newPrice);
+        addPointToChart(newPrice, LocalDateTime.now());
 
         // Add an engaging visual highlight effect to the price label
         gui.process.AnimateEffect.highlightText(lblCurrentPrice);
@@ -227,8 +239,8 @@ public class ItemDetailController {
     /**
      * Adds a new data point to the active LineChart.
      */
-    private void addPointToChart(long price) {
-        String currentTimeStr = LocalDateTime.now().format(timeFormatter);
+    private void addPointToChart(long price, LocalDateTime time) {
+        String currentTimeStr = time.format(timeFormatter);
         XYChart.Data<String, Number> newPoint = new XYChart.Data<>(currentTimeStr, price);
         priceSeries.getData().add(newPoint);
 
@@ -241,7 +253,12 @@ public class ItemDetailController {
     /**
      * Handles the manual bid placement logic.
      */
+    @FXML
     private void handlePlaceBid() {
+        vbBidHandle.setDisable(true);
+        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
+        pauseTransition.setOnFinished(event -> {vbBidHandle.setDisable(false);});
+        pauseTransition.play();
         try {
             long bidAmount = Long.parseLong(txtBidAmount.getText().replace(",", ""));
 
@@ -262,6 +279,20 @@ public class ItemDetailController {
         }
     }
 
+    @FXML
+    private void handleAutoBid() {
+        vbBidHandle.setDisable(true);
+        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
+        pauseTransition.setOnFinished(event -> {vbBidHandle.setDisable(false);});
+        pauseTransition.play();
+        try {
+            long maxBid = Long.parseLong(txtMaxBid.getText().replace(",", ""));
+            long bidIncrement = Long.parseLong(txtBidIncrement.getText().replace(",", ""));
+        } catch (NumberFormatException e) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Invalid format");
+        }
+        //Updating...
+    }
 
     @FXML
     private void handleEditAuction() {

@@ -19,7 +19,7 @@ public class Launcher {
     public static double getWindowsScale() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         double height = screenSize.getHeight();
-        return (height / 720.0) * 0.6;
+        return (height / 720.0) * 0.9;
     }
 
     /**

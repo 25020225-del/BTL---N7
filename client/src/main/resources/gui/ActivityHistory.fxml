@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="600.0" prefWidth="900.0" spacing="20.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ActivityHistoryController">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="15.0">
+            <children>
+                <Button onAction="#handleBack" styleClass="button-back" text="← Quay lại" />
+                <Label text="Lịch sử hoạt động">
+                    <font><Font name="System Bold" size="24.0" /></font>
+                </Label>
+            </children>
+        </HBox>
+
+        <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-background-radius: 10;">
+            <tabs>
+                <Tab text="Đang &amp; Đã đấu giá">
+                    <content>
+                        <VBox spacing="10.0" style="-fx-padding: 15;">
+                            <children>
+                                <TableView fx:id="tableBidHistory" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="colBidDate" prefWidth="120.0" text="Ngày" />
+                                        <TableColumn fx:id="colBidItem" prefWidth="250.0" text="Sản phẩm" />
+                                        <TableColumn fx:id="colBidAmount" prefWidth="120.0" text="Giá bạn đặt" />
+                                        <TableColumn fx:id="colBidStatus" prefWidth="150.0" text="Trạng thái" /> </columns>
+                                </TableView>
+                            </children>
+                        </VBox>
+                    </content>
+                </Tab>
+
+                <Tab text="Danh sách hàng đã đăng">
+                    <content>
+                        <VBox spacing="10.0" style="-fx-padding: 15;">
+                            <children>
+                                <TableView fx:id="tableSellHistory" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="colSellDate" prefWidth="120.0" text="Ngày đăng" />
+                                        <TableColumn fx:id="colSellItem" prefWidth="250.0" text="Sản phẩm" />
+                                        <TableColumn fx:id="colSellFinalPrice" prefWidth="120.0" text="Giá cuối" />
+                                        <TableColumn fx:id="colSellStatus" prefWidth="150.0" text="Trạng thái" /> </columns>
+                                </TableView>
+                            </children>
+                        </VBox>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
+    </children>
+    <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+</VBox>

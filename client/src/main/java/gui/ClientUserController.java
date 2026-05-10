@@ -2,11 +2,15 @@ package gui;
 
 import client.handler.AuctionEventBus;
 import client.handler.ClientPaymentHandler;
-import client.handler.ClientSystemHandler;
 import client.handler.ResponseDispatcher;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.tools.javac.Main;
 import gui.process.*;
+import gui.userController.CreateAuctionController;
+import gui.userController.ItemDetailController;
+import gui.userController.TableController;
+import gui.userController.WalletController;
 import gui.widget.IconButton;
 import gui.widget.MinimalItem;
 import javafx.animation.FadeTransition;
@@ -20,23 +24,15 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 import model.auction.Auction;
-import model.item.Item;
-import model.item.ItemFactory;
 import model.user.User;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import utils.JacksonConfig;
 
-import java.io.File;
 import java.io.IOException;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static utils.ConsoleColors.*;
 
 /**
  * The unified primary controller for standard users.
@@ -50,36 +46,27 @@ public class ClientUserController {
     private Parent mainView;
     private CreateAuctionController createAuctionController;
     private ItemDetailController currentDetailController;
-    private Parent tableAuctionView;
     private Parent accountView;
     private Parent settingsView;
 
     private CreateAuctionController createAuctionView; // Có thể thừa, nhưng anh giữ nguyên cấu trúc của em
     private WalletController walletView;
+    private TableController tableView;
 
     private User currentUser;
 
     @FXML private VBox mainDock;
     @FXML private VBox mainViewController;
 
-    @FXML private HBox searchBarContainer;
-    @FXML private TilePane mainTilePane;
-    @FXML private TextField searchField;
-    @FXML private Button searchButton;
 
-    @FXML
-    private Label accName;
-    @FXML
-    private Label accUsername;
+    @FXML private Label accName;
+    @FXML private Label accUsername;
 
     private IconButton accountBtn;
     private IconButton toggleList           = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
-    private IconButton toggleSearchButton   = new IconButton("mdi2f-file-find-outline",     "Search",                "Search",          "special-button");
     private IconButton marketplaceBtn       = new IconButton("mdi2s-storefront-outline",    "Marketplace",           "Marketplace",     "special-button");
     private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
     private IconButton walletBtn            = new IconButton("mdi2w-wallet-bifold-outline", "Wallet",                "Wallet",          "special-button");
-    private IconButton depositBtn           = new IconButton("mdi2c-cash-plus",             "Deposit 50k (Test)",    "Deposit",         "special-button");
-    private IconButton testCreateAuctionBtn = new IconButton("mdi2b-bug",                   "Create Bot (Test)",     "Test Create",     "special-button");
     private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
 
     /**
@@ -103,9 +90,8 @@ public class ClientUserController {
         // [FIX] Cập nhật tên hàm thành setOnReturnAction cho đúng chuẩn bên WalletController
         walletView.setOnReturnAction(() -> marketplaceBtn.fire());
 
-        FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("TableView.fxml"));
-        tableViewLoader.setController(this);
-        tableAuctionView = tableViewLoader.load();
+        tableView = new TableController();
+        tableView.setOnAuctionListener((auction) -> openItemDetail(auction));
 
         FXMLLoader accountLoader = new FXMLLoader(getClass().getResource("AccountView.fxml"));
         accountLoader.setController(this);
@@ -174,7 +160,7 @@ public class ClientUserController {
             currentDetailController = null;
         }
         mainViewController.getChildren().clear();
-        mainViewController.getChildren().add(tableAuctionView);
+        mainViewController.getChildren().add(tableView.getParent());
         MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
     }
 
@@ -191,23 +177,6 @@ public class ClientUserController {
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
-    private void setupSearch() {
-        if (searchField == null || mainTilePane == null) return;
-        searchField.setOnAction(event -> { if (searchButton != null) searchButton.fire(); });
-        if (searchButton != null) {
-            searchButton.setOnAction(event -> {
-                String keyword = searchField.getText();
-                for (Node node : mainTilePane.getChildren()) {
-                    if (node instanceof MinimalItem item) {
-                        boolean match = Search.searchText(keyword, item);
-                        item.setVisible(match);
-                        item.setManaged(match);
-                    }
-                }
-            });
-        }
-    }
-
 
     private void openItemDetail(Auction auction) {
         if (currentDetailController != null) {
@@ -217,6 +186,7 @@ public class ClientUserController {
         ItemDetailController detailController = new ItemDetailController(currentUser);
         detailController.setAuctionData(auction);
         currentDetailController = detailController;
+        MainApplication.networkClient.sendMessage("FETCH_TRANSACTIONS",auction.getId());
 
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(detailController.getParent());
@@ -233,14 +203,22 @@ public class ClientUserController {
                                 response.getData(),
                                 new TypeReference<List<Map<String, Object>>>() {}
                         );
-
-                        mainTilePane.getChildren().clear();
-
-                        for (Map<String, Object> auction : auctions) {
-                            mainTilePane.getChildren().add(buildMinimalItem(auction));
-                        }
+                        tableView.addAllAuction(auctions);
                     } catch (Exception e) {
                         log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
+                    }
+                }
+                case "FETCH_TRANSACTIONS_SUCCESS" -> {
+                    try {
+                        List<Map<String,Object>> transHistory = mapper.convertValue(
+                                response.getData(),
+                                new TypeReference<List<Map<String,Object>>>() {}
+                        );
+                        currentDetailController.setTransActionHistoryData(transHistory);
+                        log.info("[Client] FETCH_TRANSACTION_SUCCESS");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        log.error("[Client] FETCH_TRANSACTION_SUCCESS parse error: {}", e.getMessage());
                     }
                 }
                 case "NEW_AUCTION_ADDED" -> {
@@ -250,20 +228,14 @@ public class ClientUserController {
                                 new TypeReference<Map<String, Object>>() {}
                         );
 
-                        MinimalItem newItem = buildMinimalItem(auction);
-                        newItem.setOpacity(0);
-                        mainTilePane.getChildren().add(0, newItem);
-
-                        FadeTransition ft = new FadeTransition(Duration.millis(500), newItem);
-                        ft.setToValue(1.0);
-                        ft.play();
+                        tableView.addNewAuction(auction);
                     } catch (Exception e) {
                         log.error("[Client] NEW_AUCTION_ADDED parse error: {}", e.getMessage());
                     }
                 }
                 case "REMOVE_AUCTION" -> {
                     String auctionIdToRemove = (String) response.getData();
-                    mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
+                    tableView.removeAuction(auctionIdToRemove);
                 }
                 case "EDIT_SUCCESS", "DELETE_SUCCESS" -> {
                     AlertHelper.showAlert(AlertType.INFORMATION, "Success", response.getData().toString());
@@ -274,53 +246,8 @@ public class ClientUserController {
         });
     }
 
-    private MinimalItem buildMinimalItem(Map<String, Object> map) {
-        String id       = (String) map.get("id");
-        String name     = (String) map.get("itemName");
-        String imageUrl = (String) map.get("imageUrl");
-        String sellerId = (String) map.get("sellerId");
-        double price    = ((Number) map.get("currentPrice")).doubleValue();
-        long endTime    = ((Number) map.get("endTime")).longValue();
-
-        Auction auction = auctionFromMap(map);
-
-        MinimalItem item = new MinimalItem(id, imageUrl, name,
-                String.format("%,.0f", price), endTime);
-        item.getAuctionButton().setOnAction(e -> openItemDetail(auction));
-        return item;
-    }
-
-    private Auction auctionFromMap(Map<String, Object> map) {
-        Auction auction = new Auction();
-        auction.setId((String) map.get("id"));
-
-        Item item = ItemFactory.createItem(
-                ItemFactory.TYPE_TANGIBLE,
-                "ITM-" + map.get("id"),
-                (String) map.get("itemName"),
-                null,
-                0
-        );
-        item.setImageUrl((String) map.get("imageUrl"));
-        auction.setItem(item);
-
-        User seller = new User();
-        seller.setId((String) map.get("sellerId"));
-        auction.setSeller(seller);
-
-        auction.setCurrentPrice(((Number) map.get("currentPrice")).longValue());
-        auction.setEndTime(
-                Instant.ofEpochMilli(((Number) map.get("endTime")).longValue())
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDateTime()
-        );
-
-        return auction;
-    }
-
     public void start() {
         setMainDock();
-        setupSearch();
         MainApplication.networkClient.setOnMessageReceived(this::handleServerResponse);
         MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
 
