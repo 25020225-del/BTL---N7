@@ -3,6 +3,9 @@ package database;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -12,6 +15,7 @@ import java.util.concurrent.*;
  */
 public class TransactionManager {
     private static Logger log = LoggerFactory.getLogger(TransactionManager.class);
+    private static List<Map<String, Object>> bidHistory = new CopyOnWriteArrayList<>();
 
     /**
      * Fixed Thread Pool to handle concurrent database tasks.
@@ -42,6 +46,8 @@ public class TransactionManager {
                 future.complete(result);
             } catch (Exception e) {
                 log.error("Error executing DB task: {}", e.getMessage());
+
+                e.printStackTrace();
                 // Signal failure to the future
                 future.completeExceptionally(e);
             }

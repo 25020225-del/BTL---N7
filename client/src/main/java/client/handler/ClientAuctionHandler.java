@@ -29,7 +29,7 @@ public class ClientAuctionHandler implements ResponseHandler {
             Map<String, Object> data = (Map<String, Object>) message.getData();
 
             String auctionId = (String) data.get("auctionId");
-            double newPrice = ((Number) data.get("newPrice")).doubleValue();
+            long newPrice = ((Number) data.get("newPrice")).longValue();
 
             log.info("Auction {} updated its price: {}", auctionId, newPrice);
 
