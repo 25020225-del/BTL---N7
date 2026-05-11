@@ -1,5 +1,6 @@
 package gui;
 
+import client.network.NetworkService;
 import javafx.scene.shape.Circle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +66,7 @@ public class LoginController {
         }
 
         // Fetch the global network client instance
-        setNetworkClient(MainApplication.networkClient);
+        setNetworkClient(NetworkService.get());
 
         if (networkClient != null) {
             // Update UI state to indicate processing

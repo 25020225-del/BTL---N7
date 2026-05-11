@@ -1,5 +1,6 @@
 package gui.userController;
 
+import client.network.NetworkService;
 import gui.MainApplication;
 import gui.Transaction;
 import gui.process.AlertHelper;
@@ -18,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static gui.MainApplication.networkClient;
 
 /**
  * WalletController acts as both a Controller and a Custom Node (VBox).
@@ -99,7 +99,7 @@ public class WalletController extends VBox {
         });
         pauseTransition.play();
 
-        networkClient.sendMessage("CREATE_DEPOSIT", amount);
+        NetworkService.sendMessage("CREATE_DEPOSIT", amount);
     }
 
     private void updateBalanceUI() {

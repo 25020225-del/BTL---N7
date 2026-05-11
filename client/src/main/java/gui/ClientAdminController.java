@@ -1,5 +1,7 @@
 package gui;
 
+import client.network.NetworkClient;
+import client.network.NetworkService;
 import gui.userController.TableController;
 import gui.widget.MinimalItem;
 import javafx.scene.Scene;
@@ -105,14 +107,14 @@ public class ClientAdminController {
             mainViewController.getChildren().add(tableView.getParent());
             log.info("Loading pending auctions...");
             // Request pending auctions from the server
-            MainApplication.networkClient.sendMessage("FETCH_PENDING_AUCTIONS", "");
+            NetworkService.sendMessage("FETCH_PENDING_AUCTIONS", "");
         });
 
         accountList.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(tableView.getParent());
             log.info("Loading user list...");
-            MainApplication.networkClient.sendMessage("FETCH_USERS", "");
+            NetworkService.sendMessage("FETCH_USERS", "");
         });
 
         account.setOnAction(event -> {
@@ -129,7 +131,7 @@ public class ClientAdminController {
     @FXML
     private void handleSignOut(){
         log.info("User \"{}\" is signing out.", "Admin");
-        MainApplication.networkClient.sendMessage("LOGOUT", "");
+        NetworkService.sendMessage("LOGOUT", "");
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
@@ -137,7 +139,7 @@ public class ClientAdminController {
      * Sets up the listener for server responses regarding admin actions.
      */
     private void setMainViewController() {
-        MainApplication.networkClient.setOnMessageReceived(response -> {
+        NetworkService.get().setOnMessageReceived(response -> {
             javafx.application.Platform.runLater(() -> {
                 String command = response.getCommand();
 
@@ -181,7 +183,7 @@ public class ClientAdminController {
                     // (We can just refresh the view that triggered the action)
                 } else {
                     // Forward unhandled commands to the centralized ResponseDispatcher
-                    new client.handler.ResponseDispatcher().dispatch(response, gui.MainApplication.networkClient);
+                    new client.handler.ResponseDispatcher().dispatch(response, NetworkService.get());
                 }
             });
         });
