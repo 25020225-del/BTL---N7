@@ -68,7 +68,7 @@ public class Search {
      * @see #removeAccents(String)
      * @see info.debatty.java.string.similarity.Cosine
      */
-    public static boolean SearchText(String text, String content) {
+    public static boolean searchText(String text, String content) {
         // Chuyển tiếng việt từ có dấu thành không dấu.
         text = removeAccents(text);
         content = removeAccents(content);

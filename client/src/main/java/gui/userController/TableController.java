@@ -65,7 +65,7 @@ public class TableController {
         for (Node node : mainTilePane.getChildren()) {
             if (node instanceof MinimalItem item) {
                 String itemContent = (String) item.getUserData();
-                boolean match = Search.SearchText(itemContent, keyword);
+                boolean match = Search.searchText(itemContent, keyword);
                 item.setVisible(match);
                 item.setManaged(match);
             }
