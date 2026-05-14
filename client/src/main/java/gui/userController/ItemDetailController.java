@@ -2,6 +2,7 @@ package gui.userController;
 
 import client.handler.AuctionEventBus;
 import client.network.NetworkService;
+import gui.MainApplication;
 import gui.process.EditAuction;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
@@ -24,6 +25,8 @@ import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import model.auction.Auction;
 import model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
@@ -38,7 +41,8 @@ import java.util.Map;
  * Handles countdown synchronization, UI population, manual bidding,
  * and rendering the real-time bid history line chart.
  */
-public class ItemDetailController extends VBox {
+public class ItemDetailController{
+    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
     private User currentUser;
 
     private final String DEFAULT_IMAGEURL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
@@ -85,8 +89,11 @@ public class ItemDetailController extends VBox {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        this.getChildren().add(detailView);
         hbTime.getChildren().add(lblTimeLeft);
+    }
+
+    public Parent getParent() {
+        return detailView;
     }
 
     @FXML
@@ -276,17 +283,46 @@ public class ItemDetailController extends VBox {
 
     @FXML
     private void handleAutoBid() {
+        // 1. Vô hiệu hóa nút bấm tạm thời để tránh spam
         vbBidHandle.setDisable(true);
         PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
-        pauseTransition.setOnFinished(event -> {vbBidHandle.setDisable(false);});
+        pauseTransition.setOnFinished(event -> { vbBidHandle.setDisable(false); });
         pauseTransition.play();
+
         try {
-            long maxBid = Long.parseLong(txtMaxBid.getText().replace(",", ""));
-            long bidIncrement = Long.parseLong(txtBidIncrement.getText().replace(",", ""));
+            // 2. Lấy và kiểm tra dữ liệu từ giao diện
+            String maxBidStr = txtMaxBid.getText().replace(",", "").trim();
+            String incrementStr = txtBidIncrement.getText().replace(",", "").trim();
+
+            if (maxBidStr.isEmpty() || incrementStr.isEmpty()) {
+                AlertHelper.showAlert(Alert.AlertType.WARNING, "Thiếu thông tin", "Vui lòng nhập giá tối đa và bước nhảy.");
+                return;
+            }
+
+            long maxBid = Long.parseLong(maxBidStr);
+            long bidIncrement = Long.parseLong(incrementStr);
+
+            if (maxBid <= 0 || bidIncrement <= 0) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi", "Số tiền phải lớn hơn 0.");
+                return;
+            }
+
+            // 3. Đóng gói dữ liệu gửi lên Server
+            // Theo cấu trúc CommandDispatcher của Server, lệnh cần là "SETUP_AUTOBID" [2, 3]
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("auctionId", currentAuctionId);
+            payload.put("maxBid", maxBid);
+            payload.put("increment", bidIncrement);
+
+            // 4. Gửi yêu cầu qua NetworkService
+            NetworkService.sendMessage("SETUP_AUTOBID", payload);
+
+            log.info("Đã gửi yêu cầu thiết lập AutoBid cho đấu giá: {}", currentAuctionId);
+            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Thông báo", "Đã gửi yêu cầu kích hoạt đặt giá tự động.");
+
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Invalid format");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi định dạng", "Vui lòng chỉ nhập số hợp lệ.");
         }
-        //Updating...
     }
 
     @FXML
