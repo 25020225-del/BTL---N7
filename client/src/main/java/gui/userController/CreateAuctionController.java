@@ -16,8 +16,11 @@ import model.item.Item;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+
+import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,45 +86,16 @@ public class CreateAuctionController extends ScrollPane {
             String desc = ca_description.getText().trim();
             String startPrice = ca_startPrice.getText().trim();
             String bidInc = ca_bidIncrement.getText().trim();
-            int days = ca_durationDays.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationDays.getText().trim());
-            int hours = ca_durationHours.getText().trim().isEmpty() ? 0 : Integer.parseInt(ca_durationHours.getText().trim());
-            LocalDateTime now = LocalDateTime.now();
             LocalDateTime startDT;
+            Duration dr;
 
-            CreateAuctionModel.validate(name,desc,startPrice,bidInc,imagefile);
+            CreateAuctionModel.checkInputInfo(name,desc,startPrice,bidInc,imagefile);
+            startDT = CreateAuctionModel.checkStartTime(ca_startDate.getValue(),ca_startHour.getText(),ca_startMinute.getText());
+            dr = CreateAuctionModel.checkEndTime(ca_durationDays.getText(),ca_durationHours.getText());
 
-            boolean isStartTimeEmpty = ca_startDate.getValue() == null ||
-                    ca_startHour.getText().trim().isEmpty() ||
-                    ca_startMinute.getText().trim().isEmpty();
+            Item item = CreateAuctionModel.createItem(name, desc, Long.parseLong(startPrice), imagefile);
 
-            if (isStartTimeEmpty) {
-                startDT = now;
-            } else {
-                startDT = LocalDateTime.of(
-                        ca_startDate.getValue(),
-                        LocalTime.of(Integer.parseInt(ca_startHour.getText().trim()), Integer.parseInt(ca_startMinute.getText().trim()))
-                );
-            }
-
-            int totalDurationMinutes = (days * 24 * 60) + (hours * 60);
-
-            if (totalDurationMinutes <= 0 || totalDurationMinutes > 43200) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid Duration", "Thời lượng đấu giá phải từ 1 phút đến tối đa 30 ngày.");
-                return;
-            }
-
-            // compression
-            byte[] imageBytes = ImageCompressor.compressToBytes(imagefile, 0.05F);
-
-            // Standardized Model Initialization using Parametrized Constructors
-            String itemId = "ITEM-" + System.currentTimeMillis();
-            Item item = new Item(itemId, name, desc, Long.parseLong(startPrice));
-            item.setFile(imageBytes);
-
-            String auctionId = "AUC-" + System.currentTimeMillis();
-            // Assuming current user context is available or needs to be passed. 
-            // For now, we use a placeholder or assume the server fills the User object correctly upon receipt.
-            Auction auction = new Auction(auctionId, item, new model.user.User(), Long.parseLong(bidInc), startDT, startDT.plusMinutes(totalDurationMinutes));
+            Auction auction = CreateAuctionModel.createAuction(item,new User(),Long.parseLong(bidInc),startDT,startDT.plus(dr));
 
             NetworkService.sendMessage("CREATE_AUCTION", auction);
 
