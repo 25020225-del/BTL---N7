@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.tools.javac.Main;
 import gui.process.*;
+import gui.process.eventBus.RemoveUserEventBus;
 import gui.userController.CreateAuctionController;
 import gui.userController.ItemDetailController;
 import gui.userController.TableController;
@@ -169,10 +170,7 @@ public class ClientUserController {
     public void handleSignOut() {
         log.info("User \"{}\" is signing out.", currentUser.getName());
         NetworkService.get().sendMessage("LOGOUT", "");
-        AuctionEventBus.removeAllListeners(AuctionEventBus.AUCTION_CREATED);
-        AuctionEventBus.removeAllListeners(AuctionEventBus.DEPOSIT_SUCCESS);
-        AuctionEventBus.removeAllListeners(AuctionEventBus.GENERAL_ERROR);
-        AuctionEventBus.removeAllListeners(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED);
+        RemoveUserEventBus.removeUserEventBus();
         createAuctionView = null;
         currentDetailController = null;
         MainApplication.setNewScene(MainApplication.rootLogin);
@@ -197,18 +195,10 @@ public class ClientUserController {
         Platform.runLater(() -> {
             String command = response.getCommand();
 
+
+            AuctionEventBus.fireEvent(response.getCommand(),response);
+
             switch (command) {
-                case "FETCH_AUCTIONS_SUCCESS" -> {
-                    try {
-                        List<Map<String, Object>> auctions = mapper.convertValue(
-                                response.getData(),
-                                new TypeReference<List<Map<String, Object>>>() {}
-                        );
-                        tableView.addAllAuction(auctions);
-                    } catch (Exception e) {
-                        log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
-                    }
-                }
                 case "FETCH_TRANSACTIONS_SUCCESS" -> {
                     try {
                         List<Map<String,Object>> transHistory = mapper.convertValue(
@@ -242,7 +232,16 @@ public class ClientUserController {
                     AlertHelper.showAlert(AlertType.INFORMATION, "Success", response.getData().toString());
                     NetworkService.sendMessage("FETCH_AUCTIONS", "");
                 }
-                case null, default -> new ResponseDispatcher().dispatch(response, NetworkService.get());
+                case "FETCH_WALLET_SUCCESS" -> {
+                    Map<String,Object> map = (Map<String, Object>) response.getData();
+                    long balance = Long.parseLong(map.get("balance").toString());
+                    walletView.setWalletBalance(balance);
+                    log.info("Get wallet balence success: {}", balance);
+                }
+                case null, default -> {
+                    System.out.println("[Client] Unknown command: " + command);
+                    //new ResponseDispatcher().dispatch(response, NetworkService.get());
+                }
             }
         });
     }

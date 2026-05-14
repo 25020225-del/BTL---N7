@@ -74,6 +74,7 @@ public class    CommandDispatcher {
         PaymentHandler paymentHandler = new PaymentHandler(paymentCtrl);
         handlers.put("CREATE_DEPOSIT", paymentHandler);
         handlers.put("CONFIRM_DEPOSIT", paymentHandler);
+        handlers.put("FETCH_WALLET",    paymentHandler);
 
         // Register Data Fetching operations
         FetchAuctionsHandler fetchHandler = new FetchAuctionsHandler(auctionDAO);
@@ -101,6 +102,7 @@ public class    CommandDispatcher {
         SellerActionHandler sellerHandler = new SellerActionHandler(sellerCtrl, auctionDAO);
         handlers.put("EDIT_AUCTION", sellerHandler);
         handlers.put("DELETE_AUCTION", sellerHandler);
+
     }
 
     /**

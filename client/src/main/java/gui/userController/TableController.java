@@ -1,5 +1,9 @@
 package gui.userController;
 
+import client.handler.AuctionEventBus;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import gui.ClientUserController;
 import gui.MainApplication;
 import gui.process.Search;
 import gui.widget.AdminUserItem;
@@ -18,7 +22,11 @@ import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
 import model.user.User;
+import network.NetworkMessage;
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import utils.JacksonConfig;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -28,6 +36,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class TableController {
+    private static final Logger log = LoggerFactory.getLogger(ClientUserController.class);
+    private final ObjectMapper mapper = JacksonConfig.mapper();
 
     private Consumer<Auction> auctionListener;
 
@@ -156,5 +166,18 @@ public class TableController {
 
     @FXML private void initialize() {
         setupSearch();
+        AuctionEventBus.addListener("FETCH_AUCTIONS_SUCCESS", event -> {
+            try {
+                NetworkMessage response = (NetworkMessage) event.getNewValue();
+                List<Map<String, Object>> auctions = mapper.convertValue(
+                        response.getData(),
+                        new TypeReference<List<Map<String, Object>>>() {}
+                );
+                addAllAuction(auctions);
+            } catch (Exception e) {
+                log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
+            }
+        });
+
     }
 }

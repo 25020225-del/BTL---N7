@@ -6,6 +6,7 @@ import gui.Transaction;
 import gui.process.AlertHelper;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.beans.property.LongProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -27,6 +28,7 @@ public class WalletController extends VBox {
     private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
 
     private Runnable onReturnAction;
+
 
     @FXML private Label lblTotalBalance;
     @FXML private Label lblFrozenBalance;
@@ -68,10 +70,16 @@ public class WalletController extends VBox {
 
         tableTransactions.setItems(transactionData);
         updateBalanceUI();
+        NetworkService.sendMessage("FETCH_WALLET","");
     }
 
     public void setOnReturnAction(Runnable action) {
         this.onReturnAction = action;
+    }
+
+    public void setWalletBalance(long balance){
+        currentBalance = balance;
+        lblTotalBalance.setText(String.valueOf(currentBalance)+" N VND");
     }
 
     @FXML
