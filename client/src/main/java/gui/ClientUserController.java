@@ -2,20 +2,15 @@ package gui;
 
 import client.handler.AuctionEventBus;
 import client.handler.ClientPaymentHandler;
-import client.handler.ResponseDispatcher;
 import client.network.NetworkService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.tools.javac.Main;
 import gui.process.*;
-import gui.process.eventBus.RemoveUserEventBus;
+import gui.process.RemoveEventBus;
 import gui.userController.CreateAuctionController;
 import gui.userController.ItemDetailController;
 import gui.userController.TableController;
 import gui.userController.WalletController;
 import gui.widget.IconButton;
-import gui.widget.MinimalItem;
-import javafx.animation.FadeTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -24,17 +19,13 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.*;
-import javafx.util.Duration;
 import model.auction.Auction;
 import model.user.User;
-import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import utils.JacksonConfig;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 /**
  * The unified primary controller for standard users.
@@ -51,7 +42,6 @@ public class ClientUserController {
     private Parent accountView;
     private Parent settingsView;
 
-    private CreateAuctionController createAuctionView; // Có thể thừa, nhưng anh giữ nguyên cấu trúc của em
     private WalletController walletView;
     private TableController tableView;
 
@@ -147,6 +137,7 @@ public class ClientUserController {
         walletBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(walletView);
+            NetworkService.sendMessage("FETCH_WALLET","");
         });
 
         settingsBtn.setOnAction(event -> {
@@ -170,8 +161,7 @@ public class ClientUserController {
     public void handleSignOut() {
         log.info("User \"{}\" is signing out.", currentUser.getName());
         NetworkService.get().sendMessage("LOGOUT", "");
-        RemoveUserEventBus.removeUserEventBus();
-        createAuctionView = null;
+        RemoveEventBus.forUser();
         currentDetailController = null;
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
@@ -191,64 +181,9 @@ public class ClientUserController {
         mainViewController.getChildren().add(detailController.getParent());
     }
 
-    private void handleServerResponse(NetworkMessage response) {
-        Platform.runLater(() -> {
-            String command = response.getCommand();
-
-
-            AuctionEventBus.fireEvent(response.getCommand(),response);
-
-            switch (command) {
-                case "FETCH_TRANSACTIONS_SUCCESS" -> {
-                    try {
-                        List<Map<String,Object>> transHistory = mapper.convertValue(
-                                response.getData(),
-                                new TypeReference<List<Map<String,Object>>>() {}
-                        );
-                        currentDetailController.setTransActionHistoryData(transHistory);
-                        log.info("[Client] FETCH_TRANSACTION_SUCCESS");
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        log.error("[Client] FETCH_TRANSACTION_SUCCESS parse error: {}", e.getMessage());
-                    }
-                }
-                case "NEW_AUCTION_ADDED" -> {
-                    try {
-                        Map<String, Object> auction = mapper.convertValue(
-                                response.getData(),
-                                new TypeReference<Map<String, Object>>() {}
-                        );
-
-                        tableView.addNewAuction(auction);
-                    } catch (Exception e) {
-                        log.error("[Client] NEW_AUCTION_ADDED parse error: {}", e.getMessage());
-                    }
-                }
-                case "REMOVE_AUCTION" -> {
-                    String auctionIdToRemove = (String) response.getData();
-                    tableView.removeAuction(auctionIdToRemove);
-                }
-                case "EDIT_SUCCESS", "DELETE_SUCCESS" -> {
-                    AlertHelper.showAlert(AlertType.INFORMATION, "Success", response.getData().toString());
-                    NetworkService.sendMessage("FETCH_AUCTIONS", "");
-                }
-                case "FETCH_WALLET_SUCCESS" -> {
-                    Map<String,Object> map = (Map<String, Object>) response.getData();
-                    long balance = Long.parseLong(map.get("balance").toString());
-                    walletView.setWalletBalance(balance);
-                    log.info("Get wallet balence success: {}", balance);
-                }
-                case null, default -> {
-                    System.out.println("[Client] Unknown command: " + command);
-                    //new ResponseDispatcher().dispatch(response, NetworkService.get());
-                }
-            }
-        });
-    }
-
     public void start() {
         setMainDock();
-        NetworkService.get().setOnMessageReceived(this::handleServerResponse);
+        //NetworkService.get().setOnMessageReceived(this::handleServerResponse);
         NetworkService.sendMessage("FETCH_AUCTIONS", "");
 
         AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, evt -> {

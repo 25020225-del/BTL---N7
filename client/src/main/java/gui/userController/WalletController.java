@@ -1,5 +1,6 @@
 package gui.userController;
 
+import client.handler.AuctionEventBus;
 import client.network.NetworkService;
 import gui.MainApplication;
 import gui.Transaction;
@@ -15,10 +16,12 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox; // Import đúng layout gốc
 import javafx.util.Duration;
+import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Map;
 
 
 /**
@@ -67,6 +70,14 @@ public class WalletController extends VBox {
         colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colNote.setCellValueFactory(new PropertyValueFactory<>("note"));
+
+        AuctionEventBus.addListener("FETCH_WALLET_SUCCESS",event -> {
+            NetworkMessage response = (NetworkMessage) event.getNewValue();
+            Map<String,Object> map = (Map<String, Object>) response.getData();
+            long balance = Long.parseLong(map.get("balance").toString());
+            log.info("Get wallet balence success: {}", balance);
+            Platform.runLater(() -> {setWalletBalance(balance);});
+        });
 
         tableTransactions.setItems(transactionData);
         updateBalanceUI();

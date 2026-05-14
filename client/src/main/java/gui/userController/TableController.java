@@ -1,18 +1,22 @@
 package gui.userController;
 
 import client.handler.AuctionEventBus;
+import client.network.NetworkService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gui.ClientUserController;
 import gui.MainApplication;
+import gui.process.AlertHelper;
 import gui.process.Search;
 import gui.widget.AdminUserItem;
 import gui.widget.MinimalItem;
 import javafx.animation.FadeTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
@@ -36,7 +40,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class TableController {
-    private static final Logger log = LoggerFactory.getLogger(ClientUserController.class);
+    private static final Logger log = LoggerFactory.getLogger(TableController.class);
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
     private Consumer<Auction> auctionListener;
@@ -173,11 +177,41 @@ public class TableController {
                         response.getData(),
                         new TypeReference<List<Map<String, Object>>>() {}
                 );
-                addAllAuction(auctions);
+                Platform.runLater(() -> {addAllAuction(auctions);});
             } catch (Exception e) {
                 log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
             }
         });
+        AuctionEventBus.addListener("NEW_AUCTION_ADDED", event -> {
+            try {
+                NetworkMessage response = (NetworkMessage) event.getNewValue();
+                Map<String, Object> auction = mapper.convertValue(
+                        response.getData(),
+                        new TypeReference<Map<String, Object>>() {}
+                );
+                Platform.runLater(() -> {addNewAuction(auction);});
 
+            } catch (Exception e) {
+                log.error("[Client] NEW_AUCTION_ADDED parse error: {}", e.getMessage());
+            }
+        });
+        AuctionEventBus.addListener("REMOVE_AUCTION", event -> {
+            NetworkMessage response = (NetworkMessage) event.getNewValue();
+            String auctionIdToRemove = (String) response.getData();
+            Platform.runLater(() -> {removeAuction(auctionIdToRemove);});
+
+        });
+        AuctionEventBus.addListener("EDIT_SUCCESS", event -> {
+
+            NetworkMessage response = (NetworkMessage) event.getNewValue();
+            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
+            NetworkService.sendMessage("FETCH_AUCTIONS", "");
+        });
+        AuctionEventBus.addListener("DELETE_SUCCESS", event -> {
+
+            NetworkMessage response = (NetworkMessage) event.getNewValue();
+            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
+            NetworkService.sendMessage("FETCH_AUCTIONS", "");
+        });
     }
 }
