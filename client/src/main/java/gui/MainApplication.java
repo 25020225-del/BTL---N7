@@ -1,5 +1,6 @@
 package gui;
 
+import client.network.NetworkService;
 import gui.process.AlertHelper;
 import javafx.animation.*;
 import javafx.geometry.Insets;
@@ -45,12 +46,8 @@ public class MainApplication extends Application {
     public static Stage primalStage;
     public static Parent rootLogin;
     public static Parent rootRegister;
-    public static Parent rootMainView;
 
     private Properties properties = new Properties();
-
-    // The global network client session used across the entire application
-    public static NetworkClient networkClient;
 
     /**
      * The standard Java main method.
@@ -116,11 +113,11 @@ public class MainApplication extends Application {
 
         RegisterController registerCtrl = fxmlRegister.getController();
         if (registerCtrl != null) {
-            registerCtrl.setNetworkClient(networkClient);
+            registerCtrl.setNetworkClient(NetworkService.get());
         }
 
         LoginController loginCtrl = fxmlLogin.getController();
-        if (loginCtrl != null) loginCtrl.setNetworkClient(networkClient);
+        if (loginCtrl != null) loginCtrl.setNetworkClient(NetworkService.get());
     }
 
     /**
@@ -289,7 +286,7 @@ public class MainApplication extends Application {
         // ── 8. BACKGROUND THREAD KẾT NỐI ─────────────────────────────
         new Thread(() -> {
             log.info("Attempting to connect to server...");
-            networkClient = ServerDiscovery.establishConnection(properties);
+            client.network.NetworkService.set(ServerDiscovery.establishConnection(properties));
 
             Platform.runLater(() -> {
                 try {
@@ -300,18 +297,18 @@ public class MainApplication extends Application {
                     stage.setTitle("N7 Auction System - Client");
                     stage.setScene(sceneLogin);
 
-                    if (!networkClient.isConnected()) {
+                    if (!NetworkService.get().isConnected()) {
                         log.warn("Server unreachable. Switched to OFFLINE mode.");
                         AlertHelper.showAlert(Alert.AlertType.WARNING,
                                 "Network Issue", "Cannot connect to server. Running offline version.");
                     }
                     else {
                         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
-                            if (networkClient != null && networkClient.isConnected()) {
-                                networkClient.sendMessage("TIME_SYNC", System.currentTimeMillis());
+                            if (NetworkService.get() != null && NetworkService.get().isConnected()) {
+                                NetworkService.get().sendMessage("TIME_SYNC", System.currentTimeMillis());
                             }
                         }, 0, 5, TimeUnit.SECONDS); // Chỉnh 10 phút thành 5 giây
-                        log.info("Connection established: " + networkClient.getServerAddress());
+                        log.info("Connection established: " + NetworkService.get().getServerAddress());
                     }
                 } catch (IOException e) {
                     log.error("Critical error during UI initialization: ", e);

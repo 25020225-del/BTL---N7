@@ -3,6 +3,7 @@ package gui;
 import client.handler.AuctionEventBus;
 import client.handler.ClientPaymentHandler;
 import client.handler.ResponseDispatcher;
+import client.network.NetworkService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.tools.javac.Main;
@@ -161,13 +162,13 @@ public class ClientUserController {
         }
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(tableView.getParent());
-        MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
+        NetworkService.sendMessage("FETCH_AUCTIONS", "");
     }
 
     @FXML
     public void handleSignOut() {
         log.info("User \"{}\" is signing out.", currentUser.getName());
-        MainApplication.networkClient.sendMessage("LOGOUT", "");
+        NetworkService.get().sendMessage("LOGOUT", "");
         AuctionEventBus.removeAllListeners(AuctionEventBus.AUCTION_CREATED);
         AuctionEventBus.removeAllListeners(AuctionEventBus.DEPOSIT_SUCCESS);
         AuctionEventBus.removeAllListeners(AuctionEventBus.GENERAL_ERROR);
@@ -186,7 +187,7 @@ public class ClientUserController {
         ItemDetailController detailController = new ItemDetailController(currentUser);
         detailController.setAuctionData(auction);
         currentDetailController = detailController;
-        MainApplication.networkClient.sendMessage("FETCH_TRANSACTIONS",auction.getId());
+        NetworkService.sendMessage("FETCH_TRANSACTIONS",auction.getId());
 
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(detailController.getParent());
@@ -239,17 +240,17 @@ public class ClientUserController {
                 }
                 case "EDIT_SUCCESS", "DELETE_SUCCESS" -> {
                     AlertHelper.showAlert(AlertType.INFORMATION, "Success", response.getData().toString());
-                    MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
+                    NetworkService.sendMessage("FETCH_AUCTIONS", "");
                 }
-                case null, default -> new ResponseDispatcher().dispatch(response, MainApplication.networkClient);
+                case null, default -> new ResponseDispatcher().dispatch(response, NetworkService.get());
             }
         });
     }
 
     public void start() {
         setMainDock();
-        MainApplication.networkClient.setOnMessageReceived(this::handleServerResponse);
-        MainApplication.networkClient.sendMessage("FETCH_AUCTIONS", "");
+        NetworkService.get().setOnMessageReceived(this::handleServerResponse);
+        NetworkService.sendMessage("FETCH_AUCTIONS", "");
 
         AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, evt -> {
             Platform.runLater(() -> AlertHelper.showAlert(AlertType.INFORMATION, "Success", evt.getNewValue().toString()));

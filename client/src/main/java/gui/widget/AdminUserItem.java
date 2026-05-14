@@ -1,5 +1,6 @@
 package gui.widget;
 
+import client.network.NetworkService;
 import gui.MainApplication;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -23,14 +24,14 @@ public class AdminUserItem extends VBox {
             btnAction = new Button("Unblock");
             btnAction.setStyle("-fx-background-color: green; -fx-text-fill: white;");
             btnAction.setOnAction(e -> {
-                MainApplication.networkClient.sendMessage("UNBLOCK_USER", id);
+                NetworkService.sendMessage("UNBLOCK_USER", id);
                 this.setDisable(true);
             });
         } else {
             btnAction = new Button("Block");
             btnAction.setStyle("-fx-background-color: red; -fx-text-fill: white;");
             btnAction.setOnAction(e -> {
-                MainApplication.networkClient.sendMessage("BLOCK_USER", id);
+                NetworkService.sendMessage("BLOCK_USER", id);
                 this.setDisable(true);
             });
         }

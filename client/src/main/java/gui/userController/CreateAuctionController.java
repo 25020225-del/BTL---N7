@@ -1,5 +1,6 @@
 package gui.userController;
 
+import client.network.NetworkService;
 import gui.MainApplication;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
@@ -151,7 +152,7 @@ public class CreateAuctionController extends javafx.scene.control.ScrollPane {
             // For now, we use a placeholder or assume the server fills the User object correctly upon receipt.
             Auction auction = new Auction(auctionId, item, new model.user.User(), Long.parseLong(bidInc), startDT, startDT.plusMinutes(totalDurationMinutes));
 
-            MainApplication.networkClient.sendMessage("CREATE_AUCTION", auction);
+            NetworkService.sendMessage("CREATE_AUCTION", auction);
 
             resetForm();
 

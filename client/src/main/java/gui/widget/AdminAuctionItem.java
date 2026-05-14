@@ -1,5 +1,6 @@
 package gui.widget;
 
+import client.network.NetworkService;
 import gui.MainApplication;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -35,12 +36,12 @@ public class AdminAuctionItem extends VBox {
 
         // Attach event handlers for approval and rejection
         btnApprove.setOnAction(e -> {
-            MainApplication.networkClient.sendMessage("APPROVE_AUCTION", id);
+            NetworkService.sendMessage("APPROVE_AUCTION", id);
             this.setDisable(true); // Disable the widget to prevent multiple submissions
         });
 
         btnReject.setOnAction(e -> {
-            MainApplication.networkClient.sendMessage("REJECT_AUCTION", id);
+            NetworkService.sendMessage("REJECT_AUCTION", id);
             this.setDisable(true); // Disable the widget to prevent multiple submissions
         });
 

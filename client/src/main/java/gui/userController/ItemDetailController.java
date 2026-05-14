@@ -1,6 +1,7 @@
 package gui.userController;
 
 import client.handler.AuctionEventBus;
+import client.network.NetworkService;
 import gui.MainApplication;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
@@ -272,7 +273,7 @@ public class ItemDetailController {
                 "auctionId", currentAuctionId,
                 "bidAmount", bidAmount
             );
-            MainApplication.networkClient.sendMessage("PLACE_BID", bidData);
+            NetworkService.sendMessage("PLACE_BID", bidData);
 
         } catch (NumberFormatException e) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Invalid amount format");
@@ -335,7 +336,7 @@ public class ItemDetailController {
             }
             try {
                 Double.parseDouble(data.get("startPrice"));
-                MainApplication.networkClient.sendMessage("EDIT_AUCTION", data);
+                NetworkService.sendMessage("EDIT_AUCTION", data);
             } catch (NumberFormatException e) {
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Invalid price format.");
             }
@@ -350,7 +351,7 @@ public class ItemDetailController {
         confirm.setContentText("Are you sure you want to delete auction: " + currentAuctionId + "?");
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                MainApplication.networkClient.sendMessage("DELETE_AUCTION", currentAuctionId);
+                NetworkService.sendMessage("DELETE_AUCTION", currentAuctionId);
             }
         });
     }
