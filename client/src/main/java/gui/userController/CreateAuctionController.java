@@ -2,7 +2,7 @@ package gui.userController;
 
 import client.network.NetworkService;
 import gui.MainApplication;
-import gui.model.CreateAuctionModel;
+import gui.process.CreateAuctionModel;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.process.ImageCompressor;
@@ -11,7 +11,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.stage.FileChooser;
 import model.auction.Auction;
 import model.item.Item;
 

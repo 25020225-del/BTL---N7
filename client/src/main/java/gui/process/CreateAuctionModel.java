@@ -1,9 +1,7 @@
-package gui.model;
+package gui.process;
 
 
 import gui.MainApplication;
-import gui.MainController;
-import gui.process.AlertHelper;
 import javafx.scene.control.Alert;
 import javafx.stage.FileChooser;
 
