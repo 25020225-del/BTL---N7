@@ -1,8 +1,15 @@
 package database.dao;
 
+import database.DatabaseManager;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Data Access Object (DAO) for managing wallet-related database operations.
@@ -127,6 +134,50 @@ public class WalletDAO {
             pstmt.setString(2, userId);
             pstmt.setDouble(3, amount);
             return pstmt.executeUpdate() > 0;
+        }
+    }
+
+
+    /**
+     * Lấy giao dịch và tài khoản
+     */
+    public Map<String, Object> getWalletData(String userId) throws SQLException {
+        String walletSql = "SELECT balance FROM wallets WHERE user_id = ?";
+        String txnSql    = "SELECT id, amount, description, created_at FROM wallet_transactions " +
+                "WHERE user_id = ? ORDER BY created_at DESC LIMIT 50";
+
+        try (Connection conn = DatabaseManager.getConnection()) {
+
+            Map<String, Object> result = new HashMap<>();
+
+            // Lấy số dư
+            try (PreparedStatement ps = conn.prepareStatement(walletSql)) {
+                ps.setString(1, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        result.put("balance",        rs.getLong("balance"));
+                    }
+                }
+            }
+
+            // Lấy lịch sử giao dịch
+            List<Map<String, Object>> transactions = new ArrayList<>();
+            try (PreparedStatement ps = conn.prepareStatement(txnSql)) {
+                ps.setString(1, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Map<String, Object> txn = new HashMap<>();
+                        txn.put("id",          rs.getString("id"));
+                        txn.put("amount",      rs.getLong("amount"));
+                        txn.put("description", rs.getString("description"));
+                        txn.put("createdAt",   rs.getString("created_at"));
+                        transactions.add(txn);
+                    }
+                }
+            }
+
+            result.put("transactions", transactions);
+            return result;
         }
     }
 }

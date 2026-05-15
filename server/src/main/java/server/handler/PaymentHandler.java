@@ -1,5 +1,6 @@
 package server.handler;
 
+import database.dao.WalletDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import controller.ServerPaymentController;
@@ -8,6 +9,7 @@ import network.NetworkMessage;
 import server.ClientHandler;
 import service.PayPalService;
 
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,6 +27,7 @@ import static utils.ConsoleColors.*;
  */
 public class PaymentHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(PaymentHandler.class);
+    private final WalletDAO walletDAO = new WalletDAO();
 
     /**
      * Service for interacting with the PayPal REST API.
@@ -131,6 +134,9 @@ public class PaymentHandler implements CommandHandler {
                     break;
                 case "CONFIRM_DEPOSIT":
                     handleConfirmDeposit(data, client, currentUser);
+                    break;
+                case "FETCH_WALLET":
+                    handleFetchWallet(client, currentUser);
                     break;
                 default:
                     log.warn("Invalid payment command: {}", command);
@@ -259,6 +265,16 @@ public class PaymentHandler implements CommandHandler {
 
         public User getUser() {
             return user;
+        }
+    }
+
+    private void handleFetchWallet(ClientHandler client, User currentUser) {
+        try {
+            Map<String, Object> walletData = walletDAO.getWalletData(currentUser.getId());
+            client.sendResponse("FETCH_WALLET_SUCCESS", walletData);
+        } catch (SQLException e) {
+            log.error("Error fetching wallet for {}: {}", currentUser.getUserName(), e.getMessage());
+            client.sendResponse("ERROR", "Cannot retrieve wallet data.");
         }
     }
 }

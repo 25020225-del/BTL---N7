@@ -3,6 +3,7 @@ package gui.userController;
 import client.handler.AuctionEventBus;
 import client.network.NetworkService;
 import gui.MainApplication;
+import gui.process.EditAuction;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.widget.CountdownClock;
@@ -19,20 +20,19 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import model.auction.Auction;
 import model.user.User;
-import utils.TimeUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +41,8 @@ import java.util.Map;
  * Handles countdown synchronization, UI population, manual bidding,
  * and rendering the real-time bid history line chart.
  */
-public class ItemDetailController {
+public class ItemDetailController{
+    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
     private User currentUser;
 
     private final String DEFAULT_IMAGEURL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
@@ -91,7 +92,7 @@ public class ItemDetailController {
         hbTime.getChildren().add(lblTimeLeft);
     }
 
-    public Parent getParent(){
+    public Parent getParent() {
         return detailView;
     }
 
@@ -282,65 +283,51 @@ public class ItemDetailController {
 
     @FXML
     private void handleAutoBid() {
+        // 1. Vô hiệu hóa nút bấm tạm thời để tránh spam
         vbBidHandle.setDisable(true);
         PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
-        pauseTransition.setOnFinished(event -> {vbBidHandle.setDisable(false);});
+        pauseTransition.setOnFinished(event -> { vbBidHandle.setDisable(false); });
         pauseTransition.play();
+
         try {
-            long maxBid = Long.parseLong(txtMaxBid.getText().replace(",", ""));
-            long bidIncrement = Long.parseLong(txtBidIncrement.getText().replace(",", ""));
+            // 2. Lấy và kiểm tra dữ liệu từ giao diện
+            String maxBidStr = txtMaxBid.getText().replace(",", "").trim();
+            String incrementStr = txtBidIncrement.getText().replace(",", "").trim();
+
+            if (maxBidStr.isEmpty() || incrementStr.isEmpty()) {
+                AlertHelper.showAlert(Alert.AlertType.WARNING, "Thiếu thông tin", "Vui lòng nhập giá tối đa và bước nhảy.");
+                return;
+            }
+
+            long maxBid = Long.parseLong(maxBidStr);
+            long bidIncrement = Long.parseLong(incrementStr);
+
+            if (maxBid <= 0 || bidIncrement <= 0) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi", "Số tiền phải lớn hơn 0.");
+                return;
+            }
+
+            // 3. Đóng gói dữ liệu gửi lên Server
+            // Theo cấu trúc CommandDispatcher của Server, lệnh cần là "SETUP_AUTOBID" [2, 3]
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("auctionId", currentAuctionId);
+            payload.put("maxBid", maxBid);
+            payload.put("increment", bidIncrement);
+
+            // 4. Gửi yêu cầu qua NetworkService
+            NetworkService.sendMessage("SETUP_AUTOBID", payload);
+
+            log.info("Đã gửi yêu cầu thiết lập AutoBid cho đấu giá: {}", currentAuctionId);
+            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Thông báo", "Đã gửi yêu cầu kích hoạt đặt giá tự động.");
+
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Invalid format");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi định dạng", "Vui lòng chỉ nhập số hợp lệ.");
         }
-        //Updating...
     }
 
     @FXML
     private void handleEditAuction() {
-        Dialog<Map<String, String>> dialog = new Dialog<>();
-        dialog.setTitle("Edit Auction");
-        dialog.setHeaderText("Update details for auction: " + currentAuctionId);
-
-        ButtonType saveButtonType = new ButtonType("Save Changes", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10); grid.setVgap(10);
-        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
-
-        TextField nameField = new TextField();
-        TextArea descField = new TextArea(); descField.setPrefRowCount(3);
-        TextField priceField = new TextField();
-
-        grid.add(new Label("Item Name:"), 0, 0); grid.add(nameField, 1, 0);
-        grid.add(new Label("Description:"), 0, 1); grid.add(descField, 1, 1);
-        grid.add(new Label("Starting Price:"), 0, 2); grid.add(priceField, 1, 2);
-
-        dialog.getDialogPane().setContent(grid);
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == saveButtonType) {
-                Map<String, String> result = new HashMap<>();
-                result.put("auctionId", currentAuctionId);
-                result.put("itemName", nameField.getText());
-                result.put("description", descField.getText());
-                result.put("startPrice", priceField.getText());
-                return result;
-            }
-            return null;
-        });
-
-        dialog.showAndWait().ifPresent(data -> {
-            if (data.get("itemName").isEmpty() || data.get("startPrice").isEmpty()) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Name and Price cannot be empty.");
-                return;
-            }
-            try {
-                Double.parseDouble(data.get("startPrice"));
-                NetworkService.sendMessage("EDIT_AUCTION", data);
-            } catch (NumberFormatException e) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Invalid price format.");
-            }
-        });
+        EditAuction.edit(currentAuctionId);
     }
 
     @FXML
