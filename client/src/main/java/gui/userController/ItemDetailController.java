@@ -3,6 +3,7 @@ package gui.userController;
 import client.handler.AuctionEventBus;
 import client.network.NetworkService;
 import gui.MainApplication;
+import gui.process.Convert;
 import gui.process.EditAuction;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
@@ -28,6 +29,7 @@ import model.user.User;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import utils.TimeUtil;
 
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
@@ -43,7 +45,7 @@ import java.util.Map;
  * and rendering the real-time bid history line chart.
  */
 public class ItemDetailController{
-    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
+    private static final Logger log = LoggerFactory.getLogger(ItemDetailController.class);
     private User currentUser;
 
     private final String DEFAULT_IMAGEURL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
@@ -106,22 +108,14 @@ public class ItemDetailController{
         priceUpdateListener = evt -> {
             @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) evt.getNewValue();
-            
             String auctionId = (String) data.get("auctionId");
             // Only update the UI if the event belongs to the currently viewed auction
             if (this.currentAuctionId != null && this.currentAuctionId.equals(auctionId)) {
                 long newPrice = ((Number) data.get("newPrice")).longValue();
                 String winnerName = (String) data.get("winnerName");
-                String newEndTimeStr = (String) data.get("newEndTime");
-                if (newEndTimeStr != null) {
-                    long newEndTimeMillis = LocalDateTime.parse(newEndTimeStr)
-                            .atZone(ZoneId.systemDefault())
-                            .toInstant()
-                            .toEpochMilli();
-
-                    endTimeMillis = newEndTimeMillis;
-                    lblTimeLeft.start(newEndTimeMillis);
-                }
+                long newEndTimeStr = ((Number) data.get("newEndTime")).longValue();
+                endTimeMillis = newEndTimeStr;
+                lblTimeLeft.start(endTimeMillis);
                 // Ensure UI modifications happen on the JavaFX Application Thread
                 Platform.runLater(() -> {
                     updateRealTimePrice(newPrice, winnerName);
@@ -238,7 +232,7 @@ public class ItemDetailController{
         lblLeader.setText(winnerName);
 
         // Add a new dynamic node to the line chart
-        addPointToChart(newPrice, LocalDateTime.now());
+        addPointToChart(newPrice, Convert.longToTimestamp(System.currentTimeMillis()));
 
         // Add an engaging visual highlight effect to the price label
         gui.process.AnimateEffect.highlightText(lblCurrentPrice);
