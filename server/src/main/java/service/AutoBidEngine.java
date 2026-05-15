@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,9 +30,8 @@ public class AutoBidEngine {
      */
     private static final int MAX_BOTPOOL_SIZE = 50;
     private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
+
     private static final ConcurrentHashMap<String, AtomicBoolean> activeScans = new ConcurrentHashMap<>();
-
-
 
     /**
      * Controller used to handle the actual bid placement and wallet transactions.
@@ -186,8 +184,16 @@ public class AutoBidEngine {
                     continue;
                 }
             } catch (Exception ex) {
-                log.error("Bot Engine execution failed: {}", ex.getMessage());
-                break; // Thoát vòng lặp ngay lập tức nếu gặp lỗi hệ thống nghiêm trọng
+                log.error("Bot Engine execution failed for user {}: {}", winnerBot.getBidder().getUserName(), ex.getMessage());
+
+                // [ARCHITECT FIX]: Xử lý triệt để Rủi ro "Chết luồng" (Thread Starvation)
+                // 1. Phải xóa bot gây Exception khỏi hàng đợi RAM để tránh kẹt lại gây Infinite Loop
+                synchronized (botQueue) {
+                    botQueue.removeIf(b -> b.getBidder().getId().equals(winnerBot.getBidder().getId()));
+                }
+
+                // 2. Tiếp tục đánh giá các bot hợp lệ khác thay vì đứt gánh giữa chừng
+                continue;
             }
         }
     }
