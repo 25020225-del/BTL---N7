@@ -145,9 +145,23 @@ public class ServerSellerController {
             return false;
         }
 
+        // [ARCHITECT FIX]: Lớp phòng thủ State Machine
+        // Nghiêm cấm Seller tự ý xóa phiên đang diễn ra, đã kết thúc hoặc đã thanh toán.
+        String status = auction.getStatus();
+        if (!status.equals(Auction.STATUS_PENDING) && !status.equals(Auction.STATUS_CANCELED)) {
+            log.warn("Delete denied: Cannot delete auction {} in status {}", auction.getId(), status);
+            return false;
+        }
+
         try {
             if (auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_DELETED)) {
-                auction.setStatus(Auction.STATUS_DELETED);
+
+                // Đồng bộ thay đổi trạng thái lên RAM và gỡ bỏ phiên khỏi Monitor (nếu vô tình có trong đó)
+                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                    auction.setStatus(Auction.STATUS_DELETED);
+                }
+                AuctionManager.getAuctionList().remove(auction);
+
                 log.info("Auction {} deleted by {}", auction.getId(), currentUser.getName());
                 return true;
             }
