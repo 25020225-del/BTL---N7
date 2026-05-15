@@ -17,7 +17,8 @@ public class AuctionEventBus {
     public static final String GENERAL_SUCCESS = "GENERAL_SUCCESS";
 
     public static final String BID_SUCCESS             = "BID_SUCCESS";
-    public static final String FETCH_AUCTIONS_SUCCESS  = "FETCH_AUCTIONS_SUCCESS";
+    public static final String FETCH_AUCTIONS_SUCCESS  = "FETCH_AUCTIONS_SUCCESS";;
+    public static final String FETCH_TRANSACTIONS_SUCCESS  = "FETCH_TRANSACTIONS_SUCCESS";
     public static final String FETCH_USERS_SUCCESS     = "FETCH_USERS_SUCCESS";
     public static final String ADMIN_ACTION_SUCCESS    = "ADMIN_ACTION_SUCCESS";
     public static final String FETCH_WALLET_SUCCESS    = "FETCH_WALLET_SUCCESS";

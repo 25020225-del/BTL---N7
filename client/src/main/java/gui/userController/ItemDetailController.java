@@ -25,6 +25,7 @@ import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import model.auction.Auction;
 import model.user.User;
+import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,8 +128,12 @@ public class ItemDetailController{
                 });
             }
         };
-
         AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+        AuctionEventBus.addListener(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS, evt -> {
+            NetworkMessage response =  (NetworkMessage) evt.getNewValue();
+            List<Map<String, Object>> responseData = (List<Map<String, Object>>) response.getData();
+            setTransActionHistoryData(responseData);
+        });
     }
 
     /**
@@ -137,11 +142,12 @@ public class ItemDetailController{
     public void dispose() {
         if (priceUpdateListener != null) {
             AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+            AuctionEventBus.removeAllListeners(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS);
         }
         if (timeline != null) {
             timeline.stop();
         }
-        System.out.println("[System]: Item Detail Controller Disposed.");
+        log.info("[system]: Item Detail View Disposed.");
     }
 
     /**
