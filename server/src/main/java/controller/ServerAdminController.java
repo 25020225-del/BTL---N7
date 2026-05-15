@@ -5,6 +5,7 @@ import model.user.Admin;
 import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.ServerExtension.ClientManager;
 
 /**
  * Controller responsible for handling administrative actions on the server side.
@@ -34,6 +35,10 @@ public class ServerAdminController {
                 boolean success = userDAO.updateUserBlockStatus(userId, true);
                 if (success) {
                     log.info("Admin {} blocked user {}", admin.getUserName(), userId);
+
+                    // [ARCHITECT FIX]: Ép ngắt kết nối WebSocket ngay lập tức (Xóa Zombie Session)
+                    ClientManager.kickTargetById(userId, "Tài khoản của bạn đã bị khóa bởi Quản trị viên.");
+
                     return true;
                 }
             } catch (Exception e) {
@@ -67,10 +72,6 @@ public class ServerAdminController {
 
     /**
      * Approves a pending auction request, transitioning its status to OPEN.
-     *
-     * @param admin   The administrator performing the action.
-     * @param auction The auction session to be approved.
-     * @return {@code true} if the approval was successful; {@code false} if the user lacks permissions.
      */
     public boolean approveAuction(Admin admin, Auction auction) {
         if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
@@ -96,10 +97,6 @@ public class ServerAdminController {
 
     /**
      * Verifies a user as a trusted/reputable seller.
-     * Trusted users may have fewer restrictions when creating future auctions.
-     *
-     * @param admin The administrator performing the verification.
-     * @param user  The target user to be marked as verified.
      */
     public void verifySeller(Admin admin, User user) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
@@ -115,9 +112,6 @@ public class ServerAdminController {
 
     /**
      * Rejects a pending auction request, setting its status to CANCELED.
-     *
-     * @param admin   The administrator performing the action.
-     * @param auction The auction session to be rejected.
      */
     public void rejectAuctionRequest(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
@@ -135,10 +129,6 @@ public class ServerAdminController {
 
     /**
      * Forcibly and permanently deletes an auction session from the active system.
-     * This transitions the auction status to DELETED.
-     *
-     * @param admin   The administrator performing the action.
-     * @param auction The auction session to be forcibly removed.
      */
     public void forceDeleteAuction(Admin admin, Auction auction) {
         if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
