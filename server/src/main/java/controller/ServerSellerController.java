@@ -90,12 +90,19 @@ public class ServerSellerController {
             return false;
         }
 
-        String newStatus = auction.getStatus().equals(Auction.STATUS_CANCELED)
-                ? Auction.STATUS_PENDING
-                : auction.getStatus();
+        // [ARCHITECT FIX]: Vá lỗ hổng Bypass quy trình duyệt của Admin
+        // Nếu phiên đấu giá đã được duyệt (OPEN) hoặc bị từ chối (CANCELED),
+        // khi Seller chỉnh sửa thông tin, bắt buộc phải giáng cấp về PENDING_APPROVAL/PENDING để Admin duyệt lại từ đầu.
+        String currentStatus = auction.getStatus();
+        String newStatus = currentStatus;
+
+        if (currentStatus.equals(Auction.STATUS_CANCELED) || currentStatus.equals(Auction.STATUS_OPEN)) {
+            newStatus = Auction.STATUS_PENDING;
+        }
 
         try {
             if (auctionDAO.updateAuction(auction, newName, newDesc, newStartPrice, newStartTime, newEndTime, newStatus)) {
+                // Đồng bộ hóa dữ liệu trên RAM
                 synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                     auction.getItem().setItemName(newName);
                     auction.getItem().setDescription(newDesc);
@@ -106,7 +113,15 @@ public class ServerSellerController {
                     auction.setStatus(newStatus);
                 }
 
-                log.info("Auction {} updated successfully", auction.getId());
+                // [ARCHITECT FIX]: Xóa khỏi RAM Monitor nếu phiên bị giáng cấp từ OPEN xuống PENDING
+                // Tránh việc AuctionMonitor (chạy ngầm) vô tình kích hoạt phiên này khi đến giờ.
+                if (currentStatus.equals(Auction.STATUS_OPEN) && newStatus.equals(Auction.STATUS_PENDING)) {
+                    AuctionManager.getAuctionList().remove(auction);
+                    log.info("Auction {} was OPEN but got edited by Seller. Demoted to PENDING and removed from RAM Monitor.", auction.getId());
+                } else {
+                    log.info("Auction {} updated successfully", auction.getId());
+                }
+
                 return true;
             }
         } catch (SQLException e) {
