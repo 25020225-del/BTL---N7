@@ -254,7 +254,8 @@ public class AuctionDAO {
 
         // 1. Find auctions that should have ended but are still in RUNNING/OPEN status
         String selectSql = "SELECT * FROM auctions WHERE (status = 'RUNNING' OR status = 'OPEN') AND end_time < ?";
-        String updateSql = "UPDATE auctions SET status = ? WHERE id = ?";
+        // [ARCHITECT FIX]: Tuân thủ State Machine: RUNNING/OPEN phải về FINISHED (Không nhảy cóc)
+        String updateSql = "UPDATE auctions SET status = ? WHERE id = ? AND (status = 'RUNNING' OR status = 'OPEN')";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement selectStmt = conn.prepareStatement(selectSql);
@@ -265,17 +266,12 @@ public class AuctionDAO {
                 while (rs.next()) {
                     String id = rs.getString("id");
                     long currentPrice = rs.getLong("current_price");
-                    long startPrice = rs.getLong("starting_price");
-                    String winningBidderId = rs.getString("winning_bidder_id");
 
-                    String newStatus = (winningBidderId != null && currentPrice >= startPrice) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
-
-                    updateStmt.setString(1, newStatus);
+                    updateStmt.setString(1, Auction.STATUS_FINISHED);
                     updateStmt.setString(2, id);
-                    updateStmt.executeUpdate();
 
-                    if (newStatus.equals(Auction.STATUS_PAID)) {
-                        // Create a minimal Auction object for financial settlement
+                    // Optimistic Locking: Nếu update thành công (chưa bị luồng khác hớt tay trên)
+                    if (updateStmt.executeUpdate() > 0) {
                         Auction auction = new Auction();
                         auction.setId(id);
                         auction.setCurrentPrice(currentPrice);
@@ -285,6 +281,7 @@ public class AuctionDAO {
                         seller.setId(rs.getString("seller_id"));
                         auction.setSeller(seller);
 
+                        String winningBidderId = rs.getString("winning_bidder_id");
                         if (winningBidderId != null) {
                             User winner = new User();
                             winner.setId(winningBidderId);
@@ -292,9 +289,8 @@ public class AuctionDAO {
                         }
 
                         finishedAuctions.add(auction);
+                        System.out.println("[System]: " + utils.ConsoleColors.BLUE + "Swept and closed orphaned database auction: " + utils.ConsoleColors.YELLOW + id + utils.ConsoleColors.RESET + " -> FINISHED");
                     }
-
-                    System.out.println("[System]: " + BLUE + "Swept and closed orphaned database auction: " + YELLOW + id + RESET + " -> " + newStatus);
                 }
             }
 
@@ -308,8 +304,9 @@ public class AuctionDAO {
                         String id = rs.getString("id");
                         updateStmt.setString(1, "RUNNING");
                         updateStmt.setString(2, id);
-                        updateStmt.executeUpdate();
-                        System.out.println("[System]: " + BLUE + "Swept and started orphaned database auction: " + YELLOW + id + RESET);
+                        if (updateStmt.executeUpdate() > 0) {
+                            System.out.println("[System]: " + utils.ConsoleColors.BLUE + "Swept and started orphaned database auction: " + utils.ConsoleColors.YELLOW + id + utils.ConsoleColors.RESET);
+                        }
                     }
                 }
             }
