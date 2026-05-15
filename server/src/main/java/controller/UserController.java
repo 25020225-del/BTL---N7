@@ -12,13 +12,9 @@ import service.TOTPService;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Controller responsible for managing user-related operations, including
  * authentication, account registration, and security configurations.
- * This class handles password hashing using BCrypt and coordinates the
- * integration of Time-based One-Time Password (TOTP) for 2FA.
  */
 public class UserController {
 
@@ -27,92 +23,66 @@ public class UserController {
     private final TOTPService totpService;
     private final UserDAO userDAO;
 
-    /**
-     * Constructs the controller with the necessary services and DAOs.
-     * This implementation follows the Dependency Injection pattern to facilitate
-     * easier testing and decoupling.
-     *
-     * @param userDAO     The DAO responsible for user-related database transactions.
-     * @param totpService The service responsible for 2FA/TOTP logic.
-     */
     public UserController(UserDAO userDAO, TOTPService totpService) {
         this.userDAO = userDAO;
         this.totpService = totpService;
     }
 
     /**
-     * Registers a new user in the system and initializes their digital wallet.
-     * This method is synchronized to prevent race conditions during username availability checks.
-     * It performs an atomic database transaction to ensure that a user is not created
-     * without a corresponding wallet.
-     *
-     * @param userName The unique username for the new account.
-     * @param password The raw password to be encrypted via BCrypt.
-     * @param name     The display name of the user.
-     * @param role     The requested system role (e.g., "USER", "BIDDER", "SELLER").
-     * @return A status string. On success, returns "SUCCESS" appended with the 2FA secret
-     * and QR URL. On failure, returns an error message.
+     * Xử lý luồng đăng ký tài khoản mới.
+     * Sử dụng cơ chế Catching SQLState/ErrorCode để chống Race Condition
+     * thay vì mô hình Check-then-Act, đồng thời giữ chuẩn đầu ra cho AuthHandler.
      */
     public String register(String userName, String password, String name, String role) {
-        // Security check: Prevent self-registration as an Administrator
-        if (role.equalsIgnoreCase("ADMIN")) {
-            return "[Error]: You are not allowed to register an Admin account yourself";
-        }
-
-        // Validate that the requested role is within allowed standard user parameters
-        if (!role.equalsIgnoreCase("BIDDER") && !role.equalsIgnoreCase("SELLER") && !role.equalsIgnoreCase("USER")) {
-            return "[Error]: Invalid role";
-        }
-
+        // Sử dụng try-with-resources để tự động đóng Connection sau khi dùng xong
         try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
 
-            try {
-                String newId = "U-" + System.currentTimeMillis();
-                String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
-                String secretKey = totpService.createSecretKey();
+            // 1. Hash mật khẩu trước khi lưu để bảo mật
+            String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
 
-                // 1. Attempt to create user and wallet directly.
-                // Unique constraint on 'username' will handle duplicates without a pre-check lock.
-                userDAO.createUserAndWallet(conn, newId, userName, hashedPassword, name, role, secretKey);
+            // 2. Tạo Secret Key cho hệ thống 2FA (TOTP)
+            String secretKey = totpService.createSecretKey();
 
-                conn.commit();
+            // 3. Khởi tạo ID người dùng duy nhất
+            String userId = "U-" + System.currentTimeMillis();
 
-                String qrUrl = totpService.getQRUrl(userName, secretKey);
-                log.info("User {} registered. 2FA enabled.", userName);
-                return "SUCCESS|" + secretKey + "|" + qrUrl;
+            // 4. Gọi DAO thực hiện Insert User và tạo Wallet
+            // KHÔNG GỌI isUsernameExists() ở đây để triệt tiêu hoàn toàn Race Condition.
+            userDAO.createUserAndWallet(conn, userId, userName, hashedPassword, name, role, secretKey);
 
-            } catch (SQLException e) {
-                conn.rollback();
-                // 2. Catch SQLite Unique Constraint error specifically for username
-                if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed: users.username")) {
-                    log.info("Registration failed: username {} already exists", userName);
-                    return "[Error]: Username \"" + userName + "\" already exists.";
-                }
-                throw e;
-            }
+            // 5. Trả về đúng định dạng mà AuthHandler mong đợi để build mã QR
+            String qrUrl = totpService.getQRUrl(userName, secretKey);
+            return "SUCCESS|" + secretKey + "|" + qrUrl;
 
         } catch (SQLException e) {
-            log.error("Database error during registration", e);
-            return "[Error]: Database connection failed. Please try again later.";
+            // --- ARCHITECT FIX: XỬ LÝ NGOẠI LỆ AN TOÀN TRỰC TIẾP TỪ DATABASE ---
+            // ErrorCode 19 là chuẩn của SQLITE_CONSTRAINT
+            // SQLState bắt đầu bằng "23" là chuẩn quốc tế cho Integrity Constraint Violation
+            boolean isUniqueConstraintViolated = (e.getErrorCode() == 19) ||
+                    (e.getSQLState() != null && e.getSQLState().startsWith("23"));
+
+            if (isUniqueConstraintViolated) {
+                // Trả về lỗi thân thiện cho Client mà không làm sập luồng
+                return "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!";
+            }
+
+            // Ghi log lỗi hệ thống thực sự
+            log.error("Database error during registration: ", e);
+            return "Lỗi hệ thống máy chủ. Vui lòng thử lại sau!";
+        } catch (Exception e) {
+            log.error("Unexpected error during registration: ", e);
+            return "Dữ liệu đầu vào không hợp lệ!";
         }
     }
 
     /**
      * Authenticates a user based on their username and password.
-     *
-     * @param userName The username provided during login.
-     * @param password The plain-text password to be verified against the stored hash.
-     * @return A specific {@link User} subclass (User or Admin) if authentication succeeds;
-     * {@code null} otherwise.
      */
     public User login(String userName, String password) {
         try {
             User user = userDAO.findUserByUsername(userName);
-
             if (user != null && BCrypt.checkpw(password, user.getPassword())) {
                 log.info("User {} ({}) logged in.", user.getName(), user.getRole());
-
                 if (user.getRole().equalsIgnoreCase("ADMIN")) {
                     return new Admin(user.getId(), user.getUserName(), user.getPassword(), user.getName());
                 } else {
