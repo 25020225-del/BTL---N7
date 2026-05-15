@@ -1,5 +1,6 @@
 package gui.process;
 
+import client.network.NetworkService;
 import gui.MainApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ public class UIService {
         dummyData.put("durationMinutes", "60");
 
         log.debug("UIService: Sending CREATE_AUCTION for {}", testItemName);
-        MainApplication.networkClient.sendMessage("CREATE_AUCTION", dummyData);
+        NetworkService.sendMessage("CREATE_AUCTION", dummyData);
     }
 
     /**

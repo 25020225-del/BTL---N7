@@ -37,11 +37,22 @@ public class ResponseDispatcher {
         ClientPaymentHandler paymentHandler = new ClientPaymentHandler();
         handlers.put("PAYMENT_REDIRECT", paymentHandler);
         handlers.put("DEPOSIT_SUCCESS", paymentHandler);
+
+        ClientUserHandler userHandler = new ClientUserHandler();
+        handlers.put("FETCH_AUCTIONS_SUCCESS", userHandler);
+        handlers.put("FETCH_TRANSACTIONS_SUCCESS", userHandler);
+        handlers.put("NEW_AUCTION_ADDED", userHandler);
+        handlers.put("REMOVE_AUCTION", userHandler);
+        handlers.put("EDIT_SUCCESS", userHandler);
+        handlers.put("DELETE_SUCCESS", userHandler);
+        handlers.put("FETCH_WALLET_SUCCESS", userHandler);
     }
 
     public void dispatch(NetworkMessage message, NetworkClient client) {
         String command = message.getCommand();
         ResponseHandler handler = handlers.get(command);
+
+        System.out.println(command);
 
         if (handler != null) {
             try {

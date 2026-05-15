@@ -1,10 +1,13 @@
 package gui.userController;
 
+import client.handler.AuctionEventBus;
+import client.network.NetworkService;
 import gui.MainApplication;
 import gui.Transaction;
 import gui.process.AlertHelper;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.beans.property.LongProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -13,12 +16,13 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox; // Import đúng layout gốc
 import javafx.util.Duration;
+import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Map;
 
-import static gui.MainApplication.networkClient;
 
 /**
  * WalletController acts as both a Controller and a Custom Node (VBox).
@@ -27,6 +31,7 @@ public class WalletController extends VBox {
     private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
 
     private Runnable onReturnAction;
+
 
     @FXML private Label lblTotalBalance;
     @FXML private Label lblFrozenBalance;
@@ -66,12 +71,26 @@ public class WalletController extends VBox {
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colNote.setCellValueFactory(new PropertyValueFactory<>("note"));
 
+        AuctionEventBus.addListener("FETCH_WALLET_SUCCESS",event -> {
+            NetworkMessage response = (NetworkMessage) event.getNewValue();
+            Map<String,Object> map = (Map<String, Object>) response.getData();
+            long balance = Long.parseLong(map.get("balance").toString());
+            log.info("Get wallet balence success: {}", balance);
+            Platform.runLater(() -> {setWalletBalance(balance);});
+        });
+
         tableTransactions.setItems(transactionData);
         updateBalanceUI();
+        NetworkService.sendMessage("FETCH_WALLET","");
     }
 
     public void setOnReturnAction(Runnable action) {
         this.onReturnAction = action;
+    }
+
+    public void setWalletBalance(long balance){
+        currentBalance = balance;
+        lblTotalBalance.setText(String.valueOf(currentBalance)+" N VND");
     }
 
     @FXML
@@ -99,7 +118,7 @@ public class WalletController extends VBox {
         });
         pauseTransition.play();
 
-        networkClient.sendMessage("CREATE_DEPOSIT", amount);
+        NetworkService.sendMessage("CREATE_DEPOSIT", amount);
     }
 
     private void updateBalanceUI() {
