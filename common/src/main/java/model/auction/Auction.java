@@ -31,6 +31,9 @@ public class Auction extends Entity {
     public static final String STATUS_CANCELED = "CANCELED";
     public static final String STATUS_DELETED = "DELETED";
 
+    public static final long ANTI_SNIPING_THRESHOLD_SECONDS = 60; // X: Gia hạn nếu bid trong 60 giây cuối
+    public static final long ANTI_SNIPING_EXTENSION_SECONDS = 120; // Y: Số giây được cộng thêm (2 phút)
+
     private Item item;
     private User seller;
 
@@ -272,9 +275,15 @@ public class Auction extends Entity {
             }
         }
 
-        // Anti-Sniping calculation
-        if (LocalDateTime.now().plusMinutes(1).isAfter(nextEndTime)) {
-            LocalDateTime proposedEndTime = nextEndTime.plusMinutes(2);
+        // --- CẬP NHẬT LOGIC ANTI-SNIPING (NÂNG CAO) ---
+        LocalDateTime now = LocalDateTime.now();
+        long secondsRemaining = java.time.Duration.between(now, nextEndTime).getSeconds();
+
+        // Nếu có bid mới trong X giây cuối, cập nhật newEndTime = endTime.plusSeconds(Y)
+        if (secondsRemaining > 0 && secondsRemaining <= ANTI_SNIPING_THRESHOLD_SECONDS) {
+            LocalDateTime proposedEndTime = nextEndTime.plusSeconds(ANTI_SNIPING_EXTENSION_SECONDS);
+
+            // Giữ lại lớp bảo vệ Hard-Cap (maxEndTime) chống lại việc spam bid kéo dài phiên vô tận
             if (proposedEndTime.isBefore(maxEndTime)) {
                 nextEndTime = proposedEndTime;
             } else {
