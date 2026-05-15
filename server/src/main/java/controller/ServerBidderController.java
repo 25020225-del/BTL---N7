@@ -42,10 +42,14 @@ public class ServerBidderController {
             BidDAO.BidCommitResult commitResult = null;
             String finalStatus = "CONFLICT";
 
-            // [ARCHITECT FIX]: CÁCH 2 - Kéo Khóa Đồng Bộ ra ngoài bao bọc toàn bộ Giao dịch DB
-            // Đảm bảo tại một thời điểm, chỉ có 1 thread được tương tác với SQLite cho phiên đấu giá này.
-            // Triệt tiêu hoàn toàn lỗi Deadlock SQLITE_BUSY và không bao giờ cạn kiệt Connection Pool.
+            // Kéo Khóa Đồng Bộ ra ngoài bao bọc toàn bộ Giao dịch DB để chống Deadlock
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+
+                // [ARCHITECT FIX]: LỚP PHÒNG THỦ 1 - Chặn ngay tại RAM
+                if (!Auction.STATUS_RUNNING.equals(auction.getStatus())) {
+                    log.warn("Bid rejected: Auction {} is currently in status {}", auction.getId(), auction.getStatus());
+                    return "NOT_RUNNING";
+                }
 
                 long expectedPrice = auction.getCurrentPrice();
                 long expectedMaxBid = auction.getHighestMaxBid();
@@ -64,7 +68,7 @@ public class ServerBidderController {
                             conn.commit();
                             finalStatus = "SUCCESS";
 
-                            // Cập nhật luôn RAM trong lúc đang giữ khóa để đảm bảo đồng bộ 100%
+                            // Cập nhật luôn RAM trong lúc đang giữ khóa
                             if (auction.getCurrentPrice() <= (long) commitResult.newCurrentPrice) {
                                 User winner = null;
                                 if (commitResult.newWinnerId != null) {
@@ -80,7 +84,6 @@ public class ServerBidderController {
                                 auction.applyBidResult(currentUser, ramResult);
                             }
                         } else {
-                            // Nếu commitResult null, nghĩa là logic tính toán trong DAO từ chối bid này
                             conn.rollback();
                         }
                     } catch (BidDAO.InsufficientFundsException e) {
@@ -95,7 +98,7 @@ public class ServerBidderController {
                     finalStatus = "SQL_ERROR";
                     log.error("DB Connection Error: {}", e.getMessage());
                 }
-            } // Tới đây khóa RAM và Connection đều được tự động giải phóng sạch sẽ
+            }
 
             if ("SUCCESS".equals(finalStatus)) {
                 log.info("Successfully placed bid for user {}", currentUser.getName());
@@ -119,6 +122,11 @@ public class ServerBidderController {
                     AutoBidEngine.triggerBotScan(auction);
                 }
                 return true;
+            } else if ("NOT_RUNNING".equals(finalResult)) {
+                if (!isBot) {
+                    ClientManager.sendToUser(currentUser.getId(), "ERROR", "Phiên đấu giá này đã đóng, không thể đặt giá nữa!");
+                }
+                return false;
             } else if ("INSUFFICIENT_FUNDS".equals(finalResult)) {
                 if (!isBot) {
                     ClientManager.sendToUser(currentUser.getId(), "ERROR", "Số dư khả dụng không đủ để thực hiện đặt giá!");
