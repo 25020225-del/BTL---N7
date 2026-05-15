@@ -19,45 +19,20 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Controller responsible for handling bidding operations on the server side.
- * It manages manual bid placements, automated bidding configurations,
- * and ensures financial transactions (deductions and refunds) are executed
- * atomically and asynchronously.
  */
 public class ServerBidderController {
 
     private static final Logger log = LoggerFactory.getLogger(ServerBidderController.class);
-    private static final int PLACE_BID_MAX_RETRIES = 3;
-
     private final BidDAO bidDAO;
 
-    /**
-     * Constructs the controller with the necessary Data Access Objects.
-     * This implementation follows the Dependency Injection pattern to facilitate
-     * easier testing and decoupling.
-     *
-     * @param bidDAO The DAO responsible for bid-related database transactions.
-     */
     public ServerBidderController(BidDAO bidDAO) {
         this.bidDAO = bidDAO;
     }
 
-    /**
-     * Processes a bid placement attempt for a specific auction.
-     *
-     * @param currentUser The user attempting to place the bid.
-     * @param auction     The target auction session.
-     * @param newMaxBid   The maximum amount the user is offering.
-     * @param isBot       Indicates if the bid was placed by the {@link AutoBidEngine}.
-     * @return A {@link CompletableFuture} that resolves to {@code true} if the bid
-     * was successfully placed; {@code false} otherwise.
-     */
     public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, long newMaxBid, boolean isBot) {
 
-        // Prevent users from bidding on items they are selling
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             log.warn("Cannot bid on own auction: {}", currentUser.getId());
             return CompletableFuture.completedFuture(false);
@@ -65,19 +40,18 @@ public class ServerBidderController {
 
         Callable<String> bidTask = () -> {
             BidDAO.BidCommitResult commitResult = null;
+            String finalStatus = "CONFLICT";
 
-            for (int attempt = 0; attempt < PLACE_BID_MAX_RETRIES; attempt++) {
-                long expectedPrice;
-                long expectedMaxBid;
-                String expectedWinnerId;
+            // [ARCHITECT FIX]: CÁCH 2 - Kéo Khóa Đồng Bộ ra ngoài bao bọc toàn bộ Giao dịch DB
+            // Đảm bảo tại một thời điểm, chỉ có 1 thread được tương tác với SQLite cho phiên đấu giá này.
+            // Triệt tiêu hoàn toàn lỗi Deadlock SQLITE_BUSY và không bao giờ cạn kiệt Connection Pool.
+            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
 
-                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                    expectedPrice = auction.getCurrentPrice();
-                    expectedMaxBid = auction.getHighestMaxBid();
-                    expectedWinnerId = auction.getWinningBidder() != null
-                            ? auction.getWinningBidder().getId()
-                            : null;
-                }
+                long expectedPrice = auction.getCurrentPrice();
+                long expectedMaxBid = auction.getHighestMaxBid();
+                String expectedWinnerId = auction.getWinningBidder() != null
+                        ? auction.getWinningBidder().getId()
+                        : null;
 
                 try (Connection conn = DatabaseManager.getConnection()) {
                     conn.setAutoCommit(false);
@@ -88,51 +62,47 @@ public class ServerBidderController {
 
                         if (commitResult != null) {
                             conn.commit();
-                            break;
+                            finalStatus = "SUCCESS";
+
+                            // Cập nhật luôn RAM trong lúc đang giữ khóa để đảm bảo đồng bộ 100%
+                            if (auction.getCurrentPrice() <= (long) commitResult.newCurrentPrice) {
+                                User winner = null;
+                                if (commitResult.newWinnerId != null) {
+                                    winner = new User();
+                                    winner.setId(commitResult.newWinnerId);
+                                }
+                                Auction.BidResult ramResult = new Auction.BidResult(
+                                        winner,
+                                        (long) commitResult.newHighestMaxBid,
+                                        (long) commitResult.newCurrentPrice,
+                                        commitResult.newEndTime
+                                );
+                                auction.applyBidResult(currentUser, ramResult);
+                            }
+                        } else {
+                            // Nếu commitResult null, nghĩa là logic tính toán trong DAO từ chối bid này
+                            conn.rollback();
                         }
-                        conn.rollback();
-                        log.debug("Bid attempt {} optimistic conflict for user {}", attempt + 1, currentUser.getName());
                     } catch (BidDAO.InsufficientFundsException e) {
                         conn.rollback();
-                        return "INSUFFICIENT_FUNDS";
+                        finalStatus = "INSUFFICIENT_FUNDS";
                     } catch (SQLException e) {
                         conn.rollback();
-                        return "SQL_ERROR";
+                        finalStatus = "SQL_ERROR";
+                        log.error("SQL Error during bid: {}", e.getMessage());
                     }
                 } catch (SQLException e) {
-                    return "SQL_ERROR";
+                    finalStatus = "SQL_ERROR";
+                    log.error("DB Connection Error: {}", e.getMessage());
                 }
-            } // <-- FIX 1: Đã đóng ngoặc nhọn của vòng lặp for ở đây
+            } // Tới đây khóa RAM và Connection đều được tự động giải phóng sạch sẽ
 
-            // FIX 2: Trả về String thay vì boolean
-            if (commitResult == null) {
-                log.warn("Bid failed after {} retries (optimistic lock / validation): {}", PLACE_BID_MAX_RETRIES, currentUser.getName());
-                return "CONFLICT";
+            if ("SUCCESS".equals(finalStatus)) {
+                log.info("Successfully placed bid for user {}", currentUser.getName());
             }
-
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                // Guard: avoid overwriting a newer in-RAM state (another bid may have committed & synced first).
-                if (auction.getCurrentPrice() <= (long) commitResult.newCurrentPrice) {
-                    User winner = null;
-                    if (commitResult.newWinnerId != null) {
-                        winner = new User();
-                        winner.setId(commitResult.newWinnerId);
-                    }
-                    Auction.BidResult ramResult = new Auction.BidResult(
-                            winner,
-                            (long) commitResult.newHighestMaxBid,
-                            (long) commitResult.newCurrentPrice,
-                            commitResult.newEndTime
-                    );
-                    auction.applyBidResult(currentUser, ramResult);
-                }
-            }
-
-            log.info("Successfully placed bid for user {}", currentUser.getName());
-            return "SUCCESS";
+            return finalStatus;
         };
 
-        // FIX 3: Xử lý logic theo String finalResult trả về
         return TransactionManager.submitTask(bidTask).thenApply(finalResult -> {
             if ("SUCCESS".equals(finalResult)) {
                 Map<String, Object> updateData = new HashMap<>();
@@ -155,9 +125,8 @@ public class ServerBidderController {
                 }
                 return false;
             } else {
-                // Các lỗi còn lại (CONFLICT, SQL_ERROR)
                 if (!isBot) {
-                    ClientManager.sendToUser(currentUser.getId(), "ERROR", "Giá sản phẩm đã thay đổi bởi người dùng khác. Vui lòng cập nhật và thử lại!");
+                    ClientManager.sendToUser(currentUser.getId(), "ERROR", "Lỗi đặt giá hoặc giá trị đã thay đổi. Vui lòng thử lại!");
                 }
                 return false;
             }
@@ -167,11 +136,7 @@ public class ServerBidderController {
         });
     }
 
-    /**
-     * Registers an automated bidding configuration (bot) for a user asynchronously.
-     */
     public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, long maxBid, long increment) {
-
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             log.warn("Cannot set auto-bid on own auction");
             return CompletableFuture.completedFuture(false);
@@ -179,8 +144,6 @@ public class ServerBidderController {
 
         Callable<Boolean> saveAutoBidTask = () -> {
             boolean isDbSaved = false;
-
-            // 1. TƯƠNG TÁC DATABASE (Không giữ khóa RAM ở đây để chống Deadlock)
             try {
                 isDbSaved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
             } catch (SQLException e) {
@@ -188,7 +151,6 @@ public class ServerBidderController {
                 return false;
             }
 
-            // 2. ĐỒNG BỘ RAM CHỚP NHOÁNG (Chỉ thực hiện nếu DB đã commit thành công)
             if (isDbSaved) {
                 synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                     boolean ramSuccess = auction.registerAutoBid(currentUser, maxBid, increment);

@@ -129,7 +129,6 @@ public class AutoBidEngine {
         if (top2 != null) {
             // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
             finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
-
             final long top2MaxBid = top2.getMaxBid();
             final String top1Id = top1.getBidder().getId();
 
@@ -163,7 +162,8 @@ public class AutoBidEngine {
         log.info("Bot of {} mathematically won. Submitting transaction.", winnerBot.getBidder().getUserName());
 
         // 6. Submit exactly ONE task to the Database
-        bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, finalPrice, true)
+        // [FIXED]: Truyền đúng winnerBot.getMaxBid() thay vì finalPrice để hệ thống giữ nguyên mức trần của ví tiền
+        bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, winnerBot.getMaxBid(), true)
                 .thenAccept(success -> {
                     if (!success) {
                         log.info("Bot of {} failed (insufficient balance). Removing configuration.", winnerBot.getBidder().getUserName());

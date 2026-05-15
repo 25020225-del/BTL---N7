@@ -86,15 +86,12 @@ public class BidDAO {
             boolean isBot
     ) throws SQLException {
 
-        String selectSql = "SELECT starting_price, current_price, highest_max_bid, bid_increment, end_time, status, winning_bidder_id " +
+        // FIX 1: Lấy thêm seller_id và start_time để tránh NullPointerException
+        String selectSql = "SELECT starting_price, current_price, highest_max_bid, bid_increment, start_time, end_time, status, winning_bidder_id, seller_id " +
                 "FROM auctions WHERE id = ?";
-        long startingPrice;
-        long currentPrice;
-        long highestMaxBid;
-        long bidIncrement;
-        LocalDateTime endTime;
-        String status;
-        String winningBidderId;
+        long startingPrice, currentPrice, highestMaxBid, bidIncrement;
+        LocalDateTime startTime, endTime;
+        String status, winningBidderId, sellerId;
 
         try (PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
             selectStmt.setString(1, auctionId);
@@ -104,19 +101,29 @@ public class BidDAO {
                 currentPrice = rs.getLong("current_price");
                 highestMaxBid = rs.getLong("highest_max_bid");
                 bidIncrement = rs.getLong("bid_increment");
+                startTime = LocalDateTime.parse(rs.getString("start_time"));
                 endTime = LocalDateTime.parse(rs.getString("end_time"));
                 status = rs.getString("status");
                 winningBidderId = rs.getString("winning_bidder_id");
+                sellerId = rs.getString("seller_id");
             }
         }
 
         Auction auctionSnapshot = new Auction();
+        auctionSnapshot.setId(auctionId); // Cấp ID
+
         Item item = new Item();
         item.setStartingPrice(startingPrice);
         auctionSnapshot.setItem(item);
+
+        User seller = new User();
+        seller.setId(sellerId);
+        auctionSnapshot.setSeller(seller); // Cấp Seller để chống NPE
+
         auctionSnapshot.setCurrentPrice(currentPrice);
         auctionSnapshot.setHighestMaxBid(highestMaxBid);
         auctionSnapshot.setBidIncrement(bidIncrement);
+        auctionSnapshot.setStartTime(startTime); // Cấp Start Time
         auctionSnapshot.setEndTime(endTime);
         auctionSnapshot.setStatus(status);
         auctionSnapshot.setMaxEndTime(endTime.plusMinutes(30));
@@ -141,7 +148,6 @@ public class BidDAO {
 
         // STEP 1: Handle wallet transactions
         String now = LocalDateTime.now().toString();
-
         if (result.newWinner != null && result.newWinner.getId().equals(currentUser.getId())) {
             if (previousWinner != null && previousWinner.getId().equals(currentUser.getId())) {
                 long amountToDeduct = newMaxBid - previousHighestMaxBid;
@@ -155,7 +161,6 @@ public class BidDAO {
                 }
             } else {
                 if (previousWinner != null) {
-                    // THAY ĐỔI 2: Dựa vào Lịch sử thực tế để Unlock thay vì trạng thái Bot hiện tại
                     if (!wasPreviousWinnerBot) {
                         walletDAO.unlockBalance(conn, previousWinner.getId(), previousHighestMaxBid);
                         walletDAO.addTransaction(conn, "W-UNL-" + java.util.UUID.randomUUID().toString(), previousWinner.getId(), previousHighestMaxBid, "Unlock funds (outbid) in session: " + auctionId, now);
@@ -171,7 +176,7 @@ public class BidDAO {
             }
         }
 
-        // STEP 2: Record the bid history with is_bot flag
+        // STEP 2: Record the bid history
         String bidLogSql = "INSERT INTO bid_transactions (id, auction_id, bidder_id, bid_amount, bid_time, is_bot) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(bidLogSql)) {
             pstmt.setString(1, "BID-" + java.util.UUID.randomUUID().toString());
@@ -185,7 +190,7 @@ public class BidDAO {
 
         // STEP 3: Update auction with optimistic locking
         final String updateAuctionSql;
-        if (expectedWinnerId == null) {
+        if (winningBidderId == null) {
             updateAuctionSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ? " +
                     "WHERE id = ? AND current_price = ? AND highest_max_bid = ? AND winning_bidder_id IS NULL";
         } else {
@@ -199,10 +204,13 @@ public class BidDAO {
             pstmt.setString(3, result.newWinner != null ? result.newWinner.getId() : null);
             pstmt.setLong(4, result.newHighestMaxBid);
             pstmt.setString(5, auctionId);
-            pstmt.setLong(6, expectedPrice);
-            pstmt.setLong(7, expectedMaxBid);
-            if (expectedWinnerId != null) {
-                pstmt.setString(8, expectedWinnerId);
+
+            // FIX 2: Dùng trạng thái vừa đọc từ DB làm mỏ neo
+            pstmt.setLong(6, currentPrice);
+            pstmt.setLong(7, highestMaxBid);
+
+            if (winningBidderId != null) {
+                pstmt.setString(8, winningBidderId);
             }
 
             if (pstmt.executeUpdate() == 0) {

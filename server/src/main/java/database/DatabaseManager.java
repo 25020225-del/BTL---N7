@@ -92,9 +92,7 @@ public class DatabaseManager {
             // Migration: Add is_blocked column to users if it doesn't exist
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN is_blocked INTEGER DEFAULT 0;");
-            } catch (SQLException e) {
-                // Column likely already exists
-            }
+            } catch (SQLException ignored) {}
 
             // --- FINANCIAL SCHEMA ---
             String createWalletsTable = "CREATE TABLE IF NOT EXISTS wallets (" +
@@ -115,35 +113,35 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createWalletTxnTable);
 
-            // LEGACY MIGRATION: Safely add TOTP columns if they are missing from older versions
+            // [ARCHITECT FIX]: Tách riêng từng khối try-catch cho mỗi cột cần migrate
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
+            } catch (SQLException ignored) {}
+
+            try {
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
+            } catch (SQLException ignored) {}
+
+            try {
                 stmt.execute("ALTER TABLE wallets ADD COLUMN locked_balance REAL DEFAULT 0.0;");
-                log.info("Successfully upgraded user table");
-            } catch (SQLException ignored) {
-                // Columns already exist
-            }
+            } catch (SQLException ignored) {}
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;");
-            } catch (SQLException ignored) {
-            }
+            } catch (SQLException ignored) {}
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN winning_bidder_id TEXT;");
-            } catch (SQLException ignored) {
-            }
+            } catch (SQLException ignored) {}
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN highest_max_bid REAL DEFAULT 0.0;");
-            } catch (SQLException ignored) {
-            }
+            } catch (SQLException ignored) {}
 
-            log.info("Successfully upgraded auctions table");
+            log.info("Successfully upgraded database schemas");
 
             // SEED DATA: Insert default admin user if not present
-            String adminPass = BCrypt.hashpw("123456", BCrypt.gensalt(12));
+            String adminPass = org.mindrot.jbcrypt.BCrypt.hashpw("123456", org.mindrot.jbcrypt.BCrypt.gensalt(12));
             String insertAdmin = "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good, is_totp_enabled) " +
                     "VALUES ('A001', 'admin', '" + adminPass + "', 'Super Admin', 'ADMIN', 1, 0);";
             stmt.execute(insertAdmin);
@@ -179,12 +177,10 @@ public class DatabaseManager {
                     "FOREIGN KEY (bidder_id) REFERENCES users(id)" +
                     ");";
             stmt.execute(createBidTransactionsTable);
+
             try {
                 stmt.execute("ALTER TABLE bid_transactions ADD COLUMN is_bot INTEGER DEFAULT 0;");
-                log.info("Successfully added is_bot column to bid_transactions");
-            } catch (SQLException ignored) {
-                // Cột đã tồn tại, bỏ qua an toàn
-            }
+            } catch (SQLException ignored) {}
 
             String createAutoBidsTable = "CREATE TABLE IF NOT EXISTS auto_bids (" +
                     "id TEXT PRIMARY KEY, " +
