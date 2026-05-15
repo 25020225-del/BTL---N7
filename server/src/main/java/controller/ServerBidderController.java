@@ -42,33 +42,39 @@ public class ServerBidderController {
             BidDAO.BidCommitResult commitResult = null;
             String finalStatus = "CONFLICT";
 
-            // Kéo Khóa Đồng Bộ ra ngoài bao bọc toàn bộ Giao dịch DB để chống Deadlock
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+            long expectedPrice;
+            long expectedMaxBid;
+            String expectedWinnerId;
 
-                // [ARCHITECT FIX]: LỚP PHÒNG THỦ 1 - Chặn ngay tại RAM
+            // [ARCHITECT FIX]: 1. THU HẸP PHẠM VI LOCK - FAST FAIL
+            // Chỉ giữ Lock siêu ngắn để kiểm tra trạng thái RAM và lấy Snapshot dữ liệu.
+            // Giải phóng Lock ngay lập tức để không cản trở các Request đọc khác.
+            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                 if (!Auction.STATUS_RUNNING.equals(auction.getStatus())) {
                     log.warn("Bid rejected: Auction {} is currently in status {}", auction.getId(), auction.getStatus());
                     return "NOT_RUNNING";
                 }
+                expectedPrice = auction.getCurrentPrice();
+                expectedMaxBid = auction.getHighestMaxBid();
+                expectedWinnerId = auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : null;
+            }
 
-                long expectedPrice = auction.getCurrentPrice();
-                long expectedMaxBid = auction.getHighestMaxBid();
-                String expectedWinnerId = auction.getWinningBidder() != null
-                        ? auction.getWinningBidder().getId()
-                        : null;
+            // [ARCHITECT FIX]: 2. GIAO DỊCH DATABASE ĐỘC LẬP
+            // Không giữ RAM Lock ở khu vực này. Optimistic Locking của BidDAO sẽ tự lo việc tranh chấp.
+            try (Connection conn = DatabaseManager.getConnection()) {
+                conn.setAutoCommit(false);
+                try {
+                    commitResult = bidDAO.executeBidTransactionSourceOfTruth(
+                            conn, auction.getId(), currentUser, newMaxBid, expectedPrice, expectedMaxBid, expectedWinnerId, isBot
+                    );
 
-                try (Connection conn = DatabaseManager.getConnection()) {
-                    conn.setAutoCommit(false);
-                    try {
-                        commitResult = bidDAO.executeBidTransactionSourceOfTruth(
-                                conn, auction.getId(), currentUser, newMaxBid, expectedPrice, expectedMaxBid, expectedWinnerId, isBot
-                        );
+                    if (commitResult != null) {
+                        conn.commit();
+                        finalStatus = "SUCCESS";
 
-                        if (commitResult != null) {
-                            conn.commit();
-                            finalStatus = "SUCCESS";
-
-                            // Cập nhật luôn RAM trong lúc đang giữ khóa
+                        // [ARCHITECT FIX]: 3. CẬP NHẬT RAM SAU KHI DB ĐÃ COMMIT THÀNH CÔNG
+                        // Lúc này mới xin lại Lock để đồng bộ RAM với Source of Truth (Database).
+                        synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                             if (auction.getCurrentPrice() <= (long) commitResult.newCurrentPrice) {
                                 User winner = null;
                                 if (commitResult.newWinnerId != null) {
@@ -83,21 +89,21 @@ public class ServerBidderController {
                                 );
                                 auction.applyBidResult(currentUser, ramResult);
                             }
-                        } else {
-                            conn.rollback();
                         }
-                    } catch (BidDAO.InsufficientFundsException e) {
+                    } else {
                         conn.rollback();
-                        finalStatus = "INSUFFICIENT_FUNDS";
-                    } catch (SQLException e) {
-                        conn.rollback();
-                        finalStatus = "SQL_ERROR";
-                        log.error("SQL Error during bid: {}", e.getMessage());
                     }
+                } catch (BidDAO.InsufficientFundsException e) {
+                    conn.rollback();
+                    finalStatus = "INSUFFICIENT_FUNDS";
                 } catch (SQLException e) {
+                    conn.rollback();
                     finalStatus = "SQL_ERROR";
-                    log.error("DB Connection Error: {}", e.getMessage());
+                    log.error("SQL Error during bid: {}", e.getMessage());
                 }
+            } catch (SQLException e) {
+                finalStatus = "SQL_ERROR";
+                log.error("DB Connection Error: {}", e.getMessage());
             }
 
             if ("SUCCESS".equals(finalStatus)) {
@@ -153,6 +159,7 @@ public class ServerBidderController {
         Callable<Boolean> saveAutoBidTask = () -> {
             boolean isDbSaved = false;
             try {
+                // Thao tác DB nằm ngoài RAM Lock (rất chuẩn xác)
                 isDbSaved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
             } catch (SQLException e) {
                 log.error("Failed to save auto-bid config to DB: {}", e.getMessage());
