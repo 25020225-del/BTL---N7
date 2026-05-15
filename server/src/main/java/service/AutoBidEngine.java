@@ -74,6 +74,7 @@ public class AutoBidEngine {
     /**
      * Mathematically evaluates the bot queue in RAM to determine the final winner
      * and submits exactly ONE database transaction to prevent queue congestion.
+     * Evaluates iteratively to avoid runaway asynchronous chaining.
      *
      * @param auction The active auction session being processed.
      */
@@ -84,103 +85,110 @@ public class AutoBidEngine {
 
         // Lấy tham chiếu của hàng đợi bots hiện tại
         java.util.Queue<AutoBid> botQueue = auction.getActiveAutoBids();
-        List<AutoBid> bots;
 
-        // 1. KHÓA HÀNG ĐỢI KHI ĐỌC/COPY ĐỂ TRÁNH ConcurrentModificationException
-        synchronized (botQueue) {
-            if (botQueue.isEmpty()) return;
-            bots = new ArrayList<>(botQueue);
-        }
+        // [ARCHITECT FIX]: Sử dụng while(true) thay cho đệ quy bất đồng bộ
+        while (true) {
+            List<AutoBid> bots;
 
-        // 2. Sort bots: Highest maxBid first. If maxBid is tied, earlier registration time wins.
-        bots.sort((b1, b2) -> {
-            int maxBidCompare = Long.compare(b2.getMaxBid(), b1.getMaxBid());
-            if (maxBidCompare != 0) return maxBidCompare;
-            return b1.getTimeRegistered().compareTo(b2.getTimeRegistered());
-        });
+            // 1. KHÓA HÀNG ĐỢI KHI ĐỌC/COPY ĐỂ TRÁNH ConcurrentModificationException
+            synchronized (botQueue) {
+                if (botQueue.isEmpty()) return;
+                bots = new ArrayList<>(botQueue);
+            }
 
-        AutoBid top1 = null;
-        AutoBid top2 = null;
+            // 2. Sort bots: Highest maxBid first. If maxBid is tied, earlier registration time wins.
+            bots.sort((b1, b2) -> {
+                int maxBidCompare = Long.compare(b2.getMaxBid(), b1.getMaxBid());
+                if (maxBidCompare != 0) return maxBidCompare;
+                return b1.getTimeRegistered().compareTo(b2.getTimeRegistered());
+            });
 
-        // 3. Find the top 2 bots capable of bidding
-        for (AutoBid bot : bots) {
-            long actualIncrement = Math.max(auction.getBidIncrement(), bot.getIncrement());
-            long requiredBid = (auction.getWinningBidder() == null) ?
-                    auction.getItem().getStartingPrice() :
-                    auction.getCurrentPrice() + actualIncrement;
+            AutoBid top1 = null;
+            AutoBid top2 = null;
 
-            if (bot.getMaxBid() >= requiredBid ||
-                    (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(bot.getBidder().getId()) && bot.getMaxBid() > auction.getCurrentPrice())) {
-                if (top1 == null) {
-                    top1 = bot;
-                } else if (top2 == null) {
-                    top2 = bot;
-                    break; // We only need the top 2 bots for the math fight
+            // 3. Find the top 2 bots capable of bidding
+            for (AutoBid bot : bots) {
+                long actualIncrement = Math.max(auction.getBidIncrement(), bot.getIncrement());
+                long requiredBid = (auction.getWinningBidder() == null) ?
+                        auction.getItem().getStartingPrice() :
+                        auction.getCurrentPrice() + actualIncrement;
+
+                if (bot.getMaxBid() >= requiredBid ||
+                        (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(bot.getBidder().getId()) && bot.getMaxBid() > auction.getCurrentPrice())) {
+                    if (top1 == null) {
+                        top1 = bot;
+                    } else if (top2 == null) {
+                        top2 = bot;
+                        break; // We only need the top 2 bots for the math fight
+                    }
                 }
             }
-        }
 
-        if (top1 == null) return; // No capable bot found
+            // Thoát vòng lặp nếu không còn bot nào đủ khả năng đặt giá
+            if (top1 == null) break;
 
-        // 4. Calculate the final winning price mathematically
-        long finalPrice;
-        long top1ActualIncrement = Math.max(auction.getBidIncrement(), top1.getIncrement());
+            // 4. Calculate the final winning price mathematically
+            long finalPrice;
+            long top1ActualIncrement = Math.max(auction.getBidIncrement(), top1.getIncrement());
 
-        if (top2 != null) {
-            // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
-            finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
-            final long top2MaxBid = top2.getMaxBid();
-            final String top1Id = top1.getBidder().getId();
+            if (top2 != null) {
+                // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
+                finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
+                final long top2MaxBid = top2.getMaxBid();
+                final String top1Id = top1.getBidder().getId();
 
-            // 5A. KHÓA HÀNG ĐỢI KHI XÓA PHẦN TỬ THUA CUỘC
-            synchronized (botQueue) {
-                botQueue.removeIf(b ->
-                        b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
-                );
+                // 5A. KHÓA HÀNG ĐỢI KHI XÓA PHẦN TỬ THUA CUỘC
+                synchronized (botQueue) {
+                    botQueue.removeIf(b ->
+                            b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
+                    );
+                }
+            } else {
+                // Only top1 is capable of bidding
+                finalPrice = (auction.getWinningBidder() == null) ?
+                        auction.getItem().getStartingPrice() :
+                        auction.getCurrentPrice() + top1ActualIncrement;
             }
-        } else {
-            // Only top1 is capable of bidding
-            finalPrice = (auction.getWinningBidder() == null) ?
+
+            // Ensure final price is at least the minimum required to take the lead
+            long minRequired = (auction.getWinningBidder() == null) ?
                     auction.getItem().getStartingPrice() :
                     auction.getCurrentPrice() + top1ActualIncrement;
-        }
+            finalPrice = Math.max(finalPrice, minRequired);
 
-        // Ensure final price is at least the minimum required to take the lead
-        long minRequired = (auction.getWinningBidder() == null) ?
-                auction.getItem().getStartingPrice() :
-                auction.getCurrentPrice() + top1ActualIncrement;
-        finalPrice = Math.max(finalPrice, minRequired);
+            // Check if top1 is already winning and the price hasn't been pushed up
+            if (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(top1.getBidder().getId())) {
+                if (finalPrice <= auction.getCurrentPrice()) {
+                    break; // Đang giữ top 1 ở mức giá an toàn, ngừng đánh giá
+                }
+            }
 
-        // Check if top1 is already winning and the price hasn't been pushed up
-        if (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(top1.getBidder().getId())) {
-            if (finalPrice <= auction.getCurrentPrice()) {
-                return; // Already winning at a sufficient price
+            final AutoBid winnerBot = top1;
+            log.info("Bot of {} mathematically won. Submitting transaction.", winnerBot.getBidder().getUserName());
+
+            // 6. Submit exactly ONE task to the Database và ĐỢI kết quả (Synchronous inside Worker Thread)
+            try {
+                // Lệnh .get() sẽ block botPool thread này cho đến khi TransactionManager xử lý xong trên DB
+                boolean success = bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, winnerBot.getMaxBid(), true).get();
+
+                if (success) {
+                    break; // Giao dịch DB thành công, vòng lặp hoàn thành.
+                } else {
+                    log.info("Bot of {} failed (insufficient balance). Removing configuration.", winnerBot.getBidder().getUserName());
+
+                    // 5B. KHÓA HÀNG ĐỢI KHI XÓA BOT BỊ LỖI THANH TOÁN
+                    synchronized (botQueue) {
+                        botQueue.removeIf(b ->
+                                b.getBidder().getId().equals(winnerBot.getBidder().getId())
+                        );
+                    }
+                    // Continue vòng lặp while(true) để ngay lập tức quay lại bước 1 đánh giá bot kế tiếp.
+                    continue;
+                }
+            } catch (Exception ex) {
+                log.error("Bot Engine execution failed: {}", ex.getMessage());
+                break; // Thoát vòng lặp ngay lập tức nếu gặp lỗi hệ thống nghiêm trọng
             }
         }
-
-        final AutoBid winnerBot = top1;
-        log.info("Bot of {} mathematically won. Submitting transaction.", winnerBot.getBidder().getUserName());
-
-        // 6. Submit exactly ONE task to the Database
-        // [FIXED]: Truyền đúng winnerBot.getMaxBid() thay vì finalPrice để hệ thống giữ nguyên mức trần của ví tiền
-        bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, winnerBot.getMaxBid(), true)
-                .thenAccept(success -> {
-                    if (!success) {
-                        log.info("Bot of {} failed (insufficient balance). Removing configuration.", winnerBot.getBidder().getUserName());
-
-                        // 5B. KHÓA HÀNG ĐỢI KHI XÓA BOT BỊ LỖI THANH TOÁN
-                        synchronized (botQueue) {
-                            botQueue.removeIf(b ->
-                                    b.getBidder().getId().equals(winnerBot.getBidder().getId())
-                            );
-                        }
-
-                        // Re-trigger scan to allow the next best bot to take over
-                        processNextBot(auction);
-                    }
-                }).exceptionally(ex -> {
-                    log.error("Bot Engine execution failed: {}", ex.getMessage());
-                    return null;
-                });
     }
 }
