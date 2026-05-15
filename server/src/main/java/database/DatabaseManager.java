@@ -25,9 +25,7 @@ public class DatabaseManager {
 
         if (IS_TEST_ENV) {
             log.info("🛠️ Bật chế độ TEST: Bẻ lái sang In-Memory Database để bảo vệ CSDL chính!");
-            // [ARCHITECT FIX]: Với SQLite in-memory, bắt buộc phải dùng mode=memory&cache=shared
-            // Điều này giúp tất cả các kết nối (connections) do HikariCP sinh ra đều chia sẻ chung
-            // một CSDL trên RAM, thay vì mỗi kết nối lại tạo ra một DB trống rỗng mới.
+            // Với SQLite in-memory, bắt buộc phải dùng mode=memory&cache=shared
             config.setJdbcUrl("jdbc:sqlite:file:testdb?mode=memory&cache=shared");
             config.setMaximumPoolSize(10); // Cho phép nhiều luồng chạy test đồng thời hơn
         } else {
@@ -37,9 +35,13 @@ public class DatabaseManager {
 
         config.setDriverClassName("org.sqlite.JDBC");
 
-        // Tối ưu hóa SQLite
+        // --- Tối ưu hóa SQLite ---
         config.addDataSourceProperty("journal_mode", "WAL");
-        config.addDataSourceProperty("busy_timeout", "5000");
+        config.addDataSourceProperty("busy_timeout", "10000"); // Nới lỏng thời gian chờ lên 10s cho test đa luồng
+
+        // [ARCHITECT FIX]: Xóa sổ lỗi SQLITE_LOCKED_SHAREDCACHE
+        // Ép giao dịch bắt đầu bằng BEGIN IMMEDIATE để lấy Write Lock ngay lập tức, chống Deadlock
+        config.addDataSourceProperty("transactionMode", "IMMEDIATE");
 
         dataSource = new HikariDataSource(config);
     }
@@ -115,34 +117,17 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createWalletTxnTable);
 
-            // MIGRATION TÁCH BIỆT: Mỗi cột nằm trong một khối Try-Catch riêng
-            try {
-                stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
-            } catch (SQLException ignored) {}
-
-            try {
-                stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
-            } catch (SQLException ignored) {}
-
-            try {
-                stmt.execute("ALTER TABLE wallets ADD COLUMN locked_balance REAL DEFAULT 0.0;");
-            } catch (SQLException ignored) {}
-
-            try {
-                stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;");
-            } catch (SQLException ignored) {}
-
-            try {
-                stmt.execute("ALTER TABLE auctions ADD COLUMN winning_bidder_id TEXT;");
-            } catch (SQLException ignored) {}
-
-            try {
-                stmt.execute("ALTER TABLE auctions ADD COLUMN highest_max_bid REAL DEFAULT 0.0;");
-            } catch (SQLException ignored) {}
+            // MIGRATION TÁCH BIỆT
+            try { stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;"); } catch (SQLException ignored) {}
+            try { stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;"); } catch (SQLException ignored) {}
+            try { stmt.execute("ALTER TABLE wallets ADD COLUMN locked_balance REAL DEFAULT 0.0;"); } catch (SQLException ignored) {}
+            try { stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;"); } catch (SQLException ignored) {}
+            try { stmt.execute("ALTER TABLE auctions ADD COLUMN winning_bidder_id TEXT;"); } catch (SQLException ignored) {}
+            try { stmt.execute("ALTER TABLE auctions ADD COLUMN highest_max_bid REAL DEFAULT 0.0;"); } catch (SQLException ignored) {}
 
             log.info("Successfully upgraded database schemas");
 
-            // SEED DATA: Tạo tài khoản Admin mặc định nếu chưa tồn tại
+            // SEED DATA: Tạo tài khoản Admin mặc định
             String adminPass = org.mindrot.jbcrypt.BCrypt.hashpw("123456", org.mindrot.jbcrypt.BCrypt.gensalt(12));
             String insertAdmin = "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good, is_totp_enabled) " +
                     "VALUES ('A001', 'admin', '" + adminPass + "', 'Super Admin', 'ADMIN', 1, 0);";

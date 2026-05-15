@@ -167,6 +167,11 @@ public class MultiThreadedServer {
 
         public AuctionWSServer(int port) {
             super(new InetSocketAddress(port));
+            // [ARCHITECT FIX]: Bật cơ chế Heartbeat (Ping/Pong)
+            // Server sẽ gửi gói Ping đến toàn bộ client định kỳ. Nếu một client rớt mạng đột ngột
+            // và không phản hồi Pong trong 30 giây, kết nối ma (Ghost Connection) sẽ bị ép hủy bỏ.
+            // Điều này kích hoạt ngay lập tức sự kiện onClose() để dọn dẹp ClientManager.
+            this.setConnectionLostTimeout(30);
         }
 
         /**

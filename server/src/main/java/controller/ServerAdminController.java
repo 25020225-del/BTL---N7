@@ -5,7 +5,10 @@ import model.user.Admin;
 import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
+
+import java.time.LocalDateTime;
 
 /**
  * Controller responsible for handling administrative actions on the server side.
@@ -24,22 +27,18 @@ public class ServerAdminController {
 
     /**
      * Blocks a user from participating in auctions với cơ chế bảo vệ Admin.
-     *
-     * @param admin        The administrator performing the action.
-     * @param targetUserId The ID of the user to be blocked.
-     * @return {@code true} if successful.
      */
     public boolean blockUser(Admin admin, String targetUserId) {
         if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) return false;
 
-        // 1. LỚP BẢO VỆ 1: Chống tự khóa chính mình
+        // LỚP BẢO VỆ 1: Chống tự khóa chính mình
         if (admin.getId().equals(targetUserId)) {
             log.warn("Admin {} cố gắng tự khóa chính mình. Hành động bị từ chối.", admin.getUserName());
             return false;
         }
 
         try {
-            // 2. LỚP BẢO VỆ 2: Chống khóa các Admin khác
+            // LỚP BẢO VỆ 2: Chống khóa các Admin khác
             User targetUser = userDAO.getUserById(targetUserId);
             if (targetUser != null && targetUser.getRole().equalsIgnoreCase("ADMIN")) {
                 log.warn("Admin {} cố gắng khóa một Admin khác ({}). Hành động bị từ chối.",
@@ -61,15 +60,9 @@ public class ServerAdminController {
 
     /**
      * Unblocks a previously blocked user (Chỉ áp dụng cho USER).
-     *
-     * @param admin        The administrator performing the action.
-     * @param targetUserId The ID of the user to be unblocked.
-     * @return {@code true} if successful.
      */
     public boolean unblockUser(Admin admin, String targetUserId) {
         if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) return false;
-
-        // Admin không cần unblock chính mình hoặc admin khác vì họ vốn không được phép bị block
         if (admin.getId().equals(targetUserId)) return false;
 
         try {
@@ -89,15 +82,11 @@ public class ServerAdminController {
      */
     public boolean deleteUser(Admin admin, String targetUserId) {
         if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) return false;
-
-        // Chống tự xóa chính mình
         if (admin.getId().equals(targetUserId)) return false;
 
         try {
             User targetUser = userDAO.getUserById(targetUserId);
-            // Chống xóa Admin khác
             if (targetUser != null && targetUser.getRole().equalsIgnoreCase("ADMIN")) return false;
-
             return userDAO.deleteUser(targetUserId);
         } catch (Exception e) {
             log.error("Lỗi khi xóa user: {}", e.getMessage());
@@ -107,75 +96,78 @@ public class ServerAdminController {
 
     /**
      * Approves a pending auction request, transitioning its status to OPEN.
+     * Calculates dynamic start and end times to ensure delayed auctions start precisely upon approval.
      */
-    public boolean approveAuction(Admin admin, Auction auction) {
+    public boolean approveAuction(Admin admin, String auctionId) {
         if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) {
             log.warn("User does not have approval rights.");
             return false;
         }
 
         try {
-            boolean dbSuccess = auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_OPEN);
-            if (dbSuccess) {
-                auction.setStatus(Auction.STATUS_OPEN);
-                log.info("{} has approved auction {}.", admin.getUserName(), auction.getId());
-                return true;
+            LocalDateTime[] times = auctionDAO.getAuctionTimes(auctionId);
+            if (times == null) return false;
+
+            LocalDateTime oldStart = times[0];
+            LocalDateTime oldEnd = times[1];
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime newStart = oldStart;
+            LocalDateTime newEnd = oldEnd;
+
+            // Xử lý logic bù trừ thời gian cho các phiên đấu giá chờ duyệt quá lâu
+            if (oldStart == null || oldStart.isBefore(now) || oldStart.isEqual(now)) {
+                long duration = 60; // Default fallback
+                if (oldStart != null && oldEnd != null) {
+                    duration = java.time.Duration.between(oldStart, oldEnd).toMinutes();
+                }
+                newStart = now;
+                newEnd = now.plusMinutes(duration);
+                log.info("Admin approved late or immediate start. Recalculated new start time to NOW.");
             } else {
-                log.error("Failed to update auction status in database for auction {}", auction.getId());
+                log.info("Admin approved early for a future scheduled auction. Kept original times.");
+            }
+
+            if (newStart == null) newStart = now;
+            if (newEnd == null) newEnd = now.plusMinutes(60);
+
+            boolean dbSuccess = auctionDAO.updateApprovalStatus(auctionId, Auction.STATUS_OPEN, newStart, newEnd);
+
+            if (dbSuccess) {
+                log.info("{} has approved auction {}.", admin.getUserName(), auctionId);
+
+                // Đồng bộ hóa trạng thái trên RAM để hệ thống Monitor tự động đếm ngược
+                Auction auction = auctionDAO.getAuctionById(auctionId);
+                if (auction != null) {
+                    AuctionManager.addAuctionToMonitor(auction);
+                    log.info("Auction {} added to RAM monitor after Admin approval.", auctionId);
+                }
+                return true;
             }
         } catch (Exception e) {
-            log.error("Error approving auction {}: {}", auction.getId(), e.getMessage());
+            log.error("Error approving auction {}: {}", auctionId, e.getMessage());
         }
 
         return false;
     }
 
     /**
-     * Verifies a user as a trusted/reputable seller.
-     */
-    public void verifySeller(Admin admin, User user) {
-        if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
-            try {
-                user.setGood(true);
-                userDAO.updateUserTrustLevel(user.getId(), true);
-                log.info("{} has verified {} as reputable", admin.getUserName(), user.getUserName());
-            } catch (Exception e) {
-                log.error("Error verifying seller {}: {}", user.getId(), e.getMessage());
-            }
-        }
-    }
-
-    /**
      * Rejects a pending auction request, setting its status to CANCELED.
      */
-    public void rejectAuctionRequest(Admin admin, Auction auction) {
-        if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
-            try {
-                boolean dbSuccess = auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_CANCELED);
-                if (dbSuccess) {
-                    auction.setStatus(Auction.STATUS_CANCELED);
-                    log.info("{} has rejected the auction request for {}.", admin.getUserName(), auction.getId());
-                }
-            } catch (Exception e) {
-                log.error("Error rejecting auction {}: {}", auction.getId(), e.getMessage());
-            }
-        }
-    }
+    public boolean rejectAuction(Admin admin, String auctionId) {
+        if (admin == null || !admin.getRole().equalsIgnoreCase("ADMIN")) return false;
 
-    /**
-     * Forcibly and permanently deletes an auction session from the active system.
-     */
-    public void forceDeleteAuction(Admin admin, Auction auction) {
-        if (admin != null && admin.getRole().equalsIgnoreCase("ADMIN")) {
-            try {
-                boolean dbSuccess = auctionDAO.updateAuctionStatus(auction.getId(), Auction.STATUS_DELETED);
-                if (dbSuccess) {
-                    auction.setStatus(Auction.STATUS_DELETED);
-                    log.info("{} has deleted auction {}.", admin.getUserName(), auction.getId());
-                }
-            } catch (Exception e) {
-                log.error("Error force deleting auction {}: {}", auction.getId(), e.getMessage());
+        try {
+            LocalDateTime[] times = auctionDAO.getAuctionTimes(auctionId);
+            if (times == null) return false;
+
+            boolean dbSuccess = auctionDAO.updateApprovalStatus(auctionId, Auction.STATUS_CANCELED, times[0], times[1]);
+            if (dbSuccess) {
+                log.info("{} has rejected the auction request for {}.", admin.getUserName(), auctionId);
+                return true;
             }
+        } catch (Exception e) {
+            log.error("Error rejecting auction {}: {}", auctionId, e.getMessage());
         }
+        return false;
     }
 }

@@ -204,11 +204,28 @@ public class AuctionMonitor {
             String auctionId = auction.getId();
 
             // Quyết định trạng thái cuối cùng
-            String finalStatus = (auction.getWinningBidder() != null) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
+            String finalStatus = (auction.getWinningBidder() != null) ?
+                    Auction.STATUS_PAID : Auction.STATUS_CANCELED;
 
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
+                    // [ARCHITECT FIX]: LỚP BẢO VỆ CHỐNG DOUBLE-SPEND (RACE CONDITION)
+                    // Bắt buộc trạng thái hiện tại trên DB phải là FINISHED mới được phép chia tiền.
+                    try (PreparedStatement pstmt = conn.prepareStatement(
+                            "UPDATE auctions SET status = ? WHERE id = ? AND status = ?")) {
+                        pstmt.setString(1, finalStatus);
+                        pstmt.setString(2, auctionId);
+                        pstmt.setString(3, Auction.STATUS_FINISHED);
+
+                        // Nếu update trả về 0, nghĩa là phiên này đã bị luồng khác xử lý hoặc chưa phải FINISHED.
+                        if (pstmt.executeUpdate() == 0) {
+                            log.warn("Race condition aborted: Auction {} is already settled or not in FINISHED state.", auctionId);
+                            conn.rollback();
+                            return false;
+                        }
+                    }
+
                     // 1. Xử lý người thắng cuộc (Winner)
                     if (auction.getWinningBidder() != null) {
                         long finalPrice = auction.getCurrentPrice();
@@ -247,16 +264,9 @@ public class AuctionMonitor {
                         pstmt.executeUpdate();
                     }
 
-                    // 4. CẬP NHẬT TRẠNG THÁI CUỐI CÙNG VÀO DATABASE
-                    try (PreparedStatement pstmt = conn.prepareStatement("UPDATE auctions SET status = ? WHERE id = ?")) {
-                        pstmt.setString(1, finalStatus);
-                        pstmt.setString(2, auctionId);
-                        pstmt.executeUpdate();
-                    }
-
                     conn.commit();
 
-                    // 5. Cập nhật RAM (Vòng lặp processRamAuctions tiếp theo sẽ tự dọn dẹp)
+                    // 4. Cập nhật RAM (Vòng lặp processRamAuctions tiếp theo sẽ tự dọn dẹp)
                     synchronized (AuctionManager.getLockForAuction(auctionId)) {
                         auction.setStatus(finalStatus);
                     }
