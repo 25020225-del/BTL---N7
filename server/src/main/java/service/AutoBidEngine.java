@@ -13,6 +13,9 @@ import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * The core engine responsible for managing and executing automated bidding logic.
  * It processes registered bots asynchronously using a priority-based approach
@@ -28,6 +31,9 @@ public class AutoBidEngine {
      */
     private static final int MAX_BOTPOOL_SIZE = 50;
     private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
+    private static final ConcurrentHashMap<String, AtomicBoolean> activeScans = new ConcurrentHashMap<>();
+
+
 
     /**
      * Controller used to handle the actual bid placement and wallet transactions.
@@ -51,7 +57,18 @@ public class AutoBidEngine {
      * @param auction The auction session to be scanned for potential bot actions.
      */
     public static void triggerBotScan(Auction auction) {
-        botPool.submit(() -> processNextBot(auction));
+        AtomicBoolean isScanning = activeScans.computeIfAbsent(auction.getId(), k -> new AtomicBoolean(false));
+
+        // Cơ chế Non-blocking Lock: Nếu đã có thread quét phiên này rồi, các thread khác sẽ bị từ chối ngay lập tức
+        if (isScanning.compareAndSet(false, true)) {
+            botPool.submit(() -> {
+                try {
+                    processNextBot(auction);
+                } finally {
+                    isScanning.set(false); // Release lock khi quét xong
+                }
+            });
+        }
     }
 
     /**
@@ -112,7 +129,6 @@ public class AutoBidEngine {
         if (top2 != null) {
             // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
             finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
-
             final long top2MaxBid = top2.getMaxBid();
             final String top1Id = top1.getBidder().getId();
 
@@ -146,7 +162,8 @@ public class AutoBidEngine {
         log.info("Bot of {} mathematically won. Submitting transaction.", winnerBot.getBidder().getUserName());
 
         // 6. Submit exactly ONE task to the Database
-        bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, finalPrice, true)
+        // [FIXED]: Truyền đúng winnerBot.getMaxBid() thay vì finalPrice để hệ thống giữ nguyên mức trần của ví tiền
+        bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, winnerBot.getMaxBid(), true)
                 .thenAccept(success -> {
                     if (!success) {
                         log.info("Bot of {} failed (insufficient balance). Removing configuration.", winnerBot.getBidder().getUserName());

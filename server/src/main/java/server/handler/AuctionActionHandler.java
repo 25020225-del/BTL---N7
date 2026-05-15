@@ -23,7 +23,6 @@ import static utils.ConsoleColors.*;
  */
 public class AuctionActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AuctionActionHandler.class);
-
     private final ObjectMapper mapper = JacksonConfig.mapper();
     private final controller.ServerSellerController sellerCtrl;
 
@@ -54,7 +53,6 @@ public class AuctionActionHandler implements CommandHandler {
         try {
             // Retrieve user identification from the active login session
             User authenticatedUser = client.getUser();
-
             // Security check: Reject if the user is not authenticated
             if (authenticatedUser == null) {
                 client.sendResponse("ERROR", "You do not have permission to use this command.");
@@ -64,13 +62,11 @@ public class AuctionActionHandler implements CommandHandler {
             // Extract data from the incoming JSON payload
             Auction auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {
             });
-
             String itemName = auction.getItem().getItemName();
             String description = auction.getItem().getDescription();
             String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
             long startingPrice = auction.getItem().getStartingPrice();
             long bidIncrement = auction.getBidIncrement();
-
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime reqStart = auction.getStartTime();
             LocalDateTime reqEnd = auction.getEndTime();
@@ -80,7 +76,22 @@ public class AuctionActionHandler implements CommandHandler {
                 return;
             }
 
-            // Calculate the requested duration explicitly sent by the client
+            // Validate Start Time constraints
+            // Cho phép seller hẹn giờ tùy ý trong tương lai.
+            // Chỉ chặn nếu thời gian ở trong quá khứ.
+            // Cho phép độ trễ mạng tối đa 5 phút.
+            if (reqStart.isBefore(now.minusMinutes(5))) {
+                client.sendResponse("ERROR", "Thời gian bắt đầu không hợp lệ (không được nằm trong quá khứ).");
+                return;
+            }
+
+            // Nếu gửi thời gian là "hiện tại" nhưng do độ trễ mạng khiến reqStart hơi nhỏ hơn now, tự làm tròn thành now
+            if (reqStart.isBefore(now)) {
+                reqStart = now;
+            }
+
+            // [ARCHITECT FIX]: Tính toán durationMinutes SAU KHI đã chuẩn hóa reqStart
+            // Đảm bảo thời gian kết thúc (end time) thực tế luôn khớp với cấu hình mong muốn ban đầu
             long durationMinutes = java.time.Duration.between(reqStart, reqEnd).toMinutes();
             final long MAX_DURATION_MINUTES = 43200; // 30 days
 
@@ -89,17 +100,9 @@ public class AuctionActionHandler implements CommandHandler {
                 return;
             }
             if (durationMinutes > MAX_DURATION_MINUTES) {
-                durationMinutes = MAX_DURATION_MINUTES; // Clamp to 30 days securely
+                durationMinutes = MAX_DURATION_MINUTES;
+                // Clamp to 30 days securely
             }
-
-            // Validate Start Time constraints
-            // Allowing a 5-minute leeway to account for network delay between Client's 'now' and Server's 'now'
-            if (reqStart.isAfter(now.plusMinutes(5)) && reqStart.isBefore(now.plusDays(1).minusMinutes(5))) {
-                client.sendResponse("ERROR", "Pre-set time must be 24 hours behind current time.");
-                return;
-            }
-            //If the start time is in the past (or exactly 'now' from client), normalize it to server's exact 'now'
-            if (reqStart.isBefore(now.plusMinutes(5))) reqStart = now;
 
             //-----------------------------------------------------------------------------------------------------
 
@@ -108,7 +111,6 @@ public class AuctionActionHandler implements CommandHandler {
             String itemType = ItemFactory.TYPE_TANGIBLE;
 
             String newItemId = "ITM-" + System.currentTimeMillis();
-
             // FACTORY PATTERN APPLIED: Dynamically create the item based on its generalized category
             Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
             item.setImageUrl(imageUrl);
@@ -118,17 +120,16 @@ public class AuctionActionHandler implements CommandHandler {
 
             if (newAuction != null) {
                 log.info("{} has created an auction.", authenticatedUser.getUserName());
-
                 // Logic check: only add to RAM monitor if user isGood (trusted)
                 if (authenticatedUser.isGood()) {
                     newAuction.setStatus(Auction.STATUS_RUNNING);
                     AuctionManager.addAuctionToMonitor(newAuction);
-                    
+
                     String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
                     ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
-                    
+
                     client.sendResponse("CREATE_SUCCESS", "Successfully created auction.");
-                    
+
                     // Broadcast the newly created auction to all clients for real-time UI updates
                     ClientManager.broadcast("NEW_AUCTION_ADDED", newAuction, null);
                 } else {

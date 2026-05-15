@@ -8,62 +8,26 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import static utils.ConsoleColors.*;
 
 /**
  * Manages all active client connections and coordinates communication across the server.
- * This class serves as the central registry for {@link ClientHandler} instances and
- * provides utility methods for broadcasting messages, private messaging, and
- * administrative actions such as kicking or redirecting clients.
  */
 public class ClientManager {
     private static final Logger log = LoggerFactory.getLogger(ClientManager.class);
 
-    /**
-     * A thread-safe list of all currently connected clients.
-     * Uses {@link CopyOnWriteArrayList} to ensure safe iteration during broadcasting
-     * while clients may be connecting or disconnecting.
-     */
     private static final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
-
-    /**
-     * The maximum number of threads dedicated to processing broadcast tasks.
-     */
     private static final int MAX_BROADCASTPOOL_SIZE = 200;
-
-    /**
-     * Executor service dedicated to asynchronous broadcasting.
-     * This prevents a single slow client from blocking the delivery of messages
-     * to other participants in the system.
-     */
     private static final ExecutorService broadcastPool = Executors.newFixedThreadPool(MAX_BROADCASTPOOL_SIZE);
 
-    /**
-     * Registers a new client connection in the global registry.
-     *
-     * @param clientHandler The handler for the newly connected client.
-     */
     public static void addClient(ClientHandler clientHandler) {
         clients.add(clientHandler);
     }
 
-    /**
-     * Removes a client connection from the registry.
-     *
-     * @param clientHandler The handler to be removed.
-     */
     public static void removeClient(ClientHandler clientHandler) {
         clients.remove(clientHandler);
     }
 
-    /**
-     * Broadcasts a plain text message to all connected clients except the sender.
-     * Delivery is handled asynchronously via the broadcast thread pool.
-     *
-     * @param message The text content to be sent.
-     * @param sender  The client handler that initiated the broadcast (excluded from receiving).
-     */
     public static void broadcast(String message, ClientHandler sender) {
         for (ClientHandler client : clients) {
             if (client != sender) {
@@ -78,14 +42,6 @@ public class ClientManager {
         }
     }
 
-    /**
-     * Broadcasts a command-based network message to all connected clients except the sender.
-     * This is typically used for real-time UI updates across the system.
-     *
-     * @param command The identifier for the action the clients should perform.
-     * @param data    The data payload associated with the command.
-     * @param sender  The client handler that initiated the broadcast (excluded from receiving).
-     */
     public static void broadcast(String command, Object data, ClientHandler sender) {
         for (ClientHandler client : clients) {
             if (client != sender) {
@@ -100,12 +56,6 @@ public class ClientManager {
         }
     }
 
-    /**
-     * Sends a private administrative message to a specific user by their name.
-     *
-     * @param receiver The username of the target recipient.
-     * @param message  The content of the private message.
-     */
     public static void privateMsg(String receiver, String message) {
         receiver = receiver.trim();
         for (ClientHandler client : clients) {
@@ -119,9 +69,6 @@ public class ClientManager {
 
     /**
      * Forcibly disconnects a client from the server by their username.
-     *
-     * @param target The username of the client to be kicked.
-     * @param reason The justification for the forced disconnection.
      */
     public static void kickTarget(String target, String reason) {
         ClientHandler targetToKick = null;
@@ -139,13 +86,26 @@ public class ClientManager {
         }
     }
 
+    // [ARCHITECT FIX]: Thêm hàm hỗ trợ kick bằng ID cố định thay vì Username
     /**
-     * Forcibly disconnects a client based on their index in the internal list.
-     * Primarily used for administrative console commands.
-     *
-     * @param i      The index of the client in the registry.
+     * Forcibly disconnects a client from the server by their User ID.
+     * @param userId The unique ID of the client to be kicked.
      * @param reason The justification for the forced disconnection.
      */
+    public static void kickTargetById(String userId, String reason) {
+        ClientHandler targetToKick = null;
+        for (ClientHandler client : clients) {
+            if (client.getUser() != null && client.getUser().getId().equals(userId)) {
+                targetToKick = client;
+                break;
+            }
+        }
+        if (targetToKick != null) {
+            System.out.println("[System]: User ID \"" + YELLOW + userId + RESET + "\" has been kicked (Blocked by Admin)");
+            targetToKick.forceDisconnect(reason);
+        }
+    }
+
     public static void kickTargetByNumber(int i, String reason) {
         ClientHandler targetToKick = null;
         if (i >= 0 && i < clients.size()) {
@@ -160,9 +120,6 @@ public class ClientManager {
         }
     }
 
-    /**
-     * Prints a formatted list of all currently connected clients to the server console.
-     */
     public static void getClientList() {
         int count = 0;
         if (clients.isEmpty()) {
@@ -178,13 +135,6 @@ public class ClientManager {
         }
     }
 
-    /**
-     * Instructs a specific client to open a website URL.
-     * Used for redirecting users to external services such as PayPal for transactions.
-     *
-     * @param clientName The name of the client to redirect.
-     * @param url        The external URL to be opened.
-     */
     public static void redirectClient(String clientName, String url) {
         for (ClientHandler client : clients) {
             if (client.getClientName() != null && client.getClientName().equals(clientName)) {
@@ -195,13 +145,6 @@ public class ClientManager {
         System.out.println("[System]: User \"" + YELLOW + clientName + RESET + "\" doesn't exist");
     }
 
-    /**
-     * Sends a private command-based message to a specific user by their ID.
-     *
-     * @param userId  The unique identifier of the target user.
-     * @param command The identifier for the action.
-     * @param data    The data payload.
-     */
     public static void sendToUser(String userId, String command, Object data) {
         for (ClientHandler client : clients) {
             if (client.getUser() != null && client.getUser().getId().equals(userId)) {
@@ -211,9 +154,6 @@ public class ClientManager {
         }
     }
 
-    /**
-     * Gracefully shuts down the broadcast thread pool.
-     */
     public static void shutdown() {
         broadcastPool.shutdown();
     }

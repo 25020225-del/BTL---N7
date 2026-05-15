@@ -98,9 +98,8 @@ public class AuctionMonitor {
                 // Check for auction end
                 else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
                     if (now.isAfter(auction.getEndTime())) {
-                        targetStatus = (auction.getWinningBidder() != null)
-                                ? Auction.STATUS_PAID
-                                : Auction.STATUS_CANCELED;
+                        // FIX: Chuyển sang FINISHED trước, việc quyết định PAID hay CANCELED sẽ do Settlement lo
+                        targetStatus = Auction.STATUS_FINISHED;
                         snapshotEndAtDecision = auction.getEndTime();
                     }
                 }
@@ -154,19 +153,18 @@ public class AuctionMonitor {
                 if (dbSuccess) {
                     synchronized (AuctionManager.getLockForAuction(auctionId)) {
                         auction.setStatus(targetStatus);
-
-                        if (Auction.STATUS_PAID.equals(targetStatus)) {
+                        if (Auction.STATUS_FINISHED.equals(targetStatus)) {
+                            log.info("Auction {} finished. Starting financial settlement...", auctionId);
+                            // Đẩy việc chia tiền và chốt trạng thái cuối cùng (PAID/CANCELED) sang thread khác
                             processFinancialSettlement(auction);
-                            log.info("Auction {} finished with winner: {}",
-                                    auctionId,
-                                    auction.getWinningBidder() != null ? auction.getWinningBidder().getUserName() : "N/A");
                         } else if (Auction.STATUS_RUNNING.equals(targetStatus)) {
                             log.info("Auction {} has started and is now RUNNING.", auctionId);
                         } else {
-                            log.info("Auction {} finished with NO winner. CANCELED.", auctionId);
+                            log.info("Auction {} status updated to {}.", auctionId, targetStatus);
                         }
                     }
-                } else {
+                }
+                else {
                     log.warn("Optimistic DB update failed for auction {} to status {} — state may have changed concurrently; RAM not updated.",
                             auctionId, targetStatus);
                 }
@@ -201,13 +199,12 @@ public class AuctionMonitor {
      * and transfers the final closing price to the seller's wallet.
      */
     private void processFinancialSettlement(Auction auction) {
-        if (auction.getWinningBidder() == null) {
-            return; // No winner, no settlement needed
-        }
-
         Callable<Boolean> settlementTask = () -> {
             String now = LocalDateTime.now().toString();
             String auctionId = auction.getId();
+
+            // Quyết định trạng thái cuối cùng
+            String finalStatus = (auction.getWinningBidder() != null) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
 
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
@@ -218,23 +215,19 @@ public class AuctionMonitor {
                         long lockedAmount = auction.getHighestMaxBid();
                         String winnerId = auction.getWinningBidder().getId();
 
-                        // Khấu trừ giá cuối cùng từ tiền tạm giữ của winner
                         walletDAO.deductFromLocked(conn, winnerId, finalPrice);
-                        // Hoàn lại phần dư (MaxBid - FinalPrice) cho winner
                         long refundAmount = lockedAmount - finalPrice;
                         if (refundAmount > 0) {
                             walletDAO.unlockBalance(conn, winnerId, refundAmount);
                         }
 
-                        // Trả tiền cho người bán (Seller)
                         walletDAO.updateBalance(conn, auction.getSeller().getId(), finalPrice);
-                        walletDAO.addTransaction(conn, "W-IN-" + System.currentTimeMillis(),
+                        walletDAO.addTransaction(conn, "W-IN-" + java.util.UUID.randomUUID().toString(),
                                 auction.getSeller().getId(), finalPrice,
                                 "Payment received for auction: " + auctionId, now);
                     }
 
                     // 2. Xử lý những người dùng Auto-Bid đã thua (Losers)
-                    // Cần Query tất cả các Auto-Bid của phiên này ngoại trừ người thắng
                     String loserSql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ?";
                     try (PreparedStatement pstmt = conn.prepareStatement(loserSql)) {
                         pstmt.setString(1, auctionId);
@@ -243,7 +236,6 @@ public class AuctionMonitor {
                             while (rs.next()) {
                                 String loserId = rs.getString("bidder_id");
                                 double loserMaxBid = rs.getDouble("max_bid");
-                                // Hoàn trả toàn bộ tiền tạm giữ cho người thua
                                 walletDAO.unlockBalance(conn, loserId, loserMaxBid);
                             }
                         }
@@ -255,14 +247,25 @@ public class AuctionMonitor {
                         pstmt.executeUpdate();
                     }
 
+                    // 4. CẬP NHẬT TRẠNG THÁI CUỐI CÙNG VÀO DATABASE
+                    try (PreparedStatement pstmt = conn.prepareStatement("UPDATE auctions SET status = ? WHERE id = ?")) {
+                        pstmt.setString(1, finalStatus);
+                        pstmt.setString(2, auctionId);
+                        pstmt.executeUpdate();
+                    }
+
                     conn.commit();
-                    log.info("Financial settlement (Locked Funds) completed for auction {}", auctionId);
-                    conn.commit(); // Finalize changes
-                    log.info("Financial settlement completed for auction {}", auction.getId());
+
+                    // 5. Cập nhật RAM (Vòng lặp processRamAuctions tiếp theo sẽ tự dọn dẹp)
+                    synchronized (AuctionManager.getLockForAuction(auctionId)) {
+                        auction.setStatus(finalStatus);
+                    }
+
+                    log.info("Financial settlement completed for auction {} -> {}", auctionId, finalStatus);
                     return true;
 
                 } catch (Exception e) {
-                    conn.rollback(); // Rollback if any error occurs
+                    conn.rollback();
                     log.error("Error during financial settlement: {}", e.getMessage());
                     return false;
                 }

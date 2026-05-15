@@ -35,7 +35,6 @@ public class UserDAO {
             insertUserStmt.setString(6, secretKey);
             insertUserStmt.executeUpdate();
         }
-
         walletDAO.createWallet(conn, userId);
     }
 
@@ -56,7 +55,33 @@ public class UserDAO {
                         rs.getString("role")
                 );
                 user.setGood(rs.getInt("is_good") == 1);
-                // We should also check if the user is blocked
+                if (rs.getInt("is_blocked") == 1) {
+                    user.setRole("BLOCKED");
+                }
+                return user;
+            }
+        }
+        return null;
+    }
+
+    // [ĐÃ THÊM]: Tìm user theo ID
+    public User getUserById(String userId) throws SQLException {
+        String sql = "SELECT * FROM users WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                User user = new User(
+                        rs.getString("id"),
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getString("name"),
+                        rs.getString("role")
+                );
+                user.setGood(rs.getInt("is_good") == 1);
                 if (rs.getInt("is_blocked") == 1) {
                     user.setRole("BLOCKED");
                 }
@@ -104,6 +129,16 @@ public class UserDAO {
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             return false;
+        }
+    }
+
+    // [ĐÃ THÊM]: Xóa user khỏi cơ sở dữ liệu
+    public boolean deleteUser(String userId) throws SQLException {
+        String sql = "DELETE FROM users WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, userId);
+            return pstmt.executeUpdate() > 0;
         }
     }
 }

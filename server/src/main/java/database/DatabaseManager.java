@@ -2,7 +2,6 @@ package database;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,68 +10,72 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- * Manages database connectivity and lifecycle for the auction system.
- * This class utilizes HikariCP for efficient connection pooling and handles
- * the initial creation and migration of SQLite database tables.
+ * Quản lý kết nối cơ sở dữ liệu sử dụng HikariCP.
+ * Tích hợp cơ chế tự động nhận diện môi trường Test để bảo vệ CSDL chính.
  */
 public class DatabaseManager {
-
     private static final Logger log = LoggerFactory.getLogger(DatabaseManager.class);
-
-    /**
-     * The JDBC connection URL for the SQLite database, configured with WAL mode.
-     */
-    private static final String DB_URL = "jdbc:sqlite:auction_system.db?journal_mode=WAL";
-
-    /**
-     * The pooled data source instance used to provide database connections.
-     */
     private static final HikariDataSource dataSource;
+    private static final boolean IS_TEST_ENV;
 
+    // Khối static khởi tạo Connection Pool ngay khi class được load vào JVM
     static {
+        IS_TEST_ENV = detectTestEnvironment();
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(DB_URL);
 
-        // SQLite configuration: limited to 5 concurrent connections to prevent file locking issues
-        config.setMaximumPoolSize(5);
-        config.setMinimumIdle(1);
-        config.setConnectionTimeout(30000);
-        config.setIdleTimeout(600000);
+        if (IS_TEST_ENV) {
+            log.info("🛠️ Bật chế độ TEST: Bẻ lái sang In-Memory Database để bảo vệ CSDL chính!");
+            // [ARCHITECT FIX]: Với SQLite in-memory, bắt buộc phải dùng mode=memory&cache=shared
+            // Điều này giúp tất cả các kết nối (connections) do HikariCP sinh ra đều chia sẻ chung
+            // một CSDL trên RAM, thay vì mỗi kết nối lại tạo ra một DB trống rỗng mới.
+            config.setJdbcUrl("jdbc:sqlite:file:testdb?mode=memory&cache=shared");
+            config.setMaximumPoolSize(10); // Cho phép nhiều luồng chạy test đồng thời hơn
+        } else {
+            config.setJdbcUrl("jdbc:sqlite:auction_system.db");
+            config.setMaximumPoolSize(5);
+        }
 
-        // Optimization: Enable Write-Ahead Logging (WAL) for better read/write concurrency in SQLite
+        config.setDriverClassName("org.sqlite.JDBC");
+
+        // Tối ưu hóa SQLite
         config.addDataSourceProperty("journal_mode", "WAL");
-
-        // Set a busy timeout of 5000ms to allow threads to wait if the database is temporarily locked
         config.addDataSourceProperty("busy_timeout", "5000");
 
         dataSource = new HikariDataSource(config);
     }
 
     /**
-     * Retrieves a connection from the HikariCP connection pool.
-     *
-     * @return A {@link Connection} object ready for database operations.
-     * @throws SQLException If a connection cannot be established or retrieved from the pool.
+     * Thuật toán nhận diện môi trường:
+     * Quét các lớp đang nằm trong StackTrace của luồng hiện tại. Nếu có dấu hiệu
+     * của framework kiểm thử (JUnit/TestNG), lập tức bật cờ môi trường Test.
      */
+    private static boolean detectTestEnvironment() {
+        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            String className = element.getClassName();
+            if (className.startsWith("org.junit.") ||
+                    className.startsWith("org.testng.") ||
+                    className.startsWith("org.apache.maven.surefire.")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static Connection getConnection() throws SQLException {
         return dataSource.getConnection();
     }
 
-    /**
-     * Initializes the relational database schema.
-     * This method performs the following tasks:
-     * <ul>
-     *     <li>Enables foreign key constraints.</li>
-     *     <li>Creates core tables: users, wallets, auctions, transactions, and auto-bids.</li>
-     *     <li>Handles legacy table upgrades for TOTP security features.</li>
-     *     <li>Seeds a default administrator account with a secure hashed password.</li>
-     * </ul>
-     */
+    public static void closePool() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
+        }
+    }
+
     public static void initializeDatabase() {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
 
-            // Ensure SQLite enforces relational integrity
+            // Bật tính năng ràng buộc khóa ngoại (Foreign Key) cho SQLite
             stmt.execute("PRAGMA foreign_keys = ON;");
 
             // --- USER MANAGEMENT SCHEMA ---
@@ -89,12 +92,9 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createUsersTable);
 
-            // Migration: Add is_blocked column to users if it doesn't exist
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN is_blocked INTEGER DEFAULT 0;");
-            } catch (SQLException e) {
-                // Column likely already exists
-            }
+            } catch (SQLException ignored) {}
 
             // --- FINANCIAL SCHEMA ---
             String createWalletsTable = "CREATE TABLE IF NOT EXISTS wallets (" +
@@ -115,35 +115,35 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createWalletTxnTable);
 
-            // LEGACY MIGRATION: Safely add TOTP columns if they are missing from older versions
+            // MIGRATION TÁCH BIỆT: Mỗi cột nằm trong một khối Try-Catch riêng
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT;");
+            } catch (SQLException ignored) {}
+
+            try {
                 stmt.execute("ALTER TABLE users ADD COLUMN is_totp_enabled INTEGER DEFAULT 0;");
+            } catch (SQLException ignored) {}
+
+            try {
                 stmt.execute("ALTER TABLE wallets ADD COLUMN locked_balance REAL DEFAULT 0.0;");
-                log.info("Successfully upgraded user table");
-            } catch (SQLException ignored) {
-                // Columns already exist
-            }
+            } catch (SQLException ignored) {}
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;");
-            } catch (SQLException ignored) {
-            }
+            } catch (SQLException ignored) {}
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN winning_bidder_id TEXT;");
-            } catch (SQLException ignored) {
-            }
+            } catch (SQLException ignored) {}
 
             try {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN highest_max_bid REAL DEFAULT 0.0;");
-            } catch (SQLException ignored) {
-            }
+            } catch (SQLException ignored) {}
 
-            log.info("Successfully upgraded auctions table");
+            log.info("Successfully upgraded database schemas");
 
-            // SEED DATA: Insert default admin user if not present
-            String adminPass = BCrypt.hashpw("123456", BCrypt.gensalt(12));
+            // SEED DATA: Tạo tài khoản Admin mặc định nếu chưa tồn tại
+            String adminPass = org.mindrot.jbcrypt.BCrypt.hashpw("123456", org.mindrot.jbcrypt.BCrypt.gensalt(12));
             String insertAdmin = "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good, is_totp_enabled) " +
                     "VALUES ('A001', 'admin', '" + adminPass + "', 'Super Admin', 'ADMIN', 1, 0);";
             stmt.execute(insertAdmin);
@@ -174,10 +174,15 @@ public class DatabaseManager {
                     "bidder_id TEXT NOT NULL, " +
                     "bid_amount REAL NOT NULL, " +
                     "bid_time TEXT NOT NULL, " +
+                    "is_bot INTEGER DEFAULT 0, " +
                     "FOREIGN KEY (auction_id) REFERENCES auctions(id), " +
                     "FOREIGN KEY (bidder_id) REFERENCES users(id)" +
                     ");";
             stmt.execute(createBidTransactionsTable);
+
+            try {
+                stmt.execute("ALTER TABLE bid_transactions ADD COLUMN is_bot INTEGER DEFAULT 0;");
+            } catch (SQLException ignored) {}
 
             String createAutoBidsTable = "CREATE TABLE IF NOT EXISTS auto_bids (" +
                     "id TEXT PRIMARY KEY, " +
@@ -192,7 +197,7 @@ public class DatabaseManager {
                     ");";
             stmt.execute(createAutoBidsTable);
 
-            log.info("Successfully initialized");
+            log.info("Successfully initialized Database (Test Env: {})", IS_TEST_ENV);
 
         } catch (SQLException e) {
             log.error("Database initialization error: {}", e.getMessage());
