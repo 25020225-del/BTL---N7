@@ -38,6 +38,12 @@ public class CreateAuctionModel {
         if (image == null) {
             throw new IllegalArgumentException("Vui lòng chọn ảnh cho sản phẩm.");
         }
+        if (Long.parseLong(startPrice) < 2000) {
+            throw new IllegalArgumentException("Vui lòng đặt hàng với mức giá tối thiểu 2000 vnd");
+        }
+        if (Long.parseLong(bidInc) < 1000) {
+            throw new IllegalArgumentException("Vui đòng đặt hàng với bước giá tối thiểu 1000 vnd");
+        }
     }
     public static LocalDateTime checkStartTime(LocalDate date, String startHour, String startMinute) throws Exception{
         if (date==null || startHour==null || startMinute==null) {

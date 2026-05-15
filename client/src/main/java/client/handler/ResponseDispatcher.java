@@ -33,6 +33,7 @@ public class ResponseDispatcher {
         handlers.put("CLI_BROADCAST", auctionHandler);
         handlers.put("CREATE_SUCCESS", auctionHandler);
         handlers.put("CHAT", auctionHandler);
+        handlers.put("UPDATE_AUCTION_PRICE", auctionHandler);
 
         ClientPaymentHandler paymentHandler = new ClientPaymentHandler();
         handlers.put("PAYMENT_REDIRECT", paymentHandler);

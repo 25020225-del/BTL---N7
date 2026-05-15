@@ -1,11 +1,13 @@
 package gui.userController;
 
+import client.handler.AuctionEventBus;
 import client.network.NetworkService;
 import gui.MainApplication;
 import gui.process.CreateAuctionModel;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
 import gui.process.ImageCompressor;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
@@ -26,7 +28,7 @@ import org.slf4j.LoggerFactory;
 
 
 public class CreateAuctionController extends ScrollPane {
-    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
+    private static final Logger log = LoggerFactory.getLogger(CreateAuctionController.class);
 
     private Runnable onAuctionCreated;
 
@@ -99,7 +101,6 @@ public class CreateAuctionController extends ScrollPane {
 
             NetworkService.sendMessage("CREATE_AUCTION", auction);
 
-            resetForm();
 
         } catch (NumberFormatException e) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Giá tiền và thời lượng phải là số hợp lệ.");
@@ -108,6 +109,18 @@ public class CreateAuctionController extends ScrollPane {
         } catch (Exception e) {
             log.error(e.getMessage());
         }
+    }
+
+    @FXML
+    private void initialize() {
+        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED,event -> {
+            Platform.runLater(() -> {
+                resetForm();
+                if (onAuctionCreated != null) {
+                    onAuctionCreated.run();
+                }
+            });
+        });
     }
 
     private void resetForm() {

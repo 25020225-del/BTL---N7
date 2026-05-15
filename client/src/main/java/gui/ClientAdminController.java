@@ -1,6 +1,5 @@
 package gui;
 
-import client.network.NetworkClient;
 import client.network.NetworkService;
 import gui.userController.TableController;
 import gui.widget.MinimalItem;
@@ -10,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import gui.process.AlertHelper;
-import gui.widget.AdminAuctionItem;
 import gui.widget.AdminUserItem;
 import gui.widget.IconButton;
 import javafx.fxml.FXML;
@@ -20,7 +18,6 @@ import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Separator;
-import javafx.scene.control.TextField;
 import javafx.scene.layout.*;
 import model.user.User;
 
