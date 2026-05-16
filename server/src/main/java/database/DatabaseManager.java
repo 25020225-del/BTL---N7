@@ -24,9 +24,9 @@ public class DatabaseManager {
         HikariConfig config = new HikariConfig();
 
         if (IS_TEST_ENV) {
-            log.info("🛠️ Bật chế độ TEST: Bẻ lái sang In-Memory Database để bảo vệ CSDL chính!");
-            // Với SQLite in-memory, bắt buộc phải dùng mode=memory&cache=shared
-            config.setJdbcUrl("jdbc:sqlite:file:testdb?mode=memory&cache=shared");
+            log.info("🛠️ Bật chế độ TEST: Sử dụng Test Database vật lý để tránh lỗi Shared Cache Deadlock!");
+            // Đổi từ in-memory sang file db vật lý riêng cho test để hỗ trợ SQLite WAL đồng thời
+            config.setJdbcUrl("jdbc:sqlite:test_auction_system.db");
             config.setMaximumPoolSize(10); // Cho phép nhiều luồng chạy test đồng thời hơn
         } else {
             config.setJdbcUrl("jdbc:sqlite:auction_system.db");
@@ -34,7 +34,6 @@ public class DatabaseManager {
         }
 
         config.setDriverClassName("org.sqlite.JDBC");
-
         // --- Tối ưu hóa SQLite ---
         config.addDataSourceProperty("journal_mode", "WAL");
         config.addDataSourceProperty("busy_timeout", "10000"); // Nới lỏng thời gian chờ lên 10s cho test đa luồng

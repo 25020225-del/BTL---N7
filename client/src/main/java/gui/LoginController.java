@@ -1,6 +1,7 @@
 package gui;
 
 import client.network.NetworkService;
+import client.utils.ErrorParser;
 import javafx.scene.shape.Circle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +25,16 @@ import utils.JacksonConfig;
  */
 public class LoginController {
     private static final Logger log = LoggerFactory.getLogger(LoginController.class);
+
     @FXML
     private Circle myava1;
 
     @FXML
     private TextField loginAccountName;
+
     @FXML
     private PasswordField loginPasswordAccount;
+
     @FXML
     private Button loginButton;
 
@@ -67,7 +71,6 @@ public class LoginController {
 
         // Fetch the global network client instance
         setNetworkClient(NetworkService.get());
-
         if (networkClient != null) {
             // Update UI state to indicate processing
             loginButton.setDisable(true);
@@ -75,7 +78,6 @@ public class LoginController {
 
             // Register the callback to handle the server's authentication response
             networkClient.setOnMessageReceived(this::handleServerResponse);
-
             // Create a temporary User object holding the login credentials
             User loginAttempt = new User("", username, password, "");
             networkClient.sendMessage("LOGIN", loginAttempt);
@@ -130,8 +132,8 @@ public class LoginController {
                 }
 
             } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
-                // Extract error message from server or use a default generic message
-                String errorMsg = response.getData() != null ? response.getData().toString() : "Username or password is incorrect!";
+                // [FIXED]: Extract error message using ErrorParser
+                String errorMsg = ErrorParser.parse(response.getData());
 
                 log.warn("Login failed: {}", errorMsg);
 
