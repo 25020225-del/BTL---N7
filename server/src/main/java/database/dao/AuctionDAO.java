@@ -244,74 +244,81 @@ public class AuctionDAO {
     /**
      * Sweeps the database for auctions that have expired while the server was offline
      * or those that were not properly transitioned in RAM.
-     *
-     * @return A list of Auction objects that were finalized during the sweep.
-     * @throws SQLException if a database access error occurs.
+     * [ARCHITECT FIX]: Implemented State-As-Outbox Pattern to recover crashed settlements.
      */
     public List<Auction> sweepOrphanAuctions() throws SQLException {
-        List<Auction> finishedAuctions = new ArrayList<>();
+        List<Auction> pendingSettlementAuctions = new ArrayList<>();
         String now = LocalDateTime.now().toString();
 
-        // 1. Find auctions that should have ended but are still in RUNNING/OPEN status
-        String selectSql = "SELECT * FROM auctions WHERE (status = 'RUNNING' OR status = 'OPEN') AND end_time < ?";
-        // [ARCHITECT FIX]: Tuân thủ State Machine: RUNNING/OPEN phải về FINISHED (Không nhảy cóc)
-        String updateSql = "UPDATE auctions SET status = ? WHERE id = ? AND (status = 'RUNNING' OR status = 'OPEN')";
+        try (Connection conn = DatabaseManager.getConnection()) {
+            // 1. Quét và chốt sổ các phiên hết hạn (RUNNING/OPEN -> FINISHED)
+            String selectExpiredSql = "SELECT id FROM auctions WHERE (status = 'RUNNING' OR status = 'OPEN') AND end_time < ?";
+            String updateExpiredSql = "UPDATE auctions SET status = ? WHERE id = ? AND (status = 'RUNNING' OR status = 'OPEN')";
 
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement selectStmt = conn.prepareStatement(selectSql);
-             PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+            try (PreparedStatement selectStmt = conn.prepareStatement(selectExpiredSql);
+                 PreparedStatement updateStmt = conn.prepareStatement(updateExpiredSql)) {
 
-            selectStmt.setString(1, now);
-            try (ResultSet rs = selectStmt.executeQuery()) {
-                while (rs.next()) {
-                    String id = rs.getString("id");
-                    long currentPrice = rs.getLong("current_price");
-
-                    updateStmt.setString(1, Auction.STATUS_FINISHED);
-                    updateStmt.setString(2, id);
-
-                    // Optimistic Locking: Nếu update thành công (chưa bị luồng khác hớt tay trên)
-                    if (updateStmt.executeUpdate() > 0) {
-                        Auction auction = new Auction();
-                        auction.setId(id);
-                        auction.setCurrentPrice(currentPrice);
-                        auction.setHighestMaxBid(rs.getLong("highest_max_bid"));
-
-                        User seller = new User();
-                        seller.setId(rs.getString("seller_id"));
-                        auction.setSeller(seller);
-
-                        String winningBidderId = rs.getString("winning_bidder_id");
-                        if (winningBidderId != null) {
-                            User winner = new User();
-                            winner.setId(winningBidderId);
-                            auction.setWinningBidder(winner);
+                selectStmt.setString(1, now);
+                try (ResultSet rs = selectStmt.executeQuery()) {
+                    while (rs.next()) {
+                        String id = rs.getString("id");
+                        updateStmt.setString(1, Auction.STATUS_FINISHED);
+                        updateStmt.setString(2, id);
+                        if (updateStmt.executeUpdate() > 0) {
+                            System.out.println("[System]: " + utils.ConsoleColors.BLUE + "Swept and closed orphaned database auction: " + utils.ConsoleColors.YELLOW + id + utils.ConsoleColors.RESET + " -> FINISHED");
                         }
-
-                        finishedAuctions.add(auction);
-                        System.out.println("[System]: " + utils.ConsoleColors.BLUE + "Swept and closed orphaned database auction: " + utils.ConsoleColors.YELLOW + id + utils.ConsoleColors.RESET + " -> FINISHED");
                     }
                 }
             }
 
-            // 2. Find auctions that should have started but are still in OPEN status
+            // 2. [RECONCILIATION] Quét TOÀN BỘ các phiên đang kẹt ở trạng thái FINISHED
+            // Bao gồm những phiên vừa bị ép đóng ở Bước 1, VÀ những phiên bị kẹt do server crash trước đó.
+            String stuckSql = "SELECT id, current_price, highest_max_bid, seller_id, winning_bidder_id FROM auctions WHERE status = 'FINISHED'";
+            try (PreparedStatement stuckStmt = conn.prepareStatement(stuckSql);
+                 ResultSet rs = stuckStmt.executeQuery()) {
+
+                while (rs.next()) {
+                    Auction auction = new Auction();
+                    auction.setId(rs.getString("id"));
+                    auction.setCurrentPrice(rs.getLong("current_price"));
+                    auction.setHighestMaxBid(rs.getLong("highest_max_bid"));
+
+                    User seller = new User();
+                    seller.setId(rs.getString("seller_id"));
+                    auction.setSeller(seller);
+
+                    String winningBidderId = rs.getString("winning_bidder_id");
+                    if (winningBidderId != null) {
+                        User winner = new User();
+                        winner.setId(winningBidderId);
+                        auction.setWinningBidder(winner);
+                    }
+                    pendingSettlementAuctions.add(auction);
+                }
+            }
+
+            // 3. Quét các phiên mồ côi cần start (OPEN -> RUNNING)
             String startSql = "SELECT id FROM auctions WHERE status = 'OPEN' AND start_time <= ? AND end_time > ?";
-            try (PreparedStatement startStmt = conn.prepareStatement(startSql)) {
+            String updateStartSql = "UPDATE auctions SET status = 'RUNNING' WHERE id = ?";
+            try (PreparedStatement startStmt = conn.prepareStatement(startSql);
+                 PreparedStatement updateStartStmt = conn.prepareStatement(updateStartSql)) {
+
                 startStmt.setString(1, now);
                 startStmt.setString(2, now);
                 try (ResultSet rs = startStmt.executeQuery()) {
                     while (rs.next()) {
                         String id = rs.getString("id");
-                        updateStmt.setString(1, "RUNNING");
-                        updateStmt.setString(2, id);
-                        if (updateStmt.executeUpdate() > 0) {
+                        updateStartStmt.setString(1, id);
+                        if (updateStartStmt.executeUpdate() > 0) {
                             System.out.println("[System]: " + utils.ConsoleColors.BLUE + "Swept and started orphaned database auction: " + utils.ConsoleColors.YELLOW + id + utils.ConsoleColors.RESET);
                         }
                     }
                 }
             }
         }
-        return finishedAuctions;
+
+        // Trả về danh sách chờ thanh toán để AuctionMonitor đẩy vào TransactionManager
+        return pendingSettlementAuctions;
     }
 
     public boolean deleteAuction(String auctionId) throws SQLException {
