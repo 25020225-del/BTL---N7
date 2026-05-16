@@ -47,6 +47,7 @@ public class ResponseDispatcher {
         handlers.put("EDIT_SUCCESS", userHandler);
         handlers.put("DELETE_SUCCESS", userHandler);
         handlers.put("FETCH_WALLET_SUCCESS", userHandler);
+        handlers.put("FETCH_USERS_SUCCESS", userHandler);
     }
 
     public void dispatch(NetworkMessage message, NetworkClient client) {
