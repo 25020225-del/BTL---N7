@@ -39,7 +39,7 @@ public class ServerPaymentController {
      * @param user           The user whose wallet will be credited.
      * @param payPalOrderId  The external order identifier provided by PayPal for tracking.
      * @param verifiedAmount The actual verified amount retrieved from the PayPal API.
-     * @return A CompletableFuture resolving to true if the transaction succeeds.
+     * @return A {@link CompletableFuture} resolving to true if the transaction succeeds.
      */
     public CompletableFuture<Boolean> processDepositSuccess(User user, String payPalOrderId, long verifiedAmount) {
         // Wrap deposit logic into a Task to add to the asynchronous database worker queue
@@ -59,9 +59,11 @@ public class ServerPaymentController {
                     walletDAO.updateBalance(conn, user.getId(), verifiedAmount);
 
                     // 2. Persist the deposit record into the transaction history
+                    // [SECURITY FIX]: Use payPalOrderId as the transaction ID to enforce DB-level uniqueness.
+                    // This strictly prevents Double-Spending if multiple concurrent requests are made for the same order.
                     walletDAO.addTransaction(
                             conn,
-                            "DEP-" + System.currentTimeMillis(),
+                            "DEP-" + payPalOrderId,
                             user.getId(),
                             verifiedAmount,
                             "Deposit via PayPal (Order ID: " + payPalOrderId + ")",
