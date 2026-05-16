@@ -209,17 +209,30 @@ public class PaymentHandler implements CommandHandler {
      *
      * @param data        The PayPal Order ID to be verified.
      * @param client      The client handler for sending success or error feedback.
-     * @param currentUser The user confirming the deposit.
+     * @param currentUser The user attempting to confirm the deposit.
      * @throws Exception If an error occurs during payment capture or balance update.
      */
     private void handleConfirmDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
         String orderId = data.toString().trim();
 
-        // [SECURITY FIX]: Lấy nguyên tử. Luồng nào giật được data ra trước sẽ độc quyền xử lý.
+        // Atomically remove the pending deposit to prevent race conditions
         DepositInfo depositInfo = pendingDeposits.remove(orderId);
 
         if (depositInfo == null) {
             client.sendResponse("ERROR", "Order does not exist, is already being processed, or is expired.");
+            return;
+        }
+
+        // [SECURITY FIX]: IDOR (Insecure Direct Object Reference) Prevention
+        // Verify that the user confirming the transaction is the exact same user who initiated it.
+        // This prevents attackers from hijacking other users' pending Order IDs to credit their own wallets.
+        if (!depositInfo.getUser().getId().equals(currentUser.getId())) {
+            log.warn("Security Alert: IDOR attempt! User {} tried to claim deposit owned by User {}. Order ID: {}",
+                    currentUser.getUserName(), depositInfo.getUser().getUserName(), orderId);
+
+            // Return the deposit info to the map so the legitimate owner can still process it
+            pendingDeposits.put(orderId, depositInfo);
+            client.sendResponse("ERROR", "Unauthorized: You are not the owner of this transaction.");
             return;
         }
 
@@ -234,7 +247,8 @@ public class PaymentHandler implements CommandHandler {
                         verifiedAmount, depositInfo.getAmountVND(), orderId);
             }
 
-            paymentController.processDepositSuccess(currentUser, orderId, verifiedAmount).thenAccept(dbSuccess -> {
+            // Strictly use the user from the verified DepositInfo (RAM state), NOT the external parameter
+            paymentController.processDepositSuccess(depositInfo.getUser(), orderId, verifiedAmount).thenAccept(dbSuccess -> {
                 if (dbSuccess) {
                     client.sendResponse("DEPOSIT_SUCCESS", "Successful transaction. Your balance will be updated shortly.");
                 } else {
@@ -245,7 +259,7 @@ public class PaymentHandler implements CommandHandler {
                 return null;
             });
         } else {
-            // return info into the queue if transaction is failed
+            // If the transaction is not completed or network fails, return the info to the queue
             pendingDeposits.put(orderId, depositInfo);
             client.sendResponse("ERROR", "Transaction is not completed or is canceled.");
         }
