@@ -90,24 +90,30 @@ public class PaymentHandler implements CommandHandler {
                     String status = payPalService.getOrderStatus(orderId);
 
                     if ("APPROVED".equals(status)) {
-                        log.info("Auto-detected APPROVED status for Order: {}. Attempting capture...", orderId);
-                        boolean isCaptured = payPalService.captureOrder(orderId);
+                        DepositInfo processingInfo = pendingDeposits.remove(orderId);
 
-                        if (isCaptured) {
-                            // Fetch the actual verified amount from PayPal API
-                            long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
+                        if (processingInfo != null) {
+                            log.info("Auto-detected APPROVED status for Order: {}. Attempting capture...", orderId);
+                            boolean isCaptured = payPalService.captureOrder(orderId);
 
-                            if (verifiedAmount != info.getAmountVND()) {
-                                log.warn("Price manipulation warning during auto-cleanup: PayPal amount ({}) != requested amount ({}) for Order ID: {}",
-                                        verifiedAmount, info.getAmountVND(), orderId);
-                            }
+                            if (isCaptured) {
+                                // Fetch the actual verified amount from PayPal API
+                                long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
 
-                            paymentController.processDepositSuccess(info.getUser(), orderId, verifiedAmount).thenAccept(dbSuccess -> {
-                                if (dbSuccess) {
-                                    info.getClient().sendResponse("DEPOSIT_SUCCESS", "Automatic payment successful. Balance updated.");
-                                    pendingDeposits.remove(orderId);
+                                if (verifiedAmount != processingInfo.getAmountVND()) {
+                                    log.warn("Price manipulation warning during auto-cleanup: PayPal amount ({}) != requested amount ({}) for Order ID: {}",
+                                            verifiedAmount, processingInfo.getAmountVND(), orderId);
                                 }
-                            });
+
+                                paymentController.processDepositSuccess(processingInfo.getUser(), orderId, verifiedAmount).thenAccept(dbSuccess -> {
+                                    if (dbSuccess) {
+                                        processingInfo.getClient().sendResponse("DEPOSIT_SUCCESS", "Automatic payment successful. Balance updated.");
+                                    }
+                                });
+                            } else {
+                                // Trả lại vào RAM nếu capture thất bại
+                                pendingDeposits.put(orderId, processingInfo);
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -208,10 +214,12 @@ public class PaymentHandler implements CommandHandler {
      */
     private void handleConfirmDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
         String orderId = data.toString().trim();
-        DepositInfo depositInfo = pendingDeposits.get(orderId);
+
+        // [SECURITY FIX]: Lấy nguyên tử. Luồng nào giật được data ra trước sẽ độc quyền xử lý.
+        DepositInfo depositInfo = pendingDeposits.remove(orderId);
 
         if (depositInfo == null) {
-            client.sendResponse("ERROR", "Order does not exist, is expired, or is processed");
+            client.sendResponse("ERROR", "Order does not exist, is already being processed, or is expired.");
             return;
         }
 
@@ -221,17 +229,14 @@ public class PaymentHandler implements CommandHandler {
             // Fetch the actual verified amount from PayPal API
             long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
 
-            // Detect potential price manipulation attempts
             if (verifiedAmount != depositInfo.getAmountVND()) {
                 log.warn("Price manipulation warning: PayPal returned amount ({}) differs from client request ({}) for Order ID: {}",
                         verifiedAmount, depositInfo.getAmountVND(), orderId);
             }
 
-            // Credit the user's wallet and log the transaction atomically
             paymentController.processDepositSuccess(currentUser, orderId, verifiedAmount).thenAccept(dbSuccess -> {
                 if (dbSuccess) {
                     client.sendResponse("DEPOSIT_SUCCESS", "Successful transaction. Your balance will be updated shortly.");
-                    pendingDeposits.remove(orderId); // Free memory
                 } else {
                     client.sendResponse("ERROR", "Payment verification failed or database error. Please contact Admins.");
                 }
@@ -240,6 +245,8 @@ public class PaymentHandler implements CommandHandler {
                 return null;
             });
         } else {
+            // return info into the queue if transaction is failed
+            pendingDeposits.put(orderId, depositInfo);
             client.sendResponse("ERROR", "Transaction is not completed or is canceled.");
         }
     }
