@@ -1,8 +1,9 @@
 package gui;
 
 import client.network.NetworkService;
-import gui.userController.TableController;
-import gui.widget.MinimalItem;
+import gui.process.RemoveEventBus;
+import gui.userController.table.TableControllerAdmin;
+import gui.widget.item.MinimalItemAdmin;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
@@ -23,6 +24,8 @@ import model.user.User;
 
 import javafx.event.ActionEvent;
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Controller dedicated to the Administrator role.
@@ -38,7 +41,7 @@ public class ClientAdminController {
     @FXML private VBox mainDock;
     @FXML private VBox mainViewController;
 
-    private TableController tableView;
+    private TableControllerAdmin tableView;
 
     private IconButton account;
     private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
@@ -58,7 +61,7 @@ public class ClientAdminController {
         mainViewloader.setController(this);
         mainView = mainViewloader.load();
 
-        tableView = new TableController();
+        tableView = new TableControllerAdmin();
 
         FXMLLoader settingsLoader = new FXMLLoader(getClass().getResource("SettingsView.fxml"));
         settingsLoader.setController(this);
@@ -127,6 +130,7 @@ public class ClientAdminController {
 
     @FXML
     private void handleSignOut(){
+        RemoveEventBus.forUser();
         log.info("User \"{}\" is signing out.", "Admin");
         NetworkService.sendMessage("LOGOUT", "");
         MainApplication.setNewScene(MainApplication.rootLogin);
@@ -140,18 +144,19 @@ public class ClientAdminController {
             javafx.application.Platform.runLater(() -> {
                 String command = response.getCommand();
 
+                log.info(command);
                 // 1. Render the list of pending auctions
                 if ("FETCH_AUCTIONS_SUCCESS".equals(command)) {
                     @SuppressWarnings("unchecked")
-                    java.util.List<java.util.Map<String, Object>> auctions =
-                            (java.util.List<java.util.Map<String, Object>>) response.getData();
+                    List<Map<String, Object>> auctions = (List<Map<String, Object>>) response.getData();
 
+                    System.out.println("Gay");
                     tableView.deleteAllAuction();
-                    for (java.util.Map<String, Object> data : auctions) {
+                    for (Map<String, Object> data : auctions) {
                         String id = (String) data.get("id");
                         String name = (String) data.get("itemName");
 
-                        MinimalItem item = new MinimalItem(id,name,"");
+                        MinimalItemAdmin item = new MinimalItemAdmin(id,name,"");
                         item.addAdminOptions(id);
                         tableView.addNewAuction(item);
                     }
@@ -160,10 +165,10 @@ public class ClientAdminController {
                 else if ("FETCH_USERS_SUCCESS".equals(command)) {
                     tableView.deleteAllAuction();
                     @SuppressWarnings("unchecked")
-                    java.util.List<java.util.Map<String, Object>> users =
-                            (java.util.List<java.util.Map<String, Object>>) response.getData();
+                    List<Map<String, Object>> users =
+                            (List<Map<String, Object>>) response.getData();
 
-                    for (java.util.Map<String, Object> data : users) {
+                    for (Map<String, Object> data : users) {
                         String id = (String) data.get("id");
                         String username = (String) data.get("username");
                         String name = (String) data.get("name");
