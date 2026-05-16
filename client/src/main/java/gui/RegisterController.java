@@ -3,6 +3,7 @@ package gui;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import client.network.NetworkClient;
+import client.utils.ErrorParser;
 import gui.process.AlertHelper;
 import gui.process.QRCodeHelper;
 import javafx.application.Platform;
@@ -17,7 +18,6 @@ import model.user.User;
 import network.NetworkMessage;
 
 import java.util.List;
-
 import static utils.ConsoleColors.*;
 
 /**
@@ -53,11 +53,11 @@ public class RegisterController {
     @FXML
     protected void onRegisterButtonClick() {
         log.info("Registration process started.");
-
         String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
-        String confirmPass = (confirmPasswordAccount != null) ? confirmPasswordAccount.getText().trim() : "";
+        String confirmPass = (confirmPasswordAccount != null) ?
+                confirmPasswordAccount.getText().trim() : "";
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty()) {
             AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid information", "Please enter on every field");
@@ -77,14 +77,12 @@ public class RegisterController {
                     + "- Contains at least 1 normal letter (a-z).\n"
                     + "- Contains at least a number (0-9).\n"
                     + "- Contains at least a special character (@, $, !, %, *, ?, &).";
-
             AlertHelper.showAlert(Alert.AlertType.WARNING, "Invalid password", errorMsg);
             return;
         }
 
         // Unify all new sign-ups to the generic "USER" role
         User newUser = new User("", username, password, name, "USER");
-
         if (networkClient != null) {
             networkClient.setOnMessageReceived(this::handleServerResponse);
             log.info("Sending registration data to server...");
@@ -145,12 +143,12 @@ public class RegisterController {
                     }
 
                     alert.showAndWait();
-
                     clearFields();
                     MainApplication.setNewScene(MainApplication.rootLogin);
 
                 } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
-                    String errorMsg = data != null ? data.toString() : "Unidentified error";
+                    // [FIXED]: Extract error message using ErrorParser
+                    String errorMsg = ErrorParser.parse(data);
                     log.warn("Registration failed: {}", errorMsg);
                     AlertHelper.showAlert(Alert.AlertType.ERROR, "Registration failed", errorMsg);
                 }

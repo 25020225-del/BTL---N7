@@ -2,10 +2,11 @@ package client.handler;
 
 import client.network.NetworkClient;
 import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import gui.process.AlertHelper;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,7 +16,6 @@ import java.util.Map;
  */
 public class ResponseDispatcher {
     private static final Logger log = LoggerFactory.getLogger(ResponseDispatcher.class);
-
     private final Map<String, ResponseHandler> handlers = new HashMap<>();
 
     public ResponseDispatcher() {
@@ -60,7 +60,18 @@ public class ResponseDispatcher {
             try {
                 handler.handle(message, client);
             } catch (Exception e) {
+                // 1. Vẫn giữ nguyên dòng log cho Developer debug
                 log.error("Command \"{}\": {}", command, e.getMessage());
+                e.printStackTrace();
+
+                // 2. [FIXED]: Thiết lập lưới an toàn (Catch-all) bắn Pop-up báo lỗi trực quan cho End-user
+                Platform.runLater(() -> {
+                    AlertHelper.showAlert(
+                            Alert.AlertType.ERROR,
+                            "Lỗi hệ thống",
+                            "Lỗi xử lý dữ liệu cục bộ: " + e.getMessage()
+                    );
+                });
             }
         } else {
             // Unhandled commands are forwarded directly to the UI component if a callback is registered

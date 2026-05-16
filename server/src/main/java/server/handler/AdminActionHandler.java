@@ -2,17 +2,14 @@ package server.handler;
 
 import database.TransactionManager;
 import database.dao.AuctionDAO;
+import exception.AuctionExceptions;
+import network.ErrorPayload;
 import model.user.User;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ClientHandler;
 
-/**
- * Handles administrative commands sent by clients.
- * This handler acts as a network router, ensuring that only users with the "ADMIN" role
- * can execute operations, and delegates business logic to the ServerAdminController.
- */
 public class AdminActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);
     private final database.dao.UserDAO userDAO;
@@ -24,14 +21,13 @@ public class AdminActionHandler implements CommandHandler {
     }
 
     @Override
-    public void handle(NetworkMessage message, ClientHandler client) {
+    public void handle(NetworkMessage message, ClientHandler client) throws Exception {
         String command = message.getCommand();
         User adminUser = client.getUser();
 
-        // Security check: Only admins can use this command
+        // Chặn quyền truy cập ngay từ đầu
         if (adminUser == null || !adminUser.getRole().equalsIgnoreCase("ADMIN")) {
-            client.sendResponse("ERROR", "You do not have permission to perform this command.");
-            return;
+            throw new AuctionExceptions.UnauthorizedAccessException("Chỉ Quản trị viên mới được phép thực hiện lệnh này.");
         }
 
         model.user.Admin admin = new model.user.Admin(adminUser);
@@ -53,48 +49,45 @@ public class AdminActionHandler implements CommandHandler {
             TransactionManager.submitTask(() -> adminCtrl.approveAuction(admin, auctionId))
                     .thenAccept(success -> {
                         if (success) {
-                            client.sendResponse("ADMIN_ACTION_SUCCESS", "Auction approved");
+                            client.sendResponse("ADMIN_ACTION_SUCCESS", "Đã duyệt phiên đấu giá.");
                         } else {
-                            client.sendResponse("ERROR", "Cannot find this auction in database or approval failed.");
+                            client.sendResponse("ERROR", new ErrorPayload("ERR_AUC_002", "Không tìm thấy phiên đấu giá hoặc duyệt thất bại."));
                         }
                     }).exceptionally(ex -> {
                         log.error("Async approval failed: {}", ex.getMessage());
-                        client.sendResponse("ERROR", "Server error.");
+                        client.sendResponse("ERROR", new ErrorPayload("ERR_SYS_500", "Lỗi máy chủ khi thực thi lệnh."));
                         return null;
                     });
         } else if ("REJECT_AUCTION".equals(command)) {
             TransactionManager.submitTask(() -> adminCtrl.rejectAuction(admin, auctionId))
                     .thenAccept(success -> {
                         if (success) {
-                            client.sendResponse("ADMIN_ACTION_SUCCESS", "Auction declined");
+                            client.sendResponse("ADMIN_ACTION_SUCCESS", "Đã từ chối phiên đấu giá.");
                         } else {
-                            client.sendResponse("ERROR", "Cannot find this auction in database or rejection failed.");
+                            client.sendResponse("ERROR", new ErrorPayload("ERR_AUC_002", "Không tìm thấy phiên đấu giá hoặc từ chối thất bại."));
                         }
                     }).exceptionally(ex -> {
                         log.error("Async rejection failed: {}", ex.getMessage());
-                        client.sendResponse("ERROR", "Server error.");
+                        client.sendResponse("ERROR", new ErrorPayload("ERR_SYS_500", "Lỗi máy chủ khi thực thi lệnh."));
                         return null;
                     });
+        } else {
+            throw new AuctionExceptions.InvalidPayloadException("Lệnh Admin không hợp lệ.");
         }
     }
 
-    private void handleFetchUsers(ClientHandler client) {
-        try {
-            java.util.List<java.util.Map<String, Object>> users = userDAO.getAllUsers();
-            client.sendResponse("FETCH_USERS_SUCCESS", users);
-        } catch (java.sql.SQLException e) {
-            client.sendResponse("ERROR", "Failed to fetch users: " + e.getMessage());
-        }
+    private void handleFetchUsers(ClientHandler client) throws Exception {
+        java.util.List<java.util.Map<String, Object>> users = userDAO.getAllUsers();
+        client.sendResponse("FETCH_USERS_SUCCESS", users);
     }
 
     private void handleUserBlock(model.user.Admin admin, String userId, boolean block, ClientHandler client) {
-        boolean success = block ?
-                adminCtrl.blockUser(admin, userId) : adminCtrl.unblockUser(admin, userId);
+        boolean success = block ? adminCtrl.blockUser(admin, userId) : adminCtrl.unblockUser(admin, userId);
         if (success) {
-            String action = block ? "blocked" : "unblocked";
-            client.sendResponse("ADMIN_ACTION_SUCCESS", "User " + userId + " has been " + action);
+            String action = block ? "khóa" : "mở khóa";
+            client.sendResponse("ADMIN_ACTION_SUCCESS", "Người dùng " + userId + " đã bị " + action);
         } else {
-            client.sendResponse("ERROR", "Failed to update user status.");
+            client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "Không thể cập nhật trạng thái người dùng."));
         }
     }
 }
