@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static utils.ConsoleColors.*;
 
@@ -67,8 +68,9 @@ public class PaymentHandler implements CommandHandler {
     }
 
     /**
-     * Launches a background process that executes every 5 minutes to identify
-     * and remove abandoned order records that have exceeded their TTL.
+     * Launches a background process that executes every 10 seconds to identify
+     * and remove abandoned order records that have exceeded their TTL,
+     * or auto-capture APPROVED orders.
      */
     private void startCleanupTask() {
         cleanupScheduler.scheduleAtFixedRate(() -> {
@@ -85,39 +87,42 @@ public class PaymentHandler implements CommandHandler {
                     continue;
                 }
 
-                // Automatically check order status from PayPal
-                try {
-                    String status = payPalService.getOrderStatus(orderId);
+                // Lấy cờ xử lý để tránh tranh chấp với luồng xác nhận thủ công của Client
+                if (info.getIsProcessing().compareAndSet(false, true)) {
+                    try {
+                        String status = payPalService.getOrderStatus(orderId);
 
-                    if ("APPROVED".equals(status)) {
-                        DepositInfo processingInfo = pendingDeposits.remove(orderId);
-
-                        if (processingInfo != null) {
+                        if ("APPROVED".equals(status)) {
                             log.info("Auto-detected APPROVED status for Order: {}. Attempting capture...", orderId);
                             boolean isCaptured = payPalService.captureOrder(orderId);
 
                             if (isCaptured) {
-                                // Fetch the actual verified amount from PayPal API
                                 long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
 
-                                if (verifiedAmount != processingInfo.getAmountVND()) {
+                                if (verifiedAmount != info.getAmountVND()) {
                                     log.warn("Price manipulation warning during auto-cleanup: PayPal amount ({}) != requested amount ({}) for Order ID: {}",
-                                            verifiedAmount, processingInfo.getAmountVND(), orderId);
+                                            verifiedAmount, info.getAmountVND(), orderId);
                                 }
 
-                                paymentController.processDepositSuccess(processingInfo.getUser(), orderId, verifiedAmount).thenAccept(dbSuccess -> {
+                                paymentController.processDepositSuccess(info.getUser(), orderId, verifiedAmount).thenAccept(dbSuccess -> {
                                     if (dbSuccess) {
-                                        processingInfo.getClient().sendResponse("DEPOSIT_SUCCESS", "Automatic payment successful. Balance updated.");
+                                        // Chỉ remove khi mọi thứ đã thành công trót lọt
+                                        pendingDeposits.remove(orderId);
+                                        info.getClient().sendResponse("DEPOSIT_SUCCESS", "Automatic payment successful. Balance updated.");
+                                    } else {
+                                        info.getIsProcessing().set(false); // Nhả lock nếu DB lỗi để thử lại sau
                                     }
                                 });
                             } else {
-                                // Trả lại vào RAM nếu capture thất bại
-                                pendingDeposits.put(orderId, processingInfo);
+                                info.getIsProcessing().set(false); // Capture xịt, nhả lock
                             }
+                        } else {
+                            info.getIsProcessing().set(false); // Status chưa APPROVED, nhả lock chờ lượt sau
                         }
+                    } catch (Exception e) {
+                        log.warn("Error polling PayPal order {}: {}", orderId, e.getMessage());
+                        info.getIsProcessing().set(false); // Có lỗi mạng, nhả lock an toàn
                     }
-                } catch (Exception e) {
-                    log.warn("Error polling PayPal order {}: {}", orderId, e.getMessage());
                 }
             }
         }, 10, 10, TimeUnit.SECONDS);
@@ -125,10 +130,6 @@ public class PaymentHandler implements CommandHandler {
 
     /**
      * Routes payment commands to their specific logic handlers.
-     * Requires the user to be authenticated before processing any financial request.
-     *
-     * @param message The network message containing the payment command (CREATE_DEPOSIT, CONFIRM_DEPOSIT).
-     * @param client  The handler for the active client connection.
      */
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
@@ -159,19 +160,13 @@ public class PaymentHandler implements CommandHandler {
                     break;
             }
         } catch (Exception e) {
-            log.error("{}", e.getMessage());
+            log.error("Payment Handle Error: {}", e.getMessage());
             client.sendResponse("ERROR", "Server error: " + e.getMessage());
         }
     }
 
     /**
      * Initiates a new deposit request by creating a PayPal order.
-     * The order details are stored in memory for later verification.
-     *
-     * @param data        The deposit amount provided by the client.
-     * @param client      The client handler for sending the redirect response.
-     * @param currentUser The user making the deposit.
-     * @throws Exception If an error occurs during order creation with PayPal.
      */
     private void handleCreateDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
         long amountVND;
@@ -188,7 +183,6 @@ public class PaymentHandler implements CommandHandler {
         }
 
         log.info("Creating deposit order of {} VND for {}", amountVND, currentUser.getUserName());
-
         String[] orderInfo = payPalService.createOrder(amountVND);
         String orderId = orderInfo[0];
         String approvalUrl = orderInfo[1];
@@ -205,69 +199,72 @@ public class PaymentHandler implements CommandHandler {
 
     /**
      * Confirms and captures a completed PayPal transaction.
-     * If successful, funds are credited asynchronously to avoid thread starvation.
-     *
-     * @param data        The PayPal Order ID to be verified.
-     * @param client      The client handler for sending success or error feedback.
-     * @param currentUser The user attempting to confirm the deposit.
-     * @throws Exception If an error occurs during payment capture or balance update.
      */
-    private void handleConfirmDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
+    private void handleConfirmDeposit(Object data, ClientHandler client, User currentUser) {
         String orderId = data.toString().trim();
 
-        // Atomically remove the pending deposit to prevent race conditions
-        DepositInfo depositInfo = pendingDeposits.remove(orderId);
+        // Lấy thông tin mà không rút khỏi Map
+        DepositInfo depositInfo = pendingDeposits.get(orderId);
 
         if (depositInfo == null) {
-            client.sendResponse("ERROR", "Order does not exist, is already being processed, or is expired.");
+            client.sendResponse("ERROR", "Order does not exist or is expired.");
             return;
         }
 
-        // [SECURITY FIX]: IDOR (Insecure Direct Object Reference) Prevention
-        // Verify that the user confirming the transaction is the exact same user who initiated it.
-        // This prevents attackers from hijacking other users' pending Order IDs to credit their own wallets.
+        // [SECURITY FIX]: IDOR Prevention
         if (!depositInfo.getUser().getId().equals(currentUser.getId())) {
             log.warn("Security Alert: IDOR attempt! User {} tried to claim deposit owned by User {}. Order ID: {}",
                     currentUser.getUserName(), depositInfo.getUser().getUserName(), orderId);
-
-            // Return the deposit info to the map so the legitimate owner can still process it
-            pendingDeposits.put(orderId, depositInfo);
             client.sendResponse("ERROR", "Unauthorized: You are not the owner of this transaction.");
             return;
         }
 
-        // Attempt to capture the authorized payment from PayPal
-        boolean isCaptured = payPalService.captureOrder(orderId);
-        if (isCaptured) {
-            // Fetch the actual verified amount from PayPal API
-            long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
+        // [ARCHITECT FIX]: Sử dụng Atomic Lock thay cho việc Remove khỏi Map
+        if (!depositInfo.getIsProcessing().compareAndSet(false, true)) {
+            client.sendResponse("ERROR", "Transaction is currently being processed. Please wait.");
+            return;
+        }
 
-            if (verifiedAmount != depositInfo.getAmountVND()) {
-                log.warn("Price manipulation warning: PayPal returned amount ({}) differs from client request ({}) for Order ID: {}",
-                        verifiedAmount, depositInfo.getAmountVND(), orderId);
-            }
+        try {
+            // Attempt to capture the authorized payment from PayPal
+            boolean isCaptured = payPalService.captureOrder(orderId);
 
-            // Strictly use the user from the verified DepositInfo (RAM state), NOT the external parameter
-            paymentController.processDepositSuccess(depositInfo.getUser(), orderId, verifiedAmount).thenAccept(dbSuccess -> {
-                if (dbSuccess) {
-                    client.sendResponse("DEPOSIT_SUCCESS", "Successful transaction. Your balance will be updated shortly.");
-                } else {
-                    client.sendResponse("ERROR", "Payment verification failed or database error. Please contact Admins.");
+            if (isCaptured) {
+                long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
+
+                if (verifiedAmount != depositInfo.getAmountVND()) {
+                    log.warn("Price manipulation warning: PayPal returned amount ({}) differs from client request ({}) for Order ID: {}",
+                            verifiedAmount, depositInfo.getAmountVND(), orderId);
                 }
-            }).exceptionally(ex -> {
-                client.sendResponse("ERROR", "Database logging error.");
-                return null;
-            });
-        } else {
-            // If the transaction is not completed or network fails, return the info to the queue
-            pendingDeposits.put(orderId, depositInfo);
-            client.sendResponse("ERROR", "Transaction is not completed or is canceled.");
+
+                paymentController.processDepositSuccess(depositInfo.getUser(), orderId, verifiedAmount).thenAccept(dbSuccess -> {
+                    if (dbSuccess) {
+                        // DB xong xuôi mới an tâm dọn rác trong RAM
+                        pendingDeposits.remove(orderId);
+                        client.sendResponse("DEPOSIT_SUCCESS", "Successful transaction. Your balance will be updated shortly.");
+                    } else {
+                        depositInfo.getIsProcessing().set(false); // Nhả lock nếu DB lỗi
+                        client.sendResponse("ERROR", "Payment verification failed or database error. Please contact Admins.");
+                    }
+                }).exceptionally(ex -> {
+                    depositInfo.getIsProcessing().set(false);
+                    client.sendResponse("ERROR", "Database logging error.");
+                    return null;
+                });
+
+            } else {
+                depositInfo.getIsProcessing().set(false); // Capture lỗi, nhả lock
+                client.sendResponse("ERROR", "Transaction is not completed or is canceled.");
+            }
+        } catch (Exception e) {
+            depositInfo.getIsProcessing().set(false); // Bắt ngoại lệ an toàn, nhả lock
+            log.error("Error confirming deposit {}: {}", orderId, e.getMessage());
+            client.sendResponse("ERROR", "Connection error with payment gateway.");
         }
     }
 
     /**
      * A lightweight state storage class to track a pending deposit's metadata.
-     * Stores the monetary amount and the time of creation to facilitate garbage collection.
      */
     private static class DepositInfo {
         private final long amountVND;
@@ -275,12 +272,9 @@ public class PaymentHandler implements CommandHandler {
         private final ClientHandler client;
         private final User user;
 
-        /**
-         * Constructs a new state object for a pending deposit.
-         *
-         * @param amountVND The amount in Vietnamese Dong.
-         * @param createdAt The system time in milliseconds when the order was initiated.
-         */
+        // Cờ đánh dấu luồng xử lý độc quyền (Thread-safe Lock)
+        private final AtomicBoolean isProcessing = new AtomicBoolean(false);
+
         public DepositInfo(long amountVND, long createdAt, ClientHandler client, User user) {
             this.amountVND = amountVND;
             this.createdAt = createdAt;
@@ -302,6 +296,10 @@ public class PaymentHandler implements CommandHandler {
 
         public User getUser() {
             return user;
+        }
+
+        public AtomicBoolean getIsProcessing() {
+            return isProcessing;
         }
     }
 
