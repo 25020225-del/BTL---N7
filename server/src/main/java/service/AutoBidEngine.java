@@ -169,23 +169,27 @@ public class AutoBidEngine {
         try {
             bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, winnerBot.getMaxBid(), true)
                     .handle((success, ex) -> {
-                        if (ex != null) {
-                            log.error("Bot Engine execution failed for user {}: {}", winnerBot.getBidder().getUserName(), ex.getMessage());
-                            synchronized (botQueue) {
-                                botQueue.removeIf(b -> b.getBidder().getId().equals(winnerBot.getBidder().getId()));
+                        // [ARCHITECT FIX]: Bọc toàn bộ Callback vào Try-Catch để phòng thủ việc Thread Pool từ chối lệnh
+                        try {
+                            if (ex != null) {
+                                log.error("Bot Engine execution failed for user {}: {}", winnerBot.getBidder().getUserName(), ex.getMessage());
+                                synchronized (botQueue) {
+                                    botQueue.removeIf(b -> b.getBidder().getId().equals(winnerBot.getBidder().getId()));
+                                }
+                                botPool.submit(() -> processNextBot(auction));
+                            } else if (Boolean.TRUE.equals(success)) {
+                                // Giao dịch DB thành công, luồng hoàn tất -> Release Lock
+                                isScanning.set(false);
+                            } else {
+                                log.info("Bot of {} failed (insufficient balance or DB reject). Removing configuration.", winnerBot.getBidder().getUserName());
+                                synchronized (botQueue) {
+                                    botQueue.removeIf(b -> b.getBidder().getId().equals(winnerBot.getBidder().getId()));
+                                }
+                                botPool.submit(() -> processNextBot(auction));
                             }
-                            // Gặp lỗi hệ thống -> Loại Bot và Đệ quy quét tiếp
-                            botPool.submit(() -> processNextBot(auction));
-                        } else if (Boolean.TRUE.equals(success)) {
-                            // Giao dịch DB thành công, luồng hoàn tất -> Release Lock
+                        } catch (Exception poolEx) {
+                            log.error("Critical fail inside async callback (e.g., Thread Pool full), forcing lock release: {}", poolEx.getMessage());
                             isScanning.set(false);
-                        } else {
-                            log.info("Bot of {} failed (insufficient balance or DB reject). Removing configuration.", winnerBot.getBidder().getUserName());
-                            synchronized (botQueue) {
-                                botQueue.removeIf(b -> b.getBidder().getId().equals(winnerBot.getBidder().getId()));
-                            }
-                            // Giao dịch thất bại (Thiếu tiền, thay đổi trạng thái...) -> Loại Bot và Đệ quy quét tiếp
-                            botPool.submit(() -> processNextBot(auction));
                         }
                         return null;
                     });

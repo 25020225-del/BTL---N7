@@ -1,5 +1,6 @@
 package server.handler;
 
+import exception.AuctionExceptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import network.NetworkMessage;
@@ -122,7 +123,7 @@ public class    CommandDispatcher {
                 // Thực thi logic nghiệp vụ
                 handler.handle(message, client);
 
-            } catch (exception.AuctionBaseException baseEx) {
+            } catch (AuctionExceptions.AuctionBaseException baseEx) {
                 // BẮT LỖI NGHIỆP VỤ: Đã lường trước, trả về mã lỗi chuẩn
                 log.warn("Business logic violation [{}]: {}", baseEx.getErrorCode(), baseEx.getMessage());
                 network.ErrorPayload errorData = new network.ErrorPayload(baseEx.getErrorCode(), baseEx.getMessage());
