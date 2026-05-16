@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -57,144 +56,142 @@ public class AutoBidEngine {
     public static void triggerBotScan(Auction auction) {
         AtomicBoolean isScanning = activeScans.computeIfAbsent(auction.getId(), k -> new AtomicBoolean(false));
 
-        // Cơ chế Non-blocking Lock: Nếu đã có thread quét phiên này rồi, các thread khác sẽ bị từ chối ngay lập tức
+        // Cơ chế Non-blocking Lock: Nếu đã có thread quét phiên này rồi, các thread khác sẽ bị từ chối
         if (isScanning.compareAndSet(false, true)) {
-            botPool.submit(() -> {
-                try {
-                    processNextBot(auction);
-                } finally {
-                    isScanning.set(false); // Release lock khi quét xong
-                }
-            });
+            // Đẩy task đánh giá vào Pool. Việc nhả Lock (isScanning.set(false))
+            // sẽ do processNextBot tự chịu trách nhiệm khi luồng bất đồng bộ thực sự hoàn tất.
+            botPool.submit(() -> processNextBot(auction));
         }
     }
 
     /**
      * Mathematically evaluates the bot queue in RAM to determine the final winner
      * and submits exactly ONE database transaction to prevent queue congestion.
-     * Evaluates iteratively to avoid runaway asynchronous chaining.
+     * Fully Asynchronous to prevent Thread Starvation.
      *
      * @param auction The active auction session being processed.
      */
     static void processNextBot(Auction auction) {
+        AtomicBoolean isScanning = activeScans.computeIfAbsent(auction.getId(), k -> new AtomicBoolean(false));
+
         if (!auction.getStatus().equals(Auction.STATUS_RUNNING)) {
+            isScanning.set(false); // Release Lock
             return;
         }
 
-        // Lấy tham chiếu của hàng đợi bots hiện tại
         java.util.Queue<AutoBid> botQueue = auction.getActiveAutoBids();
+        List<AutoBid> bots;
 
-        // [ARCHITECT FIX]: Sử dụng while(true) thay cho đệ quy bất đồng bộ
-        while (true) {
-            List<AutoBid> bots;
+        // 1. KHÓA HÀNG ĐỢI KHI ĐỌC/COPY ĐỂ TRÁNH ConcurrentModificationException
+        synchronized (botQueue) {
+            if (botQueue.isEmpty()) {
+                isScanning.set(false); // Release Lock
+                return;
+            }
+            bots = new ArrayList<>(botQueue);
+        }
 
-            // 1. KHÓA HÀNG ĐỢI KHI ĐỌC/COPY ĐỂ TRÁNH ConcurrentModificationException
+        // 2. Sort bots: Highest maxBid first. If maxBid is tied, earlier registration time wins.
+        bots.sort((b1, b2) -> {
+            int maxBidCompare = Long.compare(b2.getMaxBid(), b1.getMaxBid());
+            if (maxBidCompare != 0) return maxBidCompare;
+            return b1.getTimeRegistered().compareTo(b2.getTimeRegistered());
+        });
+
+        AutoBid top1 = null;
+        AutoBid top2 = null;
+
+        // 3. Find the top 2 bots capable of bidding
+        for (AutoBid bot : bots) {
+            long actualIncrement = Math.max(auction.getBidIncrement(), bot.getIncrement());
+            long requiredBid = (auction.getWinningBidder() == null) ?
+                    auction.getItem().getStartingPrice() :
+                    auction.getCurrentPrice() + actualIncrement;
+
+            if (bot.getMaxBid() >= requiredBid ||
+                    (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(bot.getBidder().getId()) && bot.getMaxBid() > auction.getCurrentPrice())) {
+                if (top1 == null) {
+                    top1 = bot;
+                } else if (top2 == null) {
+                    top2 = bot;
+                    break; // We only need the top 2 bots for the math fight
+                }
+            }
+        }
+
+        // Thoát nếu không còn bot nào đủ khả năng đặt giá
+        if (top1 == null) {
+            isScanning.set(false); // Release Lock
+            return;
+        }
+
+        // 4. Calculate the final winning price mathematically
+        long finalPrice;
+        long top1ActualIncrement = Math.max(auction.getBidIncrement(), top1.getIncrement());
+
+        if (top2 != null) {
+            // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
+            finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
+            final long top2MaxBid = top2.getMaxBid();
+            final String top1Id = top1.getBidder().getId();
+
+            // 5A. KHÓA HÀNG ĐỢI KHI XÓA PHẦN TỬ THUA CUỘC
             synchronized (botQueue) {
-                if (botQueue.isEmpty()) return;
-                bots = new ArrayList<>(botQueue);
+                botQueue.removeIf(b ->
+                        b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
+                );
             }
-
-            // 2. Sort bots: Highest maxBid first. If maxBid is tied, earlier registration time wins.
-            bots.sort((b1, b2) -> {
-                int maxBidCompare = Long.compare(b2.getMaxBid(), b1.getMaxBid());
-                if (maxBidCompare != 0) return maxBidCompare;
-                return b1.getTimeRegistered().compareTo(b2.getTimeRegistered());
-            });
-
-            AutoBid top1 = null;
-            AutoBid top2 = null;
-
-            // 3. Find the top 2 bots capable of bidding
-            for (AutoBid bot : bots) {
-                long actualIncrement = Math.max(auction.getBidIncrement(), bot.getIncrement());
-                long requiredBid = (auction.getWinningBidder() == null) ?
-                        auction.getItem().getStartingPrice() :
-                        auction.getCurrentPrice() + actualIncrement;
-
-                if (bot.getMaxBid() >= requiredBid ||
-                        (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(bot.getBidder().getId()) && bot.getMaxBid() > auction.getCurrentPrice())) {
-                    if (top1 == null) {
-                        top1 = bot;
-                    } else if (top2 == null) {
-                        top2 = bot;
-                        break; // We only need the top 2 bots for the math fight
-                    }
-                }
-            }
-
-            // Thoát vòng lặp nếu không còn bot nào đủ khả năng đặt giá
-            if (top1 == null) break;
-
-            // 4. Calculate the final winning price mathematically
-            long finalPrice;
-            long top1ActualIncrement = Math.max(auction.getBidIncrement(), top1.getIncrement());
-
-            if (top2 != null) {
-                // Price = maxBid of bot 2 + increment of bot 1 (capped at maxBid of bot 1)
-                finalPrice = Math.min(top1.getMaxBid(), top2.getMaxBid() + top1ActualIncrement);
-                final long top2MaxBid = top2.getMaxBid();
-                final String top1Id = top1.getBidder().getId();
-
-                // 5A. KHÓA HÀNG ĐỢI KHI XÓA PHẦN TỬ THUA CUỘC
-                synchronized (botQueue) {
-                    botQueue.removeIf(b ->
-                            b.getMaxBid() <= top2MaxBid && !b.getBidder().getId().equals(top1Id)
-                    );
-                }
-            } else {
-                // Only top1 is capable of bidding
-                finalPrice = (auction.getWinningBidder() == null) ?
-                        auction.getItem().getStartingPrice() :
-                        auction.getCurrentPrice() + top1ActualIncrement;
-            }
-
-            // Ensure final price is at least the minimum required to take the lead
-            long minRequired = (auction.getWinningBidder() == null) ?
+        } else {
+            // Only top1 is capable of bidding
+            finalPrice = (auction.getWinningBidder() == null) ?
                     auction.getItem().getStartingPrice() :
                     auction.getCurrentPrice() + top1ActualIncrement;
-            finalPrice = Math.max(finalPrice, minRequired);
+        }
 
-            // Check if top1 is already winning and the price hasn't been pushed up
-            if (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(top1.getBidder().getId())) {
-                if (finalPrice <= auction.getCurrentPrice()) {
-                    break; // Đang giữ top 1 ở mức giá an toàn, ngừng đánh giá
-                }
+        // Ensure final price is at least the minimum required to take the lead
+        long minRequired = (auction.getWinningBidder() == null) ?
+                auction.getItem().getStartingPrice() :
+                auction.getCurrentPrice() + top1ActualIncrement;
+        finalPrice = Math.max(finalPrice, minRequired);
+
+        // Check if top1 is already winning and the price hasn't been pushed up
+        if (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(top1.getBidder().getId())) {
+            if (finalPrice <= auction.getCurrentPrice()) {
+                isScanning.set(false); // Đang giữ top 1 ở mức giá an toàn -> Release Lock
+                return;
             }
+        }
 
-            final AutoBid winnerBot = top1;
-            log.info("Bot of {} mathematically won. Submitting transaction.", winnerBot.getBidder().getUserName());
+        final AutoBid winnerBot = top1;
+        log.info("Bot of {} mathematically won. Submitting ASYNC transaction.", winnerBot.getBidder().getUserName());
 
-            // 6. Submit exactly ONE task to the Database và ĐỢI kết quả (Synchronous inside Worker Thread)
-            try {
-                // Lệnh .get() sẽ block botPool thread này cho đến khi TransactionManager xử lý xong trên DB
-                boolean success = bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, winnerBot.getMaxBid(), true).get();
-
-                if (success) {
-                    break; // Giao dịch DB thành công, vòng lặp hoàn thành.
-                } else {
-                    log.info("Bot of {} failed (insufficient balance). Removing configuration.", winnerBot.getBidder().getUserName());
-
-                    // 5B. KHÓA HÀNG ĐỢI KHI XÓA BOT BỊ LỖI THANH TOÁN
-                    synchronized (botQueue) {
-                        botQueue.removeIf(b ->
-                                b.getBidder().getId().equals(winnerBot.getBidder().getId())
-                        );
-                    }
-                    // Continue vòng lặp while(true) để ngay lập tức quay lại bước 1 đánh giá bot kế tiếp.
-                    continue;
-                }
-            } catch (Exception ex) {
-                log.error("Bot Engine execution failed for user {}: {}", winnerBot.getBidder().getUserName(), ex.getMessage());
-
-                // [ARCHITECT FIX]: Xử lý triệt để Rủi ro "Chết luồng" (Thread Starvation)
-                // 1. Phải xóa bot gây Exception khỏi hàng đợi RAM để tránh kẹt lại gây Infinite Loop
-                synchronized (botQueue) {
-                    botQueue.removeIf(b -> b.getBidder().getId().equals(winnerBot.getBidder().getId()));
-                }
-
-                // 2. Tiếp tục đánh giá các bot hợp lệ khác thay vì đứt gánh giữa chừng
-                continue;
-            }
+        // 6. Xử lý Bất đồng bộ (Asynchronous Chain) - Xóa bỏ rủi ro Thread Starvation
+        try {
+            bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, winnerBot.getMaxBid(), true)
+                    .handle((success, ex) -> {
+                        if (ex != null) {
+                            log.error("Bot Engine execution failed for user {}: {}", winnerBot.getBidder().getUserName(), ex.getMessage());
+                            synchronized (botQueue) {
+                                botQueue.removeIf(b -> b.getBidder().getId().equals(winnerBot.getBidder().getId()));
+                            }
+                            // Gặp lỗi hệ thống -> Loại Bot và Đệ quy quét tiếp
+                            botPool.submit(() -> processNextBot(auction));
+                        } else if (Boolean.TRUE.equals(success)) {
+                            // Giao dịch DB thành công, luồng hoàn tất -> Release Lock
+                            isScanning.set(false);
+                        } else {
+                            log.info("Bot of {} failed (insufficient balance or DB reject). Removing configuration.", winnerBot.getBidder().getUserName());
+                            synchronized (botQueue) {
+                                botQueue.removeIf(b -> b.getBidder().getId().equals(winnerBot.getBidder().getId()));
+                            }
+                            // Giao dịch thất bại (Thiếu tiền, thay đổi trạng thái...) -> Loại Bot và Đệ quy quét tiếp
+                            botPool.submit(() -> processNextBot(auction));
+                        }
+                        return null;
+                    });
+        } catch (Exception e) {
+            log.error("Critical fail submitting async bid task: {}", e.getMessage());
+            isScanning.set(false); // Đảm bảo không bao giờ bị Deadlock dù lỗi không lường trước
         }
     }
 }
