@@ -159,4 +159,39 @@ public class PayPalService {
         }
         return "UNKNOWN";
     }
+
+    /**
+     * Queries the PayPal API to retrieve the actual captured amount and converts it to VND.
+     *
+     * @param orderId The PayPal Order ID to verify.
+     * @return The actual captured amount in VND, or 0 if verification fails.
+     * @throws Exception If a network or JSON parsing error occurs.
+     */
+    public long getCapturedAmountVND(String orderId) throws Exception {
+        String token = getAccessToken();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v2/checkout/orders/" + orderId))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            JsonNode jsonResponse = mapper.readTree(response.body());
+            JsonNode purchaseUnits = jsonResponse.get("purchase_units");
+
+            // Extract the amount from the PayPal JSON payload
+            if (purchaseUnits != null && purchaseUnits.isArray() && !purchaseUnits.isEmpty()) {
+                String valueStr = purchaseUnits.get(0).get("amount").get("value").asText();
+                double amountUSD = Double.parseDouble(valueStr);
+
+                // Convert back to VND (Using the same 25000.0 exchange rate as createOrder)
+                return (long) (amountUSD * 25000.0);
+            }
+        }
+
+        log.warn("Failed to verify the captured amount for Order ID: {}. HTTP Status: {}", orderId, response.statusCode());
+        return 0L;
+    }
 }

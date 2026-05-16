@@ -88,14 +88,23 @@ public class PaymentHandler implements CommandHandler {
                 // Automatically check order status from PayPal
                 try {
                     String status = payPalService.getOrderStatus(orderId);
+
                     if ("APPROVED".equals(status)) {
                         log.info("Auto-detected APPROVED status for Order: {}. Attempting capture...", orderId);
                         boolean isCaptured = payPalService.captureOrder(orderId);
 
                         if (isCaptured) {
-                            paymentController.processDepositSuccess(info.getUser(), orderId).thenAccept(dbSuccess -> {
+                            // Fetch the actual verified amount from PayPal API
+                            long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
+
+                            if (verifiedAmount != info.getAmountVND()) {
+                                log.warn("Price manipulation warning during auto-cleanup: PayPal amount ({}) != requested amount ({}) for Order ID: {}",
+                                        verifiedAmount, info.getAmountVND(), orderId);
+                            }
+
+                            paymentController.processDepositSuccess(info.getUser(), orderId, verifiedAmount).thenAccept(dbSuccess -> {
                                 if (dbSuccess) {
-                                    info.getClient().sendResponse("DEPOSIT_SUCCESS", "Thanh toán tự động thành công. Số dư đã được cập nhật.");
+                                    info.getClient().sendResponse("DEPOSIT_SUCCESS", "Automatic payment successful. Balance updated.");
                                     pendingDeposits.remove(orderId);
                                 }
                             });
@@ -208,11 +217,18 @@ public class PaymentHandler implements CommandHandler {
 
         // Attempt to capture the authorized payment from PayPal
         boolean isCaptured = payPalService.captureOrder(orderId);
-
         if (isCaptured) {
+            // Fetch the actual verified amount from PayPal API
+            long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
+
+            // Detect potential price manipulation attempts
+            if (verifiedAmount != depositInfo.getAmountVND()) {
+                log.warn("Price manipulation warning: PayPal returned amount ({}) differs from client request ({}) for Order ID: {}",
+                        verifiedAmount, depositInfo.getAmountVND(), orderId);
+            }
+
             // Credit the user's wallet and log the transaction atomically
-            // The controller now verifies the amount internally to prevent client-side manipulation
-            paymentController.processDepositSuccess(currentUser, orderId).thenAccept(dbSuccess -> {
+            paymentController.processDepositSuccess(currentUser, orderId, verifiedAmount).thenAccept(dbSuccess -> {
                 if (dbSuccess) {
                     client.sendResponse("DEPOSIT_SUCCESS", "Successful transaction. Your balance will be updated shortly.");
                     pendingDeposits.remove(orderId); // Free memory
