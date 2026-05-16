@@ -97,4 +97,13 @@ public class AnimateEffect {
         ft.setAutoReverse(true);
         ft.play();
     }
+
+    public static void pauseNode(Node node, int timeSecond) {
+        node.setDisable(true);
+        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(timeSecond));
+        pauseTransition.setOnFinished(event -> {
+            node.setDisable(false);
+        });
+        pauseTransition.play();
+    }
 }

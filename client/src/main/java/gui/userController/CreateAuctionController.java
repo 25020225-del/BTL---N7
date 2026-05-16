@@ -2,6 +2,7 @@ package gui.userController;
 
 import client.handler.AuctionEventBus;
 import client.network.NetworkService;
+import client.service.AuctionService;
 import gui.MainApplication;
 import gui.process.CreateAuctionModel;
 import gui.process.AlertHelper;
@@ -99,7 +100,7 @@ public class CreateAuctionController extends ScrollPane {
 
             Auction auction = CreateAuctionModel.createAuction(item,new User(),Long.parseLong(bidInc),startDT,startDT.plus(dr));
 
-            NetworkService.sendMessage("CREATE_AUCTION", auction);
+            AuctionService.createAuction(auction);
 
 
         } catch (NumberFormatException e) {

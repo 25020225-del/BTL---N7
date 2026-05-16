@@ -2,6 +2,7 @@ package gui.userController;
 
 import client.handler.AuctionEventBus;
 import client.network.NetworkService;
+import client.service.AuctionService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gui.ClientUserController;
@@ -205,13 +206,13 @@ public class TableController {
 
             NetworkMessage response = (NetworkMessage) event.getNewValue();
             AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
-            NetworkService.sendMessage("FETCH_AUCTIONS", "");
+            AuctionService.fetchAuctions();
         });
         AuctionEventBus.addListener("DELETE_SUCCESS", event -> {
 
             NetworkMessage response = (NetworkMessage) event.getNewValue();
             AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
-            NetworkService.sendMessage("FETCH_AUCTIONS", "");
+            AuctionService.fetchAuctions();
         });
     }
 }

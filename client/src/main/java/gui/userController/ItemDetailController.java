@@ -2,6 +2,7 @@ package gui.userController;
 
 import client.handler.AuctionEventBus;
 import client.network.NetworkService;
+import client.service.AuctionService;
 import gui.MainApplication;
 import gui.process.Convert;
 import gui.process.EditAuction;
@@ -269,12 +270,7 @@ public class ItemDetailController{
                 return;
             }
 
-            // Send bidding request to server
-            Map<String, Object> bidData = Map.of(
-                "auctionId", currentAuctionId,
-                "bidAmount", bidAmount
-            );
-            NetworkService.sendMessage("PLACE_BID", bidData);
+            AuctionService.placeBid(currentAuctionId, bidAmount);
 
         } catch (NumberFormatException e) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Invalid amount format");
@@ -307,15 +303,7 @@ public class ItemDetailController{
                 return;
             }
 
-            // 3. Đóng gói dữ liệu gửi lên Server
-            // Theo cấu trúc CommandDispatcher của Server, lệnh cần là "SETUP_AUTOBID" [2, 3]
-            java.util.Map<String, Object> payload = new java.util.HashMap<>();
-            payload.put("auctionId", currentAuctionId);
-            payload.put("maxBid", maxBid);
-            payload.put("increment", bidIncrement);
-
-            // 4. Gửi yêu cầu qua NetworkService
-            NetworkService.sendMessage("SETUP_AUTOBID", payload);
+            AuctionService.setAutoBid(currentAuctionId, maxBid, bidIncrement);
 
             log.info("Đã gửi yêu cầu thiết lập AutoBid cho đấu giá: {}", currentAuctionId);
             AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Thông báo", "Đã gửi yêu cầu kích hoạt đặt giá tự động.");
@@ -338,7 +326,7 @@ public class ItemDetailController{
         confirm.setContentText("Are you sure you want to delete auction: " + currentAuctionId + "?");
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                NetworkService.sendMessage("DELETE_AUCTION", currentAuctionId);
+                AuctionService.deleteAuction(currentAuctionId);
             }
         });
     }

@@ -2,9 +2,11 @@ package gui.userController;
 
 import client.handler.AuctionEventBus;
 import client.network.NetworkService;
+import client.service.WalletService;
 import gui.MainApplication;
 import gui.Transaction;
 import gui.process.AlertHelper;
+import gui.process.AnimateEffect;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.LongProperty;
@@ -16,6 +18,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox; // Import đúng layout gốc
 import javafx.util.Duration;
+import model.finance.Wallet;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +84,7 @@ public class WalletController extends VBox {
 
         tableTransactions.setItems(transactionData);
         updateBalanceUI();
-        NetworkService.sendMessage("FETCH_WALLET","");
+        WalletService.fetchWalletHistory();
     }
 
     public void setOnReturnAction(Runnable action) {
@@ -111,14 +114,9 @@ public class WalletController extends VBox {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi", "Vui lòng nhập số tiền hợp lệ!");
             return;
         }
-        btnDeposit.setDisable(true);
-        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
-        pauseTransition.setOnFinished(event -> {
-            btnDeposit.setDisable(false);
-        });
-        pauseTransition.play();
+        AnimateEffect.pauseNode(btnDeposit, 2);
 
-        NetworkService.sendMessage("CREATE_DEPOSIT", amount);
+        WalletService.createDeposit(amount);
     }
 
     private void updateBalanceUI() {

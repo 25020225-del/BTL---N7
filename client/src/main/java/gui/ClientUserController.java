@@ -2,7 +2,9 @@ package gui;
 
 import client.handler.AuctionEventBus;
 import client.handler.ClientPaymentHandler;
-import client.network.NetworkService;
+import client.service.AuctionService;
+import client.service.UserService;
+import client.service.WalletService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gui.process.*;
 import gui.process.RemoveEventBus;
@@ -137,7 +139,7 @@ public class ClientUserController {
         walletBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(walletView);
-            NetworkService.sendMessage("FETCH_WALLET","");
+            WalletService.fetchWalletHistory();
         });
 
         settingsBtn.setOnAction(event -> {
@@ -154,13 +156,13 @@ public class ClientUserController {
         }
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(tableView.getParent());
-        NetworkService.sendMessage("FETCH_AUCTIONS", "");
+        AuctionService.fetchAuctions();
     }
 
     @FXML
     public void handleSignOut() {
         log.info("User \"{}\" is signing out.", currentUser.getName());
-        NetworkService.get().sendMessage("LOGOUT", "");
+        UserService.LogOut();
         RemoveEventBus.forUser();
         currentDetailController = null;
         MainApplication.setNewScene(MainApplication.rootLogin);
@@ -175,7 +177,7 @@ public class ClientUserController {
         ItemDetailController detailController = new ItemDetailController(currentUser);
         detailController.setAuctionData(auction);
         currentDetailController = detailController;
-        NetworkService.sendMessage("FETCH_TRANSACTIONS",auction.getId());
+        AuctionService.fetchTransactions(auction.getId());
 
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(detailController.getParent());
@@ -183,8 +185,7 @@ public class ClientUserController {
 
     public void start() {
         setMainDock();
-        //NetworkService.get().setOnMessageReceived(this::handleServerResponse);
-        NetworkService.sendMessage("FETCH_AUCTIONS", "");
+        AuctionService.fetchAuctions();
 
         AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, evt -> {
             Platform.runLater(() -> AlertHelper.showAlert(AlertType.INFORMATION, "Success", evt.getNewValue().toString()));
