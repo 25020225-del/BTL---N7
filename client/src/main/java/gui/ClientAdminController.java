@@ -1,16 +1,21 @@
 package gui;
 
+import client.handler.AuctionEventBus;
 import client.network.NetworkService;
+import client.service.AdminService;
 import gui.process.RemoveEventBus;
 import gui.userController.table.TableControllerAdmin;
 import gui.widget.item.MinimalItemAdmin;
+import gui.widget.item.MinimalUser;
+import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.stage.Stage;
+import model.user.Admin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import gui.process.AlertHelper;
-import gui.widget.AdminUserItem;
 import gui.widget.IconButton;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -107,16 +112,15 @@ public class ClientAdminController {
             mainViewController.getChildren().add(tableView.getParent());
             log.info("Loading pending auctions...");
             // Request pending auctions from the server
-            NetworkService.sendMessage("FETCH_PENDING_AUCTIONS", "");
+            AdminService.fetchPendingAuctions();
         });
 
         accountList.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(tableView.getParent());
             log.info("Loading user list...");
-            NetworkService.sendMessage("FETCH_USERS", "");
+            AdminService.fetchUsers();
         });
-
         account.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(settingsView);
@@ -132,7 +136,7 @@ public class ClientAdminController {
     private void handleSignOut(){
         RemoveEventBus.forUser();
         log.info("User \"{}\" is signing out.", "Admin");
-        NetworkService.sendMessage("LOGOUT", "");
+        AdminService.logout();
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
@@ -140,54 +144,8 @@ public class ClientAdminController {
      * Sets up the listener for server responses regarding admin actions.
      */
     private void setMainViewController() {
-        NetworkService.get().setOnMessageReceived(response -> {
-            javafx.application.Platform.runLater(() -> {
-                String command = response.getCommand();
-
-                log.info(command);
-                // 1. Render the list of pending auctions
-                if ("FETCH_AUCTIONS_SUCCESS".equals(command)) {
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> auctions = (List<Map<String, Object>>) response.getData();
-
-                    System.out.println("Gay");
-                    tableView.deleteAllAuction();
-                    for (Map<String, Object> data : auctions) {
-                        String id = (String) data.get("id");
-                        String name = (String) data.get("itemName");
-
-                        MinimalItemAdmin item = new MinimalItemAdmin(id,name,"");
-                        item.addAdminOptions(id);
-                        tableView.addNewAuction(item);
-                    }
-                }
-                // 2. Render the list of users
-                else if ("FETCH_USERS_SUCCESS".equals(command)) {
-                    tableView.deleteAllAuction();
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> users =
-                            (List<Map<String, Object>>) response.getData();
-
-                    for (Map<String, Object> data : users) {
-                        String id = (String) data.get("id");
-                        String username = (String) data.get("username");
-                        String name = (String) data.get("name");
-                        String role = (String) data.get("role");
-                        boolean isBlocked = (boolean) data.get("is_blocked");
-
-                        tableView.addNewUser(new AdminUserItem(id,username,name,role,isBlocked));
-                    }
-                }
-                // 3. Handle successful approval or rejection
-                else if ("ADMIN_ACTION_SUCCESS".equals(command)) {
-                    AlertHelper.showAlert(javafx.scene.control.Alert.AlertType.INFORMATION, "Success", response.getData().toString());
-                    // Automatically reload the list based on which view was active
-                    // (We can just refresh the view that triggered the action)
-                } else {
-                    // Forward unhandled commands to the centralized ResponseDispatcher
-                    new client.handler.ResponseDispatcher().dispatch(response, NetworkService.get());
-                }
-            });
+        AuctionEventBus.addListener("ADMIN_ACTION_SUCCESS", event -> {
+            Platform.runLater(() -> { AlertHelper.showAlert(Alert.AlertType.INFORMATION,"Success", (String) event.getNewValue());});
         });
     }
 
@@ -223,10 +181,5 @@ public class ClientAdminController {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    @FXML
-    private void handleBanUser() {
-        // Chỗ code logic ban users
     }
 }

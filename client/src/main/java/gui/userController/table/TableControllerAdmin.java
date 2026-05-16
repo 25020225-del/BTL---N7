@@ -3,7 +3,7 @@ package gui.userController.table;
 import client.handler.AuctionEventBus;
 import gui.widget.AdminUserItem;
 import gui.widget.item.MinimalItemAdmin;
-import gui.widget.item.MinimalItemUser;
+import gui.widget.item.MinimalUser;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import model.auction.Auction;
@@ -24,14 +24,30 @@ public class TableControllerAdmin extends TableController {
     }
     @FXML protected void initialize() {
         AuctionEventBus.addListener("FETCH_AUCTIONS_SUCCESS", event -> {
-            NetworkMessage networkMessage = (NetworkMessage) event.getNewValue();
-            List<Map<String,Object>> data = (List<Map<String,Object>>) networkMessage.getData();
+            NetworkMessage response = (NetworkMessage) event.getNewValue();
+            List<Map<String,Object>> data = (List<Map<String,Object>>) response.getData();
             Platform.runLater(() -> {
                 mainTilePane.getChildren().clear();
                 data.forEach(map -> {
                     addNewAuction(buildMinimalItem(map));
                 });
             });
+        });
+        AuctionEventBus.addListener("FETCH_USERS_SUCCESS", event -> {
+            NetworkMessage response = (NetworkMessage) event.getNewValue();
+            List<Map<String, Object>> users =
+                    (List<Map<String, Object>>) response.getData();
+            Platform.runLater(() -> {deleteAllAuction();
+                for (Map<String, Object> data : users) {
+                    String id = (String) data.get("id");
+                    String username = (String) data.get("username");
+                    String name = (String) data.get("name");
+                    String role = (String) data.get("role");
+                    boolean isBlocked = (boolean) data.get("is_blocked");
+
+                    addNewAuction(new MinimalUser(id,username,name,role,isBlocked));
+                }});
+
         });
     }
 

@@ -8,6 +8,7 @@ public class MinimalItemAdmin extends MinimalItem {
 
     public MinimalItemAdmin(String id, String name, String price) {
         super(id, name, price);
+        this.setUserData(id+name+price);
     }
 
     public void addAdminOptions(String id) {
