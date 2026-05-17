@@ -15,6 +15,7 @@ public class BidActionHandler implements CommandHandler {
     private final ServerBidderController bidderCtrl;
     private final AuctionDAO auctionDAO;
 
+    // Sử dụng Dependency Injection để truyền Controller và DAO vào thông qua Constructor
     public BidActionHandler(ServerBidderController bidderCtrl, AuctionDAO auctionDAO) {
         this.bidderCtrl = bidderCtrl;
         this.auctionDAO = auctionDAO;
