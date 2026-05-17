@@ -1,5 +1,6 @@
 package server.handler;
 
+import exception.AuctionExceptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import network.NetworkMessage;
@@ -119,17 +120,31 @@ public class    CommandDispatcher {
 
         if (handler != null) {
             try {
-                // Execute the handler logic
+                // Thực thi logic nghiệp vụ
                 handler.handle(message, client);
+
+            } catch (AuctionExceptions.AuctionBaseException baseEx) {
+                // BẮT LỖI NGHIỆP VỤ: Đã lường trước, trả về mã lỗi chuẩn
+                log.warn("Business logic violation [{}]: {}", baseEx.getErrorCode(), baseEx.getMessage());
+                network.ErrorPayload errorData = new network.ErrorPayload(baseEx.getErrorCode(), baseEx.getMessage());
+                client.sendResponse("ERROR", errorData);
+
+            } catch (com.fasterxml.jackson.core.JsonProcessingException jsonEx) {
+                // BẮT LỖI PARSE JSON CỦA JACKSON
+                log.warn("Invalid JSON format from {}: {}", client.getClientName(), jsonEx.getMessage());
+                network.ErrorPayload errorData = new network.ErrorPayload("ERR_PAYLOAD_001", "Dữ liệu gửi lên không đúng định dạng.");
+                client.sendResponse("ERROR", errorData);
+
             } catch (Exception e) {
-                // Global error handling for unexpected runtime failures during command execution
-                log.error("Error executing command {}: {}", command, e.getMessage());
-                client.sendResponse("ERROR", "Internal server error while processing command");
+                // BẮT LỖI HỆ THỐNG NGHIÊM TRỌNG (NullPointer, DB Connection chết...)
+                // Lúc này KHÔNG được gửi chi tiết lỗi cho Client để bảo mật, nhưng PHẢI log đỏ rực ra Console kèm StackTrace.
+                log.error("CRITICAL FATAL ERROR executing command {}: ", command, e);
+                network.ErrorPayload errorData = new network.ErrorPayload("ERR_SYS_500", "Lỗi hệ thống máy chủ nội bộ. Vui lòng thử lại sau.");
+                client.sendResponse("ERROR", errorData);
             }
         } else {
-            // Log and notify client of invalid/unsupported commands
             log.warn("Unrecognized command: {}", command);
-            client.sendResponse("ERROR", "Unrecognized command");
+            client.sendResponse("ERROR", new network.ErrorPayload("ERR_SYS_404", "Unrecognized command"));
         }
     }
 }

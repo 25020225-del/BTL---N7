@@ -83,6 +83,7 @@ public class ItemDetailController{
     private String currentAuctionId;
     private long endTimeMillis;
     private PropertyChangeListener priceUpdateListener;
+    private long currentPriceValue = 0L;
 
     public ItemDetailController(User currentUser) {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/Productdetail.fxml"));
@@ -183,6 +184,7 @@ public class ItemDetailController{
         long currentPrice = auction.getCurrentPrice();
         this.endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
+        this.currentPriceValue = currentPrice;
         if (imageUrl == null) {
             imageUrl = DEFAULT_IMAGEURL;
         }
@@ -229,7 +231,13 @@ public class ItemDetailController{
      * @param winnerName The username of the user who placed the bid.
      */
     private void updateRealTimePrice(long newPrice, String winnerName) {
-        lblCurrentPrice.setText(String.format("%d VND", newPrice));
+        // 1. Lấy giá cũ và cập nhật biến RAM thành giá mới
+        long oldPrice = this.currentPriceValue;
+        this.currentPriceValue = newPrice;
+
+        // 2. Chạy hiệu ứng số nhảy mượt mà (Thay vì setText trực tiếp)
+        gui.process.PriceTweener.animatePriceChange(lblCurrentPrice, oldPrice, newPrice);
+
         lblLeader.setText(winnerName);
 
         // Add a new dynamic node to the line chart

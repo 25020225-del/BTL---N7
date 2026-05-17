@@ -1,11 +1,11 @@
 package client.handler;
 
 import client.network.NetworkClient;
+import client.utils.ErrorParser;
 import javafx.application.Platform;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.awt.*;
 import java.net.URI;
 import java.util.Map;
@@ -21,7 +21,6 @@ public class ClientSystemHandler implements ResponseHandler {
     @Override
     public void handle(NetworkMessage message, NetworkClient client) throws Exception {
         String command = message.getCommand();
-
         if ("REDIRECT".equals(command)) {
             String url = (String) message.getData();
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
@@ -30,7 +29,6 @@ public class ClientSystemHandler implements ResponseHandler {
             }
         } else if ("KICKED".equals(command)) {
             log.warn("Kicked. Reason: {}", message.getData());
-
             // Notify UI if applicable before shutting down
             if (client.getOnMessageReceived() != null) {
                 Platform.runLater(() -> client.getOnMessageReceived().accept(message));
@@ -42,7 +40,6 @@ public class ClientSystemHandler implements ResponseHandler {
             // Process the time synchronization response from the server
             @SuppressWarnings("unchecked")
             Map<String, Number> syncData = (Map<String, Number>) message.getData();
-
             // Extract the timestamps safely
             long clientSendTime = syncData.get("clientSendTime").longValue();
             long serverTime = syncData.get("serverTime").longValue();
@@ -51,7 +48,8 @@ public class ClientSystemHandler implements ResponseHandler {
             // Calibrate the global time offset
             utils.TimeUtil.calibrateOffset(clientSendTime, serverTime, clientReceiveTime);
         } else if ("GENERAL_ERROR".equals(command)) {
-            String errorMessage = message.getData() != null ? message.getData().toString() : "An unknown error occurred.";
+            // [FIXED]: Sử dụng ErrorParser để đồng bộ hóa thông báo lỗi
+            String errorMessage = ErrorParser.parse(message.getData());
             AuctionEventBus.fireEvent(AuctionEventBus.GENERAL_ERROR, errorMessage);
         }
     }

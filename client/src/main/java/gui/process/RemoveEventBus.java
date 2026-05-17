@@ -17,7 +17,8 @@ public class RemoveEventBus {
         AuctionEventBus.removeAllListeners("REMOVE_AUCTION");
         AuctionEventBus.removeAllListeners("DELETE_SUCCESS");
         AuctionEventBus.removeAllListeners("EDIT_SUCCESS");
-        AuctionEventBus.removeAllListeners(AuctionEventBus.AUCTION_CREATED);
+        AuctionEventBus.removeAllListeners("FETCH_USERS_SUCCESS");
+        AuctionEventBus.removeAllListeners("ADMIN_ACTION_SUCCESS");
     }
     public static void forAdmin() {
         //updating...

@@ -28,4 +28,8 @@ module org.example.demo {
     opens gui.process to javafx.fxml;
     exports gui.userController;
     opens gui.userController to javafx.fxml;
+    opens gui.userController.table to javafx.fxml;
+    exports gui.userController.table;
+    opens gui.widget.item to javafx.fxml;
+    exports gui.widget.item;
 }

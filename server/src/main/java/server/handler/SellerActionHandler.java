@@ -1,6 +1,8 @@
 package server.handler;
 
 import controller.ServerSellerController;
+import exception.AuctionExceptions;
+import network.ErrorPayload;
 import model.user.User;
 import network.NetworkMessage;
 import server.ClientHandler;
@@ -9,9 +11,6 @@ import model.auction.Auction;
 
 import java.util.Map;
 
-/**
- * Handles seller-specific commands such as editing or deleting an auction.
- */
 public class SellerActionHandler implements CommandHandler {
 
     private final ServerSellerController sellerCtrl;
@@ -23,111 +22,94 @@ public class SellerActionHandler implements CommandHandler {
     }
 
     @Override
-    public void handle(NetworkMessage message, ClientHandler client) {
+    public void handle(NetworkMessage message, ClientHandler client) throws Exception {
         User user = client.getUser();
         if (user == null) {
-            client.sendResponse("ERROR", "You must be logged in.");
-            return;
+            throw new AuctionExceptions.UnauthorizedAccessException("Bạn phải đăng nhập để quản lý phiên đấu giá.");
         }
 
         String command = message.getCommand();
+
         if ("EDIT_AUCTION".equals(command)) {
             handleEdit(message.getData(), client);
         } else if ("DELETE_AUCTION".equals(command)) {
             handleDelete(message.getData(), client);
+        } else {
+            throw new AuctionExceptions.InvalidPayloadException("Lệnh người bán không hợp lệ.");
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void handleEdit(Object data, ClientHandler client) {
-        Map<String, Object> payload = (Map<String, Object>) data;
-        String auctionId = (String) payload.get("auctionId");
-        
-        Auction auction = null;
+    private void handleEdit(Object data, ClientHandler client) throws Exception {
+        Map<String, Object> payload;
         try {
-            auction = auctionDAO.getAuctionById(auctionId);
-            if (auction != null) {
-                for (Auction ramAuction : AuctionManager.getAuctionList()) {
-                    if (ramAuction.getId().equals(auctionId)) {
-                        auction = ramAuction;
-                        break;
-                    }
+            payload = (Map<String, Object>) data;
+        } catch (ClassCastException e) {
+            throw new AuctionExceptions.InvalidPayloadException("Dữ liệu cập nhật không đúng định dạng.");
+        }
+
+        String auctionId = (String) payload.get("auctionId");
+        Auction auction = auctionDAO.getAuctionById(auctionId);
+
+        if (auction != null) {
+            for (Auction ramAuction : AuctionManager.getAuctionList()) {
+                if (ramAuction.getId().equals(auctionId)) {
+                    auction = ramAuction;
+                    break;
                 }
             }
-        } catch (Exception e) {
-            client.sendResponse("ERROR", "Database error: " + e.getMessage());
-            return;
         }
 
         if (auction == null) {
-            client.sendResponse("ERROR", "Auction not found.");
-            return;
+            throw new AuctionExceptions.AuctionClosedException("Không tìm thấy phiên đấu giá trên hệ thống.");
         }
 
-        // Get new values from payload or keep existing ones
         String newName = payload.containsKey("itemName") ? (String) payload.get("itemName") : auction.getItem().getItemName();
         String newDesc = payload.containsKey("description") ? (String) payload.get("description") : auction.getItem().getDescription();
         long newStartPrice = payload.containsKey("startPrice") ? Long.parseLong(payload.get("startPrice").toString()) : auction.getItem().getStartingPrice();
-        
+
         java.time.LocalDateTime newStartTime = auction.getStartTime();
         if (payload.containsKey("newStartTime")) {
             newStartTime = java.time.LocalDateTime.parse((String) payload.get("newStartTime"));
         }
-        
+
         java.time.LocalDateTime newEndTime = auction.getEndTime();
         if (payload.containsKey("newEndTime")) {
             newEndTime = java.time.LocalDateTime.parse((String) payload.get("newEndTime"));
         }
 
-        boolean success = sellerCtrl.editAuction(
-                client.getUser(),
-                auction,
-                newName,
-                newDesc,
-                newStartPrice,
-                newStartTime,
-                newEndTime
-        );
+        boolean success = sellerCtrl.editAuction(client.getUser(), auction, newName, newDesc, newStartPrice, newStartTime, newEndTime);
 
         if (success) {
-            client.sendResponse("EDIT_SUCCESS", "Auction updated successfully.");
+            client.sendResponse("EDIT_SUCCESS", "Cập nhật phiên đấu giá thành công.");
         } else {
-            client.sendResponse("ERROR", "Failed to edit auction. Ensure it hasn't started yet.");
+            client.sendResponse("ERROR", new ErrorPayload("ERR_AUC_002", "Cập nhật thất bại. Đảm bảo phiên đấu giá chưa bắt đầu và bạn là chủ sở hữu."));
         }
     }
 
-    private void handleDelete(Object data, ClientHandler client) {
+    private void handleDelete(Object data, ClientHandler client) throws Exception {
         String auctionId = (String) data;
-        Auction auction = null;
-        
-        try {
-            // 1. Get from Database
-            auction = auctionDAO.getAuctionById(auctionId);
-            
-            if (auction != null) {
-                // 2. Cross-reference with RAM
-                for (Auction ramAuction : AuctionManager.getAuctionList()) {
-                    if (ramAuction.getId().equals(auctionId)) {
-                        auction = ramAuction;
-                        break;
-                    }
+        Auction auction = auctionDAO.getAuctionById(auctionId);
+
+        if (auction != null) {
+            for (Auction ramAuction : AuctionManager.getAuctionList()) {
+                if (ramAuction.getId().equals(auctionId)) {
+                    auction = ramAuction;
+                    break;
                 }
             }
-        } catch (Exception e) {
-            client.sendResponse("ERROR", "Database error: " + e.getMessage());
-            return;
         }
-        
+
         if (auction == null) {
-            client.sendResponse("ERROR", "Auction not found.");
-            return;
+            throw new AuctionExceptions.AuctionClosedException("Không tìm thấy phiên đấu giá trên hệ thống.");
         }
 
         boolean success = sellerCtrl.deleteAuction(client.getUser(), auction);
+
         if (success) {
-            client.sendResponse("DELETE_SUCCESS", "Auction deleted successfully.");
+            client.sendResponse("DELETE_SUCCESS", "Xóa phiên đấu giá thành công.");
         } else {
-            client.sendResponse("ERROR", "Failed to delete auction.");
+            client.sendResponse("ERROR", new ErrorPayload("ERR_AUC_002", "Xóa thất bại. Bạn không thể xóa phiên đang diễn ra hoặc đã kết thúc."));
         }
     }
 }

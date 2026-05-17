@@ -1,5 +1,7 @@
 package server.handler;
 
+import exception.AuctionExceptions;
+import network.ErrorPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,132 +20,94 @@ import java.time.LocalDateTime;
 
 import static utils.ConsoleColors.*;
 
-/**
- * Handles requests from clients to create new auction sessions.
- */
 public class AuctionActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(AuctionActionHandler.class);
     private final ObjectMapper mapper = JacksonConfig.mapper();
     private final controller.ServerSellerController sellerCtrl;
 
-    /**
-     * Constructs the handler with necessary controllers via Dependency Injection.
-     *
-     * @param sellerCtrl The controller for seller-side auction operations.
-     */
     public AuctionActionHandler(controller.ServerSellerController sellerCtrl) {
         this.sellerCtrl = sellerCtrl;
     }
 
     @Override
-    public void handle(NetworkMessage message, ClientHandler client) {
+    public void handle(NetworkMessage message, ClientHandler client) throws Exception {
         if ("CREATE_AUCTION".equals(message.getCommand())) {
             processCreateAuction(message.getData(), client);
+        } else {
+            throw new AuctionExceptions.InvalidPayloadException("Lệnh tạo phiên đấu giá không hợp lệ.");
         }
     }
 
-    /**
-     * Processes the incoming JSON payload to construct a new auction.
-     * Utilizes the ItemFactory to instantiate the correct item subtype.
-     *
-     * @param data   The JSON payload containing auction parameters.
-     * @param client The client requesting the creation.
-     */
-    private void processCreateAuction(Object data, ClientHandler client) {
+    private void processCreateAuction(Object data, ClientHandler client) throws Exception {
+        User authenticatedUser = client.getUser();
+        if (authenticatedUser == null) {
+            throw new AuctionExceptions.UnauthorizedAccessException("Bạn cần đăng nhập để tạo phiên đấu giá.");
+        }
+
+        Auction auction;
         try {
-            // Retrieve user identification from the active login session
-            User authenticatedUser = client.getUser();
-            // Security check: Reject if the user is not authenticated
-            if (authenticatedUser == null) {
-                client.sendResponse("ERROR", "You do not have permission to use this command.");
-                return;
-            }
+            auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {});
+        } catch (IllegalArgumentException e) {
+            throw new AuctionExceptions.InvalidPayloadException("Dữ liệu phiên đấu giá không hợp lệ.");
+        }
 
-            // Extract data from the incoming JSON payload
-            Auction auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {
-            });
-            String itemName = auction.getItem().getItemName();
-            String description = auction.getItem().getDescription();
-            String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
-            long startingPrice = auction.getItem().getStartingPrice();
-            long bidIncrement = auction.getBidIncrement();
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime reqStart = auction.getStartTime();
-            LocalDateTime reqEnd = auction.getEndTime();
+        String itemName = auction.getItem().getItemName();
+        String description = auction.getItem().getDescription();
+        String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
+        long startingPrice = auction.getItem().getStartingPrice();
+        long bidIncrement = auction.getBidIncrement();
 
-            if (reqStart == null || reqEnd == null) {
-                client.sendResponse("ERROR", "Invalid time format.");
-                return;
-            }
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime reqStart = auction.getStartTime();
+        LocalDateTime reqEnd = auction.getEndTime();
 
-            // Validate Start Time constraints
-            // Cho phép seller hẹn giờ tùy ý trong tương lai.
-            // Chỉ chặn nếu thời gian ở trong quá khứ.
-            // Cho phép độ trễ mạng tối đa 5 phút.
-            if (reqStart.isBefore(now.minusMinutes(5))) {
-                client.sendResponse("ERROR", "Thời gian bắt đầu không hợp lệ (không được nằm trong quá khứ).");
-                return;
-            }
+        if (reqStart == null || reqEnd == null) {
+            throw new AuctionExceptions.InvalidPayloadException("Định dạng thời gian không hợp lệ.");
+        }
 
-            // Nếu gửi thời gian là "hiện tại" nhưng do độ trễ mạng khiến reqStart hơi nhỏ hơn now, tự làm tròn thành now
-            if (reqStart.isBefore(now)) {
-                reqStart = now;
-            }
+        if (reqStart.isBefore(now.minusMinutes(5))) {
+            throw new AuctionExceptions.InvalidPayloadException("Thời gian bắt đầu không được nằm trong quá khứ.");
+        }
 
-            // [ARCHITECT FIX]: Tính toán durationMinutes SAU KHI đã chuẩn hóa reqStart
-            // Đảm bảo thời gian kết thúc (end time) thực tế luôn khớp với cấu hình mong muốn ban đầu
-            long durationMinutes = java.time.Duration.between(reqStart, reqEnd).toMinutes();
-            final long MAX_DURATION_MINUTES = 43200; // 30 days
+        if (reqStart.isBefore(now)) {
+            reqStart = now;
+        }
 
-            if (durationMinutes <= 0) {
-                client.sendResponse("ERROR", "Invalid duration.");
-                return;
-            }
-            if (durationMinutes > MAX_DURATION_MINUTES) {
-                durationMinutes = MAX_DURATION_MINUTES;
-                // Clamp to 30 days securely
-            }
+        long durationMinutes = java.time.Duration.between(reqStart, reqEnd).toMinutes();
+        final long MAX_DURATION_MINUTES = 43200; // 30 days
 
-            //-----------------------------------------------------------------------------------------------------
+        if (durationMinutes <= 0) {
+            throw new AuctionExceptions.InvalidPayloadException("Thời lượng đấu giá không hợp lệ (phải lớn hơn 0).");
+        }
+        if (durationMinutes > MAX_DURATION_MINUTES) {
+            durationMinutes = MAX_DURATION_MINUTES;
+        }
 
-            // Extract item type if provided by the GUI dropdown, otherwise default to TANGIBLE
-            //String itemType = map.containsKey("itemType") ? map.get("itemType") : ItemFactory.TYPE_TANGIBLE;
-            String itemType = ItemFactory.TYPE_TANGIBLE;
-
-            String newItemId = "ITM-" + System.currentTimeMillis();
-            // FACTORY PATTERN APPLIED: Dynamically create the item based on its generalized category
-            Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
-            item.setImageUrl(imageUrl);
+        String itemType = ItemFactory.TYPE_TANGIBLE;
+        String newItemId = "ITM-" + System.currentTimeMillis();
+        Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
+        item.setImageUrl(imageUrl);
 
             // Forward the creation request to the Seller Controller
             model.user.Seller sellerRole = new model.user.Seller(authenticatedUser);
             Auction newAuction = sellerCtrl.addAuction(sellerRole, item, bidIncrement, reqStart, (int) durationMinutes);
 
-            if (newAuction != null) {
-                log.info("{} has created an auction.", authenticatedUser.getUserName());
-                // Logic check: only add to RAM monitor if user isGood (trusted)
-                if (authenticatedUser.isGood()) {
-                    newAuction.setStatus(Auction.STATUS_RUNNING);
-                    AuctionManager.addAuctionToMonitor(newAuction);
+        if (newAuction != null) {
+            log.info("{} has created an auction.", authenticatedUser.getUserName());
+            if (authenticatedUser.isGood()) {
+                newAuction.setStatus(Auction.STATUS_RUNNING);
+                AuctionManager.addAuctionToMonitor(newAuction);
 
-                    String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
-                    ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
+                String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
+                ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
 
-                    client.sendResponse("CREATE_SUCCESS", "Successfully created auction.");
-
-                    // Broadcast the newly created auction to all clients for real-time UI updates
-                    ClientManager.broadcast("NEW_AUCTION_ADDED", newAuction, null);
-                } else {
-                    // Stay in PENDING status, handled by Admin approval
-                    client.sendResponse("CREATE_SUCCESS", "Auction created and pending admin approval.");
-                }
+                client.sendResponse("CREATE_SUCCESS", "Tạo phiên đấu giá thành công.");
+                ClientManager.broadcast("NEW_AUCTION_ADDED", newAuction, null);
             } else {
-                client.sendResponse("ERROR", "Cannot create auction due to a database error.");
+                client.sendResponse("CREATE_SUCCESS", "Đã tạo phiên đấu giá, đang chờ Quản trị viên duyệt.");
             }
-
-        } catch (Exception e) {
-            log.warn("Error parsing creation data: {}", e.getMessage());
-            client.sendResponse("ERROR", "Invalid data format provided for creating auction.");
+        } else {
+            client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "Không thể tạo phiên đấu giá do lỗi cơ sở dữ liệu."));
         }
     }
 }

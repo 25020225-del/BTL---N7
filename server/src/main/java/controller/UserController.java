@@ -2,6 +2,7 @@ package controller;
 
 import database.DatabaseManager;
 import database.dao.UserDAO;
+import exception.AuctionExceptions;
 import model.user.Admin;
 import model.user.User;
 import org.mindrot.jbcrypt.BCrypt;
@@ -39,10 +40,8 @@ public class UserController {
 
             // 1. Hash mật khẩu trước khi lưu để bảo mật
             String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
-
             // 2. Tạo Secret Key cho hệ thống 2FA (TOTP)
             String secretKey = totpService.createSecretKey();
-
             // 3. Khởi tạo ID người dùng duy nhất
             String userId = "U-" + System.currentTimeMillis();
 
@@ -81,8 +80,18 @@ public class UserController {
     public User login(String userName, String password) {
         try {
             User user = userDAO.findUserByUsername(userName);
+
             if (user != null && BCrypt.checkpw(password, user.getPassword())) {
+
+                // [ARCHITECT FIX]: Bổ sung lớp khiên bảo vệ tài khoản bị khóa
+                if ("BLOCKED".equalsIgnoreCase(user.getRole())) {
+                    log.warn("Blocked user {} attempted to log in.", userName);
+                    // Ném ngoại lệ nghiệp vụ để Dispatcher bắt và báo lỗi chuẩn về Client
+                    throw new AuctionExceptions.UnauthorizedAccessException("Tài khoản của bạn đã bị khóa bởi Quản trị viên.");
+                }
+
                 log.info("User {} ({}) logged in.", user.getName(), user.getRole());
+
                 if (user.getRole().equalsIgnoreCase("ADMIN")) {
                     return new Admin(user.getId(), user.getUserName(), user.getPassword(), user.getName());
                 } else {

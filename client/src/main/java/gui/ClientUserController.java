@@ -10,8 +10,8 @@ import gui.process.*;
 import gui.process.RemoveEventBus;
 import gui.userController.CreateAuctionController;
 import gui.userController.ItemDetailController;
-import gui.userController.TableController;
 import gui.userController.WalletController;
+import gui.userController.table.TableControllerUser;
 import gui.widget.IconButton;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -45,7 +45,7 @@ public class ClientUserController {
     private Parent settingsView;
 
     private WalletController walletView;
-    private TableController tableView;
+    private TableControllerUser tableView;
 
     private User currentUser;
 
@@ -84,7 +84,7 @@ public class ClientUserController {
         // [FIX] Cập nhật tên hàm thành setOnReturnAction cho đúng chuẩn bên WalletController
         walletView.setOnReturnAction(() -> marketplaceBtn.fire());
 
-        tableView = new TableController();
+        tableView = new TableControllerUser();
         tableView.setOnAuctionListener((auction) -> openItemDetail(auction));
 
         FXMLLoader accountLoader = new FXMLLoader(getClass().getResource("AccountView.fxml"));

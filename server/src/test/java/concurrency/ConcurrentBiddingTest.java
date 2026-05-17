@@ -32,18 +32,21 @@ class ConcurrentBiddingTest {
 
     @AfterAll
     static void shutdownPool() {
-        // no-op: DatabaseManager uses a static pool for app lifecycle
+        //DatabaseManager.closePool();
     }
 
     @Test
-    void optimisticLocking_allowsExactlyOneWinnerUpdatePerState() throws Exception {
+    void optimisticLocking_DataIntegrity_Verification() throws Exception {
         WalletDAO walletDAO = new WalletDAO();
         AuctionDAO auctionDAO = new AuctionDAO();
         BidDAO bidDAO = new BidDAO();
         ServerBidderController controller = new ServerBidderController(bidDAO);
-        String runId = "T1-" + System.currentTimeMillis();
 
-        // --- Arrange: create seller + 10 bidders with sufficient balance ---
+        String runId = "T1-" + System.currentTimeMillis();
+        long initialBalance = 100_000L;
+        long bidAmount = 1500L;
+
+        // --- Arrange: Tạo Seller và 10 Bidders ---
         User seller = new User();
         seller.setId("SELLER-" + runId);
         seller.setUserName("seller-" + runId);
@@ -52,9 +55,11 @@ class ConcurrentBiddingTest {
         item.setId("ITEM-" + runId);
         item.setItemName("Test Item");
         item.setStartingPrice(1000L);
+
         LocalDateTime now = LocalDateTime.now().minusSeconds(5);
         Auction auction = new Auction("AUC-" + runId, item, seller, 50L, now, now.plusMinutes(10));
         auction.setStatus(Auction.STATUS_RUNNING);
+
         List<User> bidders = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             User u = new User();
@@ -64,13 +69,11 @@ class ConcurrentBiddingTest {
             bidders.add(u);
         }
 
-        // Seed users + wallets directly (users table has FK dependencies)
+        // Seed DB trực tiếp
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
-            // Seller
-            try (var ps = conn.prepareStatement(
-                    "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good, is_totp_enabled, is_blocked) " +
-                            "VALUES (?, ?, 'x', ?, 'SELLER', 1, 0, 0)")) {
+
+            try (var ps = conn.prepareStatement("INSERT OR IGNORE INTO users (id, username, password, name, role, is_good) VALUES (?, ?, 'x', ?, 'SELLER', 1)")) {
                 ps.setString(1, seller.getId());
                 ps.setString(2, seller.getUserName());
                 ps.setString(3, "Seller");
@@ -78,45 +81,33 @@ class ConcurrentBiddingTest {
             }
 
             for (User u : bidders) {
-                try (var ps = conn.prepareStatement(
-                        "INSERT OR IGNORE INTO users (id, username, password, name, role, is_good, is_totp_enabled, is_blocked) " +
-                                "VALUES (?, ?, 'x', ?, 'USER', 0, 0, 0)")) {
+                try (var ps = conn.prepareStatement("INSERT OR IGNORE INTO users (id, username, password, name, role, is_good) VALUES (?, ?, 'x', ?, 'USER', 0)")) {
                     ps.setString(1, u.getId());
                     ps.setString(2, u.getUserName());
                     ps.setString(3, u.getName());
                     ps.executeUpdate();
                 }
-
-                // Create wallet row if missing; then set balance high enough
-                try {
-                    walletDAO.createWallet(conn, u.getId());
-                } catch (SQLException ignored) {
-                }
-                walletDAO.updateBalance(conn, u.getId(), 100_000L);
+                try { walletDAO.createWallet(conn, u.getId()); } catch (SQLException ignored) {}
+                walletDAO.updateBalance(conn, u.getId(), initialBalance);
             }
             conn.commit();
         }
 
-        // Ensure auction exists in DB (after users exist)
-        assertTrue(auctionDAO.addAuction(auction), "Test requires inserting a fresh auction row");
+        assertTrue(auctionDAO.addAuction(auction), "Phải tạo được phiên đấu giá ảo");
 
-        // --- Act: 10 bids must fire in the same barrier window (true concurrent contention) ---
+        // --- Act: Ép 10 Thread bắn chung 1 mili-giây ---
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(10);
         AtomicInteger successCount = new AtomicInteger(0);
 
-        // [FIXED]: Sử dụng cách tạo Thread thủ công, bỏ phần thừa thãi của ExecutorService
         List<Thread> workers = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             final User bidder = bidders.get(i);
             Thread worker = new Thread(() -> {
                 try {
-                    startLatch.await();
-                    boolean ok = Boolean.TRUE.equals(
-                            controller.placeBidOnAuction(bidder, auction, 1500L, false).get(30, TimeUnit.SECONDS));
-                    if (ok) {
-                        successCount.incrementAndGet();
-                    }
+                    startLatch.await(); // Đợi hiệu lệnh
+                    boolean ok = Boolean.TRUE.equals(controller.placeBidOnAuction(bidder, auction, bidAmount, false).get(30, TimeUnit.SECONDS));
+                    if (ok) successCount.incrementAndGet();
                 } catch (Exception e) {
                     throw new AssertionError("Worker thread failed", e);
                 } finally {
@@ -124,17 +115,60 @@ class ConcurrentBiddingTest {
                 }
             });
             workers.add(worker);
-        }
-
-        for (Thread worker : workers) {
             worker.start();
         }
 
-        startLatch.countDown();
-        assertTrue(doneLatch.await(60, TimeUnit.SECONDS), "All 10 bid workers should finish");
+        startLatch.countDown(); // Khai hỏa
+        assertTrue(doneLatch.await(60, TimeUnit.SECONDS), "Deadlock xảy ra: Không phải tất cả 10 thread đều hoàn thành.");
 
-        // Concurrent first bids race on the same DB snapshot; retries may later submit valid follow-up bids after state moves.
-        assertTrue(successCount.get() >= 1 && successCount.get() <= bidders.size(),
-                "At least one bid should succeed; count is bounded by contention + retry semantics");
+        // Cơ bản: Phải có ít nhất 1 request lọt qua khe cửa hẹp của Optimistic Lock
+        assertTrue(successCount.get() >= 1 && successCount.get() <= bidders.size(), "Phải có ít nhất 1 giao dịch thành công.");
+
+        // --- ASSERT: DATA INTEGRITY (QUAN TRỌNG NHẤT) ---
+        try (Connection conn = DatabaseManager.getConnection()) {
+
+            // 1. Xác định Vua trò chơi
+            String winnerId = null;
+            long highestMaxBid = 0;
+            try (var ps = conn.prepareStatement("SELECT winning_bidder_id, highest_max_bid FROM auctions WHERE id = ?")) {
+                ps.setString(1, auction.getId());
+                var rs = ps.executeQuery();
+                if (rs.next()) {
+                    winnerId = rs.getString("winning_bidder_id");
+                    highestMaxBid = rs.getLong("highest_max_bid");
+                }
+            }
+            assertNotNull(winnerId, "Database: Bắt buộc phải chốt được 1 người chiến thắng cuối cùng.");
+
+            // 2. Tra soát đối soát tài chính toàn bộ 10 Bidders
+            for (User u : bidders) {
+                try (var ps = conn.prepareStatement("SELECT balance, locked_balance FROM wallets WHERE user_id = ?")) {
+                    ps.setString(1, u.getId());
+                    var rs = ps.executeQuery();
+                    if (rs.next()) {
+                        long balance = rs.getLong("balance");
+                        long locked = rs.getLong("locked_balance");
+
+                        if (u.getId().equals(winnerId)) {
+                            assertEquals(highestMaxBid, locked, "Người thắng: Số tiền giam phải bằng đúng Max Bid cuối cùng.");
+                            assertEquals(initialBalance - highestMaxBid, balance, "Người thắng: Số dư khả dụng bị lệch so với số tiền bị giam.");
+                        } else {
+                            assertEquals(0L, locked, "Người thua: Tiền giam phải được trả về 0.");
+                            assertEquals(initialBalance, balance, "Người thua: Phải được hoàn tiền 100% không thiếu một đồng.");
+                        }
+                    }
+                }
+            }
+
+            // 3. Đối soát lịch sử giao dịch (Chống tạo khống Transaction)
+            try (var ps = conn.prepareStatement("SELECT COUNT(*) FROM bid_transactions WHERE auction_id = ?")) {
+                ps.setString(1, auction.getId());
+                var rs = ps.executeQuery();
+                if (rs.next()) {
+                    int txnCount = rs.getInt(1);
+                    assertEquals(successCount.get(), txnCount, "Số lượng bản ghi trong bid_transactions phải khớp chính xác với số lần đặt giá báo SUCCESS.");
+                }
+            }
+        }
     }
 }
