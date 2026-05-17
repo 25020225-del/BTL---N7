@@ -54,7 +54,8 @@ public class BidActionHandler implements CommandHandler {
             }
 
             // Đẩy sang ServerBidderController xử lý logic trừ tiền và đặt giá
-            bidderCtrl.placeBidOnAuction(currentUser, auction, amount, isBot).thenAccept(success -> {
+            model.user.Bidder bidderRole = new model.user.Bidder(currentUser);
+            bidderCtrl.placeBidOnAuction(bidderRole, auction, amount, isBot).thenAccept(success -> {
                 if (success) {
                     client.sendResponse("BID_SUCCESS", "Your bid has been placed successfully!");
                 } else {

@@ -116,7 +116,8 @@ public class AuctionActionHandler implements CommandHandler {
             item.setImageUrl(imageUrl);
 
             // Forward the creation request to the Seller Controller
-            Auction newAuction = sellerCtrl.addAuction(authenticatedUser, item, bidIncrement, reqStart, (int) durationMinutes);
+            model.user.Seller sellerRole = new model.user.Seller(authenticatedUser);
+            Auction newAuction = sellerCtrl.addAuction(sellerRole, item, bidIncrement, reqStart, (int) durationMinutes);
 
             if (newAuction != null) {
                 log.info("{} has created an auction.", authenticatedUser.getUserName());
