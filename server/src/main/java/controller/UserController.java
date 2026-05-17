@@ -34,44 +34,83 @@ public class UserController {
      * Sử dụng cơ chế Catching SQLState/ErrorCode để chống Race Condition
      * thay vì mô hình Check-then-Act, đồng thời giữ chuẩn đầu ra cho AuthHandler.
      */
-    public String register(String userName, String password, String name, String role) {
-        // Sử dụng try-with-resources để tự động đóng Connection sau khi dùng xong
-        try (Connection conn = DatabaseManager.getConnection()) {
+//    public String register(String userName, String password, String name, String role) {
+//        // Sử dụng try-with-resources để tự động đóng Connection sau khi dùng xong
+//        try (Connection conn = DatabaseManager.getConnection()) {
+//
+//            // 1. Hash mật khẩu trước khi lưu để bảo mật
+//            String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
+//            // 2. Tạo Secret Key cho hệ thống 2FA (TOTP)
+//            String secretKey = totpService.createSecretKey();
+//            // 3. Khởi tạo ID người dùng duy nhất
+//            String userId = "U-" + System.currentTimeMillis();
+//
+//            // 4. Gọi DAO thực hiện Insert User và tạo Wallet
+//            // KHÔNG GỌI isUsernameExists() ở đây để triệt tiêu hoàn toàn Race Condition.
+//            userDAO.createUserAndWallet(conn, userId, userName, hashedPassword, name, role, secretKey);
+//
+//            // 5. Trả về đúng định dạng mà AuthHandler mong đợi để build mã QR
+//            String qrUrl = totpService.getQRUrl(userName, secretKey);
+//            return "SUCCESS|" + secretKey + "|" + qrUrl;
+//
+//        } catch (SQLException e) {
+//            // --- ARCHITECT FIX: XỬ LÝ NGOẠI LỆ AN TOÀN TRỰC TIẾP TỪ DATABASE ---
+//            // ErrorCode 19 là chuẩn của SQLITE_CONSTRAINT
+//            // SQLState bắt đầu bằng "23" là chuẩn quốc tế cho Integrity Constraint Violation
+//            boolean isUniqueConstraintViolated = (e.getErrorCode() == 19) ||
+//                    (e.getSQLState() != null && e.getSQLState().startsWith("23"));
+//
+//            if (isUniqueConstraintViolated) {
+//                // Trả về lỗi thân thiện cho Client mà không làm sập luồng
+//                return "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!";
+//            }
+//
+//            // Ghi log lỗi hệ thống thực sự
+//            log.error("Database error during registration: ", e);
+//            return "Lỗi hệ thống máy chủ. Vui lòng thử lại sau!";
+//        } catch (Exception e) {
+//            log.error("Unexpected error during registration: ", e);
+//            return "Dữ liệu đầu vào không hợp lệ!";
+//        }
+//    }
+    public record RegisterResult(boolean success, String secretKey, String qrUrl, String errorMessage) {}
 
-            // 1. Hash mật khẩu trước khi lưu để bảo mật
+    public RegisterResult register(String userName, String password, String name, String role) {
+        try (Connection conn = DatabaseManager.getConnection()) {
             String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
-            // 2. Tạo Secret Key cho hệ thống 2FA (TOTP)
             String secretKey = totpService.createSecretKey();
-            // 3. Khởi tạo ID người dùng duy nhất
             String userId = "U-" + System.currentTimeMillis();
 
-            // 4. Gọi DAO thực hiện Insert User và tạo Wallet
-            // KHÔNG GỌI isUsernameExists() ở đây để triệt tiêu hoàn toàn Race Condition.
             userDAO.createUserAndWallet(conn, userId, userName, hashedPassword, name, role, secretKey);
 
-            // 5. Trả về đúng định dạng mà AuthHandler mong đợi để build mã QR
             String qrUrl = totpService.getQRUrl(userName, secretKey);
-            return "SUCCESS|" + secretKey + "|" + qrUrl;
+            return new RegisterResult(true, secretKey, qrUrl, null);
 
         } catch (SQLException e) {
-            // --- ARCHITECT FIX: XỬ LÝ NGOẠI LỆ AN TOÀN TRỰC TIẾP TỪ DATABASE ---
-            // ErrorCode 19 là chuẩn của SQLITE_CONSTRAINT
-            // SQLState bắt đầu bằng "23" là chuẩn quốc tế cho Integrity Constraint Violation
-            boolean isUniqueConstraintViolated = (e.getErrorCode() == 19) ||
+            boolean isDuplicate = (e.getErrorCode() == 19) ||
                     (e.getSQLState() != null && e.getSQLState().startsWith("23"));
-
-            if (isUniqueConstraintViolated) {
-                // Trả về lỗi thân thiện cho Client mà không làm sập luồng
-                return "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!";
-            }
-
-            // Ghi log lỗi hệ thống thực sự
-            log.error("Database error during registration: ", e);
-            return "Lỗi hệ thống máy chủ. Vui lòng thử lại sau!";
-        } catch (Exception e) {
-            log.error("Unexpected error during registration: ", e);
-            return "Dữ liệu đầu vào không hợp lệ!";
+            String msg = isDuplicate
+                    ? "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!"
+                    : "Lỗi hệ thống. Vui lòng thử lại sau!";
+            return new RegisterResult(false, null, null, msg);
         }
+    }
+
+    public User loginCheckPassword(String userName, String password) throws SQLException {
+        User user = userDAO.findUserByUsername(userName);
+        if (user != null && BCrypt.checkpw(password, user.getPassword())) {
+            return user;
+        }
+        return null;
+    }
+
+    public boolean verifyTotp(String secret, int code) {
+        return totpService.verifyCode(secret, code);
+    }
+
+    // Lấy secret từ DB
+    public String getTotpSecret(String userName) throws SQLException {
+        return userDAO.getTotpSecret(userName);
     }
 
     /**
@@ -105,4 +144,5 @@ public class UserController {
         log.info("Login failed for username {}", userName);
         return null;
     }
+
 }

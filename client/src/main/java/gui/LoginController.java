@@ -2,6 +2,7 @@ package gui;
 
 import client.network.NetworkService;
 import client.utils.ErrorParser;
+import javafx.scene.control.*;
 import javafx.scene.shape.Circle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,13 +11,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
 import model.user.User;
 import network.NetworkMessage;
 import utils.JacksonConfig;
+
+import java.util.Optional;
 
 /**
  * Controller responsible for managing the user login interface.
@@ -97,6 +96,8 @@ public class LoginController {
         MainApplication.setNewScene(MainApplication.rootRegister);
     }
 
+
+
     /**
      * Processes the server's response regarding the login attempt.
      * Must be executed on the JavaFX Application Thread (via Platform.runLater)
@@ -131,13 +132,40 @@ public class LoginController {
                     log.error("Login Error: {}", e.getMessage());
                 }
 
-            } else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
+            }
+            else if ("LOGIN_NEED_TOTP".equals(command)) {
+                showTotpDialog();  // ← thêm
+
+            } else if ("ERROR".equals(command)) {
+                String errorMsg = ErrorParser.parse(response.getData());
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Login Failed", errorMsg);
+            }
+            else if ("LOGIN_FAIL".equals(command) || "ERROR".equals(command)) {
                 // [FIXED]: Extract error message using ErrorParser
                 String errorMsg = ErrorParser.parse(response.getData());
 
                 log.warn("Login failed: {}", errorMsg);
 
                 AlertHelper.showAlert(Alert.AlertType.ERROR, "Login Failed", errorMsg);
+            }
+        });
+    }
+
+    private void showTotpDialog() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Xác thực 2 bước");
+        dialog.setHeaderText("Nhập mã 6 số từ Google Authenticator");
+        dialog.setContentText("Mã OTP:");
+
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(codeStr -> {
+            try {
+                int code = Integer.parseInt(codeStr.trim());
+                networkClient.setOnMessageReceived(this::handleServerResponse);
+                networkClient.sendMessage("VERIFY_TOTP", code);
+            } catch (NumberFormatException e) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR,
+                        "Lỗi", "Mã OTP phải là 6 chữ số.");
             }
         });
     }

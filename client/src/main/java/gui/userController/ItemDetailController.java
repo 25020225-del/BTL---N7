@@ -4,10 +4,7 @@ import client.handler.AuctionEventBus;
 import client.network.NetworkService;
 import client.service.AuctionService;
 import gui.MainApplication;
-import gui.process.Convert;
-import gui.process.EditAuction;
-import gui.process.AlertHelper;
-import gui.process.CropImage;
+import gui.process.*;
 import gui.widget.CountdownClock;
 import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
@@ -288,10 +285,7 @@ public class ItemDetailController{
     @FXML
     private void handleAutoBid() {
         // 1. Vô hiệu hóa nút bấm tạm thời để tránh spam
-        vbBidHandle.setDisable(true);
-        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
-        pauseTransition.setOnFinished(event -> { vbBidHandle.setDisable(false); });
-        pauseTransition.play();
+        AnimateEffect.pauseNode(vbBidHandle,2);
 
         try {
             // 2. Lấy và kiểm tra dữ liệu từ giao diện

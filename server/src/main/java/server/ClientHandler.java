@@ -37,6 +37,9 @@ public class ClientHandler {
     private static int cNC = 0;
     private String clientName = "#Guest" + (cNC++);
     private User user;
+    private User pendingUser;
+    private long pendingUserTimestamp;
+    private static final long TOTP_TIMEOUT_MS = 60_000;
 
     private final UserController userController;
     private final CommandDispatcher dispatcher;
@@ -215,5 +218,18 @@ public class ClientHandler {
 
     public static void incrementcNC() {
         cNC++;
+    }
+
+    public User getPendingUser() {
+        if (pendingUser != null &&
+                System.currentTimeMillis() - pendingUserTimestamp > TOTP_TIMEOUT_MS) {
+            pendingUser = null;
+        }
+        return pendingUser;
+    }
+
+    public void setPendingUser(User u) {
+        this.pendingUser = u;
+        this.pendingUserTimestamp = System.currentTimeMillis();
     }
 }

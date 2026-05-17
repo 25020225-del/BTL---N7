@@ -9,6 +9,8 @@ import model.base.Entity;
  */
 public class User extends Entity {
 
+    private boolean totpEnabled;
+    private String totpSecret;  // chỉ cần nếu muốn cache, có thể bỏ
     private String userName;
     private String password; // Renamed from userPass
     private String name;
@@ -102,6 +104,8 @@ public class User extends Entity {
         this.isGood = good;
     }
 
+    public boolean isTotpEnabled() { return totpEnabled; }
+    public void setTotpEnabled(boolean totpEnabled) { this.totpEnabled = totpEnabled; }
     /**
      * Generates a formatted summary string containing the user's core details.
      * If the user is marked as trusted (isGood), a "[TRUSTED]" tag is prepended to the output.

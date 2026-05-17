@@ -8,29 +8,13 @@ import model.auction.Auction;
 import model.item.Item;
 import model.user.User;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
-public class CreateAuctionModel {
-    public static final int MAX_IMAGE_SIZE = 10 * 1024 * 1024;
-    public static File selectImageFile() {
-
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Choose an image");
-        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
-
-        File selectedFile = fileChooser.showOpenDialog(MainApplication.primalStage.getScene().getWindow());
-
-        // Kiểm tra dung lượng NGAY LẬP TỨC trước khi làm bất cứ việc gì
-        if (selectedFile.length() > MAX_IMAGE_SIZE) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 10MB để đảm bảo đường truyền mạng!");
-            return null;
-        }
-        return selectedFile;
-    }
+public class CreateAuctionProcess {
     public static void checkInputInfo(String name, String desc, String startPrice, String bidInc, File image) throws Exception {
         if (name.isEmpty() || desc.isEmpty() || startPrice.isEmpty() || bidInc.isEmpty()) {
             throw new IllegalArgumentException("Vui lòng điền đầy đủ các trường bắt buộc.");
@@ -69,14 +53,14 @@ public class CreateAuctionModel {
         return duration;
     }
     public static Item createItem(String name, String desc, long startPrice, File image) throws Exception {
-        String itemId = "ITEM-" + System.currentTimeMillis();
+        String itemId = "ITEM-" + UUID.randomUUID() + System.currentTimeMillis();
         Item item = new Item(itemId, name, desc, startPrice);
         byte[] imageBytes = ImageCompressor.compressToBytes(image, 0.05F);
         item.setFile(imageBytes);
         return item;
     }
     public static Auction createAuction(Item item, User user, long bidInc, LocalDateTime startDateTime, LocalDateTime endDateTime) throws Exception {
-        String auctionId = "AUC-" + System.currentTimeMillis();
+        String auctionId = "AUC-" + UUID.randomUUID() + System.currentTimeMillis();
         Auction auction = new Auction(auctionId, item, new model.user.User(), bidInc, startDateTime,endDateTime);
         // Assuming current user context is available or needs to be passed.
         // For now, we use a placeholder or assume the server fills the User object correctly upon receipt.

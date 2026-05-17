@@ -1,5 +1,6 @@
 package server.ServerExtension;
 
+import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ClientHandler;
@@ -15,6 +16,8 @@ import static utils.ConsoleColors.*;
  */
 public class ClientManager {
     private static final Logger log = LoggerFactory.getLogger(ClientManager.class);
+
+    private User pendingUser;  // user đã pass check password, chờ verify TOTP
 
     private static final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
     private static final int MAX_BROADCASTPOOL_SIZE = 200;

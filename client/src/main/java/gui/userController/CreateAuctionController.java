@@ -1,19 +1,18 @@
 package gui.userController;
 
 import client.handler.AuctionEventBus;
-import client.network.NetworkService;
 import client.service.AuctionService;
 import gui.MainApplication;
-import gui.process.CreateAuctionModel;
+import gui.process.CreateAuctionProcess;
 import gui.process.AlertHelper;
 import gui.process.CropImage;
-import gui.process.ImageCompressor;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.stage.FileChooser;
 import model.auction.Auction;
 import model.item.Item;
 
@@ -21,7 +20,6 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 import model.user.User;
 import org.slf4j.Logger;
@@ -34,6 +32,7 @@ public class CreateAuctionController extends ScrollPane {
     private Runnable onAuctionCreated;
 
     private File imagefile;
+    public static final int MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
     @FXML private TextField ca_itemName;
     @FXML private TextArea ca_description;
@@ -62,12 +61,27 @@ public class CreateAuctionController extends ScrollPane {
         this.onAuctionCreated = callback;
     }
 
+    public static File selectImageFile() {
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choose an image");
+        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+
+        File selectedFile = fileChooser.showOpenDialog(MainApplication.primalStage.getScene().getWindow());
+
+        // Kiểm tra dung lượng NGAY LẬP TỨC trước khi làm bất cứ việc gì
+        if (selectedFile.length() > MAX_IMAGE_SIZE) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi dung lượng", "Ảnh quá nặng, đề nghị chọn ảnh có dung lượng nhỏ hơn 10MB để đảm bảo đường truyền mạng!");
+            return null;
+        }
+        return selectedFile;
+    }
     /**
      * Choose image from local storage.
      */
     @FXML
     private void handleSelectImage(){
-        imagefile = CreateAuctionModel.selectImageFile();
+        imagefile = selectImageFile();
         if (imagefile != null) {
             log.info("Selected image file: {}", imagefile.getName());
 
@@ -92,13 +106,13 @@ public class CreateAuctionController extends ScrollPane {
             LocalDateTime startDT;
             Duration dr;
 
-            CreateAuctionModel.checkInputInfo(name,desc,startPrice,bidInc,imagefile);
-            startDT = CreateAuctionModel.checkStartTime(ca_startDate.getValue(),ca_startHour.getText(),ca_startMinute.getText());
-            dr = CreateAuctionModel.checkEndTime(ca_durationDays.getText(),ca_durationHours.getText());
+            CreateAuctionProcess.checkInputInfo(name,desc,startPrice,bidInc,imagefile);
+            startDT = CreateAuctionProcess.checkStartTime(ca_startDate.getValue(),ca_startHour.getText(),ca_startMinute.getText());
+            dr = CreateAuctionProcess.checkEndTime(ca_durationDays.getText(),ca_durationHours.getText());
 
-            Item item = CreateAuctionModel.createItem(name, desc, Long.parseLong(startPrice), imagefile);
+            Item item = CreateAuctionProcess.createItem(name, desc, Long.parseLong(startPrice), imagefile);
 
-            Auction auction = CreateAuctionModel.createAuction(item,new User(),Long.parseLong(bidInc),startDT,startDT.plus(dr));
+            Auction auction = CreateAuctionProcess.createAuction(item,new User(),Long.parseLong(bidInc),startDT,startDT.plus(dr));
 
             AuctionService.createAuction(auction);
 

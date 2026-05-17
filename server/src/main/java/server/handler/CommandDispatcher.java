@@ -66,6 +66,10 @@ public class    CommandDispatcher {
         handlers.put("LOGIN", authHandler);
         handlers.put("REGISTER", authHandler);
         handlers.put("LOGOUT", authHandler);
+        handlers.put("LOGIN", authHandler);
+        handlers.put("VERIFY_TOTP", authHandler);  // ← thêm dòng này
+        handlers.put("REGISTER", authHandler);
+        handlers.put("LOGOUT", authHandler);
 
         // Register Auction creation and management
         AuctionActionHandler auctionHandler = new AuctionActionHandler(sellerCtrl);
@@ -103,6 +107,8 @@ public class    CommandDispatcher {
         SellerActionHandler sellerHandler = new SellerActionHandler(sellerCtrl, auctionDAO);
         handlers.put("EDIT_AUCTION", sellerHandler);
         handlers.put("DELETE_AUCTION", sellerHandler);
+
+
 
     }
 

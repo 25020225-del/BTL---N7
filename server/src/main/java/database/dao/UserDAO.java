@@ -55,12 +55,15 @@ public class UserDAO {
                         rs.getString("role")
                 );
                 user.setGood(rs.getInt("is_good") == 1);
+                user.setTotpEnabled(rs.getInt("is_totp_enabled") == 1);  // ← thêm dòng này
+                user.setGood(rs.getInt("is_good") == 1);
                 if (rs.getInt("is_blocked") == 1) {
                     user.setRole("BLOCKED");
                 }
                 return user;
             }
         }
+
         return null;
     }
 
@@ -139,6 +142,16 @@ public class UserDAO {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, userId);
             return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    public String getTotpSecret(String userName) throws SQLException {
+        String sql = "SELECT totp_secret FROM users WHERE username = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, userName);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getString("totp_secret") : null;
         }
     }
 }
