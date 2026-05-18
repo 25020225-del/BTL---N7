@@ -1,6 +1,7 @@
 package gui.userController;
 
 import client.handler.AuctionEventBus;
+import client.handler.ClientPaymentHandler;
 import client.network.NetworkService;
 import client.service.WalletService;
 import gui.MainApplication;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 
 
 /**
@@ -51,6 +53,13 @@ public class WalletController extends VBox {
 
     private long currentBalance = 0L;
     private ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
+    // ── NEW: Lưu amount đang chờ TOTP để retry ───────────────────────
+    /** Lưu amount đang chờ xác thực để dùng khi retry. */
+    private double pendingDepositAmount = 0.0;
+
+    // ── EventBus listener để remove khi dispose ─────────────────────
+    private java.beans.PropertyChangeListener requireTotpListener;
+    private java.beans.PropertyChangeListener invalidTotpListener;
 
     public WalletController() {
         // Load FXML as a Custom Control
@@ -81,6 +90,14 @@ public class WalletController extends VBox {
             log.info("Get wallet balence success: {}", balance);
             Platform.runLater(() -> {setWalletBalance(balance);});
         });
+
+        requireTotpListener = event -> onRequireTotpPayment(event.getNewValue());
+        invalidTotpListener  = event -> onInvalidTotp(event.getNewValue());
+
+        AuctionEventBus.addListener(
+                ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
+        AuctionEventBus.addListener(
+                ClientPaymentHandler.INVALID_TOTP, invalidTotpListener);
 
         tableTransactions.setItems(transactionData);
         updateBalanceUI();
@@ -115,8 +132,141 @@ public class WalletController extends VBox {
             return;
         }
         AnimateEffect.pauseNode(btnDeposit, 2);
+        sendDepositRequest(amount, null);
+    }
+    /**
+     * Gửi request nạp tiền lên server.
+     *
+     * @param amount    Số tiền nạp (VND).
+     * @param totpCode  Mã TOTP 6 số (null nếu chưa có).
+     */
+    private void sendDepositRequest(double amount, String totpCode) {
+        pendingDepositAmount = amount; // Lưu lại để retry nếu bị TOTP challenge
 
-        WalletService.createDeposit(amount);
+        // Format mới: Map với amount và totpCode tùy chọn
+        java.util.HashMap<String, Object> payload = new java.util.HashMap<>();
+        payload.put("amount", (long) amount);
+        if (totpCode != null && !totpCode.isBlank()) {
+            payload.put("totpCode", totpCode);
+        }
+
+        NetworkService.sendMessage("CREATE_DEPOSIT", payload);
+    }
+
+    // ── NEW: Xử lý REQUIRE_TOTP_PAYMENT ─────────────────────────────
+
+    /**
+     * Được gọi khi server yêu cầu TOTP trước khi nạp tiền.
+     * Hiển thị dialog nhập mã 6 số và retry với mã đó.
+     */
+    @SuppressWarnings("unchecked")
+    private void onRequireTotpPayment(Object eventData) {
+        Platform.runLater(() -> {
+            // Server echo lại amount; dùng pendingDepositAmount làm fallback
+            long serverAmount = pendingDepositAmount > 0
+                    ? (long) pendingDepositAmount
+                    : 0L;
+
+            try {
+                NetworkMessage msg  = (NetworkMessage) eventData;
+                Map<String, Object> data = (Map<String, Object>) msg.getData();
+                if (data.containsKey("amount")) {
+                    serverAmount = Long.parseLong(data.get("amount").toString());
+                }
+            } catch (Exception ignored) {}
+
+            String totpCode = showTotpChallengeDialog(serverAmount);
+            if (totpCode != null) {
+                // User đã nhập mã → retry với TOTP
+                retryDepositWithTotp(serverAmount, totpCode);
+            } else {
+                // User hủy dialog → không làm gì thêm
+                log.info("User cancelled TOTP challenge for deposit.");
+                btnDeposit.setDisable(false); // Cho phép thử lại sau
+            }
+        });
+    }
+
+    /**
+     * Được gọi khi server báo mã TOTP không hợp lệ.
+     * Hiển thị thông báo và cho phép thử lại.
+     */
+    private void onInvalidTotp(Object eventData) {
+        Platform.runLater(() -> {
+            AlertHelper.showAlert(
+                    Alert.AlertType.ERROR,
+                    "Mã TOTP không hợp lệ",
+                    "Mã 6 số bạn nhập không đúng hoặc đã hết hạn.\n"
+                            + "Vui lòng mở Google Authenticator và nhập mã mới."
+            );
+            // Không retry tự động; để user bấm nạp tiền lại nếu muốn
+            btnDeposit.setDisable(false);
+        });
+    }
+
+    /**
+     * Hiển thị dialog yêu cầu nhập mã TOTP.
+     * Tái sử dụng UI pattern đơn giản (TextField 6 số).
+     *
+     * @param amount  Số tiền đang chờ xác thực (hiển thị để user biết context).
+     * @return Chuỗi mã 6 số đã nhập, hoặc {@code null} nếu user hủy.
+     */
+    private String showTotpChallengeDialog(long amount) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Xác thực bảo mật");
+        dialog.setHeaderText("🔐 Xác nhận giao dịch " + String.format("%,d", amount) + " VND");
+
+        Label info = new Label(
+                "Tài khoản của bạn đã bật bảo vệ TOTP cho giao dịch.\n"
+                        + "Hãy mở Google Authenticator và nhập mã 6 số hiện tại.");
+        info.setWrapText(true);
+
+        TextField otpField = new TextField();
+        otpField.setPromptText("Nhập mã 6 số...");
+        otpField.textProperty().addListener((obs, oldVal, newVal) -> {
+            // Chỉ cho nhập số, tối đa 6 ký tự
+            if (!newVal.matches("\\d*") || newVal.length() > 6) {
+                otpField.setText(oldVal);
+            }
+        });
+
+        VBox content = new VBox(10, info, new Label("Mã xác thực TOTP:"), otpField);
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(btn -> {
+            if (btn == ButtonType.OK) {
+                String code = otpField.getText().trim();
+                return (code.length() == 6) ? code : null;
+            }
+            return null;
+        });
+
+        Optional<String> result = dialog.showAndWait();
+        return result.orElse(null);
+    }
+
+    /**
+     * Gửi lại lệnh CREATE_DEPOSIT kèm mã TOTP.
+     */
+    private void retryDepositWithTotp(long amount, String totpCode) {
+        log.info("Retrying deposit with TOTP code for amount {}", amount);
+        sendDepositRequest(amount, totpCode);
+    }
+
+    /**
+     * Gọi khi WalletController bị đóng để giải phóng EventBus listeners.
+     * Thêm vào method dispose() hiện có hoặc tạo mới nếu chưa có.
+     */
+    public void dispose() {
+        if (requireTotpListener != null) {
+            AuctionEventBus.removeListener(
+                    ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
+        }
+        if (invalidTotpListener != null) {
+            AuctionEventBus.removeListener(
+                    ClientPaymentHandler.INVALID_TOTP, invalidTotpListener);
+        }
     }
 
     private void updateBalanceUI() {

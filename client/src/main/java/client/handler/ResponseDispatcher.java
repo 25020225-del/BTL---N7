@@ -48,6 +48,13 @@ public class ResponseDispatcher {
         handlers.put("DELETE_SUCCESS", userHandler);
         handlers.put("FETCH_WALLET_SUCCESS", userHandler);
         handlers.put("FETCH_USERS_SUCCESS", userHandler);
+        handlers.put("SETUP_2FA_SUCCESS",    userHandler);
+        handlers.put("CONFIRM_2FA_SUCCESS",  userHandler);
+        handlers.put("DISABLE_2FA_SUCCESS",  userHandler);
+        handlers.put("CANCEL_2FA_SUCCESS",   userHandler);
+        handlers.put("UPDATE_TOTP_PREFS_SUCCESS", userHandler);
+        handlers.put("REQUIRE_TOTP_PAYMENT", paymentHandler);
+        handlers.put("INVALID_TOTP",         paymentHandler);
     }
 
     public void dispatch(NetworkMessage message, NetworkClient client) {

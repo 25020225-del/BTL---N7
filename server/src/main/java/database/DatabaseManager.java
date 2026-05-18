@@ -89,6 +89,8 @@ public class DatabaseManager {
                     "is_good INTEGER DEFAULT 0, " +
                     "totp_secret TEXT, " +
                     "is_totp_enabled INTEGER DEFAULT 0, " +
+                    "totp_status TEXT DEFAULT 'DISABLED', " +
+                    "temp_totp_secret TEXT, " +
                     "is_blocked INTEGER DEFAULT 0" +
                     ");";
             stmt.execute(createUsersTable);
@@ -123,8 +125,35 @@ public class DatabaseManager {
             try { stmt.execute("ALTER TABLE auctions ADD COLUMN image_url TEXT;"); } catch (SQLException ignored) {}
             try { stmt.execute("ALTER TABLE auctions ADD COLUMN winning_bidder_id TEXT;"); } catch (SQLException ignored) {}
             try { stmt.execute("ALTER TABLE auctions ADD COLUMN highest_max_bid REAL DEFAULT 0.0;"); } catch (SQLException ignored) {}
-
+            try {
+                stmt.execute("ALTER TABLE users ADD COLUMN totp_status TEXT DEFAULT 'DISABLED';");
+                log.info("Migration: added column 'totp_status' to users table.");
+            } catch (SQLException ignored) { /* cột đã tồn tại — bỏ qua */ }
+            try {
+                stmt.execute("ALTER TABLE users ADD COLUMN temp_totp_secret TEXT;");
+                log.info("Migration: added column 'temp_totp_secret' to users table.");
+            } catch (SQLException ignored) { /* cột đã tồn tại — bỏ qua */ }
+            try {
+                stmt.execute(
+                        "UPDATE users SET totp_status = 'ENABLED' " +
+                                "WHERE is_totp_enabled = 1 AND (totp_status IS NULL OR totp_status = 'DISABLED');"
+                );
+                log.info("Migration: back-filled totp_status='ENABLED' for existing 2FA users.");
+            } catch (SQLException e) {
+                log.warn("Migration: totp_status back-fill skipped: {}", e.getMessage());
+            }
             log.info("Successfully upgraded database schemas");
+            // Migration: cột totp_login_enabled
+            try {
+                stmt.execute("ALTER TABLE users ADD COLUMN totp_login_enabled INTEGER DEFAULT 0;");
+                log.info("Migration: added column 'totp_login_enabled' to users table.");
+            } catch (SQLException ignored) { /* cột đã tồn tại */ }
+
+            // Migration: cột totp_payment_enabled
+            try {
+                stmt.execute("ALTER TABLE users ADD COLUMN totp_payment_enabled INTEGER DEFAULT 0;");
+                log.info("Migration: added column 'totp_payment_enabled' to users table.");
+            } catch (SQLException ignored) { /* cột đã tồn tại */ }
 
             // SEED DATA: Tạo tài khoản Admin mặc định
             String adminPass = org.mindrot.jbcrypt.BCrypt.hashpw("123456", org.mindrot.jbcrypt.BCrypt.gensalt(12));

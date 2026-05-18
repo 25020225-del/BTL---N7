@@ -2,35 +2,83 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
-<?import javafx.scene.layout.Region?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
-<VBox prefHeight="600.0" prefWidth="800.0" spacing="20.0"
-      style="-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-radius: 10;"
-      stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+
+<fx:root type="VBox"
+         prefHeight="600.0" prefWidth="800.0" spacing="20.0"
+         style="-fx-background-color: white; -fx-padding: 40;
+                -fx-background-radius: 10; -fx-border-color: #ddd;
+                -fx-border-radius: 10;"
+         stylesheets="@Stylist.css"
+         xmlns="http://javafx.com/javafx/25"
+         xmlns:fx="http://javafx.com/fxml/1">
     <children>
-        <Button mnemonicParsing="false" onAction="#handleBackToMarketplace" styleClass="button-ebay"
+
+        <!-- Nút Back -->
+        <Button mnemonicParsing="false"
+                onAction="#handleBackToMarketplace"
+                styleClass="button-ebay"
                 text="&lt;- Back to Marketplace"/>
 
-        <Label text="App Settings">
-            <font>
-                <Font name="System Bold" size="28.0"/>
-            </font>
-            <style>
-                -fx-text-fill: #3665f3;
-            </style>
-            <VBox.margin>
-                <Insets top="10.0"/>
-            </VBox.margin>
+        <!-- Tiêu đề -->
+        <Label text="Cài đặt Tài khoản">
+            <font><Font name="System Bold" size="28.0"/></font>
+            <style>-fx-text-fill: #3665f3;</style>
+            <VBox.margin><Insets top="10.0"/></VBox.margin>
         </Label>
 
-        <Label style="-fx-font-size: 16px;" text="• Notifications: Enabled"/>
-        <Label style="-fx-font-size: 16px;" text="• Display Theme: Light Mode"/>
+        <Separator/>
+
+        <!-- ── Khu vực 2FA ────────────────────────────────────────── -->
+        <!-- SettingsView.fxml — Section TOTP Settings -->
+
+        <!-- Nút thiết lập: CHỈ hiện khi chưa có TOTP secret (twoFactorStatus != ENABLED) -->
+        <VBox fx:id="vboxSetupTotp" spacing="10" visible="true" managed="true">
+            <Label text="Bảo mật 2 lớp (TOTP)" styleClass="section-title"/>
+            <Label text="Chưa thiết lập TOTP. Hãy cài đặt để bảo vệ tài khoản." wrapText="true"/>
+            <Button fx:id="btnSetupTotp" text="🔐 Thiết lập TOTP" onAction="#handleSetupTotp"
+                    styleClass="primary-button"/>
+        </VBox>
+
+        <!-- Phần quản lý cờ: CHỈ hiện khi đã có TOTP (twoFactorStatus == ENABLED) -->
+        <VBox fx:id="vboxTotpPrefs" spacing="12" visible="false" managed="false">
+            <Label text="Bảo mật 2 lớp (TOTP) — Đang hoạt động ✅" styleClass="section-title"/>
+            <Label text="Chọn các tình huống yêu cầu mã OTP:" wrapText="true"/>
+
+            <CheckBox fx:id="chkLoginEnabled"   text="🔑  Yêu cầu OTP khi Đăng nhập"
+                      onAction="#handleTotpPrefsChanged"/>
+            <CheckBox fx:id="chkPaymentEnabled" text="💳  Yêu cầu OTP khi Nạp tiền / Giao dịch"
+                      onAction="#handleTotpPrefsChanged"/>
+
+            <Label fx:id="lblPrefsStatus" text="" styleClass="status-label" wrapText="true"/>
+
+            <Separator/>
+            <Button fx:id="btnDisableTotp"
+                    text="🗑 Hủy hoàn toàn TOTP (xóa secret)"
+                    onAction="#handleDisableTotp"
+                    styleClass="danger-button"/>
+        </VBox>
+
+        <Separator/>
+
+        <!-- Placeholder settings cũ -->
+        <Label style="-fx-font-size: 14px; -fx-text-fill: #888;"
+               text="• Thông báo: Đang bật"/>
+        <Label style="-fx-font-size: 14px; -fx-text-fill: #888;"
+               text="• Giao diện: Chế độ sáng"/>
 
         <Region VBox.vgrow="ALWAYS"/>
 
-        <Button mnemonicParsing="false" onAction="#handleSignOut"
-                style="-fx-background-color: #dd1e31; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 30; -fx-background-radius: 5;"
-                text="SIGN OUT"/>
+        <!-- Nút Sign Out -->
+        <Button mnemonicParsing="false"
+                onAction="#handleSignOut"
+                style="-fx-background-color: #dd1e31;
+                       -fx-text-fill: white;
+                       -fx-font-weight: bold;
+                       -fx-padding: 10 30;
+                       -fx-background-radius: 5;"
+                text="ĐĂNG XUẤT"/>
+
     </children>
-</VBox>
+</fx:root>
