@@ -323,7 +323,14 @@ public class BidDAO {
         }
     }
 
-    public List<Map<String, Object>> getAllTrancactionsFromAuctionID(String auctionId) throws SQLException {
+    /**
+     * Retrieves all bid transactions for the given auction, ordered chronologically.
+     *
+     * @param auctionId The ID of the auction to query.
+     * @return An ordered list of maps containing {@code bid_amount} and {@code bid_time}.
+     * @throws SQLException if the query fails.
+     */
+    public List<Map<String, Object>> getTransactionsForAuction(String auctionId) throws SQLException {
         String sql = "SELECT bid_amount, bid_time FROM bid_transactions WHERE auction_id = ? ORDER BY bid_time ASC";
         List<Map<String, Object>> list = new ArrayList<>();
 
@@ -334,7 +341,7 @@ public class BidDAO {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
                     row.put("bid_amount", rs.getLong("bid_amount"));
-                    row.put("bid_time", rs.getString("bid_time"));
+                    row.put("bid_time",   rs.getString("bid_time"));
                     list.add(row);
                 }
             }

@@ -3,28 +3,24 @@ package database;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 
 /**
  * Manages asynchronous database transaction execution using a ThreadPool worker pattern.
- * This class leverages SQLite's WAL mode and HikariCP connection pooling to allow
+ * Leverages SQLite's WAL mode and HikariCP connection pooling to allow
  * concurrent database operations across different auctions.
  */
 public class TransactionManager {
-    private static Logger log = LoggerFactory.getLogger(TransactionManager.class);
-    private static List<Map<String, Object>> bidHistory = new CopyOnWriteArrayList<>();
+
+    private static final Logger log = LoggerFactory.getLogger(TransactionManager.class);
 
     /**
      * Fixed Thread Pool to handle concurrent database tasks.
-     * The size is set to 5 to match the maximum connection pool size of HikariCP.
+     * Size matches the maximum HikariCP connection pool size to prevent connection starvation.
      */
     private static final ExecutorService executor = Executors.newFixedThreadPool(5, r -> {
-        Thread t = new Thread(r);
+        Thread t = new Thread(r, "DB-Worker-Pool");
         t.setDaemon(true);
-        t.setName("DB-Worker-Pool");
         return t;
     });
 
@@ -33,22 +29,17 @@ public class TransactionManager {
      *
      * @param <T>  The type of the result produced by the task.
      * @param task The logic to be executed by the database worker thread.
-     * @return A {@link CompletableFuture} that will be completed once a thread in the pool finishes the task.
+     * @return A {@link CompletableFuture} that completes once a worker thread finishes the task.
      */
     public static <T> CompletableFuture<T> submitTask(Callable<T> task) {
         CompletableFuture<T> future = new CompletableFuture<>();
 
         executor.submit(() -> {
             try {
-                // Execute the task logic
                 T result = task.call();
-                // Signal success to the future
                 future.complete(result);
             } catch (Exception e) {
-                log.error("Error executing DB task: {}", e.getMessage());
-
-                e.printStackTrace();
-                // Signal failure to the future
+                log.error("Error executing DB task: {}", e.getMessage(), e);
                 future.completeExceptionally(e);
             }
         });
@@ -57,7 +48,7 @@ public class TransactionManager {
     }
 
     /**
-     * Gracefully shuts down the database executor.
+     * Gracefully shuts down the database executor, waiting up to 60 seconds for tasks to finish.
      */
     public static void shutdown() {
         executor.shutdown();
@@ -67,6 +58,7 @@ public class TransactionManager {
             }
         } catch (InterruptedException e) {
             executor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 }

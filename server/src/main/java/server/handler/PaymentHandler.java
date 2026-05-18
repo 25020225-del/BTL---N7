@@ -24,18 +24,21 @@ import static utils.ConsoleColors.*;
 
 public class PaymentHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(PaymentHandler.class);
-    private final WalletDAO walletDAO = new WalletDAO();
     private final PayPalService payPalService;
     private final ServerPaymentController paymentController;
+    private final service.TOTPService totpService;
+    private final WalletDAO walletDAO;
     private final Map<String, DepositInfo> pendingDeposits = new ConcurrentHashMap<>();
     private final ScheduledExecutorService cleanupScheduler = Executors.newSingleThreadScheduledExecutor();
-    private static final long EXPIRATION_TIME_MS = 15 * 60 * 1000;
+    private static final long DEPOSIT_EXPIRATION_MS = 15 * 60 * 1000L; // 15 minutes
 
-    private final service.TOTPService totpService;
-    public PaymentHandler(ServerPaymentController paymentController, service.TOTPService totpService) {
-        this.payPalService = new PayPalService();
+    public PaymentHandler(ServerPaymentController paymentController,
+                          service.TOTPService totpService,
+                          WalletDAO walletDAO) {
+        this.payPalService     = new PayPalService();
         this.paymentController = paymentController;
-        this.totpService = totpService;
+        this.totpService       = totpService;
+        this.walletDAO         = walletDAO;
         startCleanupTask();
     }
 
@@ -49,7 +52,7 @@ public class PaymentHandler implements CommandHandler {
                 String orderId = entry.getKey();
                 DepositInfo info = entry.getValue();
 
-                if (now - info.getCreatedAt() > EXPIRATION_TIME_MS) {
+                if (now - info.getCreatedAt() > DEPOSIT_EXPIRATION_MS) {
                     pendingDeposits.remove(orderId);
                     log.info("Removed expired pending deposit: {}", orderId);
                     continue;
