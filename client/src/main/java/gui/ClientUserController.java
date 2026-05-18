@@ -94,9 +94,10 @@ public class ClientUserController {
         accName.setText("Full Name: " + currentUser.getName());
         accUsername.setText("Username: " + currentUser.getUserName());
 
-        FXMLLoader settingsLoader = new FXMLLoader(getClass().getResource("SettingsView.fxml"));
-        settingsLoader.setController(this);
-        settingsView = settingsLoader.load();
+        SettingsController settingsCtrl = new SettingsController(currentUser);
+        settingsCtrl.setOnBackToMarketplace(this::handleBackToMarketplace);
+        settingsCtrl.setOnSignOut(this::handleSignOut);
+        settingsView = settingsCtrl;
 
         MainApplication.setNewScene(mainView);
     }
@@ -145,6 +146,8 @@ public class ClientUserController {
         settingsBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(settingsView);
+            ((SettingsController) settingsView)
+                    .initialize();
         });
     }
 

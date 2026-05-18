@@ -38,6 +38,21 @@ public class ClientHandler {
     private String clientName = "#Guest" + (cNC++);
     private User user;
 
+    // ── 2FA session state ─────────────────────────────────────────────
+    /** User đã qua bước verify password nhưng CHƯA qua 2FA.
+     *  Chỉ tồn tại trong khoảng thời gian chờ VERIFY_2FA. */
+    private User pendingUser;
+
+    /** Secret TOTP tạm thời trong luồng SETUP, chưa được lưu DB.
+     *  Xoá ngay sau khi CONFIRM_SETUP_2FA thành công hay thất bại. */
+    private String pendingTotpSecret;
+
+    public User getPendingUser()              { return pendingUser; }
+    public void  setPendingUser(User user)    { this.pendingUser = user; }
+
+    public String getPendingTotpSecret()           { return pendingTotpSecret; }
+    public void   setPendingTotpSecret(String s)   { this.pendingTotpSecret = s; }
+
     private final UserController userController;
     private final CommandDispatcher dispatcher;
 

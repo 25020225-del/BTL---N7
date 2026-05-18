@@ -66,13 +66,20 @@ public class    CommandDispatcher {
         handlers.put("LOGIN", authHandler);
         handlers.put("REGISTER", authHandler);
         handlers.put("LOGOUT", authHandler);
+        handlers.put("VERIFY_2FA",         authHandler);
+        handlers.put("REQUEST_SETUP_2FA",  authHandler);
+        handlers.put("CANCEL_2FA_SETUP",   authHandler);
+        handlers.put("VERIFY_2FA_SETUP",   authHandler);
+        handlers.put("CONFIRM_SETUP_2FA",  authHandler);
+        handlers.put("DISABLE_2FA",        authHandler);
+        handlers.put("UPDATE_TOTP_PREFS",  authHandler);
 
         // Register Auction creation and management
         AuctionActionHandler auctionHandler = new AuctionActionHandler(sellerCtrl);
         handlers.put("CREATE_AUCTION", auctionHandler);
 
         // Register Financial/Payment processing
-        PaymentHandler paymentHandler = new PaymentHandler(paymentCtrl);
+        PaymentHandler paymentHandler = new PaymentHandler(paymentCtrl, totpService);
         handlers.put("CREATE_DEPOSIT", paymentHandler);
         handlers.put("CONFIRM_DEPOSIT", paymentHandler);
         handlers.put("FETCH_WALLET",    paymentHandler);

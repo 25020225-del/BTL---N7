@@ -31,11 +31,14 @@ public class PaymentHandler implements CommandHandler {
     private final ScheduledExecutorService cleanupScheduler = Executors.newSingleThreadScheduledExecutor();
     private static final long EXPIRATION_TIME_MS = 15 * 60 * 1000;
 
-    public PaymentHandler(ServerPaymentController paymentController) {
+    private final service.TOTPService totpService;
+    public PaymentHandler(ServerPaymentController paymentController, service.TOTPService totpService) {
         this.payPalService = new PayPalService();
         this.paymentController = paymentController;
+        this.totpService = totpService;
         startCleanupTask();
     }
+
 
     private void startCleanupTask() {
         // (Phần cleanup task giữ nguyên logic cũ vì nó chạy ngầm độc lập với Dispatcher)
@@ -109,30 +112,106 @@ public class PaymentHandler implements CommandHandler {
         }
     }
 
+    /**
+     * Xử lý nạp tiền với cơ chế Challenge-Response TOTP (Stateless).
+     *
+     * <p><b>Giao thức payload từ Client:</b></p>
+     * <pre>
+     *   Lần 1 (không có TOTP): Map { "amount": 100000 }
+     *   Lần 2 (có TOTP):       Map { "amount": 100000, "totpCode": "123456" }
+     * </pre>
+     *
+     * <p><b>Logic server:</b></p>
+     * <pre>
+     *   isTotpPaymentEnabled = false → bỏ qua TOTP, xử lý luôn
+     *   isTotpPaymentEnabled = true, totpCode rỗng → trả REQUIRE_TOTP_PAYMENT
+     *   isTotpPaymentEnabled = true, totpCode có → validate → sai: INVALID_TOTP / đúng: xử lý
+     * </pre>
+     */
+    @SuppressWarnings("unchecked")
     private void handleCreateDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
-        long amountVND;
+        // ── Parse payload ────────────────────────────────────────────────
+        long   amountVND;
+        String totpCode = null; // null hoặc rỗng = chưa cung cấp
+
         try {
-            amountVND = Long.parseLong(data.toString());
-        } catch (NumberFormatException e) {
-            // [ARCHITECT FIX]: Ném ngoại lệ định dạng
+            if (data instanceof Map) {
+                // Format mới: { "amount": 100000, "totpCode": "123456" (optional) }
+                Map<String, Object> map = (Map<String, Object>) data;
+                amountVND = Long.parseLong(map.get("amount").toString());
+                Object codeObj = map.get("totpCode");
+                if (codeObj != null && !codeObj.toString().isBlank()) {
+                    totpCode = codeObj.toString().trim();
+                }
+            } else {
+                // Legacy fallback: client cũ gửi raw number
+                amountVND = Long.parseLong(data.toString());
+            }
+        } catch (Exception e) {
             throw new AuctionExceptions.InvalidPayloadException("Định dạng tiền tệ không hợp lệ.");
         }
 
         if (amountVND <= 0) {
-            // [ARCHITECT FIX]: Ném ngoại lệ logic kinh doanh
             throw new AuctionExceptions.InvalidPayloadException("Số tiền nạp phải lớn hơn 0.");
         }
 
-        log.info("Creating deposit order of {} VND for {}", amountVND, currentUser.getUserName());
-        String[] orderInfo = payPalService.createOrder(amountVND);
-        String orderId = orderInfo[0];
-        String approvalUrl = orderInfo[1];
+        // ── TOTP Challenge-Response ──────────────────────────────────────
+        if (currentUser.isTotpPaymentEnabled()) {
+            if (totpCode == null) {
+                // Chưa cung cấp TOTP → thách thức client
+                client.sendResponse("REQUIRE_TOTP_PAYMENT",
+                        Map.of(
+                                "message", "Giao dịch này yêu cầu xác thực TOTP. Vui lòng nhập mã 6 số.",
+                                // Echo lại amount để client dùng khi retry
+                                "amount",  amountVND
+                        ));
+                log.info("TOTP challenge issued for deposit {} by user {}",
+                        amountVND, currentUser.getUserName());
+                return; // Dừng lại — không tạo order PayPal
+            }
 
-        pendingDeposits.put(orderId, new DepositInfo(amountVND, System.currentTimeMillis(), client, currentUser));
+            // Validate TOTP code
+            String secret = currentUser.getTotpSecret();
+            if (secret == null) {
+                // Trạng thái không nhất quán (hiếm gặp) — fail-safe
+                client.sendResponse("ERROR",
+                        new ErrorPayload("ERR_PAY_003",
+                                "Lỗi cấu hình 2FA. Vui lòng tắt và bật lại TOTP trong Settings."));
+                return;
+            }
+
+            int code;
+            try {
+                code = Integer.parseInt(totpCode);
+            } catch (NumberFormatException e) {
+                client.sendResponse("ERROR",
+                        new ErrorPayload("ERR_PAY_004", "Mã TOTP không đúng định dạng (phải là 6 chữ số)."));
+                return;
+            }
+
+            boolean valid = totpService.verifyCode(secret, code);
+            if (!valid) {
+                client.sendResponse("INVALID_TOTP",
+                        Map.of("message", "Mã TOTP không hợp lệ hoặc đã hết hạn. Vui lòng thử lại."));
+                log.warn("Invalid TOTP for payment by user {}", currentUser.getUserName());
+                return; // Không trừ tiền, không tạo order
+            }
+
+            log.info("TOTP verified for payment by user {}", currentUser.getUserName());
+        }
+
+        // ── Tạo PayPal Order (GIỮ NGUYÊN logic cũ) ───────────────────────
+        log.info("Creating deposit order of {} VND for {}", amountVND, currentUser.getUserName());
+        String[] orderInfo  = payPalService.createOrder(amountVND);
+        String   orderId    = orderInfo[0];
+        String   approvalUrl = orderInfo[1];
+
+        pendingDeposits.put(orderId,
+                new DepositInfo(amountVND, System.currentTimeMillis(), client, currentUser));
 
         Map<String, String> responseData = new HashMap<>();
         responseData.put("orderId", orderId);
-        responseData.put("url", approvalUrl);
+        responseData.put("url",     approvalUrl);
 
         client.sendResponse("PAYMENT_REDIRECT", responseData);
     }
