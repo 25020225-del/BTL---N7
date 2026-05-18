@@ -99,7 +99,7 @@ public class MultiThreadedServer {
             if (responseCode == 200) {
                 log.debug("New IP - Port (JSON-Bin) synced: {}:{}", currentIp, currentPort);
             } else {
-                log.error("" + responseCode);
+                log.error("Unexpected HTTP response code {} from address sync endpoint", responseCode);
             }
         } catch (Exception e) {
             log.error("Connection error: {}", e.getMessage());
@@ -308,7 +308,8 @@ public class MultiThreadedServer {
             try {
                 wsServer.stop();
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                log.error("Interrupted while stopping WebSocket server during shutdown", e);
+                Thread.currentThread().interrupt();
             }
         }));
 

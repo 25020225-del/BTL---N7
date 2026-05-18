@@ -79,7 +79,7 @@ public class    CommandDispatcher {
         handlers.put("CREATE_AUCTION", auctionHandler);
 
         // Register Financial/Payment processing
-        PaymentHandler paymentHandler = new PaymentHandler(paymentCtrl, totpService);
+        PaymentHandler paymentHandler = new PaymentHandler(paymentCtrl, totpService, walletDAO);
         handlers.put("CREATE_DEPOSIT", paymentHandler);
         handlers.put("CONFIRM_DEPOSIT", paymentHandler);
         handlers.put("FETCH_WALLET",    paymentHandler);
