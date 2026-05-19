@@ -70,11 +70,10 @@
                 </Label>
                 <TableView fx:id="tableTransactions" prefHeight="300.0" VBox.vgrow="ALWAYS">
                     <columns>
-                        <TableColumn fx:id="colDate" prefWidth="150.0" text="Ngày giao dịch" />
-                        <TableColumn fx:id="colType" prefWidth="150.0" text="Loại" />
-                        <TableColumn fx:id="colAmount" prefWidth="120.0" text="Số tiền" />
-                        <TableColumn fx:id="colStatus" prefWidth="120.0" text="Trạng thái" />
-                        <TableColumn fx:id="colNote" prefWidth="200.0" text="Ghi chú" />
+                        <TableColumn fx:id="colId" text="id" />
+                        <TableColumn fx:id="colDate" text="ngày giao dịch" />
+                        <TableColumn fx:id="colAmount" text="Số tiền" />
+                        <TableColumn fx:id="colDescription" text="Mô tả" />
                     </columns>
                 </TableView>
             </children>

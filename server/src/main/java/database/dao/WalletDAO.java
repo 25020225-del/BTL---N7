@@ -142,7 +142,7 @@ public class WalletDAO {
      * Lấy giao dịch và tài khoản
      */
     public Map<String, Object> getWalletData(String userId) throws SQLException {
-        String walletSql = "SELECT balance FROM wallets WHERE user_id = ?";
+        String walletSql = "SELECT balance, locked_balance FROM wallets WHERE user_id = ?";
         String txnSql    = "SELECT id, amount, description, created_at FROM wallet_transactions " +
                 "WHERE user_id = ? ORDER BY created_at DESC LIMIT 50";
 
@@ -156,6 +156,7 @@ public class WalletDAO {
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         result.put("balance",        rs.getLong("balance"));
+                        result.put("lockedBalance",  rs.getLong("locked_balance"));
                     }
                 }
             }
