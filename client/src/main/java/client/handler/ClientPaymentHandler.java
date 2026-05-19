@@ -23,19 +23,19 @@ public class ClientPaymentHandler implements ResponseHandler {
         Object data = message.getData();
 
         switch (command) {
+            case "VIETQR_CREATED" -> {
+                AuctionEventBus.fireEvent("VIETQR_CREATED", data);
+            }
             case "PAYMENT_REDIRECT" -> {
-                // The server returns the order ID and the PayPal payment URL
                 Map<String, String> responseData = (Map<String, String>) data;
                 String url = responseData.get("url");
 
                 log.info("Open {} to complete payment.", url);
 
-                // Open the browser automatically
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                     Desktop.getDesktop().browse(new URI(url));
                 }
 
-                // Fire event to let UI handle the confirmation dialog
                 AuctionEventBus.fireEvent(PAYMENT_CONFIRM_REQUIRED, data);
 
             }
