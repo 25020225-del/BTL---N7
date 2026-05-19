@@ -19,7 +19,7 @@
                     <children>
                         <VBox alignment="CENTER_LEFT" prefWidth="320.0" spacing="5.0">
                             <children>
-                                <Text style="-fx-font-size: 28; -fx-font-weight: bold;" text="MEMBER LOGIN" />
+                                <Text fill="WHITE" style="-fx-font-size: 28; -fx-font-weight: bold;" text="MEMBER LOGIN" />
                                 <Text style="-fx-fill: #777;" text="Please log in to continue" />
                             </children>
                         </VBox>

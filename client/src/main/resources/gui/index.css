@@ -291,7 +291,7 @@
 
 .login-box {
     /* Đây là style dành riêng cho cái khung Login nhỏ ở giữa */
-    -fx-background-color: rgba(255,255,255,1);
+    -fx-background-color: rgba(0,0,0,0.3);
     -fx-background-radius: 10px;
     -fx-padding: 20;
     /* Đổ bóng cho khung login nổi bật lên trên nền */
