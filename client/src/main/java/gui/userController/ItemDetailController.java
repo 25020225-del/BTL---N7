@@ -76,6 +76,10 @@ public class ItemDetailController{
     @FXML private CategoryAxis xAxisTime;
     @FXML private NumberAxis yAxisPrice;
 
+    @FXML private TextField txtExtendTime;
+
+    private Runnable onReturnToMarketplace;
+
     private XYChart.Series<String, Number> priceSeries;
     private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
 
@@ -99,6 +103,9 @@ public class ItemDetailController{
 
     public Parent getParent() {
         return detailView;
+    }
+    public void setOnReturnToMarketplace(Runnable onReturnToMarketplace) {
+        this.onReturnToMarketplace = onReturnToMarketplace;
     }
 
     @FXML
@@ -192,7 +199,7 @@ public class ItemDetailController{
         image.progressProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue.doubleValue() == 1.0 && !image.isError()) {
                 Platform.runLater(() -> {
-                    CropImage.cropImage(imgLarge, image, 720, 480);
+                    CropImage.cropImage(imgLarge, image, 480, 480);
                 });
             }
         });
@@ -258,6 +265,25 @@ public class ItemDetailController{
         // Optional: Keep chart clean by removing old nodes if there are too many (e.g., > 20)
         if (priceSeries.getData().size() > 20) {
             priceSeries.getData().removeFirst();
+        }
+    }
+
+    @FXML
+    private void handleBackToMarketplace() {
+        onReturnToMarketplace.run();
+    }
+
+    @FXML
+    private void handleUpdateTime() {
+        try {
+            long updateTime = Long.parseLong(txtExtendTime.textProperty().getValue());
+            AuctionService.extendAuctionTimeMinutes(currentAuctionId, updateTime);
+        } catch (NumberFormatException e) {
+            log.info("[system]: Invalid extend time");
+        } catch (NullPointerException e) {
+            log.info("[system]: Invalid extend time");
+        } catch (Exception e) {
+            log.info(e.getMessage());
         }
     }
 

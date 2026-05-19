@@ -1,6 +1,8 @@
 package client.service;
 
 import client.network.NetworkService;
+import gui.process.AlertHelper;
+import javafx.scene.control.Alert;
 import model.auction.Auction;
 
 import java.util.Map;
@@ -31,5 +33,8 @@ public class AuctionService {
     }
     public static void createAuction(Auction auction) {
         NetworkService.sendMessage("CREATE_AUCTION", auction);
+    }
+    public static void extendAuctionTimeMinutes(String auctionId, long timeMinutes) {
+        AlertHelper.showAlert(Alert.AlertType.INFORMATION,"gay","cum shot");
     }
 }
