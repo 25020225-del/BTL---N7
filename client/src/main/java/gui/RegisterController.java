@@ -13,8 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Controller đăng ký tài khoản mới.
- * 2FA KHÔNG còn được thiết lập ở đây; người dùng tự bật trong Settings.
+ * Register Controller.
+ * 2FA is NO longer configured during registration; users can enable it manually via Settings.
  */
 public class RegisterController {
     private static final Logger log =
@@ -44,13 +44,13 @@ public class RegisterController {
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty()) {
             AlertHelper.showAlert(Alert.AlertType.WARNING,
-                    "Thiếu thông tin", "Vui lòng điền đầy đủ các trường.");
+                    "Missing Information", "Please fill in all the required fields.");
             return;
         }
 
         if (confirmPasswordAccount != null && !password.equals(confirmPass)) {
             AlertHelper.showAlert(Alert.AlertType.WARNING,
-                    "Mật khẩu không khớp", "Vui lòng kiểm tra lại mật khẩu.");
+                    "Password Mismatch", "Passwords do not match. Please verify and try again.");
             return;
         }
 
@@ -58,16 +58,16 @@ public class RegisterController {
                 "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{6,20}$";
         if (!password.matches(passwordRegex)) {
             AlertHelper.showAlert(Alert.AlertType.WARNING,
-                    "Mật khẩu yếu",
-                    "Mật khẩu phải 6-20 ký tự, có ít nhất 1 chữ hoa, "
-                            + "1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&).");
+                    "Weak Password",
+                    "Password must be 6-20 characters long and include at least "
+                            + "one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).");
             return;
         }
 
         setNetworkClient(NetworkService.get());
         if (networkClient == null) {
             AlertHelper.showAlert(Alert.AlertType.ERROR,
-                    "Lỗi mạng", "Không thể kết nối tới máy chủ.");
+                    "Network Error", "Unable to connect to the server.");
             return;
         }
 
@@ -91,10 +91,10 @@ public class RegisterController {
             if ("REGISTER_SUCCESS".equals(command)) {
                 log.info("Registration successful for new user.");
                 AlertHelper.showAlert(Alert.AlertType.INFORMATION,
-                        "Đăng ký thành công",
-                        "Tài khoản đã được tạo!\n"
-                                + "Bạn có thể bật bảo mật 2 lớp (2FA) trong mục Settings "
-                                + "sau khi đăng nhập.");
+                        "Registration Successful",
+                        "Your account has been successfully created!\n"
+                                + "You can activate Two-Factor Authentication (2FA) inside the Settings "
+                                + "dashboard after logging in.");
                 clearFields();
                 MainApplication.setNewScene(MainApplication.rootLogin);
 
@@ -103,7 +103,7 @@ public class RegisterController {
                 String errorMsg = ErrorParser.parse(response.getData());
                 log.warn("Registration failed: {}", errorMsg);
                 AlertHelper.showAlert(Alert.AlertType.ERROR,
-                        "Đăng ký thất bại", errorMsg);
+                        "Registration Failed", errorMsg);
             }
         });
     }
