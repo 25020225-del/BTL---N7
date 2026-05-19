@@ -1,84 +1,123 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
 
 <fx:root type="VBox"
-         prefHeight="600.0" prefWidth="800.0" spacing="20.0"
-         style="-fx-background-color: white; -fx-padding: 40;
-                -fx-background-radius: 10; -fx-border-color: #ddd;
-                -fx-border-radius: 10;"
+         prefHeight="600.0" prefWidth="800.0" spacing="25.0"
+         style="-fx-background-color: #f8f9fa; -fx-padding: 30;"
          stylesheets="@Stylist.css"
          xmlns="http://javafx.com/javafx/25"
          xmlns:fx="http://javafx.com/fxml/1">
     <children>
 
-        <!-- Nút Back -->
-        <Button mnemonicParsing="false"
-                onAction="#handleBackToMarketplace"
-                styleClass="button-ebay"
-                text="&lt;- Back to Marketplace"/>
+        <HBox alignment="CENTER_LEFT" spacing="15.0" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
+            <children>
+                <Button mnemonicParsing="false"
+                        onAction="#handleBackToMarketplace"
+                        prefHeight="38.0"
+                        style="-fx-background-color: #6c757d; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                        text="← TRỜ LẠI DANH SÁCH" />
+                <Text style="-fx-font-size: 18; -fx-font-weight: bold; -fx-fill: #2c3e50;" text="Cấu Hình Hệ Thống &amp; Bảo Mật" />
+            </children>
+        </HBox>
 
-        <!-- Tiêu đề -->
-        <Label text="Cài đặt Tài khoản">
-            <font><Font name="System Bold" size="28.0"/></font>
-            <style>-fx-text-fill: #3665f3;</style>
-            <VBox.margin><Insets top="10.0"/></VBox.margin>
-        </Label>
-
-        <Separator/>
-
-        <!-- ── Khu vực 2FA ────────────────────────────────────────── -->
-        <!-- SettingsView.fxml — Section TOTP Settings -->
-
-        <!-- Nút thiết lập: CHỈ hiện khi chưa có TOTP secret (twoFactorStatus != ENABLED) -->
-        <VBox fx:id="vboxSetupTotp" spacing="10" visible="true" managed="true">
-            <Label text="Bảo mật 2 lớp (TOTP)" styleClass="section-title"/>
-            <Label text="Chưa thiết lập TOTP. Hãy cài đặt để bảo vệ tài khoản." wrapText="true"/>
-            <Button fx:id="btnSetupTotp" text="🔐 Thiết lập TOTP" onAction="#handleSetupTotp"
-                    styleClass="primary-button"/>
+        <VBox spacing="5.0">
+            <children>
+                <Label text="Cài đặt Tài khoản">
+                    <font>
+                        <Font name="System Bold" size="26.0" />
+                    </font>
+                    <style>-fx-text-fill: #2c3e50;</style>
+                </Label>
+                <Text style="-fx-fill: #7f8c8d; -fx-font-size: 14;" text="Quản lý tùy chọn bảo mật hai lớp (2FA) và trạng thái ứng dụng cá nhân" />
+            </children>
+            <VBox.margin>
+                <Insets left="5.0" />
+            </VBox.margin>
         </VBox>
 
-        <!-- Phần quản lý cờ: CHỈ hiện khi đã có TOTP (twoFactorStatus == ENABLED) -->
-        <VBox fx:id="vboxTotpPrefs" spacing="12" visible="false" managed="false">
-            <Label text="Bảo mật 2 lớp (TOTP) — Đang hoạt động ✅" styleClass="section-title"/>
-            <Label text="Chọn các tình huống yêu cầu mã OTP:" wrapText="true"/>
-
-            <CheckBox fx:id="chkLoginEnabled"   text="🔑  Yêu cầu OTP khi Đăng nhập"
-                      onAction="#handleTotpPrefsChanged"/>
-            <CheckBox fx:id="chkPaymentEnabled" text="💳  Yêu cầu OTP khi Nạp tiền / Giao dịch"
-                      onAction="#handleTotpPrefsChanged"/>
-
-            <Label fx:id="lblPrefsStatus" text="" styleClass="status-label" wrapText="true"/>
-
-            <Separator/>
-            <Button fx:id="btnDisableTotp"
-                    text="🗑 Hủy hoàn toàn TOTP (xóa secret)"
-                    onAction="#handleDisableTotp"
-                    styleClass="danger-button"/>
+        <VBox fx:id="vboxSetupTotp" spacing="15.0" visible="true" managed="true"
+              style="-fx-background-color: #fff9e6; -fx-padding: 20; -fx-background-radius: 12; -fx-border-color: #f0b90b; -fx-border-width: 1.5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.03), 10, 0, 0, 5);">
+            <children>
+                <Label text="Bảo mật 2 lớp (TOTP)" style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #b7791f;" />
+                <Label text="Tài khoản của bạn hiện chưa được thiết lập bảo mật cấp cao bằng mã xác thực thời gian thực (TOTP). Hãy kích hoạt ngay để bảo vệ tài sản và thông tin giao dịch đấu giá."
+                       wrapText="true" style="-fx-text-fill: #555; -fx-font-size: 14;" />
+                <Button fx:id="btnSetupTotp"
+                        onAction="#handleSetupTotp"
+                        prefHeight="38.0"
+                        style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                        text="🔐 Thiết lập TOTP" />
+            </children>
         </VBox>
 
-        <Separator/>
+        <VBox fx:id="vboxTotpPrefs" spacing="15.0" visible="false" managed="false"
+              style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 12; -fx-border-color: #eef0f2; -fx-border-width: 1; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
+            <children>
+                <Label text="Bảo mật 2 lớp (TOTP) — Đang hoạt động ✅" style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #28a745;" />
+                <Label text="Tùy chỉnh các trường hợp bắt buộc hệ thống phải yêu cầu nhập mã OTP 6 số từ ứng dụng xác thực của bạn:"
+                       wrapText="true" style="-fx-text-fill: #495057; -fx-font-size: 14;" />
 
-        <!-- Placeholder settings cũ -->
-        <Label style="-fx-font-size: 14px; -fx-text-fill: #888;"
-               text="• Thông báo: Đang bật"/>
-        <Label style="-fx-font-size: 14px; -fx-text-fill: #888;"
-               text="• Giao diện: Chế độ sáng"/>
+                <VBox spacing="12.0" style="-fx-padding: 10 0 10 5;">
+                    <children>
+                        <CheckBox fx:id="chkLoginEnabled"
+                                  onAction="#handleTotpPrefsChanged"
+                                  style="-fx-font-size: 14; -fx-text-fill: #2c3e50; -fx-cursor: hand;"
+                                  text="🔑  Yêu cầu OTP khi Đăng nhập" />
+                        <CheckBox fx:id="chkPaymentEnabled"
+                                  onAction="#handleTotpPrefsChanged"
+                                  style="-fx-font-size: 14; -fx-text-fill: #2c3e50; -fx-cursor: hand;"
+                                  text="💳  Yêu cầu OTP khi Nạp tiền / Giao dịch" />
+                    </children>
+                </VBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="5.0">
+                    <children>
+                        <Label fx:id="lblPrefsStatus" text="" wrapText="true" style="-fx-font-weight: bold; -fx-font-size: 13; -fx-text-fill: #495057;" />
+                    </children>
+                </HBox>
+
+                <Separator prefHeight="1.0" style="-fx-background-color: #eee;" />
+
+                <Button fx:id="btnDisableTotp"
+                        onAction="#handleDisableTotp"
+                        prefHeight="38.0"
+                        style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                        text="🗑 Hủy hoàn toàn TOTP (xóa secret)" />
+            </children>
+        </VBox>
+
+        <VBox spacing="10.0" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #eef0f2; -fx-border-radius: 12; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
+            <children>
+                <Label style="-fx-font-weight: bold; -fx-font-size: 16; -fx-text-fill: #2c3e50;" text="Cấu hình hệ thống khác" />
+                <VBox spacing="8.0" style="-fx-padding: 5 0 0 5;">
+                    <children>
+                        <Label style="-fx-font-size: 14px; -fx-text-fill: #7f8c8d;" text="• Thông báo ứng dụng: Đang bật (Thời gian thực)" />
+                        <Label style="-fx-font-size: 14px; -fx-text-fill: #7f8c8d;" text="• Giao diện hiển thị: Chế độ sáng (Mặc định)" />
+                    </children>
+                </VBox>
+            </children>
+        </VBox>
 
         <Region VBox.vgrow="ALWAYS"/>
 
-        <!-- Nút Sign Out -->
-        <Button mnemonicParsing="false"
-                onAction="#handleSignOut"
-                style="-fx-background-color: #dd1e31;
-                       -fx-text-fill: white;
-                       -fx-font-weight: bold;
-                       -fx-padding: 10 30;
-                       -fx-background-radius: 5;"
-                text="ĐĂNG XUẤT"/>
+        <HBox alignment="CENTER_RIGHT">
+            <children>
+                <Button mnemonicParsing="false"
+                        onAction="#handleSignOut"
+                        prefHeight="42.0"
+                        style="-fx-background-color: #dd1e31; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 35; -fx-background-radius: 8; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(221,30,49,0.3), 10, 0, 0, 5);"
+                        text="ĐĂNG XUẤT TÀI KHOẢN" />
+            </children>
+        </HBox>
 
     </children>
 </fx:root>

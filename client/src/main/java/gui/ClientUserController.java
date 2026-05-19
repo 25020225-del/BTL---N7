@@ -181,7 +181,9 @@ public class ClientUserController {
         detailController.setAuctionData(auction);
         currentDetailController = detailController;
         AuctionService.fetchTransactions(auction.getId());
-
+        detailController.setOnReturnToMarketplace(() -> {
+            marketplaceBtn.fire();
+        });
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(detailController.getParent());
     }

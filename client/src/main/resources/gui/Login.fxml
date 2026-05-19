@@ -5,17 +5,34 @@
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
-<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="login-screen" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.LoginController">
+<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.LoginController">
     <children>
-        <HBox alignment="CENTER" fillHeight="true" maxHeight="-Infinity" maxWidth="-Infinity" spacing="0.0" style="-fx-background-radius: 15;" styleClass="login-box">
+        <HBox fx:id="loginBox" alignment="CENTER" fillHeight="true" maxHeight="-Infinity" maxWidth="-Infinity" spacing="0.0" style="-fx-background-color: white; -fx-background-radius: 15;">
             <children>
 
-                <VBox alignment="CENTER" minWidth="450.0" prefHeight="550.0" prefWidth="450.0" spacing="30.0" style="-fx-background-radius: 15;">
+                <VBox alignment="CENTER" minWidth="450.0" prefHeight="550.0" prefWidth="450.0" spacing="20.0" style="-fx-background-color: linear-gradient(to bottom right, #3665f3, #2c3e50); -fx-background-radius: 15 0 0 15;">
+                    <children>
+                        <StackPane maxWidth="-Infinity" style="-fx-background-color: white; -fx-background-radius: 60; -fx-padding: 10;">
+                            <children>
+                                <ImageView fitHeight="100.0" fitWidth="100.0" pickOnBounds="true" preserveRatio="true">
+                                    <image>
+                                        <Image url="@images/logo4.png" />
+                                    </image>
+                                </ImageView>
+                            </children>
+                        </StackPane>
+                        <Text style="-fx-fill: white; -fx-font-size: 32; -fx-font-weight: bold;" text="Online Auction Service" />
+                    </children>
+                </VBox>
+
+                <VBox alignment="CENTER" minWidth="450.0" prefHeight="550.0" prefWidth="450.0" spacing="30.0" style="-fx-background-color: white; -fx-background-radius: 0 15 15 0;">
                     <children>
                         <VBox alignment="CENTER_LEFT" prefWidth="320.0" spacing="5.0">
                             <children>
@@ -34,7 +51,7 @@
                         <VBox alignment="CENTER" spacing="15.0">
                             <children>
                                 <Button fx:id="loginButton" onAction="#onMainViewButtonClick" prefHeight="45.0" prefWidth="320.0" style="-fx-cursor: hand;" styleClass="auth-btn-primary" text="SIGN IN" />
-                                <Button onAction="#onRegisterViewButtonClick" style="-fx-background-color: transparent;" styleClass="auth-btn-link" text="Don't have an account? Register Now" />
+                                <Button onAction="#onRegisterViewButtonClick" style="-fx-background-color: transparent; -fx-text-fill: #3665f3;" text="Don't have an account? Register Now" />
                             </children>
                         </VBox>
                     </children>
