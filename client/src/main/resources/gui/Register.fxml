@@ -21,7 +21,7 @@
                     <children>
                         <VBox alignment="CENTER_LEFT" spacing="5.0">
                             <children>
-                                <Text fill="WHITE" text="CREATE ACCOUNT">
+                                <Text text="CREATE ACCOUNT">
                            <font>
                               <Font name="System Bold" size="30.0" />
                            </font></Text>
@@ -32,22 +32,22 @@
                         <VBox prefWidth="400.0" spacing="12.0">
                             <children>
                                 <VBox spacing="5.0">
-                                    <Label text="Full Name" textFill="WHITE" />
-                                    <TextField fx:id="registerName" prefHeight="40.0" promptText="Enter your full name" styleClass="auth-input" />
+                                    <Label text="Display Name" textFill="#343434" />
+                                    <TextField fx:id="registerName" prefHeight="40.0" promptText="Enter your display name" styleClass="auth-input" />
                                 </VBox>
 
                                 <VBox spacing="5.0">
-                                    <Label text="Username" textFill="WHITE" />
+                                    <Label text="Username" textFill="#202020" />
                                     <TextField fx:id="registerAccountName" prefHeight="40.0" promptText="Choose a unique username" styleClass="auth-input" />
                                 </VBox>
 
                                 <VBox spacing="5.0">
-                                    <Label text="Password" textFill="WHITE" />
+                                    <Label text="Password" textFill="#393939" />
                                     <PasswordField fx:id="registerPasswordAccount" prefHeight="40.0" promptText="Create a strong password" styleClass="auth-input" />
                                 </VBox>
 
                                 <VBox spacing="5.0">
-                                    <Label text="Confirm Password" textFill="WHITE" />
+                                    <Label text="Confirm Password" textFill="#363636" />
                                     <PasswordField fx:id="confirmPasswordAccount" prefHeight="40.0" promptText="Repeat your password" styleClass="auth-input" />
                                 </VBox>
                             </children>
@@ -57,7 +57,7 @@
                             <children>
                                 <Button fx:id="registerButton" onAction="#onRegisterButtonClick" prefHeight="45.0" prefWidth="400.0" styleClass="auth-btn-primary" text="REGISTER" />
 
-                                <Button fx:id="changeLoginScene" onAction="#onLoginViewButtonClick" styleClass="auth-btn-link" text="Already have an account? Login here" />
+                                <Button fx:id="changeLoginScene" onAction="#onLoginViewButtonClick" style="-fx-background-color: transparent;" styleClass="auth-btn-link" text="Already have an account? Login here" />
                             </children>
                         </VBox>
                     </children>
