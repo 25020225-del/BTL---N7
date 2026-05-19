@@ -1,17 +1,17 @@
 package server.handler;
 
+import controller.ServerPaymentController;
 import database.dao.WalletDAO;
 import exception.AuctionExceptions;
+import model.user.User;
 import network.ErrorPayload;
+import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import controller.ServerPaymentController;
-import model.user.User;
-import network.NetworkMessage;
 import server.ClientHandler;
 import service.PayPalService;
+import service.VietQRService;
 
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,11 +20,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static utils.ConsoleColors.*;
-
 public class PaymentHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(PaymentHandler.class);
     private final PayPalService payPalService;
+    private final VietQRService vietQRService;
     private final ServerPaymentController paymentController;
     private final service.TOTPService totpService;
     private final WalletDAO walletDAO;
@@ -35,10 +34,11 @@ public class PaymentHandler implements CommandHandler {
     public PaymentHandler(ServerPaymentController paymentController,
                           service.TOTPService totpService,
                           WalletDAO walletDAO) {
-        this.payPalService     = new PayPalService();
+        this.payPalService = new PayPalService();
+        this.vietQRService = new VietQRService();
         this.paymentController = paymentController;
-        this.totpService       = totpService;
-        this.walletDAO         = walletDAO;
+        this.totpService = totpService;
+        this.walletDAO = walletDAO;
         startCleanupTask();
     }
 
@@ -104,6 +104,9 @@ public class PaymentHandler implements CommandHandler {
             case "CREATE_DEPOSIT":
                 handleCreateDeposit(data, client, currentUser);
                 break;
+            case "CREATE_VIETQR_DEPOSIT":
+                handleCreateVietQRDeposit(data, client, currentUser);
+                break;
             case "CONFIRM_DEPOSIT":
                 handleConfirmDeposit(data, client, currentUser);
                 break;
@@ -134,7 +137,7 @@ public class PaymentHandler implements CommandHandler {
     @SuppressWarnings("unchecked")
     private void handleCreateDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
         // ── Parse payload ────────────────────────────────────────────────
-        long   amountVND;
+        long amountVND;
         String totpCode = null; // null hoặc rỗng = chưa cung cấp
 
         try {
@@ -166,7 +169,7 @@ public class PaymentHandler implements CommandHandler {
                         Map.of(
                                 "message", "Giao dịch này yêu cầu xác thực TOTP. Vui lòng nhập mã 6 số.",
                                 // Echo lại amount để client dùng khi retry
-                                "amount",  amountVND
+                                "amount", amountVND
                         ));
                 log.info("TOTP challenge issued for deposit {} by user {}",
                         amountVND, currentUser.getUserName());
@@ -205,16 +208,16 @@ public class PaymentHandler implements CommandHandler {
 
         // ── Tạo PayPal Order (GIỮ NGUYÊN logic cũ) ───────────────────────
         log.info("Creating deposit order of {} VND for {}", amountVND, currentUser.getUserName());
-        String[] orderInfo  = payPalService.createOrder(amountVND);
-        String   orderId    = orderInfo[0];
-        String   approvalUrl = orderInfo[1];
+        String[] orderInfo = payPalService.createOrder(amountVND);
+        String orderId = orderInfo[0];
+        String approvalUrl = orderInfo[1];
 
         pendingDeposits.put(orderId,
                 new DepositInfo(amountVND, System.currentTimeMillis(), client, currentUser));
 
         Map<String, String> responseData = new HashMap<>();
         responseData.put("orderId", orderId);
-        responseData.put("url",     approvalUrl);
+        responseData.put("url", approvalUrl);
 
         client.sendResponse("PAYMENT_REDIRECT", responseData);
     }
@@ -291,10 +294,66 @@ public class PaymentHandler implements CommandHandler {
             this.user = user;
         }
 
-        public long getAmountVND() { return amountVND; }
-        public long getCreatedAt() { return createdAt; }
-        public ClientHandler getClient() { return client; }
-        public User getUser() { return user; }
-        public AtomicBoolean getIsProcessing() { return isProcessing; }
+        public long getAmountVND() {
+            return amountVND;
+        }
+
+        public long getCreatedAt() {
+            return createdAt;
+        }
+
+        public ClientHandler getClient() {
+            return client;
+        }
+
+        public User getUser() {
+            return user;
+        }
+
+        public AtomicBoolean getIsProcessing() {
+            return isProcessing;
+        }
+    }
+
+    /**
+     * Handles the creation of a VietQR deposit request.
+     * Generates a unique order ID, stores the context in RAM, and returns the QR string.
+     *
+     * @param data        The payload containing the deposit amount.
+     * @param client      The active client session.
+     * @param currentUser The authenticated user making the request.
+     */
+    @SuppressWarnings("unchecked")
+    private void handleCreateVietQRDeposit(Object data, server.ClientHandler client, model.user.User currentUser) throws Exception {
+        long amountVND;
+
+        try {
+            if (data instanceof java.util.Map) {
+                java.util.Map<String, Object> map = (java.util.Map<String, Object>) data;
+                amountVND = Long.parseLong(map.get("amount").toString());
+            } else {
+                amountVND = Long.parseLong(data.toString());
+            }
+        } catch (Exception e) {
+            throw new exception.AuctionExceptions.InvalidPayloadException("Định dạng số tiền không hợp lệ.");
+        }
+
+        if (amountVND <= 0) {
+            throw new exception.AuctionExceptions.InvalidPayloadException("Số tiền nạp phải lớn hơn 0.");
+        }
+
+        String orderId = "VQR-" + System.currentTimeMillis();
+
+        String qrString = vietQRService.generateVietQRString(amountVND, orderId);
+
+        pendingDeposits.put(orderId, new DepositInfo(amountVND, System.currentTimeMillis(), client, currentUser));
+
+        log.info("Created VietQR deposit order {} for user {}", orderId, currentUser.getUserName());
+
+        java.util.Map<String, String> responseData = new java.util.HashMap<>();
+        responseData.put("orderId", orderId);
+        responseData.put("qrString", qrString);
+
+        client.sendResponse("VIETQR_CREATED", responseData);
     }
 }

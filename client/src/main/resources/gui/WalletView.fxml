@@ -57,7 +57,9 @@
                                 <Button onAction="#addQuickAmount" text="+1M" />
                             </children>
                         </HBox>
-                        <Button fx:id="btnDeposit" maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="NẠP TIỀN NGAY" />
+                        <Button fx:id="btnDeposit" maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="NẠP QUA PAYPAL" />
+
+                        <Button fx:id="btnDepositVietQR" maxWidth="Infinity" onAction="#handleVietQRDeposit" prefHeight="40.0" style="-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="NẠP QUA VIETQR (QUÉT MÃ)" />
                     </children>
                 </VBox>
             </children>

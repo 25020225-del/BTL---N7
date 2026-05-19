@@ -50,6 +50,7 @@ public class WalletController extends VBox {
     @FXML private TableColumn<Transaction, String> colNote;
 
     @FXML private Button btnDeposit;
+    @FXML private Button btnDepositVietQR;
 
     private long currentBalance = 0L;
     private ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
@@ -89,6 +90,17 @@ public class WalletController extends VBox {
             long balance = Long.parseLong(map.get("balance").toString());
             log.info("Get wallet balence success: {}", balance);
             Platform.runLater(() -> {setWalletBalance(balance);});
+        });
+
+        AuctionEventBus.addListener("VIETQR_CREATED", event -> {
+            Platform.runLater(() -> {
+                @SuppressWarnings("unchecked")
+                Map<String, String> data = (Map<String, String>) event.getNewValue();
+                String qrString = data.get("qrString");
+                String orderId = data.get("orderId");
+
+                showVietQRDialog(qrString, orderId);
+            });
         });
 
         requireTotpListener = event -> onRequireTotpPayment(event.getNewValue());
@@ -134,6 +146,27 @@ public class WalletController extends VBox {
         AnimateEffect.pauseNode(btnDeposit, 2);
         sendDepositRequest(amount, null);
     }
+
+    @FXML
+    private void handleVietQRDeposit() {
+        String input = txtDepositAmount.getText().trim();
+        double amount;
+        try {
+            amount = Double.parseDouble(input);
+            if (amount <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException e) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Please enter a valid amount.");
+            return;
+        }
+
+        // Disable button for 2 secs to avoid spamming
+        gui.process.AnimateEffect.pauseNode(btnDepositVietQR, 2);
+
+        java.util.HashMap<String, Object> payload = new java.util.HashMap<>();
+        payload.put("amount", (long) amount);
+        client.network.NetworkService.sendMessage("CREATE_VIETQR_DEPOSIT", payload);
+    }
+
     /**
      * Gửi request nạp tiền lên server.
      *
@@ -280,5 +313,31 @@ public class WalletController extends VBox {
         Button btn = (Button) event.getSource();
         String text = btn.getText().replace("+", "").replace("k", "000").replace("M", "000000");
         txtDepositAmount.setText(text);
+    }
+
+    private void showVietQRDialog(String qrString, String orderId) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Pay via VietQR");
+        dialog.setHeaderText("Order ID: " + orderId);
+
+        VBox content = new VBox(15);
+        content.setAlignment(javafx.geometry.Pos.CENTER);
+
+        Label instruction = new Label("Open your Internet Banking App and scan the following QR code:");
+        instruction.setStyle("-fx-font-weight: bold;");
+
+        javafx.scene.image.ImageView qrImageView = new javafx.scene.image.ImageView();
+        javafx.scene.image.Image qrImage = gui.process.QRCodeHelper.generateQRCodeImage(qrString, 300, 300);
+        qrImageView.setImage(qrImage);
+
+        Label notice = new Label("Please wait while we are processing your transaction.");
+        notice.setStyle("-fx-text-fill: #777; -fx-font-style: italic;");
+
+        content.getChildren().addAll(instruction, qrImageView, notice);
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+        dialog.show();
     }
 }

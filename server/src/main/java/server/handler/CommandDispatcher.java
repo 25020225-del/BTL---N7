@@ -82,7 +82,8 @@ public class    CommandDispatcher {
         PaymentHandler paymentHandler = new PaymentHandler(paymentCtrl, totpService, walletDAO);
         handlers.put("CREATE_DEPOSIT", paymentHandler);
         handlers.put("CONFIRM_DEPOSIT", paymentHandler);
-        handlers.put("FETCH_WALLET",    paymentHandler);
+        handlers.put("FETCH_WALLET", paymentHandler);
+        handlers.put("CREATE_VIETQR_DEPOSIT", paymentHandler);
 
         // Register Data Fetching operations
         FetchAuctionsHandler fetchHandler = new FetchAuctionsHandler(auctionDAO);
