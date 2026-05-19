@@ -15,17 +15,17 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<ScrollPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<ScrollPane pannable="true" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
     <content>
         <VBox>
             <children>
                 <!-- Top Section: Image and Bidding Controls -->
-                <HBox prefHeight="374.0" prefWidth="788.0" spacing="20.0" style="-fx-background-color: white;" stylesheets="@Stylist.css">
+                <HBox spacing="20.0" style="-fx-background-color: white;" stylesheets="@Stylist.css">
                     <padding>
                         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
                     </padding>
                     <children>
-                        <VBox alignment="CENTER" prefHeight="328.0" prefWidth="302.0" style="-fx-border-color: #eee;">
+                        <VBox alignment="CENTER" prefHeight="380.0" prefWidth="364.0" style="-fx-border-color: #eee;">
                             <children>
                                 <ImageView fx:id="imgLarge" fitHeight="300.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="true" />
                             </children>
@@ -131,7 +131,7 @@
                     </children>
                 </HBox>
                 <!-- Description Area -->
-                <VBox maxHeight="600.0" minHeight="200.0">
+                <VBox minHeight="200.0">
                     <Label text="Item Information">
                         <font>
                             <Font name="System Bold" size="16.0" />
@@ -140,7 +140,7 @@
                             <Insets bottom="5.0" />
                         </padding>
                     </Label>
-                    <TextArea fx:id="txtDescription" editable="false" prefHeight="59.0" prefWidth="768.0" wrapText="true" VBox.vgrow="ALWAYS" />
+                    <TextArea fx:id="txtDescription" editable="false" prefWidth="768.0" wrapText="true" VBox.vgrow="ALWAYS" />
                     <padding>
                         <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
                     </padding>
