@@ -274,3 +274,116 @@
 #myava1 {
     -fx-fill: url("images/logo3.jpg");
 }
+
+.login-screen {
+    /* Đường dẫn đến file ảnh nền của bạn */
+    -fx-background-image: url("images/bg.jpg");
+
+    /* Tự động co giãn ảnh cho vừa khít toàn bộ màn hình ngoài */
+    -fx-background-size: cover;
+
+    /* Căn ảnh nền vào chính giữa */
+    -fx-background-position: center center;
+
+    /* Không cho ảnh lặp lại (nếu ảnh nhỏ hơn màn hình) */
+    -fx-background-repeat: no-repeat;
+}
+
+.login-box {
+    /* Đây là style dành riêng cho cái khung Login nhỏ ở giữa */
+    -fx-background-color: rgba(23,23,23,0.4);
+    -fx-background-radius: 10px;
+    -fx-padding: 20;
+    /* Đổ bóng cho khung login nổi bật lên trên nền */
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 0);
+}
+.auth-input {
+    /* 1. Nền trắng cực loãng (chỉ lấy 15% độ đậm) để nhìn xuyên thấu ra ảnh nền */
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+
+    -fx-background-radius: 8px;
+
+    /* 2. Viền trắng mờ để định hình ô nhập liệu trên nền ảnh */
+    -fx-border-color: rgba(255, 255, 255, 0.3);
+    -fx-border-radius: 8px;
+    -fx-border-width: 1px;
+    -fx-padding: 10px 15px 10px 15px;
+
+    /* 3. Chữ bắt buộc phải đổi sang MÀU TRẮNG để nổi bật trên nền ảnh tối */
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+    -fx-transition: all 0.25s ease-in-out;
+}
+
+/* Khi di chuột qua ô trong suốt */
+.auth-input:hover {
+    /* Tăng độ đậm của nền lên 25% và viền sáng hơn một chút */
+    -fx-background-color: rgba(255, 255, 255, 0.25);
+    -fx-border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Khi click chọn vào ô gõ chữ (Focus) - HIỆU ỨNG PHÁT SÁNG CỰC ĐẸP */
+.auth-input:focused {
+    /* Giữ độ trong suốt nhưng đẩy nền lên một chút (35%) để dễ nhìn chữ */
+    -fx-background-color: rgba(255, 255, 255, 0.35);
+
+    /* Viền đổi sang màu xanh neon sáng để nổi bần bật */
+    -fx-border-color: #00e5ff;
+
+    /* Đổ bóng phát sáng viền màu xanh neon */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 229, 255, 0.4), 8, 0, 0, 0);
+}
+
+
+.auth-btn-primary {
+    /* Đổ màu chuyển sắc từ Xanh Dương sang Xanh Tím thời thượng */
+    -fx-background-color: linear-gradient(to right, #3665f3, #5b21b6);
+    -fx-background-radius: 8px;
+
+    /* Chữ trắng, in đậm, kích thước vừa vặn */
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+
+    /* Đổ bóng nhẹ dưới chân nút để tạo độ nổi (3D nhẹ) */
+    -fx-effect: dropshadow(three-pass-box, rgba(54, 101, 243, 0.3), 8, 0, 0, 3);
+
+    /* Con trỏ chuột biến thành bàn tay khi di chuột vào */
+    -fx-cursor: hand;
+    -fx-transition: all 0.25s ease-in-out;
+}
+
+/* Khi di chuột qua nút chính (Hover) */
+.auth-btn-primary:hover {
+    /* Làm nút sáng bừng lên bằng cách đổi góc và dải màu Gradient */
+    -fx-background-color: linear-gradient(to right, #4f46e5, #7c3aed);
+
+    /* Tăng độ phát sáng của bóng đổ xung quanh nút */
+    -fx-effect: dropshadow(three-pass-box, rgba(124, 58, 237, 0.5), 12, 0, 0, 0);
+}
+
+/* Khi người dùng click giữ chuột vào nút (Pressed) */
+.auth-btn-primary:armed {
+    /* Thu nhỏ hiệu ứng bóng để tạo cảm giác nút thực sự bị ấn lún xuống */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.2), 3, 0, 0, 1);
+}
+
+
+/* --- 2. NÚT PHỤ (REGISTER / FORGOT PASSWORD) - TINH TẾ, TRONG SUỐT --- */
+/* (Áp dụng cho nút "Don't have an account? Register Now") */
+.auth-btn-link {
+    -fx-background-color: transparent; /* Nền trong suốt hoàn toàn */
+    -fx-text-fill: #3665f3;             /* Màu chữ xanh thương hiệu */
+    -fx-font-size: 13px;
+    -fx-font-weight: normal;
+    -fx-cursor: hand;
+    -fx-transition: all 0.2s ease-in-out;
+}
+
+/* Khi di chuột qua nút phụ */
+.auth-btn-link:hover {
+    -fx-text-fill: #5b21b6;             /* Đổi chữ sang màu tím đậm */
+    -fx-underline: true;                 /* Gạch chân chữ giống như đường link web */
+}
