@@ -7,6 +7,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
 public class BidChart extends VBox {
+    // xoá mẹ file này đi khoai lang ngô
     private Label bid = new Label("Bid history (Real time)");
     private XYChart.Series<String, Number> series = new XYChart.Series<>();
     private ObservableList<XYChart.Data<String, Number>> data = FXCollections.observableArrayList();
