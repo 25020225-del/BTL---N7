@@ -37,6 +37,14 @@ public class MinimalItem extends VBox {
         this.setPadding(new Insets(20));
         this.setSpacing(10);
         this.setId(id);
+        this.setStyle(
+                "-fx-background-radius: 10; " +
+                        "-fx-border-style: solid; " +
+                        "-fx-border-color: #c2c2c2; " +
+                        "-fx-border-width: 2; " +
+                        "-fx-border-radius: 10; " +
+                        "-fx-background-color: white;"
+        );
         this.nameLabel = new Label(nameString);
         this.priceLabel = new Label(priceString + " VND");
         this.getChildren().addAll(
@@ -49,6 +57,14 @@ public class MinimalItem extends VBox {
         this.setPrefSize(260, 370);
         this.setPadding(new Insets(20));
         this.setSpacing(10);
+        this.setStyle(
+                "-fx-background-radius: 10; " +
+                        "-fx-border-style: solid; " +
+                        "-fx-border-color: #c2c2c2; " +
+                        "-fx-border-width: 2; " +
+                        "-fx-border-radius: 10; " +
+                        "-fx-background-color: white;"
+        );
         this.setId(id);
     }
 

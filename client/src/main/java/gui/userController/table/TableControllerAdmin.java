@@ -1,6 +1,8 @@
 package gui.userController.table;
 
 import client.handler.AuctionEventBus;
+import client.network.NetworkService;
+import client.service.AdminService;
 import gui.widget.AdminUserItem;
 import gui.widget.item.MinimalItemAdmin;
 import gui.widget.item.MinimalUser;
@@ -44,8 +46,11 @@ public class TableControllerAdmin extends TableController {
                     String name = (String) data.get("name");
                     String role = (String) data.get("role");
                     boolean isBlocked = (boolean) data.get("is_blocked");
-
-                    addNewAuction(new MinimalUser(id,username,name,role,isBlocked));
+                    MinimalUser mUser = new MinimalUser(id,username,name,role,isBlocked);
+                    mUser.setCommand(command -> {
+                        AdminService.blockUser(command, id);
+                    });
+                    addNewAuction(mUser);
                 }});
 
         });
@@ -81,11 +86,15 @@ public class TableControllerAdmin extends TableController {
     protected MinimalItemAdmin buildMinimalItem(Map<String, Object> map) {
         String id       = (String) map.get("id");
         String name     = (String) map.get("itemName");
-
         Auction auction = auctionFromMap(map);
 
         MinimalItemAdmin item = new MinimalItemAdmin(id, name, "");
-        item.addAdminOptions(id);
+        item.addAdminOptions(id, command -> {
+            switch (command) {
+                case "APPROVE_AUCTION" -> AdminService.approveAuction(id);
+                case "REJECT_AUCTION" -> AdminService.rejectAuction(id);
+            }
+        });
         return item;
     }
 }
