@@ -16,7 +16,7 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<ScrollPane fitToWidth="true" hbarPolicy="NEVER" stylesheets="@Stylist.css" vbarPolicy="AS_NEEDED" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.SellerAuctionsController">
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" stylesheets="@Stylist.css" vbarPolicy="AS_NEEDED" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
     <content>
         <VBox spacing="25.0" style="-fx-background-color: #f8f9fa;">
             <padding>
@@ -27,7 +27,7 @@
                 <HBox alignment="CENTER_LEFT" spacing="15.0" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
                     <children>
                         <Button onAction="#handleBackToList" prefHeight="38.0" style="-fx-background-color: #6c757d;" styleClass="button-primary" text="← TRỞ LẠI DANH SÁCH" />
-                        <Text style="-fx-font-size: 18; -fx-font-weight: bold; -fx-fill: #2c3e50;" text="QUẢN LÝ CHI TIẾT PHIÊN ĐẤU GIÁ (SELLER)" />
+                        <Text style="-fx-font-size: 18; -fx-font-weight: bold; -fx-fill: #2c3e50;" text="Chi tiết đấu giá" />
                     </children>
                 </HBox>
 

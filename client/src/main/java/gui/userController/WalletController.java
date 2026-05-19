@@ -5,12 +5,9 @@ import client.handler.ClientPaymentHandler;
 import client.network.NetworkService;
 import client.service.WalletService;
 import gui.MainApplication;
-import gui.Transaction;
 import gui.process.AlertHelper;
 import gui.process.AnimateEffect;
-import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.beans.property.LongProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -18,13 +15,15 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox; // Import đúng layout gốc
-import javafx.util.Duration;
-import model.finance.Wallet;
+import model.finance.WalletTransaction;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -42,18 +41,18 @@ public class WalletController extends VBox {
     @FXML private Label lblFrozenBalance;
     @FXML private TextField txtDepositAmount;
 
-    @FXML private TableView<Transaction> tableTransactions;
-    @FXML private TableColumn<Transaction, String> colDate;
-    @FXML private TableColumn<Transaction, String> colType;
-    @FXML private TableColumn<Transaction, Long> colAmount;
-    @FXML private TableColumn<Transaction, String> colStatus;
-    @FXML private TableColumn<Transaction, String> colNote;
+    @FXML private TableView<WalletTransaction> tableTransactions;
+    @FXML private TableColumn<WalletTransaction, String> colId;
+    @FXML private TableColumn<WalletTransaction, String> colDate;
+    @FXML private TableColumn<WalletTransaction, Long> colAmount;
+    @FXML private TableColumn<WalletTransaction, String> colDescription;
 
     @FXML private Button btnDeposit;
     @FXML private Button btnDepositVietQR;
 
     private long currentBalance = 0L;
-    private ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
+    private long currentFrozenBalance = 0L;
+    private ObservableList<WalletTransaction> transactionData = FXCollections.observableArrayList();
     // ── NEW: Lưu amount đang chờ TOTP để retry ───────────────────────
     /** Lưu amount đang chờ xác thực để dùng khi retry. */
     private double pendingDepositAmount = 0.0;
@@ -78,18 +77,33 @@ public class WalletController extends VBox {
     @FXML
     public void initialize() {
         // Initialize table columns
-        colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
-        colType.setCellValueFactory(new PropertyValueFactory<>("type"));
+        colDate.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
+        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
-        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
-        colNote.setCellValueFactory(new PropertyValueFactory<>("note"));
+        colDescription.setCellValueFactory(new PropertyValueFactory<>("description"));
 
         AuctionEventBus.addListener("FETCH_WALLET_SUCCESS",event -> {
             NetworkMessage response = (NetworkMessage) event.getNewValue();
             Map<String,Object> map = (Map<String, Object>) response.getData();
             long balance = Long.parseLong(map.get("balance").toString());
-            log.info("Get wallet balence success: {}", balance);
-            Platform.runLater(() -> {setWalletBalance(balance);});
+            long lockedBalance = Long.parseLong(map.get("lockedBalance").toString());
+            List<Map<String, Object>> transactions = (List<Map<String, Object>>) map.get("transactions");
+            transactionData.clear();
+            transactions.forEach(transaction -> {
+                WalletTransaction walletTransaction = new WalletTransaction(
+                        transaction.get("id").toString(),
+                        "",
+                        ((Number) transaction.get("amount")).longValue(),
+                        transaction.get("description").toString()
+                );
+                walletTransaction.setCreatedAt(LocalDateTime.parse(transaction.get("createdAt").toString(), DateTimeFormatter.ISO_DATE_TIME));
+                transactionData.add(walletTransaction);
+            });
+            Platform.runLater(() -> {
+                setWalletBalance(balance);
+                setWalletLockedBalance(lockedBalance);
+                tableTransactions.setItems(transactionData);
+            });
         });
 
         AuctionEventBus.addListener("VIETQR_CREATED", event -> {
@@ -111,8 +125,6 @@ public class WalletController extends VBox {
         AuctionEventBus.addListener(
                 ClientPaymentHandler.INVALID_TOTP, invalidTotpListener);
 
-        tableTransactions.setItems(transactionData);
-        updateBalanceUI();
         WalletService.fetchWalletHistory();
     }
 
@@ -123,6 +135,10 @@ public class WalletController extends VBox {
     public void setWalletBalance(long balance){
         currentBalance = balance;
         lblTotalBalance.setText(String.valueOf(currentBalance)+" N VND");
+    }
+    public void setWalletLockedBalance(long lockedBalance){
+        currentFrozenBalance = lockedBalance;
+        lblFrozenBalance.setText(String.valueOf(currentFrozenBalance)+" N VND");
     }
 
     @FXML
@@ -300,11 +316,6 @@ public class WalletController extends VBox {
             AuctionEventBus.removeListener(
                     ClientPaymentHandler.INVALID_TOTP, invalidTotpListener);
         }
-    }
-
-    private void updateBalanceUI() {
-        lblTotalBalance.setText(String.format("%d N VND", currentBalance));
-        lblFrozenBalance.setText("0 N VND");
     }
 
 
