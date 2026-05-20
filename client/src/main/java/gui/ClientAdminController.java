@@ -2,8 +2,10 @@ package gui;
 
 import client.handler.AuctionEventBus;
 import client.service.AdminService;
+import client.service.AuctionService;
 import gui.process.AlertHelper;
 import gui.process.RemoveEventBus;
+import gui.userController.ItemDetailController;
 import gui.userController.table.TableControllerAdmin;
 import gui.widget.IconButton;
 import javafx.application.Platform;
@@ -21,6 +23,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import model.auction.Auction;
 import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +43,7 @@ public class ClientAdminController {
 
     private TableControllerAdmin tableView;
     private User currentUser; // ✅ Lưu user để truyền vào SettingsController
+    private ItemDetailController currentDetailController;
 
     private IconButton account;
     private IconButton toggleList   = new IconButton("mdi2m-menu", "List", "List", "special-button");
@@ -60,6 +64,7 @@ public class ClientAdminController {
 
         // ── 2. Load TableView ─────────────────────────────────────────────
         tableView = new TableControllerAdmin();
+        tableView.setOnAuctionListener((auction) -> openItemDetail(auction));
 
         // ── 3. ✅ Tạo SettingsController đúng cách ─────────────────────
         //    SettingsController extends VBox và tự xử lý:
@@ -117,6 +122,22 @@ public class ClientAdminController {
             log.info("Loading withdraw requests...");
             AdminService.fetchWithdrawRequests();
         });
+    }
+
+    private void openItemDetail(Auction auction) {
+        if (currentDetailController != null) {
+            currentDetailController.dispose();
+        }
+
+        ItemDetailController detailController = new ItemDetailController(currentUser);
+        detailController.setAuctionData(auction);
+        currentDetailController = detailController;
+        AuctionService.fetchTransactions(auction.getId());
+        detailController.setOnReturnToMarketplace(() -> {
+            handleBackToMarketplaceInternal();
+        });
+        mainViewController.getChildren().clear();
+        mainViewController.getChildren().add(detailController.getParent());
     }
 
     /**

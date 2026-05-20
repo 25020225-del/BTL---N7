@@ -61,15 +61,19 @@ public class ResponseDispatcher {
         handlers.put("TIME_SYNC_ACK", systemHandler);
         handlers.put("GENERAL_ERROR", systemHandler);
         ResponseHandler errorHandler = (message, client) -> {
-            String errMsg = ErrorParser.parse(message.getData());
-            log.warn("Server returned ERROR: {}", errMsg);
-            Platform.runLater(() ->
-                    AlertHelper.showAlert(
-                            Alert.AlertType.ERROR,
-                            "Lỗi từ Server",
-                            errMsg
-                    )
-            );
+            if (client.getOnMessageReceived() != null) {
+                Platform.runLater(() -> client.getOnMessageReceived().accept(message));
+            } else {
+                String errMsg = ErrorParser.parse(message.getData());
+                log.warn("Server returned ERROR: {}", errMsg);
+                Platform.runLater(() ->
+                        AlertHelper.showAlert(
+                                Alert.AlertType.ERROR,
+                                "Lỗi từ Server",
+                                errMsg
+                        )
+                );
+            }
         };
         handlers.put("ERROR", errorHandler);
     }
@@ -80,6 +84,7 @@ public class ResponseDispatcher {
         handlers.put("CREATE_SUCCESS",      auctionHandler);
         handlers.put("CHAT",                auctionHandler);
         handlers.put("UPDATE_AUCTION_PRICE", auctionHandler);
+        handlers.put("AUCTION_STATUS_CHANGED",  auctionHandler);
     }
 
     private void registerPaymentHandlers() {

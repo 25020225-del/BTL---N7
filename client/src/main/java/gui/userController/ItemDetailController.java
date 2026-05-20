@@ -1,11 +1,9 @@
 package gui.userController;
 
 import client.handler.AuctionEventBus;
+import client.service.AdminService;
 import client.service.AuctionService;
-import gui.process.AlertHelper;
-import gui.process.Convert;
-import gui.process.CropImage;
-import gui.process.EditAuction;
+import gui.process.*;
 import gui.widget.CountdownClock;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -29,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import utils.TimeUtil;
 
+import javax.management.relation.Role;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -71,6 +70,7 @@ public class ItemDetailController {
     @FXML private TextField txtBidIncrement;
     @FXML private VBox      vbBidHandle;
     @FXML private VBox      vbAuctionControl;
+    @FXML private VBox      vbAdminControl;
     @FXML private TextField txtExtendTime;
 
     @FXML private LineChart<String, Number> bidHistoryChart;
@@ -198,7 +198,7 @@ public class ItemDetailController {
      */
     @FXML
     private void handlePlaceBid() {
-        disableTemporarily(vbBidHandle, 2);
+        AnimateEffect.pauseNode(vbBidHandle, 2);
         String rawAmount = txtBidAmount.getText().replace(",", "").trim();
         try {
             long bidAmount = Long.parseLong(rawAmount);
@@ -217,7 +217,7 @@ public class ItemDetailController {
      */
     @FXML
     private void handleAutoBid() {
-        disableTemporarily(vbBidHandle, 2);
+        AnimateEffect.pauseNode(vbBidHandle, 2);
         String maxBidStr    = txtMaxBid.getText().replace(",", "").trim();
         String incrementStr = txtBidIncrement.getText().replace(",", "").trim();
 
@@ -281,12 +281,33 @@ public class ItemDetailController {
         });
     }
 
+    @FXML
+    private void handleApproveAuction() {
+        AdminService.approveAuction(currentAuctionId);
+        handleBackToMarketplace();
+    }
+
+    @FXML
+    private void handleRejectAuction() {
+        AdminService.rejectAuction(currentAuctionId);
+        handleBackToMarketplace();
+    }
+
     // ── Private Helpers ───────────────────────────────────────────────────────
 
     /**
      * Configures the visibility of buyer vs. seller control panels based on ownership.
      */
     private void configureRoleVisibility(Auction auction) {
+        if(currentUser.getRole().equals("Admin")) {
+            vbBidHandle.setVisible(false);
+            vbAuctionControl.setVisible(false);
+            vbBidHandle.setManaged(false);
+            vbAuctionControl.setManaged(false);
+            return;
+        }
+        vbAdminControl.setVisible(false);
+        vbAdminControl.setManaged(false);
         boolean isSeller = auction.getSeller().getId().equals(currentUser.getId());
         vbBidHandle.setVisible(!isSeller);
         vbBidHandle.setManaged(!isSeller);
@@ -360,6 +381,21 @@ public class ItemDetailController {
                     (List<Map<String, Object>>) ((NetworkMessage) evt.getNewValue()).getData();
             setTransactionHistoryData(history);
         });
+        AuctionEventBus.addListener("AUCTION_STATUS_CHANGED", event -> {
+            NetworkMessage msg = (NetworkMessage) event.getNewValue();
+            Map<String, Object> data = (Map<String, Object>) msg.getData();
+            String id = (String) data.get("auctionId");
+
+            if (!id.equals(currentAuctionId)) return;  // dùng currentAuctionId, không phải currentAuction.getId()
+
+            String newStatus = (String) data.get("newStatus");
+            Platform.runLater(() -> {
+                if ("FINISHED".equals(newStatus) || "PAID".equals(newStatus) || "CANCELED".equals(newStatus)) {
+                    vbBidHandle.setVisible(false);
+                    vbBidHandle.setManaged(false);
+                }
+            });
+        });
     }
 
     /**
@@ -385,13 +421,4 @@ public class ItemDetailController {
         }
     }
 
-    /**
-     * Temporarily disables a node for a given number of seconds using a {@link PauseTransition}.
-     */
-    private void disableTemporarily(javafx.scene.Node node, double seconds) {
-        node.setDisable(true);
-        PauseTransition pause = new PauseTransition(Duration.seconds(seconds));
-        pause.setOnFinished(e -> node.setDisable(false));
-        pause.play();
-    }
 }

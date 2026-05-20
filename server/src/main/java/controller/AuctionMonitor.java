@@ -16,6 +16,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -176,6 +177,8 @@ public class AuctionMonitor {
                 processFinancialSettlement(auction);
             } else {
                 log.info("Auction {} status updated to {}.", auctionId, targetStatus);
+                ClientManager.broadcast("AUCTION_STATUS_CHANGED",
+                        Map.of("auctionId", auctionId, "newStatus", targetStatus), null);
             }
         }
     }
@@ -229,7 +232,8 @@ public class AuctionMonitor {
                     synchronized (AuctionManager.getLockForAuction(auctionId)) {
                         auction.setStatus(finalStatus);
                     }
-
+                    ClientManager.broadcast("AUCTION_STATUS_CHANGED",
+                            Map.of("auctionId", auctionId, "newStatus", finalStatus), null);
                     log.info("Financial settlement completed for auction {} -> {}", auctionId, finalStatus);
                     return true;
 
