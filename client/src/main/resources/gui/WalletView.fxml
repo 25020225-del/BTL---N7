@@ -11,6 +11,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
+<?import javafx.scene.control.ComboBox?>
 <fx:root prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" type="javafx.scene.layout.VBox" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
     <children>
         <HBox alignment="CENTER_LEFT" spacing="10.0">
@@ -60,8 +61,35 @@
                         <Button fx:id="btnDeposit" maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="Pay via PayPal" />
                     </children>
                 </VBox>
+                <!-- ── Withdrawal Form [NEW] ─────────────────────────────────────── -->
+                <VBox spacing="10" styleClass="card-section">
+                    <Label text="Rút Tiền" styleClass="section-title"/>
+
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Số tiền (VND):" minWidth="160"/>
+                        <TextField fx:id="txtWithdrawAmount" promptText="Nhập số tiền..." HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Phương thức:" minWidth="160"/>
+                        <ComboBox fx:id="cmbPayoutMethod" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                    </HBox>
+
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Thông tin tài khoản:" minWidth="160"/>
+                        <TextField fx:id="txtPayoutDetails"
+                                   promptText="VD: Ngân hàng: VCB | STK: 1234567890 | CTK: Nguyen Van A"
+                                   HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <Button fx:id="btnWithdraw"
+                            text="Gửi Yêu Cầu Rút Tiền"
+                            onAction="#handleWithdraw"
+                            styleClass="primary-button"/>
+                </VBox>
             </children>
         </HBox>
+
 
         <VBox spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 15;" VBox.vgrow="ALWAYS">
             <children>

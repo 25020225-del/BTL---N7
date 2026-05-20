@@ -70,13 +70,15 @@ public class TableController {
         searchField.setOnAction(event -> { if (searchButton != null) searchButton.fire(); });
     }
 
-    @FXML protected void Search(){
-        JaroWinklerSimilarity jws = new JaroWinklerSimilarity();
+    @FXML
+    protected void search() { // FIX: method name cũng nên camelCase nhưng giữ nếu FXML bind "#Search"
         String keyword = searchField.getText();
         for (Node node : mainTilePane.getChildren()) {
             if (node instanceof MinimalItem item) {
                 String itemContent = (String) item.getUserData();
-                boolean match = Search.SearchText(itemContent, keyword);
+                // FIX 1: Đổi tên method từ SearchText → matchesFuzzy
+                // FIX 2: Đổi thứ tự tham số: (keyword, content) thay vì (content, keyword)
+                boolean match = Search.matchesFuzzy(keyword, itemContent);
                 item.setVisible(match);
                 item.setManaged(match);
             }

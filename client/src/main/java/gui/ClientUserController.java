@@ -165,7 +165,7 @@ public class ClientUserController {
     @FXML
     public void handleSignOut() {
         log.info("User \"{}\" is signing out.", currentUser.getName());
-        UserService.LogOut();
+        UserService.logout();
         RemoveEventBus.forUser();
         currentDetailController = null;
         MainApplication.setNewScene(MainApplication.rootLogin);

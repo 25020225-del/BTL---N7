@@ -1,7 +1,6 @@
 package gui.userController.table;
 
 import client.handler.AuctionEventBus;
-import client.network.NetworkService;
 import client.service.AdminService;
 import gui.widget.AdminUserItem;
 import gui.widget.item.MinimalItemAdmin;
@@ -21,39 +20,52 @@ import java.util.Map;
 
 public class TableControllerAdmin extends TableController {
 
-    public void addNewUser(AdminUserItem user) {
-        mainTilePane.getChildren().addFirst(user);
+    public void addNewUser(AdminUserItem userItem) {
+        mainTilePane.getChildren().addFirst(userItem);
     }
-    @FXML protected void initialize() {
+
+    @FXML
+    protected void initialize() {
         AuctionEventBus.addListener("FETCH_AUCTIONS_SUCCESS", event -> {
-            NetworkMessage response = (NetworkMessage) event.getNewValue();
-            List<Map<String,Object>> data = (List<Map<String,Object>>) response.getData();
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> data =
+                    (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
             Platform.runLater(() -> {
                 mainTilePane.getChildren().clear();
-                data.forEach(map -> {
-                    addNewAuction(buildMinimalItem(map));
-                });
+                data.forEach(map -> addNewAuction(buildMinimalItem(map)));
             });
         });
-        AuctionEventBus.addListener("FETCH_USERS_SUCCESS", event -> {
-            NetworkMessage response = (NetworkMessage) event.getNewValue();
-            List<Map<String, Object>> users =
-                    (List<Map<String, Object>>) response.getData();
-            Platform.runLater(() -> {deleteAllAuction();
-                for (Map<String, Object> data : users) {
-                    String id = (String) data.get("id");
-                    String username = (String) data.get("username");
-                    String name = (String) data.get("name");
-                    String role = (String) data.get("role");
-                    boolean isBlocked = (boolean) data.get("is_blocked");
-                    MinimalUser mUser = new MinimalUser(id,username,name,role,isBlocked);
-                    mUser.setCommand(command -> {
-                        AdminService.blockUser(command, id);
-                    });
-                    addNewAuction(mUser);
-                }});
 
+        AuctionEventBus.addListener("FETCH_USERS_SUCCESS", event -> {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> users =
+                    (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
+            Platform.runLater(() -> {
+                // FIX LỖI 1: Đổi deleteAllAuctions() → deleteAllAuction()
+                // (tên method trong lớp cha TableController là deleteAllAuction — không có 's')
+                // HOẶC: Đổi tên trong TableController thành deleteAllAuctions() cho nhất quán
+                deleteAllAuction();  // ✅ FIX: gọi đúng tên method của lớp cha
+                users.forEach(data -> mainTilePane.getChildren().add(buildUserItem(data)));
+            });
         });
+    }
+
+    private MinimalUser buildUserItem(Map<String, Object> data) {
+        String  id        = (String)  data.get("id");
+        String  username  = (String)  data.get("username");
+        String  name      = (String)  data.get("name");
+        String  role      = (String)  data.get("role");
+        boolean isBlocked = (boolean) data.get("is_blocked");
+
+        MinimalUser userItem = new MinimalUser(id, username, name, role, isBlocked);
+        userItem.setCommand(command -> {
+            if ("BLOCK_USER".equals(command)) {
+                AdminService.blockUser(id);
+            } else if ("UNBLOCK_USER".equals(command)) {
+                AdminService.unblockUser(id);
+            }
+        });
+        return userItem;
     }
 
     protected Auction auctionFromMap(Map<String, Object> map) {
@@ -80,19 +92,18 @@ public class TableControllerAdmin extends TableController {
                         .atZone(ZoneId.systemDefault())
                         .toLocalDateTime()
         );
-
         return auction;
     }
+
     protected MinimalItemAdmin buildMinimalItem(Map<String, Object> map) {
-        String id       = (String) map.get("id");
-        String name     = (String) map.get("itemName");
-        Auction auction = auctionFromMap(map);
+        String id   = (String) map.get("id");
+        String name = (String) map.get("itemName");
 
         MinimalItemAdmin item = new MinimalItemAdmin(id, name, "");
         item.addAdminOptions(id, command -> {
             switch (command) {
                 case "APPROVE_AUCTION" -> AdminService.approveAuction(id);
-                case "REJECT_AUCTION" -> AdminService.rejectAuction(id);
+                case "REJECT_AUCTION"  -> AdminService.rejectAuction(id);
             }
         });
         return item;

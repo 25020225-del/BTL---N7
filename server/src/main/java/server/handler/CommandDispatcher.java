@@ -28,6 +28,7 @@ public class    CommandDispatcher {
     private final service.TOTPService totpService;
     private final controller.ServerSellerController sellerCtrl;
     private final controller.ServerPaymentController paymentCtrl;
+    private final database.dao.WithdrawalDAO withdrawalDAO;
 
     /**
      * Constructs a new CommandDispatcher and initializes the handler registry with dependencies.
@@ -37,6 +38,7 @@ public class    CommandDispatcher {
             database.dao.AuctionDAO auctionDAO,
             database.dao.BidDAO bidDAO,
             database.dao.WalletDAO walletDAO,
+            database.dao.WithdrawalDAO withdrawalDAO,
             service.TOTPService totpService,
             controller.ServerSellerController sellerCtrl,
             controller.ServerPaymentController paymentCtrl) {
@@ -48,6 +50,7 @@ public class    CommandDispatcher {
         this.totpService = totpService;
         this.sellerCtrl = sellerCtrl;
         this.paymentCtrl = paymentCtrl;
+        this.withdrawalDAO = withdrawalDAO;
         
         registerHandlers();
     }
@@ -89,7 +92,7 @@ public class    CommandDispatcher {
         handlers.put("FETCH_AUCTIONS", fetchHandler);
 
         // Register Admin operations
-        controller.ServerAdminController adminCtrl = new controller.ServerAdminController(userDAO, auctionDAO);
+        controller.ServerAdminController adminCtrl = new controller.ServerAdminController(userDAO, auctionDAO, walletDAO, withdrawalDAO);
         AdminActionHandler adminHandler = new AdminActionHandler(auctionDAO, userDAO, adminCtrl);
         handlers.put("FETCH_PENDING_AUCTIONS", new FetchAuctionsHandler(auctionDAO));
         handlers.put("APPROVE_AUCTION", adminHandler);
@@ -110,6 +113,10 @@ public class    CommandDispatcher {
         SellerActionHandler sellerHandler = new SellerActionHandler(sellerCtrl, auctionDAO);
         handlers.put("EDIT_AUCTION", sellerHandler);
         handlers.put("DELETE_AUCTION", sellerHandler);
+
+        handlers.put("FETCH_WITHDRAW_REQUESTS", adminHandler);
+        handlers.put("APPROVE_WITHDRAW",        adminHandler);
+        handlers.put("REJECT_WITHDRAW",         adminHandler);
 
     }
 
