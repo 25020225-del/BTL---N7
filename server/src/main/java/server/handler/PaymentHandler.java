@@ -27,7 +27,7 @@ public class PaymentHandler implements CommandHandler {
     private final ServerPaymentController paymentController;
     private final service.TOTPService totpService;
     private final WalletDAO walletDAO;
-    private final Map<String, DepositInfo> pendingDeposits = new ConcurrentHashMap<>();
+    public static final Map<String, DepositInfo> pendingDeposits = new ConcurrentHashMap<>();
     private final ScheduledExecutorService cleanupScheduler = Executors.newSingleThreadScheduledExecutor();
     private static final long DEPOSIT_EXPIRATION_MS = 15 * 60 * 1000L; // 15 minutes
 
@@ -280,7 +280,7 @@ public class PaymentHandler implements CommandHandler {
         client.sendResponse("FETCH_WALLET_SUCCESS", walletData);
     }
 
-    private static class DepositInfo {
+    public static class DepositInfo {
         private final long amountVND;
         private final long createdAt;
         private final ClientHandler client;
