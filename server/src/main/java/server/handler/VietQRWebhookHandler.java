@@ -48,11 +48,11 @@ public class VietQRWebhookHandler implements HttpHandler {
                     long receivedAmount = transaction.path("amount").asLong();
                     String description = transaction.path("description").asText();
 
-                    Pattern pattern = Pattern.compile("(VQR-\\d+)");
+                    Pattern pattern = Pattern.compile("VQR(\\d+)");
                     Matcher matcher = pattern.matcher(description);
 
                     if (matcher.find()) {
-                        String orderId = matcher.group(1);
+                        String orderId = "VQR-" + matcher.group(1);
                         log.info("Extracted Order ID: {} with Amount: {}", orderId, receivedAmount);
 
                         // Find pending deposits in RAM

@@ -42,7 +42,7 @@ public class VietQRService {
      * @return A scannable EMVCo string payload for ZXing to render.
      */
     public String generateVietQRString(long amount, String orderId) {
-        String memo = "N7 " + orderId;
+        String memo = "N7 VQR" + orderId.replace("VQR-", "");
         log.info("Requesting EMVCo VietQR payload for Order: {}, Amount: {}", orderId, amount);
 
         try {
