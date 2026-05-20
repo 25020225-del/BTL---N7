@@ -188,6 +188,14 @@ public class ServerPaymentController {
                                 user.getUserName());
                         return "DB_ERROR";
                     }
+                    walletDAO.addTransaction(
+                            conn,
+                            "WD-LOCK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
+                            user.getId(),
+                            -amount,  // âm: tiền bị khóa (rời khỏi available balance)
+                            "Withdrawal request pending Admin approval (Request ID: " + requestId + ")",
+                            now
+                    );
 
                     // ── COMMIT khi cả 3 bước đều thành công ──────────────────────
                     conn.commit();

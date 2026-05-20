@@ -23,38 +23,50 @@ public class ResponseDispatcher {
     }
 
     private void registerHandlers() {
+        // ── System commands ───────────────────────────────────────────────────────
         ClientSystemHandler systemHandler = new ClientSystemHandler();
-        handlers.put("REDIRECT", systemHandler);
-        handlers.put("KICKED", systemHandler);
-        handlers.put("TIME_SYNC_ACK", systemHandler);
-        handlers.put("GENERAL_ERROR", systemHandler);
+        handlers.put("REDIRECT",       systemHandler);
+        handlers.put("KICKED",         systemHandler);
+        handlers.put("TIME_SYNC_ACK",  systemHandler);
+        handlers.put("GENERAL_ERROR",  systemHandler);
 
+        // ── Auction commands ──────────────────────────────────────────────────────
         ClientAuctionHandler auctionHandler = new ClientAuctionHandler();
-        handlers.put("CLI_BROADCAST", auctionHandler);
-        handlers.put("CREATE_SUCCESS", auctionHandler);
-        handlers.put("CHAT", auctionHandler);
+        handlers.put("CLI_BROADCAST",       auctionHandler);
+        handlers.put("CREATE_SUCCESS",      auctionHandler);
+        handlers.put("CHAT",                auctionHandler);
         handlers.put("UPDATE_AUCTION_PRICE", auctionHandler);
 
+        // ── Payment & Withdrawal commands ─────────────────────────────────────────
         ClientPaymentHandler paymentHandler = new ClientPaymentHandler();
-        handlers.put("PAYMENT_REDIRECT", paymentHandler);
-        handlers.put("DEPOSIT_SUCCESS", paymentHandler);
+        handlers.put("PAYMENT_REDIRECT",       paymentHandler);
+        handlers.put("DEPOSIT_SUCCESS",        paymentHandler);
+        handlers.put("REQUIRE_TOTP_PAYMENT",   paymentHandler);
+        handlers.put("INVALID_TOTP",           paymentHandler);
+        handlers.put("WITHDRAW_REQUEST_SUCCESS", paymentHandler); // [NEW]
+        handlers.put("WITHDRAW_APPROVED",       paymentHandler); // [NEW] real-time notify
+        handlers.put("WITHDRAW_REJECTED",       paymentHandler); // [NEW] real-time notify
 
+        // ── User-level generic commands (routed via AuctionEventBus) ─────────────
         ClientUserHandler userHandler = new ClientUserHandler();
-        handlers.put("FETCH_AUCTIONS_SUCCESS", userHandler);
+        handlers.put("FETCH_AUCTIONS_SUCCESS",     userHandler);
         handlers.put("FETCH_TRANSACTIONS_SUCCESS", userHandler);
-        handlers.put("NEW_AUCTION_ADDED", userHandler);
-        handlers.put("REMOVE_AUCTION", userHandler);
-        handlers.put("EDIT_SUCCESS", userHandler);
-        handlers.put("DELETE_SUCCESS", userHandler);
-        handlers.put("FETCH_WALLET_SUCCESS", userHandler);
-        handlers.put("FETCH_USERS_SUCCESS", userHandler);
-        handlers.put("SETUP_2FA_SUCCESS",    userHandler);
-        handlers.put("CONFIRM_2FA_SUCCESS",  userHandler);
-        handlers.put("DISABLE_2FA_SUCCESS",  userHandler);
-        handlers.put("CANCEL_2FA_SUCCESS",   userHandler);
-        handlers.put("UPDATE_TOTP_PREFS_SUCCESS", userHandler);
-        handlers.put("REQUIRE_TOTP_PAYMENT", paymentHandler);
-        handlers.put("INVALID_TOTP",         paymentHandler);
+        handlers.put("NEW_AUCTION_ADDED",          userHandler);
+        handlers.put("REMOVE_AUCTION",             userHandler);
+        handlers.put("EDIT_SUCCESS",               userHandler);
+        handlers.put("DELETE_SUCCESS",             userHandler);
+        handlers.put("FETCH_WALLET_SUCCESS",       userHandler);
+        handlers.put("FETCH_USERS_SUCCESS",        userHandler);
+        handlers.put("SETUP_2FA_SUCCESS",          userHandler);
+        handlers.put("CONFIRM_2FA_SUCCESS",        userHandler);
+        handlers.put("DISABLE_2FA_SUCCESS",        userHandler);
+        handlers.put("CANCEL_2FA_SUCCESS",         userHandler);
+        handlers.put("UPDATE_TOTP_PREFS_SUCCESS",  userHandler);
+
+        // ── Admin withdrawal management [NEW] ─────────────────────────────────────
+        // These are fired as AuctionEventBus events consumed by TableControllerAdmin
+        handlers.put("FETCH_WITHDRAW_REQUESTS_SUCCESS", userHandler); // [NEW]
+        handlers.put("WITHDRAW_ACTION_SUCCESS",          userHandler); // [NEW]
     }
 
     public void dispatch(NetworkMessage message, NetworkClient client) {

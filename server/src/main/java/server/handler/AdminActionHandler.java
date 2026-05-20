@@ -152,32 +152,43 @@ public class AdminActionHandler implements CommandHandler {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Lấy và gửi về Client danh sách toàn bộ yêu cầu rút tiền đang PENDING.
+     * Fetches and returns the list of all PENDING withdrawal requests.
      *
-     * <p>Response command: {@code FETCH_WITHDRAW_REQUESTS_SUCCESS}<br>
-     * Payload: {@code List<Map>} mỗi map chứa: id, userId, username, name, amount,
-     * payoutMethod, payoutDetails, status, createdAt.</p>
+     * <p>The DB read is submitted to {@link TransactionManager} to respect the
+     * single-writer serialization invariant and avoid connection contention in
+     * SQLite WAL mode under concurrent admin sessions.</p>
      *
-     * @param admin  Admin đang thực hiện lệnh.
-     * @param client ClientHandler của Admin.
+     * <p>Response command: {@code FETCH_WITHDRAW_REQUESTS_SUCCESS}</p>
+     *
+     * @param admin  The admin performing the fetch.
+     * @param client The admin's ClientHandler for sending the response.
      */
     private void handleFetchWithdrawRequests(Admin admin, ClientHandler client) {
-        // fetchPendingWithdrawals là READ-ONLY → không cần TransactionManager
-        // (chỉ dùng TransactionManager cho các write operation)
-        try {
-            List<Map<String, Object>> requests = adminCtrl.fetchPendingWithdrawals(admin);
+        database.TransactionManager.submitTask(() -> {
+            try {
+                return adminCtrl.fetchPendingWithdrawals(admin);
+            } catch (SecurityException e) {
+                // Propagate as RuntimeException so exceptionally() can catch it.
+                throw new RuntimeException("UNAUTHORIZED", e);
+            }
+        }).thenAccept(requests -> {
             client.sendResponse("FETCH_WITHDRAW_REQUESTS_SUCCESS", requests);
             log.info("[WITHDRAW] Admin {} fetched {} pending withdrawal request(s).",
                     admin.getUserName(), requests.size());
-        } catch (SecurityException e) {
-            // fetchPendingWithdrawals ném SecurityException nếu không phải Admin
-            client.sendResponse("ERROR",
-                    new ErrorPayload("ERR_AUTH_403", "Bạn không có quyền xem danh sách yêu cầu rút tiền."));
-        } catch (Exception e) {
-            log.error("Error fetching pending withdrawals: {}", e.getMessage(), e);
-            client.sendResponse("ERROR",
-                    new ErrorPayload("ERR_SYS_500", "Lỗi hệ thống khi tải danh sách yêu cầu rút tiền."));
-        }
+        }).exceptionally(ex -> {
+            Throwable cause = ex.getCause();
+            if (cause != null && "UNAUTHORIZED".equals(cause.getMessage())) {
+                client.sendResponse("ERROR", new network.ErrorPayload(
+                        "ERR_AUTH_403",
+                        "Bạn không có quyền xem danh sách yêu cầu rút tiền."));
+            } else {
+                log.error("Error fetching pending withdrawals: {}", ex.getMessage(), ex);
+                client.sendResponse("ERROR", new network.ErrorPayload(
+                        "ERR_SYS_500",
+                        "Lỗi hệ thống khi tải danh sách yêu cầu rút tiền."));
+            }
+            return null;
+        });
     }
 
     /**

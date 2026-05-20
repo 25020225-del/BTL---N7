@@ -205,6 +205,15 @@ public class PaymentHandler implements CommandHandler {
                         currentUser.getUserName(), amountVND);
                 return;
             }
+            if (isReplayAndRecord(currentUser.getId(), code)) {
+                client.sendResponse("INVALID_TOTP",
+                        Map.of("message",
+                                "Mã TOTP này đã được sử dụng. "
+                                        + "Vui lòng đợi mã mới xuất hiện trên ứng dụng Authenticator."));
+                log.warn("[SECURITY] TOTP replay attempt detected for user {} (code={})",
+                        currentUser.getUserName(), code);
+                return;
+            }
 
             log.info("[WITHDRAW] TOTP verified for user {} (amount={})",
                     currentUser.getUserName(), amountVND);
@@ -250,6 +259,44 @@ public class PaymentHandler implements CommandHandler {
                     "Lỗi đứt gãy luồng xử lý bất đồng bộ. Vui lòng thử lại."));
             return null;
         });
+    }
+
+    /**
+     * Cache tracking recently used TOTP codes per user.
+     *
+     * <p>Key: {@code userId}. Value: map of {@code (totpCode → expiryTimeMillis)}.
+     * An entry is considered valid if it was inserted within the last 90 seconds
+     * (3× the TOTP 30-second window), covering any clock skew the server already
+     * permits via the TOTPService window tolerance.</p>
+     *
+     * <p>This prevents a valid code from being replayed within its active window
+     * to create multiple withdrawal/deposit requests.</p>
+     */
+    private final ConcurrentHashMap<String, ConcurrentHashMap<Integer, Long>> usedTotpCodes =
+            new ConcurrentHashMap<>();
+
+    private static final long TOTP_REPLAY_WINDOW_MS = 90_000L; // 90 seconds
+
+    /**
+     * Checks whether the given TOTP code has already been used by this user
+     * within the replay prevention window, and records it if not.
+     *
+     * @param userId The authenticated user's ID.
+     * @param code   The integer TOTP code that was verified as correct.
+     * @return {@code true} if the code is a replay (already used); {@code false} if fresh.
+     */
+    private boolean isReplayAndRecord(String userId, int code) {
+        long now = System.currentTimeMillis();
+
+        ConcurrentHashMap<Integer, Long> userCodes =
+                usedTotpCodes.computeIfAbsent(userId, k -> new ConcurrentHashMap<>());
+
+        // Evict expired entries for this user (keep map small).
+        userCodes.entrySet().removeIf(entry -> now - entry.getValue() > TOTP_REPLAY_WINDOW_MS);
+
+        // putIfAbsent returns null if the key was absent (first use → not a replay).
+        Long previous = userCodes.putIfAbsent(code, now);
+        return previous != null; // non-null means the code was already present
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -321,6 +368,15 @@ public class PaymentHandler implements CommandHandler {
                 client.sendResponse("INVALID_TOTP",
                         Map.of("message", "Mã TOTP không hợp lệ hoặc đã hết hạn. Vui lòng thử lại."));
                 log.warn("Invalid TOTP for payment by user {}", currentUser.getUserName());
+                return;
+            }
+            if (isReplayAndRecord(currentUser.getId(), code)) {
+                client.sendResponse("INVALID_TOTP",
+                        Map.of("message",
+                                "Mã TOTP này đã được sử dụng. "
+                                        + "Vui lòng đợi mã mới xuất hiện trên ứng dụng Authenticator."));
+                log.warn("[SECURITY] TOTP replay attempt detected for user {} (code={})",
+                        currentUser.getUserName(), code);
                 return;
             }
             log.info("TOTP verified for payment by user {}", currentUser.getUserName());

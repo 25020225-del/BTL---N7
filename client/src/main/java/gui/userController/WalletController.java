@@ -14,61 +14,110 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import model.finance.WalletTransaction;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-
 /**
- * WalletController acts as both a Controller and a Custom Node (VBox).
+ * Controller and Custom Node (VBox) for the Wallet screen.
+ *
+ * <p><b>Responsibilities:</b></p>
+ * <ul>
+ *   <li>Display current balance and frozen (locked) balance.</li>
+ *   <li>Handle deposit with optional TOTP Challenge-Response.</li>
+ *   <li>Handle withdrawal (Maker step) with optional TOTP Challenge-Response.</li>
+ *   <li>Display the transaction history table.</li>
+ *   <li>Listen for real-time {@code WITHDRAW_APPROVED} / {@code WITHDRAW_REJECTED}
+ *       notifications from the server.</li>
+ * </ul>
+ *
+ * <p><b>Threading model:</b> All EventBus listeners receive events on the network
+ * thread. Any JavaFX scene graph mutation MUST be wrapped in
+ * {@link Platform#runLater(Runnable)}.</p>
+ *
+ * <p><b>Lifecycle:</b> Call {@link #dispose()} when this node is removed from the
+ * scene to prevent memory leaks in the EventBus.</p>
  */
 public class WalletController extends VBox {
-    private static final Logger log = LoggerFactory.getLogger(MainApplication.class);
 
+    private static final Logger log = LoggerFactory.getLogger(WalletController.class);
+
+    // ── Callback ──────────────────────────────────────────────────────────────
     private Runnable onReturnAction;
 
-
+    // ── FXML — Deposit ────────────────────────────────────────────────────────
     @FXML private Label lblTotalBalance;
     @FXML private Label lblFrozenBalance;
     @FXML private TextField txtDepositAmount;
+    @FXML private Button btnDeposit;
 
+    // ── FXML — Withdrawal [NEW] ───────────────────────────────────────────────
+    /** Amount the user wishes to withdraw (in VND). */
+    @FXML private TextField txtWithdrawAmount;
+
+    /** Dropdown: "BANK_TRANSFER", "MOMO", "ZALOPAY". */
+    @FXML private ComboBox<String> cmbPayoutMethod;
+
+    /** Bank name, account number, account holder name, etc. */
+    @FXML private TextField txtPayoutDetails;
+
+    /** Triggers the withdrawal request. */
+    @FXML private Button btnWithdraw;
+
+    // ── FXML — Transaction Table ──────────────────────────────────────────────
     @FXML private TableView<WalletTransaction> tableTransactions;
     @FXML private TableColumn<WalletTransaction, String> colId;
     @FXML private TableColumn<WalletTransaction, String> colDate;
-    @FXML private TableColumn<WalletTransaction, Long> colAmount;
+    @FXML private TableColumn<WalletTransaction, Long>   colAmount;
     @FXML private TableColumn<WalletTransaction, String> colDescription;
 
-    @FXML private Button btnDeposit;
-
-    private long currentBalance = 0L;
+    // ── State ─────────────────────────────────────────────────────────────────
+    private long currentBalance       = 0L;
     private long currentFrozenBalance = 0L;
-    private ObservableList<WalletTransaction> transactionData = FXCollections.observableArrayList();
-    // ── NEW: Lưu amount đang chờ TOTP để retry ───────────────────────
+    private final ObservableList<WalletTransaction> transactionData =
+            FXCollections.observableArrayList();
+
+    // ── Pending TOTP state ────────────────────────────────────────────────────
+    /** Stores the pending deposit amount while waiting for TOTP input. */
+    private long pendingDepositAmount = 0L;
+
+    /** Stores the full pending withdrawal payload while waiting for TOTP input. */
+    private long   pendingWithdrawAmount  = 0L;
+    private String pendingPayoutMethod    = null;
+    private String pendingPayoutDetails   = null;
+
+    // ── EventBus listeners (kept as fields to allow removal in dispose()) ─────
+    private PropertyChangeListener walletFetchListener;
+    private PropertyChangeListener requireTotpListener;
+    private PropertyChangeListener invalidTotpListener;
+    private PropertyChangeListener withdrawSuccessListener;
+    private PropertyChangeListener withdrawApprovedListener;
+    private PropertyChangeListener withdrawRejectedListener;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CONSTRUCTOR
+    // ─────────────────────────────────────────────────────────────────────────
+
     /**
-     * Lưu amount đang chờ xác thực để dùng khi retry.
+     * Loads {@code WalletView.fxml} as a custom control embedded in this VBox.
+     *
+     * @throws RuntimeException if the FXML file cannot be loaded.
      */
-    private double pendingDepositAmount = 0.0;
-
-    // ── EventBus listener để remove khi dispose ─────────────────────
-    private java.beans.PropertyChangeListener requireTotpListener;
-    private java.beans.PropertyChangeListener invalidTotpListener;
-
     public WalletController() {
-        // Load FXML as a Custom Control
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/gui/WalletView.fxml"));
         fxmlLoader.setRoot(this);
         fxmlLoader.setController(this);
-
         try {
             fxmlLoader.load();
         } catch (IOException e) {
@@ -76,63 +125,100 @@ public class WalletController extends VBox {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // INITIALIZATION
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Initializes table columns, populates the payout method list,
+     * and registers all required EventBus listeners.
+     *
+     * <p>Called automatically by FXMLLoader after injection of @FXML fields.</p>
+     */
     @FXML
     public void initialize() {
-        // Initialize table columns
+        // ── Table setup ───────────────────────────────────────────────────────
         colDate.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
         colDescription.setCellValueFactory(new PropertyValueFactory<>("description"));
+        tableTransactions.setItems(transactionData);
 
-        AuctionEventBus.addListener("FETCH_WALLET_SUCCESS", event -> {
-            NetworkMessage response = (NetworkMessage) event.getNewValue();
-            Map<String, Object> map = (Map<String, Object>) response.getData();
-            long balance = Long.parseLong(map.get("balance").toString());
-            long lockedBalance = Long.parseLong(map.get("lockedBalance").toString());
-            List<Map<String, Object>> transactions = (List<Map<String, Object>>) map.get("transactions");
-            transactionData.clear();
-            transactions.forEach(transaction -> {
-                WalletTransaction walletTransaction = new WalletTransaction(
-                        transaction.get("id").toString(),
-                        "",
-                        ((Number) transaction.get("amount")).longValue(),
-                        transaction.get("description").toString()
-                );
-                walletTransaction.setCreatedAt(LocalDateTime.parse(transaction.get("createdAt").toString(), DateTimeFormatter.ISO_DATE_TIME));
-                transactionData.add(walletTransaction);
-            });
-            Platform.runLater(() -> {
-                setWalletBalance(balance);
-                setWalletLockedBalance(lockedBalance);
-                tableTransactions.setItems(transactionData);
-            });
-        });
+        // ── Withdrawal form setup ─────────────────────────────────────────────
+        if (cmbPayoutMethod != null) {
+            cmbPayoutMethod.setItems(
+                    FXCollections.observableArrayList("BANK_TRANSFER", "MOMO", "ZALOPAY"));
+            cmbPayoutMethod.getSelectionModel().selectFirst();
+        }
 
-        requireTotpListener = event -> onRequireTotpPayment(event.getNewValue());
-        invalidTotpListener = event -> onInvalidTotp(event.getNewValue());
+        // ── EventBus listeners ────────────────────────────────────────────────
+        walletFetchListener = event -> onWalletFetched(event.getNewValue());
+        requireTotpListener  = event -> onRequireTotpPayment(event.getNewValue());
+        invalidTotpListener  = event -> onInvalidTotp(event.getNewValue());
+        withdrawSuccessListener  = event -> onWithdrawRequestSuccess(event.getNewValue());
+        withdrawApprovedListener = event -> onWithdrawApproved(event.getNewValue());
+        withdrawRejectedListener = event -> onWithdrawRejected(event.getNewValue());
 
-        AuctionEventBus.addListener(
-                ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
-        AuctionEventBus.addListener(
-                ClientPaymentHandler.INVALID_TOTP, invalidTotpListener);
+        AuctionEventBus.addListener("FETCH_WALLET_SUCCESS",               walletFetchListener);
+        AuctionEventBus.addListener(ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
+        AuctionEventBus.addListener(ClientPaymentHandler.INVALID_TOTP,         invalidTotpListener);
+        AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_REQUEST_SUCCESS, withdrawSuccessListener);
+        AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_APPROVED,   withdrawApprovedListener);
+        AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_REJECTED,   withdrawRejectedListener);
 
         WalletService.fetchWalletHistory();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PUBLIC API
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Sets the callback to invoke when the user clicks "Back". */
     public void setOnReturnAction(Runnable action) {
         this.onReturnAction = action;
     }
 
+    /**
+     * Updates the displayed available balance.
+     *
+     * @param balance New available balance in VND.
+     */
     public void setWalletBalance(long balance) {
         currentBalance = balance;
-        lblTotalBalance.setText(String.valueOf(currentBalance) + " N VND");
+        lblTotalBalance.setText(balance + " VND");
     }
 
+    /**
+     * Updates the displayed locked (frozen) balance.
+     *
+     * @param lockedBalance New locked balance in VND.
+     */
     public void setWalletLockedBalance(long lockedBalance) {
         currentFrozenBalance = lockedBalance;
-        lblFrozenBalance.setText(String.valueOf(currentFrozenBalance) + " N VND");
+        lblFrozenBalance.setText(lockedBalance + " VND");
     }
 
+    /**
+     * Removes all EventBus listeners registered by this controller.
+     *
+     * <p>MUST be called when this node is removed from the scene to prevent
+     * memory leaks caused by stale listener references in the EventBus.</p>
+     */
+    public void dispose() {
+        AuctionEventBus.removeListener("FETCH_WALLET_SUCCESS",               walletFetchListener);
+        AuctionEventBus.removeListener(ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
+        AuctionEventBus.removeListener(ClientPaymentHandler.INVALID_TOTP,         invalidTotpListener);
+        AuctionEventBus.removeListener(ClientPaymentHandler.WITHDRAW_REQUEST_SUCCESS, withdrawSuccessListener);
+        AuctionEventBus.removeListener(ClientPaymentHandler.WITHDRAW_APPROVED,   withdrawApprovedListener);
+        AuctionEventBus.removeListener(ClientPaymentHandler.WITHDRAW_REJECTED,   withdrawRejectedListener);
+        log.debug("WalletController disposed: all EventBus listeners removed.");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FXML HANDLERS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Navigates back to the previous screen. */
     @FXML
     private void handleReturn() {
         if (onReturnAction != null) {
@@ -140,15 +226,12 @@ public class WalletController extends VBox {
         }
     }
 
+    /** Handles the Deposit button click. Validates input and triggers deposit flow. */
     @FXML
     private void handleDeposit() {
-        String input = txtDepositAmount.getText().trim();
-        double amount;
-        try {
-            amount = Double.parseDouble(input);
-            if (amount <= 0) throw new NumberFormatException();
-        } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi", "Vui lòng nhập số tiền hợp lệ!");
+        long amount = parsePositiveLong(txtDepositAmount.getText());
+        if (amount <= 0) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi", "Vui lòng nhập số tiền hợp lệ (> 0)!");
             return;
         }
         AnimateEffect.pauseNode(btnDeposit, 2);
@@ -156,62 +239,191 @@ public class WalletController extends VBox {
     }
 
     /**
-     * Gửi request nạp tiền lên server.
-     *
-     * @param amount   Số tiền nạp (VND).
-     * @param totpCode Mã TOTP 6 số (null nếu chưa có).
+     * Handles the Withdraw button click.
+     * Validates all withdrawal form fields and triggers the withdrawal flow.
      */
-    private void sendDepositRequest(double amount, String totpCode) {
-        pendingDepositAmount = amount; // Lưu lại để retry nếu bị TOTP challenge
-
-        // Format mới: Map với amount và totpCode tùy chọn
-        java.util.HashMap<String, Object> payload = new java.util.HashMap<>();
-        payload.put("amount", (long) amount);
-        if (totpCode != null && !totpCode.isBlank()) {
-            payload.put("totpCode", totpCode);
+    @FXML
+    private void handleWithdraw() {
+        // ── Validate amount ───────────────────────────────────────────────────
+        long amount = parsePositiveLong(txtWithdrawAmount.getText());
+        if (amount <= 0) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi",
+                    "Vui lòng nhập số tiền rút hợp lệ (> 0 VND)!");
+            return;
         }
 
-        NetworkService.sendMessage("CREATE_DEPOSIT", payload);
+        // ── Validate payout method ────────────────────────────────────────────
+        String payoutMethod = cmbPayoutMethod.getValue();
+        if (payoutMethod == null || payoutMethod.isBlank()) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi",
+                    "Vui lòng chọn phương thức nhận tiền!");
+            return;
+        }
+
+        // ── Validate payout details ───────────────────────────────────────────
+        String payoutDetails = txtPayoutDetails.getText().trim();
+        if (payoutDetails.isBlank()) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi",
+                    "Vui lòng nhập thông tin tài khoản nhận tiền!");
+            return;
+        }
+
+        // ── Optimistic balance check (server-side check is authoritative) ─────
+        if (amount > currentBalance) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Số dư không đủ",
+                    String.format("Số dư khả dụng (%,d VND) không đủ để rút %,d VND.",
+                            currentBalance, amount));
+            return;
+        }
+
+        AnimateEffect.pauseNode(btnWithdraw, 3);
+        sendWithdrawRequest(amount, payoutMethod, payoutDetails, null);
     }
 
-    // ── NEW: Xử lý REQUIRE_TOTP_PAYMENT ─────────────────────────────
+    /** Quick-amount button ("+50k", "+200k", "+1M") sets the deposit text field. */
+    @FXML
+    private void addQuickAmount(javafx.event.ActionEvent event) {
+        Button btn = (Button) event.getSource();
+        String text = btn.getText()
+                .replace("+", "")
+                .replace("k", "000")
+                .replace("M", "000000");
+        txtDepositAmount.setText(text);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // EVENTBUS RESPONSE HANDLERS
+    // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Được gọi khi server yêu cầu TOTP trước khi nạp tiền.
-     * Hiển thị dialog nhập mã 6 số và retry với mã đó.
+     * Processes the {@code FETCH_WALLET_SUCCESS} response from the server.
+     *
+     * <p><b>Threading:</b> This method is invoked on the network thread.
+     * Data preparation runs off the FX thread; all scene graph mutations are
+     * deferred to {@link Platform#runLater(Runnable)}.</p>
+     *
+     * @param eventData The raw event payload (a {@link NetworkMessage}).
+     */
+    @SuppressWarnings("unchecked")
+    private void onWalletFetched(Object eventData) {
+        try {
+            NetworkMessage response = (NetworkMessage) eventData;
+            Object rawData = response.getData();
+            if (rawData == null) {
+                log.warn("FETCH_WALLET_SUCCESS: received null data.");
+                return;
+            }
+
+            Map<String, Object> map = (Map<String, Object>) rawData;
+
+            Object balanceObj = map.get("balance");
+            Object lockedObj  = map.get("lockedBalance");
+            if (balanceObj == null || lockedObj == null) {
+                log.warn("FETCH_WALLET_SUCCESS: missing balance keys in payload.");
+                return;
+            }
+
+            long balance       = ((Number) balanceObj).longValue();
+            long lockedBalance = ((Number) lockedObj).longValue();
+
+            // Build the transaction list OFF the FX thread to avoid blocking UI.
+            List<Map<String, Object>> rawTx =
+                    (List<Map<String, Object>>) map.getOrDefault("transactions", List.of());
+
+            List<WalletTransaction> newTx = new ArrayList<>(rawTx.size());
+            for (Map<String, Object> tx : rawTx) {
+                WalletTransaction wt = new WalletTransaction(
+                        tx.get("id").toString(),
+                        "",
+                        ((Number) tx.get("amount")).longValue(),
+                        tx.get("description").toString()
+                );
+                wt.setCreatedAt(LocalDateTime.parse(
+                        tx.get("createdAt").toString(),
+                        DateTimeFormatter.ISO_DATE_TIME));
+                newTx.add(wt);
+            }
+
+            // All scene-graph mutations MUST be on the FX thread.
+            Platform.runLater(() -> {
+                setWalletBalance(balance);
+                setWalletLockedBalance(lockedBalance);
+                transactionData.setAll(newTx); // atomic replace — thread-safe on FX thread
+            });
+
+        } catch (Exception e) {
+            log.error("Error processing FETCH_WALLET_SUCCESS response", e);
+        }
+    }
+
+    /**
+     * Called when the server sends {@code REQUIRE_TOTP_PAYMENT}.
+     *
+     * <p>Determines whether the pending operation was a deposit or a withdrawal
+     * by checking which pending state fields are populated, then shows the
+     * appropriate TOTP dialog and retries.</p>
+     *
+     * @param eventData The raw event payload (a {@link NetworkMessage}).
      */
     @SuppressWarnings("unchecked")
     private void onRequireTotpPayment(Object eventData) {
         Platform.runLater(() -> {
-            // Server echo lại amount; dùng pendingDepositAmount làm fallback
-            long serverAmount = pendingDepositAmount > 0
-                    ? (long) pendingDepositAmount
-                    : 0L;
+            long serverAmount = 0L;
+            String payoutMethod  = null;
+            String payoutDetails = null;
 
+            // Try to extract echo-ed data from server response.
             try {
                 NetworkMessage msg = (NetworkMessage) eventData;
                 Map<String, Object> data = (Map<String, Object>) msg.getData();
                 if (data.containsKey("amount")) {
-                    serverAmount = Long.parseLong(data.get("amount").toString());
+                    serverAmount = ((Number) data.get("amount")).longValue();
+                }
+                if (data.containsKey("payoutMethod")) {
+                    payoutMethod = (String) data.get("payoutMethod");
+                }
+                if (data.containsKey("payoutDetails")) {
+                    payoutDetails = (String) data.get("payoutDetails");
                 }
             } catch (Exception ignored) {
+                // Fall back to locally-stored pending state below.
             }
 
-            String totpCode = showTotpChallengeDialog(serverAmount);
-            if (totpCode != null) {
-                // User đã nhập mã → retry với TOTP
-                retryDepositWithTotp(serverAmount, totpCode);
+            // Determine if this challenge is for withdrawal or deposit.
+            boolean isWithdrawal = (pendingPayoutMethod != null);
+
+            if (isWithdrawal) {
+                // Use server-echoed values or fall back to local state.
+                long amount = serverAmount > 0 ? serverAmount : pendingWithdrawAmount;
+                String method  = payoutMethod  != null ? payoutMethod  : pendingPayoutMethod;
+                String details = payoutDetails != null ? payoutDetails : pendingPayoutDetails;
+
+                String totpCode = showTotpChallengeDialog(amount, "rút");
+                if (totpCode != null) {
+                    sendWithdrawRequest(amount, method, details, totpCode);
+                } else {
+                    log.info("User cancelled TOTP challenge for withdrawal.");
+                    if (btnWithdraw != null) btnWithdraw.setDisable(false);
+                }
             } else {
-                // User hủy dialog → không làm gì thêm
-                log.info("User cancelled TOTP challenge for deposit.");
-                btnDeposit.setDisable(false); // Cho phép thử lại sau
+                // Deposit flow.
+                long amount = serverAmount > 0 ? serverAmount : pendingDepositAmount;
+                String totpCode = showTotpChallengeDialog(amount, "nạp");
+                if (totpCode != null) {
+                    sendDepositRequest(amount, totpCode);
+                } else {
+                    log.info("User cancelled TOTP challenge for deposit.");
+                    if (btnDeposit != null) btnDeposit.setDisable(false);
+                }
             }
         });
     }
 
     /**
-     * Được gọi khi server báo mã TOTP không hợp lệ.
-     * Hiển thị thông báo và cho phép thử lại.
+     * Called when the server sends {@code INVALID_TOTP}.
+     * Displays an error alert and re-enables the relevant submit button.
+     *
+     * @param eventData Ignored (the alert message is hard-coded for UX clarity).
      */
     private void onInvalidTotp(Object eventData) {
         Platform.runLater(() -> {
@@ -221,22 +433,129 @@ public class WalletController extends VBox {
                     "Mã 6 số bạn nhập không đúng hoặc đã hết hạn.\n"
                             + "Vui lòng mở Google Authenticator và nhập mã mới."
             );
-            // Không retry tự động; để user bấm nạp tiền lại nếu muốn
-            btnDeposit.setDisable(false);
+            // Re-enable whichever button was active.
+            if (pendingPayoutMethod != null) {
+                if (btnWithdraw != null) btnWithdraw.setDisable(false);
+            } else {
+                if (btnDeposit != null) btnDeposit.setDisable(false);
+            }
         });
     }
 
     /**
-     * Hiển thị dialog yêu cầu nhập mã TOTP.
-     * Tái sử dụng UI pattern đơn giản (TextField 6 số).
+     * Called when the server sends {@code WITHDRAW_REQUEST_SUCCESS}.
+     * Shows confirmation, refreshes the wallet, and clears the form.
      *
-     * @param amount Số tiền đang chờ xác thực (hiển thị để user biết context).
-     * @return Chuỗi mã 6 số đã nhập, hoặc {@code null} nếu user hủy.
+     * @param eventData The raw event payload (a {@link NetworkMessage}).
      */
-    private String showTotpChallengeDialog(long amount) {
+    @SuppressWarnings("unchecked")
+    private void onWithdrawRequestSuccess(Object eventData) {
+        Platform.runLater(() -> {
+            String msg = "Yêu cầu rút tiền đã được ghi nhận và đang chờ Admin duyệt.";
+            try {
+                NetworkMessage nm = (NetworkMessage) eventData;
+                Map<String, Object> data = (Map<String, Object>) nm.getData();
+                if (data.containsKey("message")) {
+                    msg = data.get("message").toString();
+                }
+            } catch (Exception ignored) { /* Use default message */ }
+
+            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Yêu Cầu Rút Tiền", msg);
+
+            // Clear pending state and form.
+            clearWithdrawForm();
+            if (btnWithdraw != null) btnWithdraw.setDisable(false);
+
+            // Refresh wallet to reflect updated balance.
+            WalletService.fetchWalletHistory();
+        });
+    }
+
+    /**
+     * Called when the server sends real-time {@code WITHDRAW_APPROVED}.
+     * Notifies the user and refreshes the wallet balance.
+     *
+     * @param eventData The raw event payload (a {@link NetworkMessage}).
+     */
+    @SuppressWarnings("unchecked")
+    private void onWithdrawApproved(Object eventData) {
+        Platform.runLater(() -> {
+            AlertHelper.showAlert(Alert.AlertType.INFORMATION,
+                    "Rút Tiền Thành Công",
+                    "Yêu cầu rút tiền của bạn đã được Admin duyệt.\n"
+                            + "Tiền đã được chuyển ra khỏi hệ thống.");
+            WalletService.fetchWalletHistory();
+        });
+    }
+
+    /**
+     * Called when the server sends real-time {@code WITHDRAW_REJECTED}.
+     * Notifies the user that their balance has been refunded.
+     *
+     * @param eventData The raw event payload (a {@link NetworkMessage}).
+     */
+    @SuppressWarnings("unchecked")
+    private void onWithdrawRejected(Object eventData) {
+        Platform.runLater(() -> {
+            AlertHelper.showAlert(Alert.AlertType.WARNING,
+                    "Yêu Cầu Bị Từ Chối",
+                    "Yêu cầu rút tiền của bạn đã bị Admin từ chối.\n"
+                            + "Số tiền đã được hoàn lại vào số dư khả dụng.");
+            WalletService.fetchWalletHistory();
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PRIVATE HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Sends a deposit request to the server, storing {@code amount} in
+     * {@link #pendingDepositAmount} and clearing any pending withdrawal state.
+     *
+     * @param amount   Amount in VND.
+     * @param totpCode 6-digit TOTP, or {@code null}.
+     */
+    private void sendDepositRequest(long amount, String totpCode) {
+        // Mark that the pending operation is a deposit (not a withdrawal).
+        pendingDepositAmount = amount;
+        clearWithdrawPendingState();
+        WalletService.createDeposit(amount, totpCode);
+    }
+
+    /**
+     * Sends a withdrawal request to the server, storing all payload fields so
+     * that the TOTP retry can reconstruct the exact same request.
+     *
+     * @param amount        Amount in VND.
+     * @param payoutMethod  Payment method string.
+     * @param payoutDetails Account details string.
+     * @param totpCode      6-digit TOTP, or {@code null}.
+     */
+    private void sendWithdrawRequest(long amount,
+                                     String payoutMethod,
+                                     String payoutDetails,
+                                     String totpCode) {
+        // Store pending state so TOTP retry can re-send exactly the same request.
+        pendingWithdrawAmount = amount;
+        pendingPayoutMethod   = payoutMethod;
+        pendingPayoutDetails  = payoutDetails;
+        pendingDepositAmount  = 0L; // clear deposit state
+
+        WalletService.requestWithdrawal(amount, payoutMethod, payoutDetails, totpCode);
+    }
+
+    /**
+     * Shows a modal dialog asking the user to enter their 6-digit TOTP code.
+     *
+     * @param amount      The transaction amount (shown for context).
+     * @param actionLabel Either "nạp" or "rút" (shown in the dialog header).
+     * @return The entered 6-digit code string, or {@code null} if cancelled.
+     */
+    private String showTotpChallengeDialog(long amount, String actionLabel) {
         Dialog<String> dialog = new Dialog<>();
-        dialog.setTitle("Xác thực bảo mật");
-        dialog.setHeaderText("🔐 Xác nhận giao dịch " + String.format("%,d", amount) + " VND");
+        dialog.setTitle("Xác Thực Bảo Mật");
+        dialog.setHeaderText(String.format("🔐 Xác nhận giao dịch %s %,d VND", actionLabel, amount));
 
         Label info = new Label(
                 "Tài khoản của bạn đã bật bảo vệ TOTP cho giao dịch.\n"
@@ -246,7 +565,7 @@ public class WalletController extends VBox {
         TextField otpField = new TextField();
         otpField.setPromptText("Nhập mã 6 số...");
         otpField.textProperty().addListener((obs, oldVal, newVal) -> {
-            // Chỉ cho nhập số, tối đa 6 ký tự
+            // Only allow digits, max 6 characters.
             if (!newVal.matches("\\d*") || newVal.length() > 6) {
                 otpField.setText(oldVal);
             }
@@ -268,34 +587,32 @@ public class WalletController extends VBox {
         return result.orElse(null);
     }
 
-    /**
-     * Gửi lại lệnh CREATE_DEPOSIT kèm mã TOTP.
-     */
-    private void retryDepositWithTotp(long amount, String totpCode) {
-        log.info("Retrying deposit with TOTP code for amount {}", amount);
-        sendDepositRequest(amount, totpCode);
+    /** Clears the pending withdrawal state (method and details). */
+    private void clearWithdrawPendingState() {
+        pendingWithdrawAmount = 0L;
+        pendingPayoutMethod   = null;
+        pendingPayoutDetails  = null;
+    }
+
+    /** Clears the withdrawal form fields and resets pending state. */
+    private void clearWithdrawForm() {
+        clearWithdrawPendingState();
+        if (txtWithdrawAmount != null) txtWithdrawAmount.clear();
+        if (txtPayoutDetails != null)  txtPayoutDetails.clear();
     }
 
     /**
-     * Gọi khi WalletController bị đóng để giải phóng EventBus listeners.
-     * Thêm vào method dispose() hiện có hoặc tạo mới nếu chưa có.
+     * Parses a text field string into a positive {@code long}.
+     *
+     * @param text The raw text input.
+     * @return The parsed value, or {@code -1} if the input is blank or invalid.
      */
-    public void dispose() {
-        if (requireTotpListener != null) {
-            AuctionEventBus.removeListener(
-                    ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
+    private long parsePositiveLong(String text) {
+        try {
+            long value = Long.parseLong(text.trim());
+            return value > 0 ? value : -1L;
+        } catch (NumberFormatException e) {
+            return -1L;
         }
-        if (invalidTotpListener != null) {
-            AuctionEventBus.removeListener(
-                    ClientPaymentHandler.INVALID_TOTP, invalidTotpListener);
-        }
-    }
-
-
-    @FXML
-    private void addQuickAmount(javafx.event.ActionEvent event) {
-        Button btn = (Button) event.getSource();
-        String text = btn.getText().replace("+", "").replace("k", "000").replace("M", "000000");
-        txtDepositAmount.setText(text);
     }
 }

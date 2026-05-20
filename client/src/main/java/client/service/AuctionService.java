@@ -4,10 +4,13 @@ import client.network.NetworkService;
 import gui.process.AlertHelper;
 import javafx.scene.control.Alert;
 import model.auction.Auction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class AuctionService {
+    private static final Logger log = LoggerFactory.getLogger(AuctionService.class);
     public static void placeBid(String currentAuctionId,long bidAmount) {
         Map<String, Object> bidData = Map.of(
                 "auctionId", currentAuctionId,
@@ -34,7 +37,15 @@ public class AuctionService {
     public static void createAuction(Auction auction) {
         NetworkService.sendMessage("CREATE_AUCTION", auction);
     }
+    /**
+     * Sends a request to the server to extend the auction time.
+     * Currently a placeholder — implementation pending.
+     *
+     * @param auctionId    The target auction's ID.
+     * @param timeMinutes  Number of minutes to extend by.
+     */
     public static void extendAuctionTimeMinutes(String auctionId, long timeMinutes) {
-        AlertHelper.showAlert(Alert.AlertType.INFORMATION,"gay","cum shot");
+        // TODO: Implement when server-side EXTEND_AUCTION command is ready.
+        log.warn("extendAuctionTimeMinutes() called but not yet implemented.");
     }
 }
