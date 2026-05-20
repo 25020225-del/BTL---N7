@@ -291,7 +291,7 @@ public class MultiThreadedServer {
 
         commandDispatcher = new server.handler.CommandDispatcher(
                 userDAO, auctionDAO, bidDAO, walletDAO,
-                withdrawalDAO,  // ← THÊM DÒNG NÀY
+                withdrawalDAO,
                 totpService, sellerCtrl, paymentCtrl
         );
 
