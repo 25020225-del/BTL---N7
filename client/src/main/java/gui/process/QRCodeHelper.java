@@ -1,15 +1,17 @@
 package gui.process;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import static utils.ConsoleColors.*;
+import java.util.Map;
 
 /**
  * A utility class for generating Quick Response (QR) codes.
@@ -36,6 +38,12 @@ public final class QRCodeHelper {
     public static Image generateQRCodeImage(String text, int width, int height) {
         try {
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
+
+            Map<EncodeHintType, Object> hints = Map.of(
+                    EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H,
+                    EncodeHintType.MARGIN, 4
+            );
+
             BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height);
 
             WritableImage image = new WritableImage(width, height);
