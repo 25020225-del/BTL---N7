@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import controller.ServerPaymentController;
-import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import utils.JacksonConfig;
@@ -14,29 +13,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Handles incoming HTTP Webhook requests from the VietQR payment gateway (e.g., PayOS, Casso).
- * Applies the Single Responsibility Principle by strictly managing HTTP parsing and validation.
+ * Handles incoming HTTP Webhook requests from Bank APIs (e.g., Casso, SePay).
+ * Parses the transaction memo using Regex to reconcile direct bank transfers.
  */
 public class VietQRWebhookHandler implements HttpHandler {
     private static final Logger log = LoggerFactory.getLogger(VietQRWebhookHandler.class);
-
-    // Reuse the centralized Jackson ObjectMapper [cite: 1901, 1902, 1903, 1904, 1905, 1906]
     private final ObjectMapper mapper = JacksonConfig.mapper();
     private final ServerPaymentController paymentController;
 
-    /**
-     * Dependency Injection for the payment controller.
-     * * @param paymentController Controller handling the core financial business logic.
-     */
     public VietQRWebhookHandler(ServerPaymentController paymentController) {
         this.paymentController = paymentController;
     }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        // 1. Guard Clause: Only accept POST requests for Webhooks
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             sendHttpResponse(exchange, 405, "{\"success\": false, \"message\": \"Method Not Allowed\"}");
             return;
@@ -44,51 +38,62 @@ public class VietQRWebhookHandler implements HttpHandler {
 
         try (InputStream is = exchange.getRequestBody()) {
             String requestBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            log.info("Received VietQR Webhook payload: {}", requestBody);
+            log.info("Received Bank Webhook payload: {}", requestBody);
 
-            // TODO: Verify Signature/HMAC here to ensure data integrity and prevent spoofing.
-            // if (!isValidSignature(exchange, requestBody)) {
-            //     sendHttpResponse(exchange, 401, "{\"success\": false, \"message\": \"Unauthorized\"}");
-            //     return;
-            // }
-
-            // 2. Parse JSON payload
             JsonNode payload = mapper.readTree(requestBody);
+            JsonNode dataArray = payload.path("data");
 
-            // Assuming standard format: { "data": { "orderCode": "12345", "amount": 50000 } }
-            JsonNode data = payload.path("data");
-            String orderCode = data.path("orderCode").asText();
-            long amount = data.path("amount").asLong();
+            if (dataArray.isArray() && dataArray.size() > 0) {
+                for (JsonNode transaction : dataArray) {
+                    long receivedAmount = transaction.path("amount").asLong();
+                    String description = transaction.path("description").asText();
 
-            // 3. Retrieve pending transaction context (User)
-            // TODO: Fetch the associated User from the database or a shared ConcurrentHashMap using the orderCode.
-            User user = null; // fetchUserByOrderCode(orderCode);
+                    Pattern pattern = Pattern.compile("(VQR-\\d+)");
+                    Matcher matcher = pattern.matcher(description);
 
-            if (user != null) {
-                // 4. Delegate business logic to Controller (Dependency Inversion)
-                // Use the existing ACID transaction method[cite: 2204, 2205].
-                paymentController.processDepositSuccess(user, "VQR-" + orderCode, amount)
-                        .thenAccept(success -> {
-                            if (success) {
-                                log.info("Webhook processed successfully for Order: {}", orderCode);
+                    if (matcher.find()) {
+                        String orderId = matcher.group(1);
+                        log.info("Extracted Order ID: {} with Amount: {}", orderId, receivedAmount);
+
+                        // Find pending deposits in RAM
+                        PaymentHandler.DepositInfo info = PaymentHandler.pendingDeposits.get(orderId);
+
+                        if (info != null) {
+                            // Reconciliation
+                            if (info.getAmountVND() == receivedAmount) {
+                                // Prevent Double-spending
+                                if (info.getIsProcessing().compareAndSet(false, true)) {
+                                    paymentController.processDepositSuccess(info.getUser(), orderId, receivedAmount)
+                                            .thenAccept(success -> {
+                                                if (success) {
+                                                    PaymentHandler.pendingDeposits.remove(orderId);
+                                                    info.getClient().sendResponse("DEPOSIT_SUCCESS",
+                                                            "VietQR payment successful. Your balance has been updated.");
+                                                    log.info("Reconciliation successful for Order: {}", orderId);
+                                                } else {
+                                                    info.getIsProcessing().set(false);
+                                                }
+                                            });
+                                }
+                            } else {
+                                log.warn("Amount mismatch for Order {}. Expected: {}, Received: {}",
+                                        orderId, info.getAmountVND(), receivedAmount);
                             }
-                        });
-            } else {
-                log.warn("Order code {} not found in pending transactions.", orderCode);
+                        } else {
+                            log.warn("Order code {} not found in pending deposits (Expired or Invalid).", orderId);
+                        }
+                    }
+                }
             }
 
-            // 5. Acknowledge receipt to the payment gateway
             sendHttpResponse(exchange, 200, "{\"success\": true}");
 
         } catch (Exception e) {
-            log.error("Failed to process Webhook", e);
+            log.error("Failed to process Bank Webhook", e);
             sendHttpResponse(exchange, 500, "{\"success\": false, \"message\": \"Internal Server Error\"}");
         }
     }
 
-    /**
-     * Utility method to format and send HTTP responses.
-     */
     private void sendHttpResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json");
