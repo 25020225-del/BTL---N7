@@ -14,7 +14,8 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.VBox; // Import đúng layout gốc
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import model.finance.WalletTransaction;
 import network.NetworkMessage;
 import org.slf4j.Logger;
@@ -37,24 +38,36 @@ public class WalletController extends VBox {
     private Runnable onReturnAction;
 
 
-    @FXML private Label lblTotalBalance;
-    @FXML private Label lblFrozenBalance;
-    @FXML private TextField txtDepositAmount;
+    @FXML
+    private Label lblTotalBalance;
+    @FXML
+    private Label lblFrozenBalance;
+    @FXML
+    private TextField txtDepositAmount;
 
-    @FXML private TableView<WalletTransaction> tableTransactions;
-    @FXML private TableColumn<WalletTransaction, String> colId;
-    @FXML private TableColumn<WalletTransaction, String> colDate;
-    @FXML private TableColumn<WalletTransaction, Long> colAmount;
-    @FXML private TableColumn<WalletTransaction, String> colDescription;
+    @FXML
+    private TableView<WalletTransaction> tableTransactions;
+    @FXML
+    private TableColumn<WalletTransaction, String> colId;
+    @FXML
+    private TableColumn<WalletTransaction, String> colDate;
+    @FXML
+    private TableColumn<WalletTransaction, Long> colAmount;
+    @FXML
+    private TableColumn<WalletTransaction, String> colDescription;
 
-    @FXML private Button btnDeposit;
-    @FXML private Button btnDepositVietQR;
+    @FXML
+    private Button btnDeposit;
+    @FXML
+    private Button btnDepositVietQR;
 
     private long currentBalance = 0L;
     private long currentFrozenBalance = 0L;
     private ObservableList<WalletTransaction> transactionData = FXCollections.observableArrayList();
     // ── NEW: Lưu amount đang chờ TOTP để retry ───────────────────────
-    /** Lưu amount đang chờ xác thực để dùng khi retry. */
+    /**
+     * Lưu amount đang chờ xác thực để dùng khi retry.
+     */
     private double pendingDepositAmount = 0.0;
 
     // ── EventBus listener để remove khi dispose ─────────────────────
@@ -82,9 +95,9 @@ public class WalletController extends VBox {
         colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
         colDescription.setCellValueFactory(new PropertyValueFactory<>("description"));
 
-        AuctionEventBus.addListener("FETCH_WALLET_SUCCESS",event -> {
+        AuctionEventBus.addListener("FETCH_WALLET_SUCCESS", event -> {
             NetworkMessage response = (NetworkMessage) event.getNewValue();
-            Map<String,Object> map = (Map<String, Object>) response.getData();
+            Map<String, Object> map = (Map<String, Object>) response.getData();
             long balance = Long.parseLong(map.get("balance").toString());
             long lockedBalance = Long.parseLong(map.get("lockedBalance").toString());
             List<Map<String, Object>> transactions = (List<Map<String, Object>>) map.get("transactions");
@@ -118,7 +131,7 @@ public class WalletController extends VBox {
         });
 
         requireTotpListener = event -> onRequireTotpPayment(event.getNewValue());
-        invalidTotpListener  = event -> onInvalidTotp(event.getNewValue());
+        invalidTotpListener = event -> onInvalidTotp(event.getNewValue());
 
         AuctionEventBus.addListener(
                 ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
@@ -132,13 +145,14 @@ public class WalletController extends VBox {
         this.onReturnAction = action;
     }
 
-    public void setWalletBalance(long balance){
+    public void setWalletBalance(long balance) {
         currentBalance = balance;
-        lblTotalBalance.setText(String.valueOf(currentBalance)+" N VND");
+        lblTotalBalance.setText(String.valueOf(currentBalance) + " N VND");
     }
-    public void setWalletLockedBalance(long lockedBalance){
+
+    public void setWalletLockedBalance(long lockedBalance) {
         currentFrozenBalance = lockedBalance;
-        lblFrozenBalance.setText(String.valueOf(currentFrozenBalance)+" N VND");
+        lblFrozenBalance.setText(String.valueOf(currentFrozenBalance) + " N VND");
     }
 
     @FXML
@@ -186,8 +200,8 @@ public class WalletController extends VBox {
     /**
      * Gửi request nạp tiền lên server.
      *
-     * @param amount    Số tiền nạp (VND).
-     * @param totpCode  Mã TOTP 6 số (null nếu chưa có).
+     * @param amount   Số tiền nạp (VND).
+     * @param totpCode Mã TOTP 6 số (null nếu chưa có).
      */
     private void sendDepositRequest(double amount, String totpCode) {
         pendingDepositAmount = amount; // Lưu lại để retry nếu bị TOTP challenge
@@ -217,12 +231,13 @@ public class WalletController extends VBox {
                     : 0L;
 
             try {
-                NetworkMessage msg  = (NetworkMessage) eventData;
+                NetworkMessage msg = (NetworkMessage) eventData;
                 Map<String, Object> data = (Map<String, Object>) msg.getData();
                 if (data.containsKey("amount")) {
                     serverAmount = Long.parseLong(data.get("amount").toString());
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
             String totpCode = showTotpChallengeDialog(serverAmount);
             if (totpCode != null) {
@@ -257,7 +272,7 @@ public class WalletController extends VBox {
      * Hiển thị dialog yêu cầu nhập mã TOTP.
      * Tái sử dụng UI pattern đơn giản (TextField 6 số).
      *
-     * @param amount  Số tiền đang chờ xác thực (hiển thị để user biết context).
+     * @param amount Số tiền đang chờ xác thực (hiển thị để user biết context).
      * @return Chuỗi mã 6 số đã nhập, hoặc {@code null} nếu user hủy.
      */
     private String showTotpChallengeDialog(long amount) {
@@ -329,26 +344,88 @@ public class WalletController extends VBox {
     private void showVietQRDialog(String qrString, String orderId) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Pay via VietQR");
-        dialog.setHeaderText("Order ID: " + orderId);
+        dialog.setHeaderText(null);
 
-        VBox content = new VBox(15);
-        content.setAlignment(javafx.geometry.Pos.CENTER);
+        VBox mainContainer = new VBox(25);
+        mainContainer.setAlignment(javafx.geometry.Pos.CENTER);
+        mainContainer.setStyle("-fx-background-color: white; -fx-padding: 40 50;");
 
-        Label instruction = new Label("Open your Internet Banking App and scan the following QR code:");
-        instruction.setStyle("-fx-font-weight: bold;");
+        Label lblTitle = new Label("Scan QR Code to pay");
+        lblTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #0a2540;");
 
-        javafx.scene.image.ImageView qrImageView = new javafx.scene.image.ImageView();
-        javafx.scene.image.Image qrImage = gui.process.QRCodeHelper.generateQRCodeImage(qrString, 300, 300);
-        qrImageView.setImage(qrImage);
+        VBox qrBox = new VBox(15);
+        qrBox.setAlignment(javafx.geometry.Pos.CENTER);
+        qrBox.setStyle("-fx-background-color: #f8f9fa; -fx-padding: 30; -fx-background-radius: 12;");
 
-        Label notice = new Label("Please wait while we are processing your transaction.");
-        notice.setStyle("-fx-text-fill: #777; -fx-font-style: italic;");
+        javafx.scene.layout.StackPane qrStack = new javafx.scene.layout.StackPane();
+        qrStack.setMaxSize(270, 270);
+        VBox.setMargin(qrStack, new javafx.geometry.Insets(10));
 
-        content.getChildren().addAll(instruction, qrImageView, notice);
+        javafx.scene.image.Image qrImage = gui.process.QRCodeHelper.generateQRCodeImage(qrString, 250, 250);
+        javafx.scene.image.ImageView qrImageView = new javafx.scene.image.ImageView(qrImage);
 
-        dialog.getDialogPane().setContent(content);
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        javafx.scene.image.Image logoImage = new javafx.scene.image.Image(
+                getClass().getResourceAsStream("/gui/images/VietQRLogo.png")
+        );
+        javafx.scene.image.ImageView logoView = new javafx.scene.image.ImageView(logoImage);
+        logoView.setFitWidth(30);
+        logoView.setFitHeight(30);
+        logoView.setPreserveRatio(true);
 
+        javafx.scene.shape.Circle logoBg = new javafx.scene.shape.Circle(24, javafx.scene.paint.Color.WHITE);
+        javafx.scene.layout.StackPane centerLogo = new javafx.scene.layout.StackPane(logoBg, logoView);
+        javafx.scene.layout.StackPane.setAlignment(centerLogo, javafx.geometry.Pos.CENTER);
+
+        // 3. Các góc trang trí
+        String cornerStyle = "-fx-border-color: #3665f3; ";
+        int cornerSize = 25;
+        javafx.scene.layout.Region tl = new javafx.scene.layout.Region(); tl.setMaxSize(cornerSize, cornerSize); tl.setStyle(cornerStyle + "-fx-border-width: 3 0 0 3;"); javafx.scene.layout.StackPane.setAlignment(tl, javafx.geometry.Pos.TOP_LEFT);
+        javafx.scene.layout.Region tr = new javafx.scene.layout.Region(); tr.setMaxSize(cornerSize, cornerSize); tr.setStyle(cornerStyle + "-fx-border-width: 3 3 0 0;"); javafx.scene.layout.StackPane.setAlignment(tr, javafx.geometry.Pos.TOP_RIGHT);
+        javafx.scene.layout.Region bl = new javafx.scene.layout.Region(); bl.setMaxSize(cornerSize, cornerSize); bl.setStyle(cornerStyle + "-fx-border-width: 0 0 3 3;"); javafx.scene.layout.StackPane.setAlignment(bl, javafx.geometry.Pos.BOTTOM_LEFT);
+        javafx.scene.layout.Region br = new javafx.scene.layout.Region(); br.setMaxSize(cornerSize, cornerSize); br.setStyle(cornerStyle + "-fx-border-width: 0 3 3 0;"); javafx.scene.layout.StackPane.setAlignment(br, javafx.geometry.Pos.BOTTOM_RIGHT);
+
+        qrStack.getChildren().addAll(qrImageView, centerLogo, tl, tr, bl, br);
+
+        // 4. Thông tin tài khoản và mã đơn
+        Label lblBank = new Label("Ngân hàng TMCP Quân Đội (MBBank)");
+        lblBank.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #6c757d;");
+
+        Label lblAccount = new Label("NGUYỄN QUANG MẠNH");
+        lblAccount.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0a2540;");
+
+        HBox memoBox = new HBox(8);
+        memoBox.setAlignment(javafx.geometry.Pos.CENTER);
+        Label lblMemo = new Label(orderId);
+        lblMemo.setStyle("-fx-font-size: 16px; -fx-text-fill: #6c757d;");
+
+        Button btnCopy = new Button();
+        org.kordamp.ikonli.javafx.FontIcon copyIcon = new org.kordamp.ikonli.javafx.FontIcon("mdi2c-content-copy");
+        copyIcon.setIconColor(javafx.scene.paint.Color.web("#3665f3"));
+        copyIcon.setIconSize(18);
+        btnCopy.setGraphic(copyIcon);
+        btnCopy.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 0;");
+
+        btnCopy.setOnAction(e -> {
+            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+            content.putString(orderId);
+            javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
+            copyIcon.setIconLiteral("mdi2c-check");
+            copyIcon.setIconColor(javafx.scene.paint.Color.GREEN);
+            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2));
+            pause.setOnFinished(event -> { copyIcon.setIconLiteral("mdi2c-content-copy"); copyIcon.setIconColor(javafx.scene.paint.Color.web("#3665f3")); });
+            pause.play();
+        });
+
+        memoBox.getChildren().addAll(lblMemo, btnCopy);
+        qrBox.getChildren().addAll(qrStack, lblBank, lblAccount, memoBox);
+
+        // 5. Footer
+        Label lblInstruction = new Label("Open Internet Banking/Wallet App supporting VietQR to continue");
+        lblInstruction.setStyle("-fx-font-size: 16px; -fx-text-fill: #0a2540; -fx-font-weight: bold;");
+
+        mainContainer.getChildren().addAll(lblTitle, qrBox, lblInstruction);
+        dialog.getDialogPane().setContent(mainContainer);
+        dialog.getDialogPane().getButtonTypes().add(javafx.scene.control.ButtonType.CLOSE);
         dialog.show();
     }
 }
