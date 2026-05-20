@@ -128,6 +128,17 @@
                                         </HBox>
                                     </children>
                                 </VBox>
+                        <VBox fx:id="vbAdminControl" layoutX="10.0" layoutY="394.0" spacing="12.0" style="-fx-background-color: #fff9e6; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #f0b90b; -fx-border-width: 1; -fx-border-radius: 8;">
+                           <children>
+                              <Label style="-fx-font-weight: bold; -fx-text-fill: #b7791f;" text="Bảng điều khiển của admin:" />
+                              <HBox spacing="15.0">
+                                 <children>
+                                    <Button onAction="#handleApproveAuction" prefHeight="38.0" prefWidth="160.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="Approve Auction" />
+                                    <Button fx:id="btnRemoveAuction1" onAction="#handleRejectAuction" prefHeight="38.0" prefWidth="160.0" style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="Reject Auction" />
+                                 </children>
+                              </HBox>
+                           </children>
+                        </VBox>
 
                                 <HBox fx:id="hbTime" alignment="CENTER_LEFT" spacing="5.0">
                                     <children>

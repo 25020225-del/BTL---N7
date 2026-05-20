@@ -112,7 +112,7 @@ public class TableControllerAdmin extends TableController {
                 ItemFactory.TYPE_TANGIBLE,
                 "ITM-" + map.get("id"),
                 (String) map.get("itemName"),
-                null,
+                (String) map.get("description"),
                 0
         );
         item.setImageUrl((String) map.get("imageUrl"));
@@ -135,11 +135,14 @@ public class TableControllerAdmin extends TableController {
         String id   = (String) map.get("id");
         String name = (String) map.get("itemName");
 
+        Auction auction = auctionFromMap(map);
+
         MinimalItemAdmin item = new MinimalItemAdmin(id, name, "");
         item.addAdminOptions(id, command -> {
             switch (command) {
                 case "APPROVE_AUCTION" -> AdminService.approveAuction(id);
                 case "REJECT_AUCTION"  -> AdminService.rejectAuction(id);
+                case "SHOW_AUCTION" -> {openItemDetail(auction);}
             }
         });
         return item;

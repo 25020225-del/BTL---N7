@@ -82,7 +82,7 @@ public class TableControllerUser extends TableController {
                 ItemFactory.TYPE_TANGIBLE,
                 "ITM-" + map.get("id"),
                 (String) map.get("itemName"),
-                null,
+                (String) map.get("description"),
                 0
         );
         item.setImageUrl((String) map.get("imageUrl"));

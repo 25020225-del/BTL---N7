@@ -16,12 +16,18 @@ public class MinimalItemAdmin extends MinimalItem {
 
     public void addAdminOptions(String id, Consumer<String> command) {
         // Initialize UI components
+        Button btnShowItem = new Button("Show Item");
         Button btnApprove = new Button("Approve");
         Button btnReject = new Button("Reject");
 
         // Apply inline styling
         btnApprove.setStyle("-fx-background-color: green; -fx-text-fill: white;");
         btnReject.setStyle("-fx-background-color: red; -fx-text-fill: white;");
+
+        // Open item detail
+        btnShowItem.setOnAction(event -> {
+            command.accept("SHOW_AUCTION");
+        });
 
         // Attach event handlers for approval and rejection
         btnApprove.setOnAction(e -> {
@@ -35,6 +41,6 @@ public class MinimalItemAdmin extends MinimalItem {
         });
 
         HBox btnGroup = new HBox(10, btnApprove, btnReject);
-        this.getChildren().add(btnGroup);
+        this.getChildren().addAll(btnShowItem,btnGroup);
     }
 }

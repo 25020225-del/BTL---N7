@@ -19,6 +19,7 @@ module org.example.demo {
     requires net.coobird.thumbnailator;
     requires org.apache.commons.text;
     requires java.string.similarity;
+    requires java.management;
 
     opens gui to javafx.fxml;
     exports gui;
