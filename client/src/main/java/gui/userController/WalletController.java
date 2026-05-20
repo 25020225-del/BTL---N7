@@ -390,8 +390,11 @@ public class WalletController extends VBox {
         Label lblBank = new Label("Ngân hàng TMCP Quân Đội (MBBank)");
         lblBank.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #6c757d;");
 
-        Label lblAccount = new Label("NGUYỄN QUANG MẠNH");
-        lblAccount.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0a2540;");
+        Label lblName = new Label("NGUYỄN QUANG MẠNH");
+        lblName.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0a2540;");
+
+        Label lblAccount = new Label("0815567462");
+        lblAccount.setStyle("-fx-font-size: 14px; -fx-text-fill: #555555;");
 
         HBox memoBox = new HBox(8);
         memoBox.setAlignment(javafx.geometry.Pos.CENTER);
@@ -417,7 +420,7 @@ public class WalletController extends VBox {
         });
 
         memoBox.getChildren().addAll(lblMemo, btnCopy);
-        qrBox.getChildren().addAll(qrStack, lblBank, lblAccount, memoBox);
+        qrBox.getChildren().addAll(qrStack, lblBank, lblName, lblAccount, memoBox);
 
         // 5. Footer
         Label lblInstruction = new Label("Open Internet Banking/Wallet App supporting VietQR to continue");
