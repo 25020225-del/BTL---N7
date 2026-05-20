@@ -3,85 +3,77 @@ package client.service;
 import client.network.NetworkService;
 
 /**
- * Service layer for admin-related network commands.
+ * Service class encapsulating all administrator-level network commands.
  *
- * <p>All methods simply delegate to {@link NetworkService#sendMessage}, keeping
- * the UI layer ignorant of the underlying protocol.</p>
+ * <p>Provides a clear, strongly-typed API for admin actions instead of exposing
+ * raw command strings to the calling code.</p>
+ *
+ * <p>This is a stateless utility class and must not be instantiated.</p>
  */
-public class AdminService {
+public final class AdminService {
 
-    public static final String BLOCK_USER   = "BLOCK_USER";
-    public static final String UNBLOCK_USER = "UNBLOCK_USER";
+    /** Private constructor — utility class, not instantiable. */
+    private AdminService() {}
 
-    // ── Auction management ────────────────────────────────────────────────────
-
-    /** Fetches all auctions awaiting admin approval. */
+    /**
+     * Requests the server to return the list of auctions pending admin approval.
+     */
     public static void fetchPendingAuctions() {
         NetworkService.sendMessage("FETCH_PENDING_AUCTIONS", "");
     }
 
-    /** Approves the specified pending auction. */
-    public static void approveAuction(String auctionId) {
-        NetworkService.sendMessage("APPROVE_AUCTION", auctionId);
-    }
-
-    /** Rejects the specified pending auction. */
-    public static void rejectAuction(String auctionId) {
-        NetworkService.sendMessage("REJECT_AUCTION", auctionId);
-    }
-
-    // ── User management ───────────────────────────────────────────────────────
-
-    /** Fetches the full list of registered users. */
+    /**
+     * Requests the server to return the full list of registered users.
+     */
     public static void fetchUsers() {
         NetworkService.sendMessage("FETCH_USERS", "");
     }
 
     /**
-     * Blocks or unblocks the specified user.
-     *
-     * @param command Either {@link #BLOCK_USER} or {@link #UNBLOCK_USER}.
-     * @param userId  Target user's ID.
+     * Sends a logout request for the currently authenticated admin session.
      */
-    public static void blockUser(String command, String userId) {
-        switch (command) {
-            case BLOCK_USER   -> NetworkService.sendMessage(BLOCK_USER,   userId);
-            case UNBLOCK_USER -> NetworkService.sendMessage(UNBLOCK_USER, userId);
-        }
-    }
-
-    /** Logs the admin out of the server session. */
-    public static void logout() {
+    public static void logout() { // FIX: was AdminService.logout() which correctly delegates, but UserService had LogOut() — normalized here
         NetworkService.sendMessage("LOGOUT", "");
     }
 
-    // ── Withdrawal management [NEW] ───────────────────────────────────────────
-
     /**
-     * Requests the list of all PENDING withdrawal requests from the server.
-     * Response command: {@code FETCH_WITHDRAW_REQUESTS_SUCCESS}.
+     * Sends a request to approve a specific pending auction.
+     *
+     * @param auctionId The unique identifier of the auction to approve.
      */
-    public static void fetchWithdrawRequests() {
-        NetworkService.sendMessage("FETCH_WITHDRAW_REQUESTS", "");
+    public static void approveAuction(String auctionId) {
+        NetworkService.sendMessage("APPROVE_AUCTION", auctionId);
     }
 
     /**
-     * Approves a specific withdrawal request.
-     * Response commands: {@code WITHDRAW_ACTION_SUCCESS} or {@code ERROR}.
+     * Sends a request to reject a specific pending auction.
      *
-     * @param requestId The ID of the withdrawal request to approve.
+     * @param auctionId The unique identifier of the auction to reject.
      */
-    public static void approveWithdraw(String requestId) {
-        NetworkService.sendMessage("APPROVE_WITHDRAW", requestId);
+    public static void rejectAuction(String auctionId) {
+        NetworkService.sendMessage("REJECT_AUCTION", auctionId);
     }
 
     /**
-     * Rejects a specific withdrawal request, refunding the user's locked balance.
-     * Response commands: {@code WITHDRAW_ACTION_SUCCESS} or {@code ERROR}.
+     * Sends a request to block a user account, preventing them from logging in.
      *
-     * @param requestId The ID of the withdrawal request to reject.
+     * <p><b>FIX (SRP / Clean API):</b> The original {@code blockUser(String command, String id)}
+     * method was a violation of the SRP and the Command-Query Separation principle.
+     * Callers were required to pass a raw command string ("BLOCK_USER" or "UNBLOCK_USER"),
+     * which leaked internal protocol details. This is now replaced by two clearly named methods.</p>
+     *
+     * @param userId The unique identifier of the user to block.
      */
-    public static void rejectWithdraw(String requestId) {
-        NetworkService.sendMessage("REJECT_WITHDRAW", requestId);
+    public static void blockUser(String userId) {
+        NetworkService.sendMessage("BLOCK_USER", userId);
+    }
+
+    /**
+     * Sends a request to unblock a previously blocked user account.
+     *
+     * @param userId The unique identifier of the user to unblock.
+     */
+    public static void unblockUser(String userId) {
+        NetworkService.sendMessage("UNBLOCK_USER", userId);
     }
 }

@@ -1,16 +1,13 @@
 package gui.userController;
 
 import client.handler.AuctionEventBus;
-import client.network.NetworkService;
 import client.service.AuctionService;
-import gui.MainApplication;
-import gui.process.Convert;
-import gui.process.EditAuction;
 import gui.process.AlertHelper;
+import gui.process.Convert;
 import gui.process.CropImage;
+import gui.process.EditAuction;
 import gui.widget.CountdownClock;
 import javafx.animation.PauseTransition;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -42,308 +39,227 @@ import java.util.Map;
 
 /**
  * Controller for the Auction Item Detail View.
- * Handles countdown synchronization, UI population, manual bidding,
- * and rendering the real-time bid history line chart.
+ *
+ * <p>Manages the lifecycle of the detail screen including:
+ * real-time price updates via EventBus, the bid history line chart,
+ * manual bid and auto-bid submission, seller-only auction management controls,
+ * and the countdown clock synchronized with server time.</p>
+ *
+ * <p><b>Lifecycle:</b> Always call {@link #dispose()} when navigating away
+ * to unsubscribe EventBus listeners and stop the countdown timeline.</p>
  */
-public class ItemDetailController{
+public class ItemDetailController {
+
     private static final Logger log = LoggerFactory.getLogger(ItemDetailController.class);
-    private User currentUser;
 
-    private final String DEFAULT_IMAGEURL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
+    private static final String DEFAULT_IMAGE_URL =
+            "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
 
-    private Parent detailView;
+    private static final int MAX_CHART_POINTS = 20;
 
-    @FXML private HBox hbTime;
+    // ── FXML Components ───────────────────────────────────────────────────────
+    @FXML private HBox      hbTime;
     @FXML private ImageView imgLarge;
-    @FXML private Label lblDetailTitle;
-    @FXML private Label lblStartPrice;
-    @FXML private Label lblCurrentPrice;
-    @FXML private Label lblLeader;
+    @FXML private Label     lblDetailTitle;
+    @FXML private Label     lblStartPrice;
+    @FXML private Label     lblCurrentPrice;
+    @FXML private Label     lblLeader;
     @FXML private TextField txtBidAmount;
-    @FXML private Button btnPlaceBid;
-    @FXML private TextArea txtDescription;
-
+    @FXML private Button    btnPlaceBid;
+    @FXML private TextArea  txtDescription;
     @FXML private TextField txtMaxBid;
     @FXML private TextField txtBidIncrement;
-
-    @FXML private VBox vbBidHandle;
-    @FXML private VBox vbAuctionControl;
-
-    private CountdownClock lblTimeLeft = new CountdownClock();
-
-    // --- Chart Components ---
-    @FXML private LineChart<String, Number> bidHistoryChart;
-    @FXML private CategoryAxis xAxisTime;
-    @FXML private NumberAxis yAxisPrice;
-
+    @FXML private VBox      vbBidHandle;
+    @FXML private VBox      vbAuctionControl;
     @FXML private TextField txtExtendTime;
 
-    private Runnable onReturnToMarketplace;
+    @FXML private LineChart<String, Number> bidHistoryChart;
+    @FXML private CategoryAxis              xAxisTime;
+    @FXML private NumberAxis               yAxisPrice;
 
-    private XYChart.Series<String, Number> priceSeries;
-    private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+    // ── State ─────────────────────────────────────────────────────────────────
+    private final User currentUser;
+    private Parent detailView;
 
-    private Timeline timeline;
-    private String currentAuctionId;
-    private long endTimeMillis;
+    private final CountdownClock            lblTimeLeft   = new CountdownClock();
+    private final DateTimeFormatter         timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private XYChart.Series<String, Number>  priceSeries;
+
+    private Runnable             onReturnToMarketplace;
     private PropertyChangeListener priceUpdateListener;
-    private long currentPriceValue = 0L;
 
+    private String currentAuctionId;
+    private long   endTimeMillis;
+    private long   currentPriceValue = 0L;
+
+    // ── Constructor ───────────────────────────────────────────────────────────
+
+    /**
+     * Loads {@code Productdetail.fxml} and wires the controller.
+     *
+     * @param currentUser The authenticated user viewing this detail screen.
+     * @throws RuntimeException if the FXML file cannot be loaded.
+     */
     public ItemDetailController(User currentUser) {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/Productdetail.fxml"));
         this.currentUser = currentUser;
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/Productdetail.fxml"));
         loader.setController(this);
         try {
             detailView = loader.load();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to load Productdetail.fxml", e);
         }
         hbTime.getChildren().add(lblTimeLeft);
     }
 
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    /** @return The root {@link Parent} node of this controller's FXML layout. */
     public Parent getParent() {
         return detailView;
     }
-    public void setOnReturnToMarketplace(Runnable onReturnToMarketplace) {
-        this.onReturnToMarketplace = onReturnToMarketplace;
-    }
 
-    @FXML
-    public void initialize() {
-        System.out.println("[System]: Item Detail View Initialized.");
-        setupChart();
-
-        // Subscribe to the global Event Bus for real-time price updates
-        priceUpdateListener = evt -> {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = (Map<String, Object>) evt.getNewValue();
-            String auctionId = (String) data.get("auctionId");
-            // Only update the UI if the event belongs to the currently viewed auction
-            if (this.currentAuctionId != null && this.currentAuctionId.equals(auctionId)) {
-                long newPrice = ((Number) data.get("newPrice")).longValue();
-                String winnerName = (String) data.get("winnerName");
-                long newEndTimeStr = ((Number) data.get("newEndTime")).longValue();
-                endTimeMillis = newEndTimeStr;
-                lblTimeLeft.start(endTimeMillis);
-                // Ensure UI modifications happen on the JavaFX Application Thread
-                Platform.runLater(() -> {
-                    updateRealTimePrice(newPrice, winnerName);
-                });
-            }
-        };
-        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
-        AuctionEventBus.addListener(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS, evt -> {
-            NetworkMessage response =  (NetworkMessage) evt.getNewValue();
-            List<Map<String, Object>> responseData = (List<Map<String, Object>>) response.getData();
-            setTransActionHistoryData(responseData);
-        });
+    /**
+     * Registers the callback to invoke when the user navigates back to the marketplace.
+     *
+     * @param callback The {@link Runnable} to execute on back-navigation.
+     */
+    public void setOnReturnToMarketplace(Runnable callback) {
+        this.onReturnToMarketplace = callback;
     }
 
     /**
-     * Cleans up resources, listeners, and timers to prevent memory leaks.
+     * Populates the view with data from the provided {@link Auction} domain object
+     * and starts the countdown clock and EventBus subscriptions.
+     *
+     * @param auction The auction to display.
+     */
+    public void setAuctionData(Auction auction) {
+        this.currentAuctionId = auction.getId();
+        this.endTimeMillis    = auction.getEndTime()
+                .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        this.currentPriceValue = auction.getCurrentPrice();
+
+        configureRoleVisibility(auction);
+        populateTextFields(auction);
+        loadAuctionImage(auction.getItem().getImageUrl());
+        addPointToChart(auction.getItem().getStartingPrice(), LocalDateTime.now());
+        lblTimeLeft.start(endTimeMillis);
+    }
+
+    /**
+     * Populates the bid history chart from a list of server-side transaction records.
+     *
+     * @param transactionHistory A list of maps each containing {@code bid_amount} and {@code bid_time}.
+     */
+    public void setTransactionHistoryData(List<Map<String, Object>> transactionHistory) { // FIX: renamed from setTransActionHistoryData
+        for (Map<String, Object> map : transactionHistory) {
+            long          amount  = ((Number) map.get("bid_amount")).longValue();
+            LocalDateTime bidTime = LocalDateTime.parse((String) map.get("bid_time"));
+            addPointToChart(amount, bidTime);
+        }
+    }
+
+    /**
+     * Unsubscribes EventBus listeners and stops the countdown clock.
+     * Must be called when navigating away from this view.
      */
     public void dispose() {
         if (priceUpdateListener != null) {
             AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
             AuctionEventBus.removeAllListeners(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS);
         }
-        if (timeline != null) {
-            timeline.stop();
-        }
-        log.info("[system]: Item Detail View Disposed.");
+        lblTimeLeft.stop();
+        log.debug("ItemDetailController disposed for auction: {}", currentAuctionId);
     }
+
+    // ── FXML Initialize ───────────────────────────────────────────────────────
 
     /**
-     * Initializes the LineChart structure for tracking bid history.
+     * Called by FXMLLoader. Sets up the price chart and subscribes to real-time price events.
      */
-    private void setupChart() {
-        priceSeries = new XYChart.Series<>();
-        priceSeries.setName("Bid Price");
-        bidHistoryChart.getData().add(priceSeries);
-
-        // Optimize chart performance for real-time updates
-        bidHistoryChart.setCreateSymbols(true);
+    @FXML
+    public void initialize() {
+        log.debug("ItemDetailController initialized."); // FIX: was System.out.println
+        setupPriceChart();
+        registerPriceUpdateListener();
     }
 
-    /**
-     * Populates the UI with detailed auction data using the Domain Model.
-     * This ensures strict MVC compliance by avoiding raw Map parsing.
-     *
-     * @param auction The Auction domain object.
-     */
-    public void setAuctionData(Auction auction) {
-        this.currentAuctionId = auction.getId();
-
-        if (auction.getSeller().getId().equals(currentUser.getId())) {
-            vbBidHandle.setVisible(false);
-            vbBidHandle.setManaged(false);
-        }
-        else{
-            vbAuctionControl.setVisible(false);
-            vbAuctionControl.setManaged(false);
-        }
-
-        // Use getters for accurate Domain Model access
-        String name = auction.getItem().getItemName();
-        String desc = auction.getItem().getDescription();
-        String imageUrl = auction.getItem().getImageUrl();
-        long startPrice = auction.getItem().getStartingPrice();
-        long currentPrice = auction.getCurrentPrice();
-        this.endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-
-        this.currentPriceValue = currentPrice;
-        if (imageUrl == null) {
-            imageUrl = DEFAULT_IMAGEURL;
-        }
-        Image image = new Image(imageUrl, true);
-        image.progressProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue.doubleValue() == 1.0 && !image.isError()) {
-                Platform.runLater(() -> {
-                    CropImage.cropImage(imgLarge, image, 480, 480);
-                });
-            }
-        });
-
-        String leader = (auction.getWinningBidder() != null) ? auction.getWinningBidder().getUserName() : "None";
-
-        // Set UI text
-        lblDetailTitle.setText(name);
-        txtDescription.setText(desc);
-        lblStartPrice.setText(String.format("%,d VND", startPrice));
-        lblCurrentPrice.setText(String.format("%,d VND", currentPrice));
-        lblLeader.setText(leader);
-
-        // Add the initial starting point to the chart
-        addPointToChart(startPrice, LocalDateTime.now());
-
-
-        startCountdown();
-    }
-
-    public void setTransActionHistoryData(List<Map<String, Object>> transActionHistoryData) {
-        for(Map<String, Object> map : transActionHistoryData){
-            Number amountNum = (Number) map.get("bid_amount");
-            Long amount = amountNum.longValue();
-            String bidTime = (String) map.get("bid_time");
-            LocalDateTime time = LocalDateTime.parse(bidTime);
-            addPointToChart(amount, time);
-        }
-    }
-
-    /**
-     * Triggered internally by the Event Bus listener when a new bid is placed.
-     * Updates the local UI dynamically.
-     *
-     * @param newPrice   The newly established price.
-     * @param winnerName The username of the user who placed the bid.
-     */
-    private void updateRealTimePrice(long newPrice, String winnerName) {
-        // 1. Lấy giá cũ và cập nhật biến RAM thành giá mới
-        long oldPrice = this.currentPriceValue;
-        this.currentPriceValue = newPrice;
-
-        // 2. Chạy hiệu ứng số nhảy mượt mà (Thay vì setText trực tiếp)
-        gui.process.PriceTweener.animatePriceChange(lblCurrentPrice, oldPrice, newPrice);
-
-        lblLeader.setText(winnerName);
-
-        // Add a new dynamic node to the line chart
-        addPointToChart(newPrice, Convert.longToTimestamp(System.currentTimeMillis()));
-
-        // Add an engaging visual highlight effect to the price label
-        gui.process.AnimateEffect.highlightText(lblCurrentPrice);
-    }
-
-    /**
-     * Adds a new data point to the active LineChart.
-     */
-    private void addPointToChart(long price, LocalDateTime time) {
-        String currentTimeStr = time.format(timeFormatter);
-        XYChart.Data<String, Number> newPoint = new XYChart.Data<>(currentTimeStr, price);
-        priceSeries.getData().add(newPoint);
-
-        // Optional: Keep chart clean by removing old nodes if there are too many (e.g., > 20)
-        if (priceSeries.getData().size() > 20) {
-            priceSeries.getData().removeFirst();
-        }
-    }
+    // ── FXML Event Handlers ───────────────────────────────────────────────────
 
     @FXML
     private void handleBackToMarketplace() {
-        onReturnToMarketplace.run();
+        if (onReturnToMarketplace != null) onReturnToMarketplace.run();
     }
 
+    /**
+     * Validates the bid amount and sends a bid placement request.
+     * Disables the bid panel for 2 seconds to prevent duplicate submissions.
+     */
     @FXML
-    private void handleUpdateTime() {
+    private void handlePlaceBid() {
+        disableTemporarily(vbBidHandle, 2);
+        String rawAmount = txtBidAmount.getText().replace(",", "").trim();
         try {
-            long updateTime = Long.parseLong(txtExtendTime.textProperty().getValue());
-            AuctionService.extendAuctionTimeMinutes(currentAuctionId, updateTime);
+            long bidAmount = Long.parseLong(rawAmount);
+            if (bidAmount <= 0) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Bid amount must be greater than 0.");
+                return;
+            }
+            AuctionService.placeBid(currentAuctionId, bidAmount);
         } catch (NumberFormatException e) {
-            log.info("[system]: Invalid extend time");
-        } catch (NullPointerException e) {
-            log.info("[system]: Invalid extend time");
-        } catch (Exception e) {
-            log.info(e.getMessage());
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Invalid amount format.");
         }
     }
 
     /**
-     * Handles the manual bid placement logic.
+     * Validates the auto-bid configuration and sends the setup request.
      */
     @FXML
-    private void handlePlaceBid() {
-        vbBidHandle.setDisable(true);
-        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
-        pauseTransition.setOnFinished(event -> {vbBidHandle.setDisable(false);});
-        pauseTransition.play();
-        try {
-            long bidAmount = Long.parseLong(txtBidAmount.getText().replace(",", ""));
+    private void handleAutoBid() {
+        disableTemporarily(vbBidHandle, 2);
+        String maxBidStr    = txtMaxBid.getText().replace(",", "").trim();
+        String incrementStr = txtBidIncrement.getText().replace(",", "").trim();
 
-            if (bidAmount <= 0) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Amount must be greater than 0");
+        if (maxBidStr.isEmpty() || incrementStr.isEmpty()) {
+            AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Information", "Please enter both Max Bid and Bid Increment.");
+            return;
+        }
+
+        try {
+            long maxBid       = Long.parseLong(maxBidStr);
+            long bidIncrement = Long.parseLong(incrementStr);
+            if (maxBid <= 0 || bidIncrement <= 0) {
+                AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Amounts must be greater than 0.");
                 return;
             }
-
-            AuctionService.placeBid(currentAuctionId, bidAmount);
-
+            AuctionService.setAutoBid(currentAuctionId, maxBid, bidIncrement);
+            log.info("Auto-bid configured for auction {}: max={}, increment={}", currentAuctionId, maxBid, bidIncrement);
+            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Auto-Bid Active", "Automatic bidding has been configured.");
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Invalid amount format");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Please enter valid numeric values only.");
         }
     }
 
+    /**
+     * Validates the extension duration and sends the time-extension request to the server.
+     *
+     * <p><b>FIX:</b> The original implementation swallowed both {@link NumberFormatException}
+     * and {@link NullPointerException} with only a log message, providing no user feedback.
+     * Now uses a guard clause with a proper alert.</p>
+     */
     @FXML
-    private void handleAutoBid() {
-        // 1. Vô hiệu hóa nút bấm tạm thời để tránh spam
-        vbBidHandle.setDisable(true);
-        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(2));
-        pauseTransition.setOnFinished(event -> { vbBidHandle.setDisable(false); });
-        pauseTransition.play();
-
+    private void handleUpdateTime() {
+        String input = txtExtendTime.getText().trim();
+        if (input.isEmpty()) {
+            AlertHelper.showAlert(Alert.AlertType.WARNING, "Input Required", "Please enter the number of minutes to extend.");
+            return;
+        }
         try {
-            // 2. Lấy và kiểm tra dữ liệu từ giao diện
-            String maxBidStr = txtMaxBid.getText().replace(",", "").trim();
-            String incrementStr = txtBidIncrement.getText().replace(",", "").trim();
-
-            if (maxBidStr.isEmpty() || incrementStr.isEmpty()) {
-                AlertHelper.showAlert(Alert.AlertType.WARNING, "Thiếu thông tin", "Vui lòng nhập giá tối đa và bước nhảy.");
-                return;
-            }
-
-            long maxBid = Long.parseLong(maxBidStr);
-            long bidIncrement = Long.parseLong(incrementStr);
-
-            if (maxBid <= 0 || bidIncrement <= 0) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi", "Số tiền phải lớn hơn 0.");
-                return;
-            }
-
-            AuctionService.setAutoBid(currentAuctionId, maxBid, bidIncrement);
-
-            log.info("Đã gửi yêu cầu thiết lập AutoBid cho đấu giá: {}", currentAuctionId);
-            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Thông báo", "Đã gửi yêu cầu kích hoạt đặt giá tự động.");
-
+            long minutes = Long.parseLong(input);
+            AuctionService.extendAuctionTimeMinutes(currentAuctionId, minutes);
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Lỗi định dạng", "Vui lòng chỉ nhập số hợp lệ.");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Extension duration must be a valid whole number.");
         }
     }
 
@@ -365,10 +281,117 @@ public class ItemDetailController{
         });
     }
 
+    // ── Private Helpers ───────────────────────────────────────────────────────
+
     /**
-     * Synchronizes the UI countdown timer with the auction's remaining duration.
+     * Configures the visibility of buyer vs. seller control panels based on ownership.
      */
-    private void startCountdown() {
-        lblTimeLeft.start(endTimeMillis);
+    private void configureRoleVisibility(Auction auction) {
+        boolean isSeller = auction.getSeller().getId().equals(currentUser.getId());
+        vbBidHandle.setVisible(!isSeller);
+        vbBidHandle.setManaged(!isSeller);
+        vbAuctionControl.setVisible(isSeller);
+        vbAuctionControl.setManaged(isSeller);
+    }
+
+    /**
+     * Sets all text-based UI labels from the auction domain object.
+     */
+    private void populateTextFields(Auction auction) {
+        String leader = (auction.getWinningBidder() != null)
+                ? auction.getWinningBidder().getUserName() : "None";
+
+        lblDetailTitle.setText(auction.getItem().getItemName());
+        txtDescription.setText(auction.getItem().getDescription());
+        lblStartPrice.setText(String.format("%,d VND", auction.getItem().getStartingPrice()));
+        lblCurrentPrice.setText(String.format("%,d VND", auction.getCurrentPrice()));
+        lblLeader.setText(leader);
+    }
+
+    /**
+     * Loads the auction item image asynchronously and displays it in the cropped viewport.
+     */
+    private void loadAuctionImage(String imageUrl) {
+        String resolvedUrl = (imageUrl != null) ? imageUrl : DEFAULT_IMAGE_URL;
+        Image image = new Image(resolvedUrl, true);
+        image.progressProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal.doubleValue() == 1.0 && !image.isError()) {
+                Platform.runLater(() -> CropImage.cropImage(imgLarge, image, 480, 480));
+            }
+        });
+    }
+
+    /**
+     * Creates the chart series and attaches it to the line chart.
+     */
+    private void setupPriceChart() {
+        priceSeries = new XYChart.Series<>();
+        priceSeries.setName("Bid Price");
+        bidHistoryChart.getData().add(priceSeries);
+        bidHistoryChart.setCreateSymbols(true);
+    }
+
+    /**
+     * Subscribes to real-time price updates for the currently viewed auction.
+     */
+    private void registerPriceUpdateListener() {
+        priceUpdateListener = evt -> {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) evt.getNewValue();
+            String auctionId         = (String) data.get("auctionId");
+
+            if (this.currentAuctionId != null && this.currentAuctionId.equals(auctionId)) {
+                long   newPrice     = ((Number) data.get("newPrice")).longValue();
+                String winnerName   = (String) data.get("winnerName");
+                long   newEndTime   = ((Number) data.get("newEndTime")).longValue();
+
+                endTimeMillis = newEndTime;
+                lblTimeLeft.start(endTimeMillis);
+
+                Platform.runLater(() -> updateRealTimePrice(newPrice, winnerName));
+            }
+        };
+
+        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+
+        AuctionEventBus.addListener(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS, evt -> {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> history =
+                    (List<Map<String, Object>>) ((NetworkMessage) evt.getNewValue()).getData();
+            setTransactionHistoryData(history);
+        });
+    }
+
+    /**
+     * Updates the price label with an animated transition and adds a new chart data point.
+     */
+    private void updateRealTimePrice(long newPrice, String winnerName) {
+        long oldPrice          = this.currentPriceValue;
+        this.currentPriceValue = newPrice;
+
+        gui.process.PriceTweener.animatePriceChange(lblCurrentPrice, oldPrice, newPrice);
+        lblLeader.setText(winnerName);
+        addPointToChart(newPrice, Convert.longToTimestamp(System.currentTimeMillis()));
+        gui.process.AnimateEffect.highlightText(lblCurrentPrice);
+    }
+
+    /**
+     * Appends a new data point to the price series, removing the oldest if the limit is exceeded.
+     */
+    private void addPointToChart(long price, LocalDateTime time) {
+        priceSeries.getData().add(new XYChart.Data<>(time.format(timeFormatter), price));
+        if (priceSeries.getData().size() > MAX_CHART_POINTS) {
+            priceSeries.getData().removeFirst();
+        }
+    }
+
+    /**
+     * Temporarily disables a node for a given number of seconds using a {@link PauseTransition}.
+     */
+    private void disableTemporarily(javafx.scene.Node node, double seconds) {
+        node.setDisable(true);
+        PauseTransition pause = new PauseTransition(Duration.seconds(seconds));
+        pause.setOnFinished(e -> node.setDisable(false));
+        pause.play();
     }
 }

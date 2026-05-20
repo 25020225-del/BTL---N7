@@ -32,4 +32,6 @@ module org.example.demo {
     exports gui.userController.table;
     opens gui.widget.item to javafx.fxml;
     exports gui.widget.item;
+    exports client.network;
+    exports client.service;
 }
