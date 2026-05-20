@@ -76,4 +76,15 @@ public final class AdminService {
     public static void unblockUser(String userId) {
         NetworkService.sendMessage("UNBLOCK_USER", userId);
     }
+    public static void fetchWithdrawRequests() {
+        NetworkService.sendMessage("FETCH_WITHDRAW_REQUESTS", "");
+    }
+
+    public static void approveWithdraw(String requestId) {
+        NetworkService.sendMessage("APPROVE_WITHDRAW", requestId);
+    }
+
+    public static void rejectWithdraw(String requestId) {
+        NetworkService.sendMessage("REJECT_WITHDRAW", requestId);
+    }
 }

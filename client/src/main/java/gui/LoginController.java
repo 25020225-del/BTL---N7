@@ -139,21 +139,19 @@ public class LoginController {
     /**
      * Successfully logged in (triggered by either LOGIN_SUCCESS or VERIFY_2FA_SUCCESS).
      */
-    @SuppressWarnings("unchecked")
     private void handleLoginSuccess(NetworkMessage response) {
         try {
-            User loggedInUser = mapper.convertValue(
-                    response.getData(), User.class);
-
+            User loggedInUser = mapper.convertValue(response.getData(), User.class);
             log.info("{} successfully logged in.", loggedInUser.getUserName());
             loginAccountName.clear();
             loginPasswordAccount.clear();
 
+            networkClient.setOnMessageReceived(null); // ← FIX: unregister trước khi rời scene
+
             MainController.start(loggedInUser);
         } catch (Exception e) {
             log.error("Error processing LOGIN_SUCCESS: {}", e.getMessage(), e);
-            AlertHelper.showAlert(Alert.AlertType.ERROR,
-                    "Error", "Failed to load account data.");
+            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Failed to load account data.");
         }
     }
 }

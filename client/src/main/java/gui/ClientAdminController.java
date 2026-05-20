@@ -45,6 +45,9 @@ public class ClientAdminController {
     private IconButton toggleList   = new IconButton("mdi2m-menu", "List", "List", "special-button");
     private IconButton accountList  = new IconButton("mdi2a-account-box-multiple-outline", "Accounts", "Manage Accounts", "special-button");
     private IconButton itemList     = new IconButton("mdi2a-archive-settings-outline", "Items", "Manage Items", "special-button");
+    private IconButton withdrawList = new IconButton(
+            "mdi2c-cash-refund", "Withdrawals", "Withdraw Requests", "special-button"
+    );
 
     public ClientAdminController(User user) throws IOException {
         this.currentUser = user;
@@ -79,7 +82,7 @@ public class ClientAdminController {
         Region region = new Region();
         Separator separator = new Separator();
         VBox.setVgrow(region, Priority.ALWAYS);
-        mainDock.getChildren().addAll(toggleList, accountList, itemList, separator, region, account);
+        mainDock.getChildren().addAll(toggleList, accountList, itemList, withdrawList, separator, region, account);
 
         toggleList.setUserData(true);
         toggleList.setOnAction(event -> {
@@ -107,6 +110,12 @@ public class ClientAdminController {
         // ✅ settingsView là một Node (VBox) hợp lệ, add trực tiếp được
         account.setOnAction(event -> {
             mainViewController.getChildren().setAll(settingsView);
+        });
+
+        withdrawList.setOnAction(event -> {
+            mainViewController.getChildren().setAll(tableView.getParent());
+            log.info("Loading withdraw requests...");
+            AdminService.fetchWithdrawRequests();
         });
     }
 

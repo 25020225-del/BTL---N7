@@ -42,10 +42,11 @@ public class AuthHandler implements CommandHandler {
             case "REGISTER"           -> processRegister(message.getData(), client);
             case "LOGOUT"             -> processLogout(client);
             case "REQUEST_SETUP_2FA"  -> processRequestSetup2FA(client);
-            case "CANCEL_2FA_SETUP"   -> processCancelSetup2FA(client);   // ← NEW
-            case "VERIFY_2FA_SETUP"   -> processVerify2FASetup(message.getData(), client); // ← RENAMED
-            case "CONFIRM_SETUP_2FA"  -> processVerify2FASetup(message.getData(), client); // ← backward-compat alias
+            case "CANCEL_2FA_SETUP"   -> processCancelSetup2FA(client);
+            case "VERIFY_2FA_SETUP"   -> processVerify2FASetup(message.getData(), client);
+            case "CONFIRM_SETUP_2FA"  -> processVerify2FASetup(message.getData(), client);
             case "DISABLE_2FA"        -> processDisable2FA(message.getData(), client);
+            case "UPDATE_TOTP_PREFS"  -> processUpdateTotpPrefs(message.getData(), client); // ← THÊM DÒNG NÀY
             default -> throw new AuctionExceptions.InvalidPayloadException(
                     "Lệnh xác thực không hợp lệ: " + message.getCommand());
         }
@@ -54,11 +55,14 @@ public class AuthHandler implements CommandHandler {
     // ── LOGIN ────────────────────────────────────────────────────────
 
     private void processLogin(Object data, ClientHandler client) throws Exception {
+        log.info("[LOGIN] Raw data received: {}", data); // Kiểm tra Jackson nhận được gì
         User loginAttempt;
         try {
             loginAttempt = mapper.convertValue(data, User.class);
+            log.info("[LOGIN] Parsed username: {}", loginAttempt.getUserName()); // Kiểm tra parse OK
         } catch (IllegalArgumentException e) {
-            throw new AuctionExceptions.InvalidPayloadException("Dữ liệu đăng nhập không đúng định dạng.");
+            log.error("[LOGIN] Jackson deserialization FAILED: {}", e.getMessage()); // Phát hiện schema mismatch
+            throw new AuctionExceptions.InvalidPayloadException("...");
         }
 
         User user = client.getUserController()
@@ -78,6 +82,9 @@ public class AuthHandler implements CommandHandler {
         } else {
             finalizeLogin(user, client);
         }
+        log.info("[LOGIN] DB lookup result: user={}, totpEnabled={}",
+                user != null ? user.getUserName() : "null",
+                user != null && user.isTotpLoginEnabled()); // Kiểm tra TOTP flow
     }
 
     // ── VERIFY_2FA (login step) ───────────────────────────────────────

@@ -46,6 +46,10 @@ public class WalletController extends VBox {
     @FXML private Label lblFrozenBalance;
     @FXML private TextField txtDepositAmount;
     @FXML private Button btnDeposit;
+    @FXML private TextField  txtWithdrawAmount;
+    @FXML private ComboBox<String> cmbPayoutMethod;
+    @FXML private TextField  txtPayoutDetails;
+    @FXML private Button     btnWithdraw;
 
     @FXML private TableView<WalletTransaction>          tableTransactions;
     @FXML private TableColumn<WalletTransaction, String> colId;
@@ -97,6 +101,43 @@ public class WalletController extends VBox {
         setupTransactionTable();
         registerEventListeners();
         WalletService.fetchWalletHistory();
+        cmbPayoutMethod.getItems().addAll("BANK_TRANSFER", "E_WALLET");
+        cmbPayoutMethod.getSelectionModel().selectFirst();
+    }
+    @FXML
+    private void handleWithdraw() {
+        // 1. Validate input
+        String amountStr    = txtWithdrawAmount.getText().trim();
+        String payoutMethod = cmbPayoutMethod.getValue();
+        String payoutDetails = txtPayoutDetails.getText().trim();
+
+        if (amountStr.isEmpty() || payoutDetails.isEmpty()) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR,
+                    "Thiếu thông tin",
+                    "Vui lòng nhập đầy đủ số tiền và thông tin tài khoản.");
+            return;
+        }
+
+        long amount;
+        try {
+            amount = Long.parseLong(amountStr.replace(",", "").replace(".", ""));
+            if (amount <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException e) {
+            AlertHelper.showAlert(Alert.AlertType.ERROR,
+                    "Số tiền không hợp lệ",
+                    "Vui lòng nhập số tiền hợp lệ (số nguyên dương).");
+            return;
+        }
+
+        // 2. Build payload và gửi (không có TOTP lần đầu)
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("amount",        amount);
+        payload.put("payoutMethod",  payoutMethod);
+        payload.put("payoutDetails", payoutDetails);
+
+        AnimateEffect.pauseNode(btnWithdraw, 3);
+        NetworkService.sendMessage("REQUEST_WITHDRAW", payload);
+        log.info("Withdrawal request sent: {} VND via {}", amount, payoutMethod);
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -177,7 +218,7 @@ public class WalletController extends VBox {
     /**
      * Registers all required EventBus listeners for wallet-related server responses.
      */
-    private void registerEventListeners() { // FIX: extracted from initialize() for SRP
+    private void registerEventListeners() {
         AuctionEventBus.addListener(AuctionEventBus.FETCH_WALLET_SUCCESS, event ->
                 handleWalletDataReceived((NetworkMessage) event.getNewValue())
         );
@@ -186,7 +227,33 @@ public class WalletController extends VBox {
         invalidTotpListener = event -> onInvalidTotp(event.getNewValue());
 
         AuctionEventBus.addListener(ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
-        AuctionEventBus.addListener(ClientPaymentHandler.INVALID_TOTP, invalidTotpListener);
+        AuctionEventBus.addListener(ClientPaymentHandler.INVALID_TOTP,         invalidTotpListener);
+
+        // ── [NEW] Lắng nghe kết quả rút tiền ────────────────────────────────────
+        AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_REQUEST_SUCCESS, event ->
+                Platform.runLater(() -> {
+                    AlertHelper.showAlert(Alert.AlertType.INFORMATION,
+                            "Yêu cầu đã gửi",
+                            "Yêu cầu rút tiền đang chờ Admin duyệt.");
+                    txtWithdrawAmount.clear();
+                    txtPayoutDetails.clear();
+                    WalletService.fetchWalletHistory(); // Refresh balance
+                })
+        );
+        AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_APPROVED, event ->
+                Platform.runLater(() ->
+                        AlertHelper.showAlert(Alert.AlertType.INFORMATION,
+                                "Rút tiền thành công",
+                                "Admin đã duyệt yêu cầu của bạn. Tiền đã được chuyển.")
+                )
+        );
+        AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_REJECTED, event ->
+                Platform.runLater(() ->
+                        AlertHelper.showAlert(Alert.AlertType.WARNING,
+                                "Yêu cầu bị từ chối",
+                                "Admin đã từ chối yêu cầu rút tiền. Số tiền đã được hoàn lại.")
+                )
+        );
     }
 
     /**
