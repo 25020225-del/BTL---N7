@@ -2,11 +2,14 @@ package gui.userController.table;
 
 import client.handler.AuctionEventBus;
 import client.service.AdminService;
+import gui.process.AlertHelper;
 import gui.widget.AdminUserItem;
 import gui.widget.item.MinimalItemAdmin;
 import gui.widget.item.MinimalUser;
+import gui.widget.item.WithdrawRequestItem;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
@@ -46,6 +49,39 @@ public class TableControllerAdmin extends TableController {
                 // HOẶC: Đổi tên trong TableController thành deleteAllAuctions() cho nhất quán
                 deleteAllAuction();  // ✅ FIX: gọi đúng tên method của lớp cha
                 users.forEach(data -> mainTilePane.getChildren().add(buildUserItem(data)));
+            });
+        });
+        // Lắng nghe danh sách yêu cầu rút tiền
+        AuctionEventBus.addListener("FETCH_WITHDRAW_REQUESTS_SUCCESS", event -> {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> requests =
+                    (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
+
+            Platform.runLater(() -> {
+                deleteAllAuction(); // clear panel hiện tại
+                for (Map<String, Object> req : requests) {
+                    mainTilePane.getChildren().add(
+                            new WithdrawRequestItem(req, command -> {
+                                String[] parts = command.split(":", 2);
+                                String action = parts[0], id = parts[1];
+                                if ("APPROVE".equals(action)) AdminService.approveWithdraw(id);
+                                else                           AdminService.rejectWithdraw(id);
+                            })
+                    );
+                }
+            });
+        });
+
+// Lắng nghe kết quả Approve/Reject
+        AuctionEventBus.addListener("WITHDRAW_ACTION_SUCCESS", event -> {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result =
+                    (Map<String, Object>) ((NetworkMessage) event.getNewValue()).getData();
+            String msg = (String) result.get("message");
+
+            Platform.runLater(() -> {
+                AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Thành công", msg);
+                AdminService.fetchWithdrawRequests(); // tự reload lại danh sách
             });
         });
     }

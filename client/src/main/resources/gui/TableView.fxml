@@ -17,7 +17,7 @@
             </padding>
             <FontIcon iconLiteral="mdi2n-note-search" />
             <TextField fx:id="searchField" promptText="Search securities, stocks, or bidders..." styleClass="search-field" HBox.hgrow="ALWAYS" />
-            <Button fx:id="searchButton" mnemonicParsing="false" onAction="#Search" text="Search" />
+            <Button fx:id="searchButton" mnemonicParsing="false" onAction="#search" text="Search" />
         </HBox>
 
         <ScrollPane fx:id="scrollPane" hbarPolicy="NEVER" VBox.vgrow="ALWAYS">

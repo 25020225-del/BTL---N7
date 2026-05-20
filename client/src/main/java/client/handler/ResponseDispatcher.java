@@ -1,6 +1,7 @@
 package client.handler;
 
 import client.network.NetworkClient;
+import client.utils.ErrorParser;
 import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
@@ -32,7 +33,12 @@ public class ResponseDispatcher {
      * Constructs the dispatcher and registers all known command-to-handler mappings.
      */
     public ResponseDispatcher() {
+        registerSystemHandlers();
         registerHandlers();
+        registerAuctionHandlers();
+        registerPaymentHandlers();
+        registerUserHandlers();
+        registerAdminHandlers();
     }
 
     // ── Handler Registration ──────────────────────────────────────────────────
@@ -54,6 +60,18 @@ public class ResponseDispatcher {
         handlers.put("KICKED",        systemHandler);
         handlers.put("TIME_SYNC_ACK", systemHandler);
         handlers.put("GENERAL_ERROR", systemHandler);
+        ResponseHandler errorHandler = (message, client) -> {
+            String errMsg = ErrorParser.parse(message.getData());
+            log.warn("Server returned ERROR: {}", errMsg);
+            Platform.runLater(() ->
+                    AlertHelper.showAlert(
+                            Alert.AlertType.ERROR,
+                            "Lỗi từ Server",
+                            errMsg
+                    )
+            );
+        };
+        handlers.put("ERROR", errorHandler);
     }
 
     private void registerAuctionHandlers() {
@@ -70,6 +88,9 @@ public class ResponseDispatcher {
         handlers.put("DEPOSIT_SUCCESS",     paymentHandler);
         handlers.put("REQUIRE_TOTP_PAYMENT", paymentHandler);
         handlers.put("INVALID_TOTP",        paymentHandler);
+        handlers.put("WITHDRAW_REQUEST_SUCCESS", paymentHandler);
+        handlers.put("WITHDRAW_APPROVED",        paymentHandler);
+        handlers.put("WITHDRAW_REJECTED",        paymentHandler);
     }
 
     private void registerUserHandlers() {
@@ -87,6 +108,20 @@ public class ResponseDispatcher {
         handlers.put("DISABLE_2FA_SUCCESS",        userHandler);
         handlers.put("CANCEL_2FA_SUCCESS",         userHandler);
         handlers.put("UPDATE_TOTP_PREFS_SUCCESS",  userHandler);
+
+
+    }
+    private void registerAdminHandlers() {
+        ResponseHandler adminHandler = (message, client) -> {
+            switch (message.getCommand()) {
+                case "FETCH_WITHDRAW_REQUESTS_SUCCESS" ->
+                        AuctionEventBus.fireEvent("FETCH_WITHDRAW_REQUESTS_SUCCESS", message);
+                case "WITHDRAW_ACTION_SUCCESS" ->
+                        AuctionEventBus.fireEvent("WITHDRAW_ACTION_SUCCESS", message);
+            }
+        };
+        handlers.put("FETCH_WITHDRAW_REQUESTS_SUCCESS", adminHandler);
+        handlers.put("WITHDRAW_ACTION_SUCCESS",          adminHandler);
     }
 
     // ── Dispatch ──────────────────────────────────────────────────────────────
