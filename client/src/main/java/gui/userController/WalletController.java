@@ -38,28 +38,17 @@ public class WalletController extends VBox {
     private Runnable onReturnAction;
 
 
-    @FXML
-    private Label lblTotalBalance;
-    @FXML
-    private Label lblFrozenBalance;
-    @FXML
-    private TextField txtDepositAmount;
+    @FXML private Label lblTotalBalance;
+    @FXML private Label lblFrozenBalance;
+    @FXML private TextField txtDepositAmount;
 
-    @FXML
-    private TableView<WalletTransaction> tableTransactions;
-    @FXML
-    private TableColumn<WalletTransaction, String> colId;
-    @FXML
-    private TableColumn<WalletTransaction, String> colDate;
-    @FXML
-    private TableColumn<WalletTransaction, Long> colAmount;
-    @FXML
-    private TableColumn<WalletTransaction, String> colDescription;
+    @FXML private TableView<WalletTransaction> tableTransactions;
+    @FXML private TableColumn<WalletTransaction, String> colId;
+    @FXML private TableColumn<WalletTransaction, String> colDate;
+    @FXML private TableColumn<WalletTransaction, Long> colAmount;
+    @FXML private TableColumn<WalletTransaction, String> colDescription;
 
-    @FXML
-    private Button btnDeposit;
-    @FXML
-    private Button btnDepositVietQR;
+    @FXML private Button btnDeposit;
 
     private long currentBalance = 0L;
     private long currentFrozenBalance = 0L;
@@ -119,17 +108,6 @@ public class WalletController extends VBox {
             });
         });
 
-        AuctionEventBus.addListener("VIETQR_CREATED", event -> {
-            Platform.runLater(() -> {
-                @SuppressWarnings("unchecked")
-                Map<String, String> data = (Map<String, String>) event.getNewValue();
-                String qrString = data.get("qrString");
-                String orderId = data.get("orderId");
-
-                showVietQRDialog(qrString, orderId);
-            });
-        });
-
         requireTotpListener = event -> onRequireTotpPayment(event.getNewValue());
         invalidTotpListener = event -> onInvalidTotp(event.getNewValue());
 
@@ -175,26 +153,6 @@ public class WalletController extends VBox {
         }
         AnimateEffect.pauseNode(btnDeposit, 2);
         sendDepositRequest(amount, null);
-    }
-
-    @FXML
-    private void handleVietQRDeposit() {
-        String input = txtDepositAmount.getText().trim();
-        double amount;
-        try {
-            amount = Double.parseDouble(input);
-            if (amount <= 0) throw new NumberFormatException();
-        } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Please enter a valid amount.");
-            return;
-        }
-
-        // Disable button for 2 secs to avoid spamming
-        gui.process.AnimateEffect.pauseNode(btnDepositVietQR, 2);
-
-        java.util.HashMap<String, Object> payload = new java.util.HashMap<>();
-        payload.put("amount", (long) amount);
-        client.network.NetworkService.sendMessage("CREATE_VIETQR_DEPOSIT", payload);
     }
 
     /**
@@ -339,96 +297,5 @@ public class WalletController extends VBox {
         Button btn = (Button) event.getSource();
         String text = btn.getText().replace("+", "").replace("k", "000").replace("M", "000000");
         txtDepositAmount.setText(text);
-    }
-
-    private void showVietQRDialog(String qrString, String orderId) {
-        Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle("Pay via VietQR");
-        dialog.setHeaderText(null);
-
-        VBox mainContainer = new VBox(25);
-        mainContainer.setAlignment(javafx.geometry.Pos.CENTER);
-        mainContainer.setStyle("-fx-background-color: white; -fx-padding: 40 50;");
-
-        Label lblTitle = new Label("Scan QR Code to pay");
-        lblTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #0a2540;");
-
-        VBox qrBox = new VBox(15);
-        qrBox.setAlignment(javafx.geometry.Pos.CENTER);
-        qrBox.setStyle("-fx-background-color: #f8f9fa; -fx-padding: 30; -fx-background-radius: 12;");
-
-        javafx.scene.layout.StackPane qrStack = new javafx.scene.layout.StackPane();
-        qrStack.setMaxSize(270, 270);
-        VBox.setMargin(qrStack, new javafx.geometry.Insets(10));
-
-        javafx.scene.image.Image qrImage = gui.process.QRCodeHelper.generateQRCodeImage(qrString, 250, 250);
-        javafx.scene.image.ImageView qrImageView = new javafx.scene.image.ImageView(qrImage);
-
-        javafx.scene.image.Image logoImage = new javafx.scene.image.Image(
-                getClass().getResourceAsStream("/gui/images/VietQRLogo.png")
-        );
-        javafx.scene.image.ImageView logoView = new javafx.scene.image.ImageView(logoImage);
-        logoView.setFitWidth(30);
-        logoView.setFitHeight(30);
-        logoView.setPreserveRatio(true);
-
-        javafx.scene.shape.Circle logoBg = new javafx.scene.shape.Circle(24, javafx.scene.paint.Color.WHITE);
-        javafx.scene.layout.StackPane centerLogo = new javafx.scene.layout.StackPane(logoBg, logoView);
-        javafx.scene.layout.StackPane.setAlignment(centerLogo, javafx.geometry.Pos.CENTER);
-
-        // 3. Các góc trang trí
-        String cornerStyle = "-fx-border-color: #3665f3; ";
-        int cornerSize = 25;
-        javafx.scene.layout.Region tl = new javafx.scene.layout.Region(); tl.setMaxSize(cornerSize, cornerSize); tl.setStyle(cornerStyle + "-fx-border-width: 3 0 0 3;"); javafx.scene.layout.StackPane.setAlignment(tl, javafx.geometry.Pos.TOP_LEFT);
-        javafx.scene.layout.Region tr = new javafx.scene.layout.Region(); tr.setMaxSize(cornerSize, cornerSize); tr.setStyle(cornerStyle + "-fx-border-width: 3 3 0 0;"); javafx.scene.layout.StackPane.setAlignment(tr, javafx.geometry.Pos.TOP_RIGHT);
-        javafx.scene.layout.Region bl = new javafx.scene.layout.Region(); bl.setMaxSize(cornerSize, cornerSize); bl.setStyle(cornerStyle + "-fx-border-width: 0 0 3 3;"); javafx.scene.layout.StackPane.setAlignment(bl, javafx.geometry.Pos.BOTTOM_LEFT);
-        javafx.scene.layout.Region br = new javafx.scene.layout.Region(); br.setMaxSize(cornerSize, cornerSize); br.setStyle(cornerStyle + "-fx-border-width: 0 3 3 0;"); javafx.scene.layout.StackPane.setAlignment(br, javafx.geometry.Pos.BOTTOM_RIGHT);
-
-        qrStack.getChildren().addAll(qrImageView, centerLogo, tl, tr, bl, br);
-
-        // 4. Thông tin tài khoản và mã đơn
-        Label lblBank = new Label("Ngân hàng TMCP Quân Đội (MBBank)");
-        lblBank.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #6c757d;");
-
-        Label lblName = new Label("NGUYỄN QUANG MẠNH");
-        lblName.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0a2540;");
-
-        Label lblAccount = new Label("0815567462");
-        lblAccount.setStyle("-fx-font-size: 14px; -fx-text-fill: #555555;");
-
-        HBox memoBox = new HBox(8);
-        memoBox.setAlignment(javafx.geometry.Pos.CENTER);
-        Label lblMemo = new Label(orderId);
-        lblMemo.setStyle("-fx-font-size: 16px; -fx-text-fill: #6c757d;");
-
-        Button btnCopy = new Button();
-        org.kordamp.ikonli.javafx.FontIcon copyIcon = new org.kordamp.ikonli.javafx.FontIcon("mdi2c-content-copy");
-        copyIcon.setIconColor(javafx.scene.paint.Color.web("#3665f3"));
-        copyIcon.setIconSize(18);
-        btnCopy.setGraphic(copyIcon);
-        btnCopy.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 0;");
-
-        btnCopy.setOnAction(e -> {
-            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
-            content.putString(orderId);
-            javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
-            copyIcon.setIconLiteral("mdi2c-check");
-            copyIcon.setIconColor(javafx.scene.paint.Color.GREEN);
-            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2));
-            pause.setOnFinished(event -> { copyIcon.setIconLiteral("mdi2c-content-copy"); copyIcon.setIconColor(javafx.scene.paint.Color.web("#3665f3")); });
-            pause.play();
-        });
-
-        memoBox.getChildren().addAll(lblMemo, btnCopy);
-        qrBox.getChildren().addAll(qrStack, lblBank, lblName, lblAccount, memoBox);
-
-        // 5. Footer
-        Label lblInstruction = new Label("Open Internet Banking/Wallet App supporting VietQR to continue");
-        lblInstruction.setStyle("-fx-font-size: 16px; -fx-text-fill: #0a2540; -fx-font-weight: bold;");
-
-        mainContainer.getChildren().addAll(lblTitle, qrBox, lblInstruction);
-        dialog.getDialogPane().setContent(mainContainer);
-        dialog.getDialogPane().getButtonTypes().add(javafx.scene.control.ButtonType.CLOSE);
-        dialog.show();
     }
 }
