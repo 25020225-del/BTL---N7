@@ -23,9 +23,6 @@ public class ClientPaymentHandler implements ResponseHandler {
         Object data = message.getData();
 
         switch (command) {
-            case "VIETQR_CREATED" -> {
-                AuctionEventBus.fireEvent("VIETQR_CREATED", data);
-            }
             case "PAYMENT_REDIRECT" -> {
                 Map<String, String> responseData = (Map<String, String>) data;
                 String url = responseData.get("url");

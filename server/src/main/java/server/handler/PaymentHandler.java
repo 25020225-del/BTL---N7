@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ClientHandler;
 import service.PayPalService;
-import service.VietQRService;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,7 +22,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class PaymentHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(PaymentHandler.class);
     private final PayPalService payPalService;
-    private final VietQRService vietQRService;
     private final ServerPaymentController paymentController;
     private final service.TOTPService totpService;
     private final WalletDAO walletDAO;
@@ -35,7 +33,6 @@ public class PaymentHandler implements CommandHandler {
                           service.TOTPService totpService,
                           WalletDAO walletDAO) {
         this.payPalService = new PayPalService();
-        this.vietQRService = new VietQRService();
         this.paymentController = paymentController;
         this.totpService = totpService;
         this.walletDAO = walletDAO;
@@ -103,9 +100,6 @@ public class PaymentHandler implements CommandHandler {
         switch (command) {
             case "CREATE_DEPOSIT":
                 handleCreateDeposit(data, client, currentUser);
-                break;
-            case "CREATE_VIETQR_DEPOSIT":
-                handleCreateVietQRDeposit(data, client, currentUser);
                 break;
             case "CONFIRM_DEPOSIT":
                 handleConfirmDeposit(data, client, currentUser);
@@ -313,47 +307,5 @@ public class PaymentHandler implements CommandHandler {
         public AtomicBoolean getIsProcessing() {
             return isProcessing;
         }
-    }
-
-    /**
-     * Handles the creation of a VietQR deposit request.
-     * Generates a unique order ID, stores the context in RAM, and returns the QR string.
-     *
-     * @param data        The payload containing the deposit amount.
-     * @param client      The active client session.
-     * @param currentUser The authenticated user making the request.
-     */
-    @SuppressWarnings("unchecked")
-    private void handleCreateVietQRDeposit(Object data, server.ClientHandler client, model.user.User currentUser) throws Exception {
-        long amountVND;
-
-        try {
-            if (data instanceof java.util.Map) {
-                java.util.Map<String, Object> map = (java.util.Map<String, Object>) data;
-                amountVND = Long.parseLong(map.get("amount").toString());
-            } else {
-                amountVND = Long.parseLong(data.toString());
-            }
-        } catch (Exception e) {
-            throw new exception.AuctionExceptions.InvalidPayloadException("Định dạng số tiền không hợp lệ.");
-        }
-
-        if (amountVND <= 0) {
-            throw new exception.AuctionExceptions.InvalidPayloadException("Số tiền nạp phải lớn hơn 0.");
-        }
-
-        String orderId = "VQR-" + System.currentTimeMillis();
-
-        String qrString = vietQRService.generateVietQRString(amountVND, orderId);
-
-        pendingDeposits.put(orderId, new DepositInfo(amountVND, System.currentTimeMillis(), client, currentUser));
-
-        log.info("Created VietQR deposit order {} for user {}", orderId, currentUser.getUserName());
-
-        java.util.Map<String, String> responseData = new java.util.HashMap<>();
-        responseData.put("orderId", orderId);
-        responseData.put("qrString", qrString);
-
-        client.sendResponse("VIETQR_CREATED", responseData);
     }
 }

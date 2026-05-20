@@ -38,7 +38,6 @@ public class ResponseDispatcher {
         ClientPaymentHandler paymentHandler = new ClientPaymentHandler();
         handlers.put("PAYMENT_REDIRECT", paymentHandler);
         handlers.put("DEPOSIT_SUCCESS", paymentHandler);
-        handlers.put("VIETQR_CREATED", paymentHandler);
 
         ClientUserHandler userHandler = new ClientUserHandler();
         handlers.put("FETCH_AUCTIONS_SUCCESS", userHandler);

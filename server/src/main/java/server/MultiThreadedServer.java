@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
-import server.handler.VietQRWebhookHandler;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -297,40 +296,16 @@ public class MultiThreadedServer {
         AuctionMonitor monitor = new AuctionMonitor(AuctionManager.getAuctionList(), auctionDAO, walletDAO);
         monitor.startMonitoring();
 
-        // 5. Initialize Webhook HTTP Server for VietQR
-        HttpServer webhookServer = null;
-        try {
-            // Bind to port 8080 for HTTP requests
-            webhookServer = HttpServer.create(new InetSocketAddress(8080), 0);
-
-            // Map the endpoint to our newly created SRP handler
-            webhookServer.createContext("/api/webhook/vietqr", new VietQRWebhookHandler(paymentCtrl));
-
-            // Use a small dedicated thread pool to avoid blocking the main server thread
-            webhookServer.setExecutor(Executors.newFixedThreadPool(2));
-            webhookServer.start();
-            log.info("VietQR Webhook Server is listening on port 8080");
-        } catch (IOException e) {
-            log.error("Failed to start Webhook Server: ", e);
-        }
-
         // RUN SERVER
         AuctionWSServer wsServer = new AuctionWSServer(PORT);
         wsServer.start();
 
-        // Graceful shutdown hook
-        final HttpServer finalWebhookServer = webhookServer;
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             ClientManager.broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly." + RESET, null);
             log.info("Server has been shutdown.");
             monitor.stopMonitoring();
             scheduler.shutdown();
             ClientManager.shutdown();
-
-            if (finalWebhookServer != null) {
-                finalWebhookServer.stop(0);
-                log.info("Webhook Server stopped.");
-            }
 
             try {
                 wsServer.stop();
