@@ -271,24 +271,27 @@ public class MultiThreadedServer {
         database.DatabaseManager.initializeDatabase();
 
         // 1. Initialize DAOs and Services
-        database.dao.UserDAO userDAO = new database.dao.UserDAO();
-        database.dao.AuctionDAO auctionDAO = new database.dao.AuctionDAO();
-        database.dao.BidDAO bidDAO = new database.dao.BidDAO();
-        database.dao.WalletDAO walletDAO = new database.dao.WalletDAO();
-        service.TOTPService totpService = new service.TOTPService();
+        database.dao.UserDAO       userDAO       = new database.dao.UserDAO();
+        database.dao.AuctionDAO    auctionDAO    = new database.dao.AuctionDAO();
+        database.dao.BidDAO        bidDAO        = new database.dao.BidDAO();
+        database.dao.WalletDAO     walletDAO     = new database.dao.WalletDAO();
+        database.dao.WithdrawalDAO withdrawalDAO = new database.dao.WithdrawalDAO(); // FIX: thêm mới
+        service.TOTPService        totpService   = new service.TOTPService();
 
         // 2. Initialize Controllers with DI
         userController = new UserController(userDAO, totpService);
-        controller.ServerSellerController sellerCtrl = new controller.ServerSellerController(auctionDAO);
-        controller.ServerPaymentController paymentCtrl = new controller.ServerPaymentController(walletDAO);
-        controller.ServerBidderController bidderCtrl = new controller.ServerBidderController(bidDAO);
+        controller.ServerSellerController  sellerCtrl  = new controller.ServerSellerController(auctionDAO);
+        controller.ServerPaymentController paymentCtrl = new controller.ServerPaymentController(walletDAO, withdrawalDAO);
+        controller.ServerBidderController  bidderCtrl  = new controller.ServerBidderController(bidDAO);
 
         // 3. Inject dependencies into static utility services
         service.AutoBidEngine.setBidderController(bidderCtrl);
 
         // 4. Initialize Command Dispatcher with all required dependencies
+
         commandDispatcher = new server.handler.CommandDispatcher(
                 userDAO, auctionDAO, bidDAO, walletDAO,
+                withdrawalDAO,  // ← THÊM DÒNG NÀY
                 totpService, sellerCtrl, paymentCtrl
         );
 

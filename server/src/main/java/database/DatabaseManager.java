@@ -84,6 +84,7 @@ public class DatabaseManager {
             createUsersTables(stmt);
             createFinancialTables(stmt);
             createAuctionTables(stmt);
+            createWithdrawalTables(stmt);
             applyMigrations(stmt);
             seedDefaultAdmin(conn);
 
@@ -93,6 +94,47 @@ public class DatabaseManager {
             // Fail fast: a broken schema will cause silent data corruption later.
             throw new IllegalStateException("Critical failure during database initialization", e);
         }
+    }
+
+    /**
+     * Creates the withdrawal_requests table and its indexes idempotently.
+     * Called once during server startup via {@link #initializeDatabase()}.
+     *
+     * @param stmt An active {@link Statement} within the initialization connection.
+     * @throws SQLException if any DDL statement fails.
+     */
+    private static void createWithdrawalTables(Statement stmt) throws SQLException {
+        // Bảng chính
+        stmt.execute(
+                "CREATE TABLE IF NOT EXISTS withdrawal_requests ("
+                        + "id             TEXT PRIMARY KEY, "
+                        + "user_id        TEXT    NOT NULL, "
+                        + "amount         REAL    NOT NULL CHECK(amount > 0), "
+                        + "payout_method  TEXT    NOT NULL, "
+                        + "payout_details TEXT    NOT NULL, "
+                        + "status         TEXT    NOT NULL DEFAULT 'PENDING' "
+                        +     "CHECK(status IN ('PENDING','APPROVED','REJECTED','COMPLETED')), "
+                        + "created_at     TEXT    NOT NULL, "
+                        + "processed_at   TEXT, "
+                        + "admin_id       TEXT, "
+                        + "FOREIGN KEY (user_id)  REFERENCES users(id), "
+                        + "FOREIGN KEY (admin_id) REFERENCES users(id)"
+                        + ");"
+        );
+
+        // Indexes tối ưu hóa
+        stmt.execute(
+                "CREATE INDEX IF NOT EXISTS idx_wr_status "
+                        + "ON withdrawal_requests(status);"
+        );
+        stmt.execute(
+                "CREATE INDEX IF NOT EXISTS idx_wr_user_id "
+                        + "ON withdrawal_requests(user_id);"
+        );
+        stmt.execute(
+                "CREATE INDEX IF NOT EXISTS idx_wr_user_status "
+                        + "ON withdrawal_requests(user_id, status);"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
