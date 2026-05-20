@@ -82,7 +82,7 @@ public class ClientAdminController {
         Region region = new Region();
         Separator separator = new Separator();
         VBox.setVgrow(region, Priority.ALWAYS);
-        mainDock.getChildren().addAll(toggleList, accountList, itemList, separator, region, account);
+        mainDock.getChildren().addAll(toggleList, accountList, itemList, withdrawList, separator, region, account);
 
         toggleList.setUserData(true);
         toggleList.setOnAction(event -> {
