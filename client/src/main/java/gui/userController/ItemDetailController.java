@@ -381,6 +381,21 @@ public class ItemDetailController {
                     (List<Map<String, Object>>) ((NetworkMessage) evt.getNewValue()).getData();
             setTransactionHistoryData(history);
         });
+        AuctionEventBus.addListener("AUCTION_STATUS_CHANGED", event -> {
+            NetworkMessage msg = (NetworkMessage) event.getNewValue();
+            Map<String, Object> data = (Map<String, Object>) msg.getData();
+            String id = (String) data.get("auctionId");
+
+            if (!id.equals(currentAuctionId)) return;  // dùng currentAuctionId, không phải currentAuction.getId()
+
+            String newStatus = (String) data.get("newStatus");
+            Platform.runLater(() -> {
+                if ("FINISHED".equals(newStatus) || "PAID".equals(newStatus) || "CANCELED".equals(newStatus)) {
+                    vbBidHandle.setVisible(false);
+                    vbBidHandle.setManaged(false);
+                }
+            });
+        });
     }
 
     /**

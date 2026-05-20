@@ -84,6 +84,7 @@ public class ResponseDispatcher {
         handlers.put("CREATE_SUCCESS",      auctionHandler);
         handlers.put("CHAT",                auctionHandler);
         handlers.put("UPDATE_AUCTION_PRICE", auctionHandler);
+        handlers.put("AUCTION_STATUS_CHANGED",  auctionHandler);
     }
 
     private void registerPaymentHandlers() {

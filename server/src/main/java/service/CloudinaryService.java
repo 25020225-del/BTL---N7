@@ -26,18 +26,39 @@ public class CloudinaryService {
     private static final Logger log = LoggerFactory.getLogger(CloudinaryService.class);
     private static final Cloudinary cloudinary;
 
-    static {
-        String cloudName  = requireEnv("CLOUDINARY_CLOUD_NAME");
-        String apiKey     = requireEnv("CLOUDINARY_API_KEY");
-        String apiSecret  = requireEnv("CLOUDINARY_API_SECRET");
+    private static final io.github.cdimascio.dotenv.Dotenv dotenv;
 
-        cloudinary = new Cloudinary(ObjectUtils.asMap(
+    static {
+        // Tự động tìm và load file .env ở thư mục gốc của dự án
+        dotenv = io.github.cdimascio.dotenv.Dotenv.configure().ignoreIfMissing().load();
+
+        String cloudName  = getEnvOrDotenv("CLOUDINARY_CLOUD_NAME");
+        String apiKey     = getEnvOrDotenv("CLOUDINARY_API_KEY");
+        String apiSecret  = getEnvOrDotenv("CLOUDINARY_API_SECRET");
+
+        cloudinary = new Cloudinary(com.cloudinary.utils.ObjectUtils.asMap(
                 "cloud_name", cloudName,
                 "api_key",    apiKey,
                 "api_secret", apiSecret
         ));
     }
 
+    private static String getEnvOrDotenv(String key) {
+        // Cách hoạt động: Tìm trong hệ thống trước, nếu không thấy thì lật file .env ra tìm
+        String value = System.getenv(key);
+        if (value == null || value.isBlank()) {
+            value = dotenv.get(key);
+        }
+
+        // Nếu tìm cả 2 nơi vẫn không thấy thì mới báo lỗi
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(
+                    "Required environment variable '" + key + "' is not set. "
+                            + "Configure it in System Environment or .env file before starting the server."
+            );
+        }
+        return value;
+    }
     /**
      * Uploads a byte array (compressed image) to Cloudinary and returns the secure HTTPS URL.
      *
