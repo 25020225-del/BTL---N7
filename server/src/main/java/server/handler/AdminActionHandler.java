@@ -11,6 +11,7 @@ import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ClientHandler;
+import service.AdminAuctionService;
 
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,14 @@ public class AdminActionHandler implements CommandHandler {
 
     private final database.dao.UserDAO userDAO;
     private final ServerAdminController adminCtrl;
+    private final AdminAuctionService adminAuctionService;
+
+    private static final String ERR_CANCEL_NOT_FOUND       = "ERR_ADMIN_010";
+    private static final String ERR_CANCEL_NOT_CANCELLABLE = "ERR_ADMIN_011";
+    private static final String ERR_CANCEL_DB_ERROR        = "ERR_ADMIN_012";
+    private static final String ERR_CANCEL_INVALID_PAYLOAD = "ERR_ADMIN_013";
+
+
 
     /**
      * Constructs the handler with required dependencies.
@@ -54,9 +63,11 @@ public class AdminActionHandler implements CommandHandler {
      */
     public AdminActionHandler(AuctionDAO auctionDAO,
                               database.dao.UserDAO userDAO,
-                              ServerAdminController adminCtrl) {
+                              ServerAdminController adminCtrl,
+                              AdminAuctionService adminAuctionService) {
         this.userDAO   = userDAO;
         this.adminCtrl = adminCtrl;
+        this.adminAuctionService = adminAuctionService;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -98,6 +109,8 @@ public class AdminActionHandler implements CommandHandler {
             case "FETCH_WITHDRAW_REQUESTS" -> handleFetchWithdrawRequests(admin, client);
             case "APPROVE_WITHDRAW"        -> handleWithdrawAction(admin, message.getData(), true,  client);
             case "REJECT_WITHDRAW"         -> handleWithdrawAction(admin, message.getData(), false, client);
+
+            case "CANCEL_AUCTION" -> handleCancelAuction(admin, message.getData(), client);
 
             default -> throw new AuctionExceptions.InvalidPayloadException(
                     "Lệnh Admin không hợp lệ: " + command);
@@ -364,6 +377,53 @@ public class AdminActionHandler implements CommandHandler {
                     client.sendResponse("ERROR",
                             new ErrorPayload("ERR_SYS_500",
                                     "Lỗi máy chủ nghiêm trọng. Vui lòng thử lại sau."));
+                    return null;
+                });
+    }
+    private void handleCancelAuction(Admin admin, Object data, ClientHandler client) {
+        String auctionId;
+        try {
+            auctionId = (String) data;
+        } catch (ClassCastException e) {
+            client.sendResponse("ERROR", new ErrorPayload(ERR_CANCEL_INVALID_PAYLOAD, "Payload không hợp lệ. Cần chuỗi auctionId."));
+            return;
+        }
+
+        if (auctionId == null || auctionId.isBlank()) {
+            client.sendResponse("ERROR", new ErrorPayload(ERR_CANCEL_INVALID_PAYLOAD, "auctionId không được để trống."));
+            return;
+        }
+
+        log.info("Admin {} requested CANCEL_AUCTION for: {}", admin.getUserName(), auctionId);
+        final String finalAuctionId = auctionId.trim();
+
+        adminAuctionService.cancelAuctionAndRefundAsync(finalAuctionId)
+                .thenAccept(result -> {
+                    switch (result) {
+                        case SUCCESS -> {
+                            log.info("Admin {} successfully cancelled auction {}", admin.getUserName(), finalAuctionId);
+                            client.sendResponse("CANCEL_AUCTION_SUCCESS", Map.of(
+                                    "auctionId", finalAuctionId,
+                                    "message", "Phiên đấu giá đã được hủy thành công. Toàn bộ tiền đặt giá đã được hoàn về ví người dùng."
+                            ));
+                        }
+                        case NOT_FOUND -> {
+                            log.warn("Admin {} tried to cancel non-existent auction: {}", admin.getUserName(), finalAuctionId);
+                            client.sendResponse("ERROR", new ErrorPayload(ERR_CANCEL_NOT_FOUND, "Không tìm thấy phiên đấu giá: " + finalAuctionId));
+                        }
+                        case NOT_CANCELLABLE -> {
+                            log.warn("Admin {} tried to cancel auction {} but it's not in a cancellable state", admin.getUserName(), finalAuctionId);
+                            client.sendResponse("ERROR", new ErrorPayload(ERR_CANCEL_NOT_CANCELLABLE, "Phiên đấu giá này không thể hủy. Phiên chỉ có thể hủy khi đang ở trạng thái OPEN, WAITING_FOR_BID hoặc RUNNING."));
+                        }
+                        case DB_ERROR -> {
+                            log.error("DB error while admin {} cancelled auction {}", admin.getUserName(), finalAuctionId);
+                            client.sendResponse("ERROR", new ErrorPayload(ERR_CANCEL_DB_ERROR, "Lỗi cơ sở dữ liệu. Thao tác đã được hoàn tác (rollback). Vui lòng thử lại hoặc liên hệ kỹ thuật."));
+                        }
+                    }
+                })
+                .exceptionally(ex -> {
+                    log.error("Unhandled exception in CANCEL_AUCTION for {}: {}", finalAuctionId, ex.getMessage(), ex);
+                    client.sendResponse("ERROR", new ErrorPayload("ERR_SYS_500", "Lỗi hệ thống nghiêm trọng khi hủy phiên đấu giá."));
                     return null;
                 });
     }
