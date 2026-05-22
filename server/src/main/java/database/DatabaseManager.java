@@ -194,12 +194,14 @@ public class DatabaseManager {
                         + "current_price REAL NOT NULL, "
                         + "bid_increment REAL NOT NULL, "
                         + "start_time TEXT NOT NULL, "
-                        + "end_time TEXT NOT NULL, "
+                        + "end_time TEXT, "
                         + "status TEXT NOT NULL, "
                         + "seller_id TEXT NOT NULL, "
                         + "image_url TEXT, "
                         + "winning_bidder_id TEXT, "
                         + "highest_max_bid REAL DEFAULT 0.0, "
+                        + "duration_minutes INTEGER DEFAULT 60, "
+                        + "item_type VARCHAR(20) DEFAULT 'TANGIBLE', "
                         + "FOREIGN KEY (seller_id) REFERENCES users(id), "
                         + "FOREIGN KEY (winning_bidder_id) REFERENCES users(id)"
                         + ");"
@@ -250,6 +252,15 @@ public class DatabaseManager {
         runMigration(stmt, "ALTER TABLE auctions ADD COLUMN winning_bidder_id TEXT;");
         runMigration(stmt, "ALTER TABLE auctions ADD COLUMN highest_max_bid REAL DEFAULT 0.0;");
         runMigration(stmt, "ALTER TABLE bid_transactions ADD COLUMN is_bot INTEGER DEFAULT 0;");
+        runMigration(stmt, "ALTER TABLE users ADD COLUMN is_good INTEGER DEFAULT 0;");
+        runMigration(stmt, "ALTER TABLE auctions ADD COLUMN duration_minutes INTEGER DEFAULT 60;");
+
+        try {
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_auctions_status_start ON auctions (status, start_time);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_auctions_status_end ON auctions (status, end_time);");
+        } catch (SQLException e) {
+            log.warn("Migration: Thất bại khi tạo index hỗ trợ thời gian: {}", e.getMessage());
+        }
 
         try {
             stmt.execute(

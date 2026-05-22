@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,43 +37,45 @@ public class AuctionMonitor {
     private final AuctionDAO auctionDAO;
     private final WalletDAO walletDAO;
 
-    /**
-     * Constructs the monitor with its required dependencies.
-     *
-     * @param allAuctions The shared list of currently monitored auctions.
-     * @param auctionDAO  The DAO for auction persistence.
-     * @param walletDAO   The DAO for financial settlements.
-     */
     public AuctionMonitor(List<Auction> allAuctions, AuctionDAO auctionDAO, WalletDAO walletDAO) {
         this.allAuctions = allAuctions;
         this.auctionDAO  = auctionDAO;
         this.walletDAO   = walletDAO;
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  LIFECYCLE
+    // ═══════════════════════════════════════════════════════════════════
+
     /**
      * Starts the scheduled background monitoring task.
-     * The task runs every 10 seconds to transition auction states and trigger financial settlements.
      */
     public void startMonitoring() {
         log.info("Auction monitor started.");
-
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 processRamAuctions();
                 sweepDatabaseForOrphans();
             } catch (Exception e) {
-                // Broad catch at the scheduler boundary is intentional — a single cycle failure
-                // must not stop the scheduler. The root cause is fully logged with stack trace.
+                // Broad catch intentional — one cycle failure must not kill the scheduler
                 log.error("Unhandled error during auction monitoring cycle", e);
             }
         }, 0, 10, TimeUnit.SECONDS);
     }
 
     /**
-     * Iterates through the in-memory auction list, finalizing those whose time has expired.
-     * Uses a two-phase check (Phase 1 under lock → Phase 2 re-validate before DB write)
-     * so anti-sniping extensions cannot cause a wrongful close.
+     * Gracefully shuts down the monitoring daemon.
+     * Named stopMonitoring() to mirror startMonitoring().
      */
+    public void stopMonitoring() {        // ← FIX 4: Đảm bảo method này tồn tại và public
+        scheduler.shutdown();
+        log.info("Auction monitor shut down.");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  RAM AUCTION PROCESSING (giữ nguyên, không thay đổi)
+    // ═══════════════════════════════════════════════════════════════════
+
     private void processRamAuctions() {
         for (Auction auction : AuctionManager.getAuctionList()) {
             String auctionId = auction.getId();
@@ -87,7 +90,8 @@ public class AuctionMonitor {
                     if (now.isBefore(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_RUNNING;
                     }
-                } else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
+                } else if (currentStatus.equals(Auction.STATUS_RUNNING)
+                        || currentStatus.equals(Auction.STATUS_OPEN)) {
                     if (now.isAfter(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_FINISHED;
                         snapshotEndAtDecision = auction.getEndTime();
@@ -101,18 +105,18 @@ public class AuctionMonitor {
             }
 
             boolean dbSuccess;
-
             try {
                 if (Auction.STATUS_RUNNING.equals(targetStatus)) {
                     dbSuccess = tryTransitionToRunning(auction, auctionId);
                 } else {
-                    dbSuccess = tryTransitionToFinished(auction, auctionId, snapshotEndAtDecision, targetStatus);
+                    dbSuccess = tryTransitionToFinished(auction, auctionId,
+                            snapshotEndAtDecision, targetStatus);
                 }
 
                 if (dbSuccess) {
                     applyStatusTransitionToRam(auction, auctionId, targetStatus);
                 } else {
-                    log.warn("Optimistic DB update failed for auction {} -> {} (concurrent change detected).",
+                    log.warn("Optimistic DB update failed for auction {} -> {} (concurrent change).",
                             auctionId, targetStatus);
                 }
             } catch (SQLException e) {
@@ -123,10 +127,6 @@ public class AuctionMonitor {
         }
     }
 
-    /**
-     * Validates and applies the OPEN → RUNNING transition for a given auction.
-     * Performs a Phase 2 re-validation under lock before issuing the DB write.
-     */
     private boolean tryTransitionToRunning(Auction auction, String auctionId) throws SQLException {
         synchronized (AuctionManager.getLockForAuction(auctionId)) {
             if (!auction.getStatus().equals(Auction.STATUS_OPEN)) {
@@ -142,10 +142,6 @@ public class AuctionMonitor {
         return auctionDAO.updateAuctionStatusOpenToRunning(auctionId);
     }
 
-    /**
-     * Validates and applies the RUNNING → FINISHED transition for a given auction.
-     * Guards against anti-sniping races by verifying the end-time snapshot has not changed.
-     */
     private boolean tryTransitionToFinished(Auction auction, String auctionId,
                                             LocalDateTime snapshotEndAtDecision,
                                             String targetStatus) throws SQLException {
@@ -156,17 +152,18 @@ public class AuctionMonitor {
             }
             LocalDateTime now = LocalDateTime.now();
             if (now.isBefore(auction.getEndTime())) {
-                log.debug("Skipping close for auction {}: still before end time (anti-sniping race)", auctionId);
+                log.debug("Skipping close for {}: still before end time (anti-sniping race)", auctionId);
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
             }
             if (auction.getEndTime().isAfter(snapshotEndAtDecision)) {
-                log.debug("Skipping close for auction {}: end time was extended since decision snapshot", auctionId);
+                log.debug("Skipping close for {}: end time was extended since decision snapshot", auctionId);
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
             }
         }
-        return auctionDAO.updateAuctionStatusEndingIfEndTimeMatches(auctionId, targetStatus, snapshotEndAtDecision);
+        return auctionDAO.updateAuctionStatusEndingIfEndTimeMatches(
+                auctionId, targetStatus, snapshotEndAtDecision);
     }
 
     private void applyStatusTransitionToRam(Auction auction, String auctionId, String targetStatus) {
@@ -199,10 +196,19 @@ public class AuctionMonitor {
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  FINANCIAL SETTLEMENT  ← ĐÂY LÀ VÙNG SỬA LỖI CHÍNH
+    // ═══════════════════════════════════════════════════════════════════
+
     /**
-     * Executes financial settlement for a completed auction asynchronously.
-     * Atomically transitions the auction from FINISHED to PAID or CANCELED,
-     * refunds losing auto-bidders, and pays the seller.
+     * FIX 1: Đổi TransactionManager.submit() → TransactionManager.submitTask()
+     * FIX 2/3: Các hàm nghiệp vụ settleWinner / refundLosingAutoBidders
+     *           được kéo thành private method của chính AuctionMonitor,
+     *           KHÔNG đặt trong TransactionManager (vi phạm SRP).
+     *
+     * Toàn bộ khối transaction được bọc trong Callable<Boolean> và
+     * đẩy vào TransactionManager.submitTask() để chạy bất đồng bộ
+     * trên DB-Worker thread pool.
      */
     private void processFinancialSettlement(Auction auction) {
         Callable<Boolean> settlementTask = () -> {
@@ -214,27 +220,29 @@ public class AuctionMonitor {
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
+                    // Phase 1: Atomic status claim — chỉ 1 thread thắng, thread còn lại abort
                     boolean locked = lockAuctionForSettlement(conn, auctionId, finalStatus);
                     if (!locked) {
                         conn.rollback();
                         return false;
                     }
 
+                    // Phase 2: Thực thi nghiệp vụ tài chính
                     if (auction.getWinningBidder() != null) {
-                        settleWinner(conn, auction, auctionId);
+                        settleWinner(conn, auction, auctionId);       // ← Private method nội bộ
                     }
-
-                    refundLosingAutoBidders(conn, auction, auctionId);
+                    refundLosingAutoBidders(conn, auction, auctionId); // ← Private method nội bộ
                     deactivateAutoBids(conn, auctionId);
 
                     conn.commit();
 
+                    // Phase 3: Cập nhật RAM sau khi DB đã commit thành công
                     synchronized (AuctionManager.getLockForAuction(auctionId)) {
                         auction.setStatus(finalStatus);
                     }
                     ClientManager.broadcast("AUCTION_STATUS_CHANGED",
                             Map.of("auctionId", auctionId, "newStatus", finalStatus), null);
-                    log.info("Financial settlement completed for auction {} -> {}", auctionId, finalStatus);
+                    log.info("Financial settlement completed: auction {} → {}", auctionId, finalStatus);
                     return true;
 
                 } catch (SQLException e) {
@@ -248,12 +256,13 @@ public class AuctionMonitor {
             }
         };
 
+        // ← FIX 1: submitTask() chứ không phải submit()
         TransactionManager.submitTask(settlementTask);
     }
 
     /**
-     * Atomically claims the FINISHED→final-status transition.
-     * Returns false if another thread already settled this auction.
+     * Atomic claim: chuyển FINISHED → finalStatus chỉ khi status DB vẫn là FINISHED.
+     * Nếu thread khác đã settle trước, executeUpdate() trả về 0 → return false → caller rollback.
      */
     private boolean lockAuctionForSettlement(Connection conn, String auctionId,
                                              String finalStatus) throws SQLException {
@@ -263,39 +272,59 @@ public class AuctionMonitor {
             ps.setString(2, auctionId);
             ps.setString(3, Auction.STATUS_FINISHED);
             if (ps.executeUpdate() == 0) {
-                log.warn("Settlement race condition aborted: auction {} already settled.", auctionId);
+                log.warn("Settlement race detected: auction {} already settled by another thread.", auctionId);
                 return false;
             }
         }
         return true;
     }
 
-    private void settleWinner(Connection conn, Auction auction, String auctionId) throws SQLException {
-        String now = LocalDateTime.now().toString();
-        long finalPrice = auction.getCurrentPrice();
-        long lockedAmount = auction.getHighestMaxBid();
-        String winnerId = auction.getWinningBidder().getId();
+    /**
+     * FIX 2: settleWinner là private method của AuctionMonitor, không phải TransactionManager.
+     *
+     * Logic:
+     * 1. Khấu trừ finalPrice khỏi locked_balance của người thắng
+     * 2. Hoàn phần dư (maxBid - finalPrice) về balance của người thắng
+     * 3. Cộng finalPrice vào balance của Seller
+     * 4. Ghi lịch sử giao dịch
+     */
+    private void settleWinner(Connection conn, Auction auction,
+                              String auctionId) throws SQLException {
+        String now          = LocalDateTime.now().toString();
+        long   finalPrice   = auction.getCurrentPrice();
+        long   lockedAmount = auction.getHighestMaxBid();
+        String winnerId     = auction.getWinningBidder().getId();
 
+        // Khấu trừ vĩnh viễn số tiền thực tế từ locked_balance
         walletDAO.deductFromLocked(conn, winnerId, finalPrice);
+
+        // Hoàn phần chênh lệch (nếu maxBid > giá chốt)
         long refundAmount = lockedAmount - finalPrice;
         if (refundAmount > 0) {
             walletDAO.unlockBalance(conn, winnerId, refundAmount);
         }
 
+        // Thanh toán cho Seller
         walletDAO.updateBalance(conn, auction.getSeller().getId(), finalPrice);
         walletDAO.addTransaction(conn,
-                "W-IN-" + java.util.UUID.randomUUID(),
+                "W-IN-" + UUID.randomUUID(),
                 auction.getSeller().getId(),
                 finalPrice,
                 "Payment received for auction: " + auctionId,
                 now);
     }
 
+    /**
+     * FIX 3: refundLosingAutoBidders là private method của AuctionMonitor, không phải TransactionManager.
+     *
+     * Hoàn toàn bộ locked_balance cho tất cả auto-bidder KHÔNG phải winner.
+     */
     private void refundLosingAutoBidders(Connection conn, Auction auction,
                                          String auctionId) throws SQLException {
-        String winnerId = auction.getWinningBidder() != null
+        String winnerId = (auction.getWinningBidder() != null)
                 ? auction.getWinningBidder().getId()
                 : "NONE";
+
         String sql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, auctionId);
@@ -316,10 +345,10 @@ public class AuctionMonitor {
         }
     }
 
-    /**
-     * Sweeps the database for auctions that expired while the server was offline
-     * and triggers settlement for each one found.
-     */
+    // ═══════════════════════════════════════════════════════════════════
+    //  ORPHAN SWEEP
+    // ═══════════════════════════════════════════════════════════════════
+
     private void sweepDatabaseForOrphans() {
         Callable<Boolean> dbSweepTask = () -> {
             try {
@@ -335,14 +364,6 @@ public class AuctionMonitor {
             }
         };
 
-        TransactionManager.submitTask(dbSweepTask);
-    }
-
-    /**
-     * Gracefully shuts down the monitoring daemon.
-     */
-    public void stopMonitoring() {
-        scheduler.shutdown();
-        log.info("Auction monitor shut down.");
+        TransactionManager.submitTask(dbSweepTask); // ← Cũng dùng submitTask, không phải submit
     }
 }

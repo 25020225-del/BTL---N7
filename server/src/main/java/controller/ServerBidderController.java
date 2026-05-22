@@ -115,8 +115,10 @@ public class ServerBidderController {
                 conn.setAutoCommit(false);
                 try {
                     commitResult = bidDAO.executeBidTransactionSourceOfTruth(
-                            conn, auction.getId(), currentUser,
-                            newMaxBid, expectedPrice, expectedMaxBid, expectedWinnerId,
+                            conn,
+                            auction.getId(),
+                            currentUser,
+                            newMaxBid,
                             isBot
                     );
 
@@ -156,7 +158,8 @@ public class ServerBidderController {
                                 winner,
                                 (long) committed.newHighestMaxBid,
                                 (long) committed.newCurrentPrice,
-                                committed.newEndTime
+                                committed.newEndTime,
+                                Auction.STATUS_WAITING_FOR_BID.equals(auction.getStatus())
                         ));
                     }
                 }
