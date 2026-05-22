@@ -1,0 +1,119 @@
+/* =====================================================================
+   bid-panel.css
+   Stylesheet for the BidPanel.fxml widget.
+   Place at: client/src/main/resources/gui/styles/bid-panel.css
+   ===================================================================== */
+
+/* ── Root tab pane ────────────────────────────────────────────────────── */
+.bid-panel {
+    -fx-background-color: transparent;
+}
+
+.bid-panel .tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: #f0f4f8;
+}
+
+.bid-panel .tab:selected {
+    -fx-background-color: #2c3e50;
+}
+
+.bid-panel .tab:selected .tab-label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.bid-panel .tab-label {
+    -fx-font-size: 13px;
+}
+
+/* ── Tab content padding area ─────────────────────────────────────────── */
+.tab-content {
+    -fx-background-color: white;
+    -fx-border-color: #dee2e6;
+    -fx-border-radius: 0 4 4 4;
+}
+
+/* ── Text inputs ─────────────────────────────────────────────────────── */
+.bid-input {
+    -fx-pref-height: 36px;
+    -fx-font-size: 14px;
+    -fx-border-color: #ced4da;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 4 8 4 8;
+}
+
+.bid-input:focused {
+    -fx-border-color: #3498db;
+    -fx-effect: dropshadow(gaussian, rgba(52,152,219,0.25), 4, 0, 0, 0);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.primary-button {
+    -fx-background-color: #2c3e50;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-pref-height: 40px;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+}
+
+.primary-button:hover {
+    -fx-background-color: #34495e;
+}
+
+.primary-button:disabled {
+    -fx-background-color: #95a5a6;
+    -fx-cursor: default;
+}
+
+/* ── Labels ──────────────────────────────────────────────────────────── */
+.hint-label {
+    -fx-text-fill: #7f8c8d;
+    -fx-font-size: 12px;
+    -fx-font-style: italic;
+}
+
+.field-label {
+    -fx-text-fill: #2c3e50;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.unit-label {
+    -fx-text-fill: #7f8c8d;
+    -fx-font-size: 13px;
+}
+
+.error-label {
+    -fx-text-fill: #e74c3c;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.status-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #2c3e50;
+}
+
+.footer-hint {
+    -fx-text-fill: #95a5a6;
+    -fx-font-size: 11px;
+    -fx-font-style: italic;
+}
+
+/* ── Signal dots ─────────────────────────────────────────────────────── */
+.status-dot-inactive {
+    -fx-fill: #bdc3c7;    /* grey */
+}
+
+.status-dot-active {
+    -fx-fill: #27ae60;    /* green */
+    -fx-effect: dropshadow(gaussian, rgba(39,174,96,0.5), 6, 0, 0, 0);
+}
+
+.status-dot-pending {
+    -fx-fill: #f39c12;    /* amber */
+}

@@ -101,7 +101,7 @@ public class TableControllerUser extends TableController {
                 "ITM-" + map.get("id"),
                 (String) map.get("itemName"),
                 (String) map.get("description"),
-                0
+                ((Number) map.get("startingPrice")).longValue()
         );
         item.setImageUrl((String) map.get("imageUrl"));
         auction.setItem(item);

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.text.Font?>
+
+<!--
+  BidPanel.fxml
+  Root component: a TabPane with two tabs —
+    • Tab 1: Manual Bid (single TextField + Button)
+    • Tab 2: Auto-Bid   (maxBudget, increment, toggle Button, status Label + signal dot)
+
+  Loaded programmatically by BidPanelController via FXMLLoader.
+  The controller is set on the loader instance, NOT via fx:controller attribute,
+  so the same FXML can be embedded multiple times without class-path collisions.
+
+  Suggested embedding in Productdetail.fxml:
+      <fx:include source="/gui/widget/BidPanel.fxml" fx:id="bidPanel"/>
+  then in ItemDetailController:
+      BidPanelController bpc = (BidPanelController) loader.getNamespace().get("bidPanelController");
+      bpc.init(auction, currentUser);
+-->
+<TabPane
+        fx:id="bidPanelRoot"
+        tabClosingPolicy="UNAVAILABLE"
+        styleClass="bid-panel"
+        xmlns:fx="http://javafx.com/fxml/1"
+        xmlns="http://javafx.com/javafx/17"
+>
+    <stylesheets>
+        <String fx:value="/gui/styles/bid-panel.css"/>
+    </stylesheets>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Tab 1 — Manual Bid
+         ══════════════════════════════════════════════════════════════════════ -->
+    <Tab text="Đặt giá thủ công" fx:id="tabManual">
+        <content>
+            <VBox spacing="12" styleClass="tab-content">
+                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+
+                <!-- Hint label -->
+                <Label fx:id="lblMinBidHint"
+                       text="Giá tối thiểu: —"
+                       styleClass="hint-label"/>
+
+                <!-- Bid amount input -->
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <TextField fx:id="txtBidAmount"
+                               promptText="Nhập số tiền (VNĐ)"
+                               styleClass="bid-input"
+                               HBox.hgrow="ALWAYS"/>
+                    <Label text="VNĐ" styleClass="unit-label"/>
+                </HBox>
+
+                <!-- Validation message (hidden until error) -->
+                <Label fx:id="lblManualError"
+                       text=""
+                       styleClass="error-label"
+                       wrapText="true"
+                       visible="false"
+                       managed="false"/>
+
+                <!-- Place Bid button -->
+                <Button fx:id="btnPlaceBid"
+                        text="Đặt Giá"
+                        onAction="#handlePlaceBid"
+                        styleClass="primary-button"
+                        maxWidth="Infinity"/>
+            </VBox>
+        </content>
+    </Tab>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Tab 2 — Auto-Bid
+         ══════════════════════════════════════════════════════════════════════ -->
+    <Tab text="Tự động đấu giá (AutoBid)" fx:id="tabAutoBid">
+        <content>
+            <VBox spacing="12" styleClass="tab-content">
+                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+
+                <!-- Status row: signal dot + text label -->
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <!-- Signal dot: grey = off, green = active, orange = pending -->
+                    <Circle fx:id="circleStatus"
+                            radius="7"
+                            styleClass="status-dot-inactive"/>
+                    <Label fx:id="lblAutoBidStatus"
+                           text="Chưa kích hoạt"
+                           styleClass="status-label"/>
+                </HBox>
+
+                <Separator/>
+
+                <!-- Max budget input -->
+                <VBox spacing="4">
+                    <Label text="Ngân sách tối đa (VNĐ)" styleClass="field-label"/>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <TextField fx:id="txtMaxBudget"
+                                   promptText="Ví dụ: 5,000,000"
+                                   styleClass="bid-input"
+                                   HBox.hgrow="ALWAYS"/>
+                        <Label text="VNĐ" styleClass="unit-label"/>
+                    </HBox>
+                </VBox>
+
+                <!-- Increment input -->
+                <VBox spacing="4">
+                    <Label text="Bước tăng mỗi lần (VNĐ)" styleClass="field-label"/>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <TextField fx:id="txtIncrement"
+                                   promptText="Ví dụ: 100,000"
+                                   styleClass="bid-input"
+                                   HBox.hgrow="ALWAYS"/>
+                        <Label text="VNĐ" styleClass="unit-label"/>
+                    </HBox>
+                </VBox>
+
+                <!-- Validation message (hidden until error) -->
+                <Label fx:id="lblAutoBidError"
+                       text=""
+                       styleClass="error-label"
+                       wrapText="true"
+                       visible="false"
+                       managed="false"/>
+
+                <!-- Activate / Cancel toggle button -->
+                <Button fx:id="btnToggleAutoBid"
+                        text="Kích hoạt AutoBid"
+                        onAction="#handleToggleAutoBid"
+                        styleClass="primary-button"
+                        maxWidth="Infinity"/>
+
+                <!-- Footer info -->
+                <Label text="Hệ thống sẽ tự động đặt giá thay bạn, tối đa đến ngưỡng trên."
+                       styleClass="footer-hint"
+                       wrapText="true"/>
+            </VBox>
+        </content>
+    </Tab>
+
+</TabPane>
