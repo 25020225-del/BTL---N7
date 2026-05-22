@@ -11,6 +11,7 @@ import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ClientHandler;
+import server.ServerExtension.ClientManager;
 import service.AdminAuctionService;
 
 import java.util.List;
@@ -221,19 +222,73 @@ public class AdminActionHandler implements CommandHandler {
         client.sendResponse("FETCH_USERS_SUCCESS", users);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // handleUserBlock() — PHIÊN BẢN MỚI NÂNG CẤP
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Xử lý lệnh BLOCK_USER / UNBLOCK_USER từ Admin (Đồng bộ RAM + Push real-time).
+     */
     private void handleUserBlock(Admin admin, String userId, boolean block, ClientHandler client) {
+
+        // ── Bước 1: Ghi xuống Cơ sở dữ liệu ──────────────────────────────────
         boolean success = block
                 ? adminCtrl.blockUser(admin, userId)
                 : adminCtrl.unblockUser(admin, userId);
 
-        if (success) {
-            String action = block ? "khóa" : "mở khóa";
-            client.sendResponse("ADMIN_ACTION_SUCCESS",
-                    "Người dùng " + userId + " đã bị " + action);
-        } else {
-            client.sendResponse("ERROR",
-                    new ErrorPayload("ERR_DB_005", "Không thể cập nhật trạng thái người dùng."));
+        if (!success) {
+            client.sendResponse("ERROR", new ErrorPayload(
+                    "ERR_DB_005",
+                    "Không thể cập nhật trạng thái người dùng. "
+                            + "Kiểm tra lại quyền hoặc ID người dùng."));
+            return;
         }
+
+        // ── Bước 2: Đồng bộ bộ nhớ RAM ngay lập tức ───────────────────────────────
+        // Cập nhật in-memory User.role để lớp màng bảo vệ .isBlocked() trong
+        // ServerBidderController có hiệu lực ngay mà không cần user đăng nhập lại.
+        ClientManager.updateBlockStatusInMemory(userId, block);
+
+        // ── Bước 3: Đẩy thông báo thời gian thực (Push notification) tới Client ────────
+        if (block) {
+            // Gửi lệnh chuyên biệt ACCOUNT_BLOCKED để phía client lập tức đá user ra màn hình đăng nhập
+            ClientManager.sendToUser(userId, "ACCOUNT_BLOCKED", Map.of(
+                    "message",
+                    "Tài khoản của bạn đã bị Quản trị viên khóa. "
+                            + "Mọi giao dịch đặt giá đã bị dừng ngay lập tức. "
+                            + "Vui lòng liên hệ hỗ trợ để được giải đáp."
+            ));
+            // Ghi nhận lịch sử audit
+            logAuditTrail(admin, userId, "BLOCKED");
+        } else {
+            ClientManager.sendToUser(userId, "ACCOUNT_UNBLOCKED", Map.of(
+                    "message",
+                    "Tài khoản của bạn đã được Quản trị viên mở khóa. "
+                            + "Bạn có thể tiếp tục sử dụng hệ thống bình thường."
+            ));
+            logAuditTrail(admin, userId, "UNBLOCKED");
+        }
+
+        // ── Phản hồi thông báo thành công về cho màn hình của Admin ───────────────────
+        String actionLabel = block ? "khóa" : "mở khóa";
+        client.sendResponse("ADMIN_ACTION_SUCCESS", Map.of(
+                "userId",  userId,
+                "blocked", block,
+                "message", "Tài khoản người dùng " + userId + " đã được " + actionLabel
+                        + " thành công."
+        ));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PRIVATE HELPER (Ghi vết lịch sử thao tác của Admin)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Ghi nhận audit trail cho hành động khóa/mở khóa của Admin.
+     */
+    private void logAuditTrail(Admin admin, String targetId, String action) {
+        log.info("[AUDIT] Admin '{}' (id={}) performed {} on user '{}'.",
+                admin.getUserName(), admin.getId(), action, targetId);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

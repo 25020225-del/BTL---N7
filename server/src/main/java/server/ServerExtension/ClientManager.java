@@ -110,6 +110,30 @@ public class ClientManager {
         log.debug("sendToUser: user {} is offline. Notification '{}' dropped.", userId, command);
     }
 
+    /**
+     * Cập nhật trạng thái khóa trực tiếp trên đối tượng User đang sống trong RAM,
+     * đảm bảo guard isBlocked() có hiệu lực ngay lập tức mà không cần reconnect.
+     */
+    public static void updateBlockStatusInMemory(String userId, boolean isBlocked) {
+        for (ClientHandler client : clients) {
+            User user = client.getUser();
+            if (user != null && user.getId().equals(userId)) {
+                if (isBlocked) {
+                    // Gán "BLOCKED" để isBlocked() trả về true ngay lập tức.
+                    user.setRole("BLOCKED");
+                    log.info("[BLOCK] In-memory role updated to BLOCKED for user '{}'.", userId);
+                } else {
+                    // Khi mở khóa, khôi phục về "USER"
+                    user.setRole("USER");
+                    log.info("[UNBLOCK] In-memory role restored to USER for user '{}'.", userId);
+                }
+                return; // Một user chỉ có thể có 1 phiên đăng nhập đồng thời.
+            }
+        }
+        // Không tìm thấy = user đang offline → không cần cập nhật RAM.
+        log.debug("[BLOCK] User '{}' is offline — in-memory update skipped.", userId);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // ADMIN CONSOLE COMMANDS
     // ─────────────────────────────────────────────────────────────────────────

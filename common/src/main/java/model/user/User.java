@@ -115,14 +115,29 @@ public class User extends Entity {
     public String getRole()                    { return role; }
     public void   setRole(String role)         { this.role = role; }
 
+    /**
+     * Kiểm tra xem tài khoản có đang bị Admin khóa hay không.
+     *
+     * <p>Phương thức này là nguồn sự thật duy nhất (Single Source of Truth)
+     * cho mọi logic chặn quyền trong hệ thống. Quy ước: UserDAO.mapUser()
+     * đã thiết lập role = "BLOCKED" khi cột is_blocked = 1 trong DB.</p>
+     *
+     * @return {@code true} nếu role == "BLOCKED" (không phân biệt hoa thường).
+     **
+     */
+    public boolean isBlocked() {return "BLOCKED".equalsIgnoreCase(this.role);}
+
     public boolean isGood()                    { return isGood; }
     public void    setGood(boolean good)       { this.isGood = good; }
 
-    // ─────────────────────────────────────────────────────────────────
-    // GETTERS & SETTERS — 2FA (3-state)  (GIỮ NGUYÊN)
-    // ─────────────────────────────────────────────────────────────────
-
-    public TwoFactorStatus getTwoFactorStatus() { return twoFactorStatus; }
+    /**
+     * Lấy trạng thái xác thực 2 lớp (2FA) hiện tại của người dùng.
+     *
+     * @return Đối tượng TwoFactorStatus (ENABLED, PENDING, hoặc DISABLED).
+     */
+    public TwoFactorStatus getTwoFactorStatus() {
+        return this.twoFactorStatus;
+    }
 
     /**
      * Sets the 2FA lifecycle status.
