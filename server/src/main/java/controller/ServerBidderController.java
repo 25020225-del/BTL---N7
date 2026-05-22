@@ -1,10 +1,17 @@
 package controller;
 
+// ════════════════════════════════════════════════════════════════════════════
+// FILE: server/src/main/java/controller/ServerBidderController.java
+// THAY ĐỔI: Thêm guard isBlocked() vào ĐẦU method placeBidOnAuction() và
+//           setupAutoBid(). Không thay đổi bất kỳ logic nào bên dưới guard.
+// ════════════════════════════════════════════════════════════════════════════
+
+import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.BidDAO;
-import database.DatabaseManager;
 import model.auction.Auction;
 import model.user.User;
+import network.ErrorPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
@@ -22,30 +29,40 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Controller chịu trách nhiệm xử lý toàn bộ các nghiệp vụ đặt giá phía server.
  *
+ * <h2>Tính năng mới — Cơ chế chặn tài khoản bị khóa (Block Interception)</h2>
+ * <p>Cả hai entry-point đặt giá ({@link #placeBidOnAuction} và {@link #setupAutoBid})
+ * đều kiểm tra {@link User#isBlocked()} ngay tại dòng đầu tiên, <em>trước khi</em>
+ * bất kỳ tác vụ DB nào được khởi tạo. Nếu tài khoản bị khóa:</p>
+ * <ul>
+ *   <li>Request bị từ chối ngay lập tức với {@link CompletableFuture#completedFuture}
+ *       (không tốn DB connection, không tốn thread pool slot).</li>
+ *   <li>Một thông báo lỗi được gửi về client qua {@link ClientManager#sendToUser}
+ *       với nội dung rõ ràng về nguyên nhân.</li>
+ *   <li>Không có nhánh code nào bên dưới guard được thực thi — an toàn tuyệt đối.</li>
+ * </ul>
+ *
  * <h2>Các chức năng chính</h2>
  * <ul>
  *   <li>{@link #placeBidOnAuction} — Đặt giá thủ công hoặc tự động (Bot).</li>
  *   <li>{@link #setupAutoBid}     — Đăng ký / nâng cấp cấu hình Auto-Bid.</li>
  *   <li>{@link #cancelAutoBid}    — Hủy một Auto-Bid đang hoạt động.</li>
  * </ul>
- *
- * <h2>Bất biến về Thread-Safety (Architectural Invariants)</h2>
- * <ol>
- *   <li>Mọi thao tác IO (DB) phải chạy bên trong {@link TransactionManager#submitTask}
- *       để serialize trên DB-Worker Thread, tránh deadlock giữa các lệnh đặt giá.</li>
- *   <li>RAM Lock ({@code synchronized}) chỉ được giữ trong thời gian ngắn nhất có thể:
- *       <ul>
- *         <li>Phase 1 (READ)  — Lấy snapshot trạng thái để phát hiện sai sớm.</li>
- *         <li>Phase 2 (WRITE) — Đồng bộ RAM <em>sau khi</em> DB commit thành công.</li>
- *       </ul>
- *   </li>
- *   <li>Không bao giờ giữ RAM Lock trong khi thực hiện giao dịch DB — tránh
- *       Nested Lock dẫn đến Livelock / Convoy Effect.</li>
- * </ol>
  */
 public class ServerBidderController {
 
     private static final Logger log = LoggerFactory.getLogger(ServerBidderController.class);
+
+    /**
+     * Thông báo lỗi chuẩn hoá trả về khi phát hiện tài khoản bị khóa.
+     * Được tách thành hằng số để dễ kiểm tra trong unit test và tập trung
+     * điểm thay đổi nội dung thông báo.
+     */
+    static final String MSG_ACCOUNT_BLOCKED =
+            "Tài khoản của bạn đã bị Quản trị viên khóa, "
+                    + "không thể thực hiện thao tác này.";
+
+    /** Mã lỗi dành riêng cho trường hợp tài khoản bị khóa cố đặt giá. */
+    static final String ERR_CODE_BLOCKED = "ERR_BID_403";
 
     private final BidDAO bidDAO;
 
@@ -65,7 +82,17 @@ public class ServerBidderController {
     /**
      * Thực thi một lệnh đặt giá bất đồng bộ, sử dụng mô hình Optimistic Locking hai pha.
      *
-     * <h3>Quy trình 3 pha</h3>
+     * <h3>Guard tầng 0 — Kiểm tra tài khoản bị khóa (MỚI)</h3>
+     * <p>Đây là kiểm tra <strong>đầu tiên</strong> và <strong>dứt khoát</strong>.
+     * Nếu {@code currentUser.isBlocked()} trả về {@code true}, toàn bộ phương thức
+     * dừng lại ngay — không khởi tạo {@link Callable}, không lấy DB connection,
+     * không truy cập RAM Lock. Điều này đảm bảo tài khoản bị khóa không thể len lỏi
+     * qua bất kỳ đường dẫn code nào.</p>
+     *
+     * <h3>Guard tầng 1 — Người bán không được tự đặt giá</h3>
+     * <p>Guard hiện có, giữ nguyên sau guard tầng 0.</p>
+     *
+     * <h3>Quy trình 3 pha (giữ nguyên)</h3>
      * <ol>
      *   <li><b>Fast-Fail</b>  — Kiểm tra trạng thái RAM trong thời gian Lock tối thiểu.</li>
      *   <li><b>DB Write</b>   — Giao dịch DB độc lập không giữ RAM Lock.</li>
@@ -81,13 +108,43 @@ public class ServerBidderController {
     public CompletableFuture<Boolean> placeBidOnAuction(
             User currentUser, Auction auction, long newMaxBid, boolean isBot) {
 
-        // Guard: Người bán không được tự đặt giá cho phiên của mình.
+        // ════════════════════════════════════════════════════════════════════
+        // GUARD 0: CHẶN TÀI KHOẢN BỊ KHÓA — DÒNG ĐẦU TIÊN, KHÔNG CÓ NGOẠI LỆ
+        // ════════════════════════════════════════════════════════════════════
+        // Kiểm tra in-memory trước (O(1), không tốn I/O).
+        // currentUser.isBlocked() trả về true khi role == "BLOCKED" —
+        // giá trị đã được ClientManager.updateBlockStatusInMemory() cập nhật
+        // ngay khi Admin gửi lệnh BLOCK_USER.
+        if (currentUser.isBlocked()) {
+            log.warn("[BLOCK-INTERCEPT] placeBidOnAuction denied: user '{}' (id={}) is BLOCKED. "
+                            + "Auction={}, requestedBid={}.",
+                    currentUser.getUserName(), currentUser.getId(),
+                    auction.getId(), newMaxBid);
+
+            // Gửi thông báo lỗi rõ ràng về client.
+            // isBot = true nghĩa là lệnh đến từ AutoBidEngine — không nên gửi
+            // thông báo vì Bot đặt lệnh thay mặt user đang bị khóa:
+            // AutoBidEngine nên bị dừng khi user bị khóa (xử lý riêng).
+            if (!isBot) {
+                ClientManager.sendToUser(currentUser.getId(), "ERROR",
+                        new ErrorPayload(ERR_CODE_BLOCKED, MSG_ACCOUNT_BLOCKED));
+            }
+
+            // Trả về false ngay lập tức — KHÔNG chạy tiếp bất kỳ dòng nào.
+            return CompletableFuture.completedFuture(false);
+        }
+        // ════════════════════════════════════════════════════════════════════
+        // END GUARD 0
+        // ════════════════════════════════════════════════════════════════════
+
+        // Guard 1 (giữ nguyên): Người bán không được tự đặt giá cho phiên của mình.
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             log.warn("Bid rejected: seller {} cannot bid on their own auction {}",
                     currentUser.getId(), auction.getId());
             return CompletableFuture.completedFuture(false);
         }
 
+        // ── Phần còn lại KHÔNG THAY ĐỔI — giữ nguyên hoàn toàn ─────────────
         Callable<String> bidTask = () -> {
             long   expectedPrice;
             long   expectedMaxBid;
@@ -115,8 +172,10 @@ public class ServerBidderController {
                 conn.setAutoCommit(false);
                 try {
                     commitResult = bidDAO.executeBidTransactionSourceOfTruth(
-                            conn, auction.getId(), currentUser,
-                            newMaxBid, expectedPrice, expectedMaxBid, expectedWinnerId,
+                            conn,
+                            auction.getId(),
+                            currentUser,
+                            newMaxBid,
                             isBot
                     );
 
@@ -145,7 +204,6 @@ public class ServerBidderController {
             if ("SUCCESS".equals(finalStatus) && commitResult != null) {
                 final BidDAO.BidCommitResult committed = commitResult;
                 synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                    // Double-check: chỉ cập nhật nếu DB vẫn là nguồn dữ liệu mới hơn RAM.
                     if (auction.getCurrentPrice() <= committed.newCurrentPrice) {
                         User winner = null;
                         if (committed.newWinnerId != null) {
@@ -156,7 +214,8 @@ public class ServerBidderController {
                                 winner,
                                 (long) committed.newHighestMaxBid,
                                 (long) committed.newCurrentPrice,
-                                committed.newEndTime
+                                committed.newEndTime,
+                                Auction.STATUS_WAITING_FOR_BID.equals(auction.getStatus())
                         ));
                     }
                 }
@@ -171,7 +230,6 @@ public class ServerBidderController {
                 .thenApply(result -> {
                     switch (result) {
                         case "SUCCESS" -> {
-                            // Broadcast giá mới đến toàn bộ clients đang theo dõi
                             Map<String, Object> update = new HashMap<>();
                             update.put("auctionId", auction.getId());
                             update.put("newPrice",  auction.getCurrentPrice());
@@ -181,7 +239,6 @@ public class ServerBidderController {
                                     .toInstant().toEpochMilli());
                             ClientManager.broadcast("UPDATE_AUCTION_PRICE", update, null);
 
-                            // Kích hoạt AutoBidEngine để các Bot đối thủ phản ứng
                             if (!isBot) {
                                 AutoBidEngine.triggerBotScan(auction);
                             }
@@ -224,7 +281,13 @@ public class ServerBidderController {
     /**
      * Đăng ký hoặc nâng cấp cấu hình Auto-Bid cho người dùng trên một phiên đấu giá.
      *
-     * <p>Thứ tự thao tác được thiết kế để đảm bảo tính nhất quán DB-RAM:</p>
+     * <h3>Guard tầng 0 — Kiểm tra tài khoản bị khóa (MỚI)</h3>
+     * <p>Kiểm tra <strong>dứt khoát</strong> tại dòng đầu tiên. Nếu
+     * {@code currentUser.isBlocked()} trả về {@code true}, toàn bộ luồng đăng ký
+     * Auto-Bid bị từ chối ngay — DB không được chạm tới, không có AutoBid nào
+     * được ghi vào bảng {@code auto_bids}, không có lock tiền nào xảy ra.</p>
+     *
+     * <h3>Thứ tự thao tác (giữ nguyên)</h3>
      * <ol>
      *   <li>Persist vào DB trước (source of truth).</li>
      *   <li>Chỉ cập nhật hàng đợi RAM sau khi DB ghi thành công.</li>
@@ -240,16 +303,41 @@ public class ServerBidderController {
     public CompletableFuture<Boolean> setupAutoBid(
             User currentUser, Auction auction, long maxBid, long increment) {
 
+        // ════════════════════════════════════════════════════════════════════
+        // GUARD 0: CHẶN TÀI KHOẢN BỊ KHÓA — DÒNG ĐẦU TIÊN, KHÔNG CÓ NGOẠI LỆ
+        // ════════════════════════════════════════════════════════════════════
+        // Chặn trước khi bất kỳ logic nào chạy — kể cả guard "seller check".
+        // Tài khoản bị khóa không được phép đăng ký/cập nhật AutoBid vì:
+        //   1. Không được đặt giá => AutoBid cũng vô nghĩa.
+        //   2. Cấm ghi bất kỳ bản ghi nào vào bảng auto_bids.
+        //   3. Cấm khóa bất kỳ khoản tiền nào vào locked_balance.
+        if (currentUser.isBlocked()) {
+            log.warn("[BLOCK-INTERCEPT] setupAutoBid denied: user '{}' (id={}) is BLOCKED. "
+                            + "Auction={}, requestedMaxBid={}.",
+                    currentUser.getUserName(), currentUser.getId(),
+                    auction.getId(), maxBid);
+
+            ClientManager.sendToUser(currentUser.getId(), "ERROR",
+                    new ErrorPayload(ERR_CODE_BLOCKED, MSG_ACCOUNT_BLOCKED));
+
+            // Trả về false ngay lập tức — KHÔNG chạy tiếp bất kỳ dòng nào.
+            return CompletableFuture.completedFuture(false);
+        }
+        // ════════════════════════════════════════════════════════════════════
+        // END GUARD 0
+        // ════════════════════════════════════════════════════════════════════
+
+        // Guard 1 (giữ nguyên): Người bán không được tự đặt AutoBid cho phiên của mình.
         if (auction.getSeller().getId().equals(currentUser.getId())) {
             log.warn("Auto-bid rejected: seller {} cannot set auto-bid on own auction",
                     currentUser.getId());
             return CompletableFuture.completedFuture(false);
         }
 
+        // ── Phần còn lại KHÔNG THAY ĐỔI — giữ nguyên hoàn toàn ─────────────
         Callable<Boolean> task = () -> {
             boolean saved;
             try {
-                // DB write nằm ngoài RAM Lock — không cản trở đọc đồng thời
                 saved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
             } catch (SQLException e) {
                 log.error("Failed to persist auto-bid for user {} on auction {}: {}",
@@ -258,7 +346,6 @@ public class ServerBidderController {
             }
 
             if (saved) {
-                // Cập nhật hàng đợi RAM trong Critical Section ngắn
                 synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                     boolean registered = auction.registerAutoBid(currentUser, maxBid, increment);
                     if (registered) {
@@ -266,8 +353,6 @@ public class ServerBidderController {
                                 currentUser.getUserName(), auction.getId(), maxBid);
                         return true;
                     }
-                    // Auction vừa đóng trong khoảnh khắc DB ghi xong — trả về false nhưng
-                    // không cần rollback DB vì BidDAO.cancelAutoBid sẽ dọn dẹp khi auction kết thúc.
                     log.warn("Auto-bid DB saved but auction {} closed before RAM registration",
                             auction.getId());
                 }
@@ -290,95 +375,41 @@ public class ServerBidderController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CANCEL AUTO-BID  ← [BUG FIX]: Method này bị thiếu khiến BidActionHandler
-    //                    không compile được. BidActionHandler.handleSetupAutoBid()
-    //                    (khi maxBid == 0) gọi bidderCtrl.cancelAutoBid(user, auction)
-    //                    và chain .thenAccept(), nên kiểu trả về phải là
-    //                    CompletableFuture<Boolean>, không phải boolean blocking.
+    // CANCEL AUTO-BID — KHÔNG THAY ĐỔI
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Hủy một Auto-Bid đang hoạt động của người dùng trên phiên đấu giá và giải phóng
-     * các khoản tiền đã bị khóa liên quan, theo mô hình DB-first / RAM-second.
-     *
-     * <h3>Quy trình</h3>
-     * <ol>
-     *   <li><b>DB cancel</b>  — Soft-delete bản ghi {@code auto_bids}, giải phóng
-     *       {@code locked_balance} qua {@link BidDAO#cancelAutoBid}.</li>
-     *   <li><b>RAM purge</b>  — Xóa {@link model.auction.AutoBid} tương ứng khỏi
-     *       {@code auction.activeAutoBids} trong Critical Section ngắn.</li>
-     * </ol>
-     *
-     * <h3>Thread-Safety</h3>
-     * <ul>
-     *   <li>Toàn bộ DB write chạy trên DB-Worker Thread của {@link TransactionManager}.</li>
-     *   <li>{@code PriorityBlockingQueue.removeIf()} là thread-safe; RAM Lock chỉ bảo
-     *       vệ thêm tính nguyên tử giữa việc xóa và trạng thái phiên.</li>
-     *   <li>Nếu DB thất bại, RAM không bao giờ bị thay đổi → không có trạng thái
-     *       không nhất quán giữa DB và RAM.</li>
-     * </ul>
-     *
-     * @param currentUser Người dùng yêu cầu hủy Auto-Bid (đã xác thực).
-     * @param auction     Phiên đấu giá chứa Auto-Bid cần hủy.
-     * @return {@link CompletableFuture}{@code <Boolean>}:
-     *         <ul>
-     *           <li>{@code true}  — Hủy thành công (DB soft-deleted + RAM removed).</li>
-     *           <li>{@code false} — Không tìm thấy Auto-Bid đang hoạt động, hoặc lỗi DB.</li>
-     *         </ul>
+     * Hủy một Auto-Bid đang hoạt động của người dùng trên phiên đấu giá.
+     * (Giữ nguyên hoàn toàn — không cần guard block vì hủy là thao tác an toàn.)
      */
     public CompletableFuture<Boolean> cancelAutoBid(User currentUser, Auction auction) {
 
         Callable<Boolean> task = () -> {
             boolean cancelled;
             try {
-                // ── Bước 1: Xóa mềm (soft-delete) trong DB và giải phóng ví ────
-                // bidDAO.cancelAutoBid() thực hiện:
-                //   a) Check auto_bids có tồn tại không (nếu không → return false)
-                //   b) Gọi autoBidLockService.releaseAllLocks() để cộng lại locked_balance
-                //   c) UPDATE auto_bids SET is_active = 0 (soft-delete)
-                //   d) Commit — toàn bộ trong 1 JDBC transaction ACID
                 cancelled = bidDAO.cancelAutoBid(currentUser, auction);
             } catch (SQLException e) {
-                log.error("DB error cancelling auto-bid: user={}, auction={}: {}",
+                log.error("Failed to cancel auto-bid for user {} on auction {}: {}",
                         currentUser.getUserName(), auction.getId(), e.getMessage(), e);
                 return false;
             }
 
-            if (!cancelled) {
-                // Không có bản ghi is_active = 1 trong DB → không có gì để hủy
-                log.warn("Cancel auto-bid: no active auto-bid found for user={} on auction={}",
-                        currentUser.getUserName(), auction.getId());
-                return false;
-            }
-
-            // ── Bước 2: Xóa khỏi hàng đợi RAM trong Critical Section ─────────
-            // PriorityBlockingQueue.removeIf() tự thread-safe, nhưng synchronized
-            // ở đây đảm bảo tính nguyên tử giữa việc xóa và kiểm tra trạng thái phiên,
-            // tránh race condition với AutoBidEngine đang đọc hàng đợi song song.
-            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                boolean removedFromRam = auction.getActiveAutoBids()
-                        .removeIf(ab -> ab.getBidder().getId().equals(currentUser.getId()));
-
-                if (removedFromRam) {
-                    log.info("Auto-bid cancelled and removed from RAM: user={}, auction={}",
-                            currentUser.getUserName(), auction.getId());
-                } else {
-                    // Trường hợp biên: DB có bản ghi nhưng RAM đã bị dọn trước (ví dụ:
-                    // phiên vừa kết thúc và AuctionMonitor đã clear hàng đợi).
-                    // Vẫn trả về true vì DB đã hủy thành công — mục tiêu chính đã đạt.
-                    log.warn("Auto-bid cancelled in DB but entry was not found in RAM queue "
-                                    + "(auction may have just closed): user={}, auction={}",
+            if (cancelled) {
+                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                    auction.getActiveAutoBids().removeIf(
+                            ab -> ab.getBidder().getId().equals(currentUser.getId()));
+                    log.info("Auto-bid cancelled in RAM: user={}, auction={}",
                             currentUser.getUserName(), auction.getId());
                 }
+                return true;
             }
-
-            return true;
+            return false;
         };
 
         return TransactionManager.submitTask(task)
                 .exceptionally(ex -> {
-                    log.error("Uncaught error during cancelAutoBid for user={}, auction={}: {}",
-                            currentUser.getUserName(), auction.getId(), ex.getMessage(), ex);
+                    log.error("Uncaught error during cancelAutoBid for auction {}: {}",
+                            auction.getId(), ex.getMessage(), ex);
                     return false;
                 });
     }

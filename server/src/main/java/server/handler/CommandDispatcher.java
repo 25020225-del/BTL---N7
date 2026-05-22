@@ -59,6 +59,9 @@ public class    CommandDispatcher {
      * Registers all available command handlers into the dispatcher.
      */
     private void registerHandlers() {
+
+        service.AdminAuctionService adminAuctionService = new service.AdminAuctionService(auctionDAO, walletDAO);
+
         // Register System level functions (Ping, Time Sync)
         SystemHandler sysHandler = new SystemHandler();
         handlers.put("PING", sysHandler);
@@ -97,12 +100,14 @@ public class    CommandDispatcher {
 
         // Register Admin operations
         controller.ServerAdminController adminCtrl = new controller.ServerAdminController(userDAO, auctionDAO, walletDAO, withdrawalDAO);
-        AdminActionHandler adminHandler = new AdminActionHandler(auctionDAO, userDAO, adminCtrl);
+        AdminActionHandler adminHandler =
+                new AdminActionHandler(auctionDAO, userDAO, adminCtrl, adminAuctionService);
         handlers.put("APPROVE_AUCTION", adminHandler);
         handlers.put("REJECT_AUCTION", adminHandler);
         handlers.put("FETCH_USERS", adminHandler);
         handlers.put("BLOCK_USER", adminHandler);
         handlers.put("UNBLOCK_USER", adminHandler);
+        handlers.put("TOGGLE_GOOD_STATUS", adminHandler);
         
         // Register Bidding operations
         BidActionHandler bidHandler = new BidActionHandler(new controller.ServerBidderController(bidDAO), auctionDAO);
@@ -120,6 +125,8 @@ public class    CommandDispatcher {
         handlers.put("FETCH_WITHDRAW_REQUESTS", adminHandler);
         handlers.put("APPROVE_WITHDRAW",        adminHandler);
         handlers.put("REJECT_WITHDRAW",         adminHandler);
+
+        handlers.put("CANCEL_AUCTION", adminHandler);
 
     }
 

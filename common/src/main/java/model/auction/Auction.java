@@ -5,6 +5,7 @@ import model.finance.BidTransaction;
 import model.item.Item;
 import model.user.User;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -15,24 +16,83 @@ import static utils.ConsoleColors.*;
 
 /**
  * Represents an auction session within the system.
- * This class manages the lifecycle of an auction, including the item being sold,
- * the current price, manual bidding history, automated bots (AutoBids), and time tracking.
+ *
+ * <h2>Vòng đời phiên đấu giá (Life-cycle)</h2>
+ * <pre>
+ *   PENDING_APPROVAL
+ *        │  (admin duyệt)
+ *        ▼
+ *      OPEN  ──(startTime đến)──▶  WAITING_FOR_BID
+ *                                       │
+ *                               (bid hợp lệ đầu tiên)
+ *                                       │ end_time = now + durationMinutes
+ *                                       ▼
+ *                                   RUNNING  ──(endTime đến)──▶  FINISHED
+ *                                                                     │
+ *                                                              (thanh toán)
+ *                                                            ┌────────┴────────┐
+ *                                                          PAID           CANCELED
+ * </pre>
+ *
+ * <h2>Thay đổi so với phiên bản cũ</h2>
+ * <ul>
+ *   <li>Thêm trạng thái {@link #STATUS_WAITING_FOR_BID}: phiên đã khai mạc nhưng
+ *       đồng hồ chưa chạy — chờ bid đầu tiên.</li>
+ *   <li>Xoá {@code maxEndTime} (hard-cap 30 phút). Anti-sniping gia hạn <em>vô hạn lần</em>.</li>
+ *   <li>Thêm trường {@code durationMinutes}: thời lượng gốc, dùng để tính {@code endTime}
+ *       tại thời điểm bid đầu tiên.</li>
+ *   <li>{@code endTime} có thể là {@code null} khi {@code status = WAITING_FOR_BID}.</li>
+ * </ul>
  */
 public class Auction extends Entity {
 
+    // -------------------------------------------------------------------------
+    // Trạng thái vòng đời
+    // -------------------------------------------------------------------------
 
-
-    // Auction lifecycle states
+    /** Chờ admin duyệt. */
     public static final String STATUS_PENDING = "PENDING_APPROVAL";
-    public static final String STATUS_OPEN = "OPEN";
-    public static final String STATUS_RUNNING = "RUNNING";
-    public static final String STATUS_FINISHED = "FINISHED";
-    public static final String STATUS_PAID = "PAID";
-    public static final String STATUS_CANCELED = "CANCELED";
-    public static final String STATUS_DELETED = "DELETED";
 
-    public static final long ANTI_SNIPING_THRESHOLD_SECONDS = 60; // X: Gia hạn nếu bid trong 60 giây cuối
-    public static final long ANTI_SNIPING_EXTENSION_SECONDS = 120; // Y: Số giây được cộng thêm (2 phút)
+    /**
+     * Đã duyệt, chưa đến giờ khai mạc.
+     * {@code endTime} được tính sẵn nhưng <em>chưa có ý nghĩa</em> — đồng hồ chưa chạy.
+     */
+    public static final String STATUS_OPEN = "OPEN";
+
+    /**
+     * Đã đến giờ khai mạc, <strong>đang chờ bid đầu tiên</strong>.
+     * {@code endTime} = {@code null} — đồng hồ chưa chạy.
+     * Chuyển sang {@link #STATUS_RUNNING} ngay khi có bid hợp lệ đầu tiên.
+     */
+    public static final String STATUS_WAITING_FOR_BID = "WAITING_FOR_BID";
+
+    /**
+     * Đang chạy, đã có ít nhất một bid.
+     * {@code endTime} đã được xác lập = thời điểm bid đầu + {@code durationMinutes}.
+     */
+    public static final String STATUS_RUNNING = "RUNNING";
+
+    public static final String STATUS_FINISHED = "FINISHED";
+    public static final String STATUS_PAID     = "PAID";
+    public static final String STATUS_CANCELED = "CANCELED";
+    public static final String STATUS_DELETED  = "DELETED";
+
+    // -------------------------------------------------------------------------
+    // Hằng số Anti-Sniping
+    // -------------------------------------------------------------------------
+
+    /** Gia hạn khi có bid trong X giây cuối. */
+    public static final long ANTI_SNIPING_THRESHOLD_SECONDS = 60;
+
+    /**
+     * Số giây cộng thêm mỗi lần gia hạn (2 phút).
+     * Không có giới hạn số lần — gia hạn vô hạn khi cần.
+     */
+    public static final long ANTI_SNIPING_EXTENSION_SECONDS = 120;
+
+    // -------------------------------------------------------------------------
+    // Trường dữ liệu
+    // -------------------------------------------------------------------------
 
     private Item item;
     private User seller;
@@ -43,416 +103,447 @@ public class Auction extends Entity {
 
     private User winningBidder;
     private String status;
-    private LocalDateTime endTime;
-    private LocalDateTime maxEndTime; // Hard-cap limit for Anti-Sniping
-    private List<BidTransaction> bidHistory = new ArrayList<>();
 
-    // PriorityBlockingQueue to guarantee thread-safe operations and process auto-bids chronologically
-    private PriorityBlockingQueue<AutoBid> activeAutoBids;
     private LocalDateTime startTime;
 
     /**
-     * Default constructor.
-     * Initializes the thread-safe auto-bid queue with a time-based comparator to prioritize earlier registrations.
+     * Thời điểm kết thúc phiên.
+     * <p><strong>Quan trọng:</strong> Trường này là {@code null} khi
+     * {@code status = WAITING_FOR_BID}. Mọi đoạn code đọc {@code endTime}
+     * phải kiểm tra null hoặc kiểm tra status trước.</p>
+     */
+    private LocalDateTime endTime;
+
+    /**
+     * Thời lượng gốc của phiên (phút), được lưu vào DB cột {@code duration_minutes}.
+     * Dùng để tính {@code endTime = now + durationMinutes} tại thời điểm bid đầu tiên.
+     */
+    private int durationMinutes;
+
+    private List<BidTransaction> bidHistory = new ArrayList<>();
+
+    /** Queue thread-safe xử lý AutoBid theo thứ tự thời gian đăng ký. */
+    private PriorityBlockingQueue<AutoBid> activeAutoBids;
+
+    // -------------------------------------------------------------------------
+    // Constructors
+    // -------------------------------------------------------------------------
+
+    /**
+     * Constructor mặc định (dùng cho Jackson deserialize và DAO mapping).
      */
     public Auction() {
         super();
-        // PriorityBlockingQueue requires an initial capacity when using a custom Comparator
-        this.activeAutoBids = new PriorityBlockingQueue<>(11, Comparator.comparing(AutoBid::getTimeRegistered));
+        this.activeAutoBids = new PriorityBlockingQueue<>(
+                11, Comparator.comparing(AutoBid::getTimeRegistered));
     }
 
     /**
-     * Full constructor to initialize a new auction session.
+     * Constructor đầy đủ — dùng khi load auction từ DB hoặc tạo mới.
      *
-     * @param id           The unique identifier of the auction.
-     * @param item         The item being auctioned.
-     * @param seller       The user selling the item.
-     * @param bidIncrement The minimum increment required for a new bid.
-     * @param startTime    The starting time of the auction.
-     * @param endTime      The scheduled ending time of the auction.
+     * @param id              ID duy nhất của phiên.
+     * @param item            Tài sản đấu giá.
+     * @param seller          Người bán.
+     * @param bidIncrement    Mức tăng tối thiểu mỗi lần bid.
+     * @param startTime       Thời điểm khai mạc.
+     * @param endTime         Thời điểm kết thúc ({@code null} nếu WAITING_FOR_BID).
+     * @param durationMinutes Thời lượng gốc (phút).
      */
-    public Auction(String id, Item item, User seller, long bidIncrement, LocalDateTime startTime, LocalDateTime endTime) {
+    public Auction(String id, Item item, User seller,
+                   long bidIncrement,
+                   LocalDateTime startTime, LocalDateTime endTime,
+                   int durationMinutes) {
         super(id);
-        this.item = item;
-        this.seller = seller;
-        this.currentPrice = item.getStartingPrice();
+        this.item          = item;
+        this.seller        = seller;
+        this.currentPrice  = item.getStartingPrice();
         this.highestMaxBid = 0;
-        this.bidIncrement = bidIncrement;
-        this.startTime = startTime;
-        this.endTime = endTime;
+        this.bidIncrement  = bidIncrement;
+        this.startTime     = startTime;
+        this.endTime       = endTime;         // null khi WAITING_FOR_BID
+        this.durationMinutes = durationMinutes;
+        this.bidHistory    = new ArrayList<>();
+        this.activeAutoBids = new PriorityBlockingQueue<>(
+                11, Comparator.comparing(AutoBid::getTimeRegistered));
 
-        // Anti-Sniping hard-cap: maximum 30 minutes extension from the initial end time
-        this.maxEndTime = endTime.plusMinutes(30);
-
-        this.bidHistory = new ArrayList<>();
-
-        this.activeAutoBids = new PriorityBlockingQueue<>(11, Comparator.comparing(AutoBid::getTimeRegistered));
-
-        if (seller.isGood()) {
-            this.status = STATUS_OPEN;
-        } else {
-            this.status = STATUS_PENDING;
-        }
+        this.status = seller.isGood() ? STATUS_OPEN : STATUS_PENDING;
     }
 
     /**
-     * Factory method to generate a new Auction instance with dynamically calculated start and end times.
+     * Constructor backward-compatible (6 tham số, không có durationMinutes).
+     * Tự tính {@code durationMinutes} từ khoảng cách startTime → endTime.
      *
-     * @param item            The item to be auctioned.
-     * @param seller          The user hosting the auction.
-     * @param bidIncrement    The required minimum increment between bids.
-     * @param durationMinutes The total active duration of the auction in minutes.
-     * @return A newly initialized Auction instance.
+     * @deprecated Dùng constructor 7 tham số để lưu đúng {@code durationMinutes}.
      */
-    public static Auction createNewAuction(Item item, User seller, long bidIncrement, LocalDateTime startTime, int durationMinutes) {
+    @Deprecated
+    public Auction(String id, Item item, User seller,
+                   long bidIncrement,
+                   LocalDateTime startTime, LocalDateTime endTime) {
+        this(id, item, seller, bidIncrement, startTime, endTime,
+                (endTime != null && startTime != null)
+                        ? (int) java.time.Duration.between(startTime, endTime).toMinutes()
+                        : 60);
+    }
+
+    // -------------------------------------------------------------------------
+    // Factory method
+    // -------------------------------------------------------------------------
+
+    /**
+     * Tạo một phiên đấu giá mới với cơ chế "chờ bid đầu tiên".
+     *
+     * <p>Khác với phiên bản cũ, {@code endTime} <strong>không</strong> được tính ngay.
+     * {@code endTime} sẽ chỉ được xác lập tại thời điểm bid đầu tiên được đặt thành công.</p>
+     *
+     * @param item            Tài sản đấu giá.
+     * @param seller          Người bán.
+     * @param bidIncrement    Mức tăng tối thiểu.
+     * @param startTime       Thời điểm khai mạc phiên.
+     * @param durationMinutes Thời lượng phiên (tính từ bid đầu tiên).
+     * @return Auction mới, {@code endTime = null}, status = OPEN hoặc PENDING_APPROVAL.
+     */
+    public static Auction createNewAuction(Item item, User seller,
+                                           long bidIncrement,
+                                           LocalDateTime startTime,
+                                           int durationMinutes) {
         String newId = "AUC-" + System.currentTimeMillis();
-        LocalDateTime end = startTime.plusMinutes(durationMinutes);
 
-        Auction newAuction = new Auction(newId, item, seller, bidIncrement, startTime, end);
+        // endTime = null: đồng hồ chưa chạy, chờ bid đầu tiên
+        Auction newAuction = new Auction(
+                newId, item, seller,
+                bidIncrement,
+                startTime, null,   // <-- endTime = null
+                durationMinutes);
 
-        if (seller.isGood()) {
-            newAuction.setStatus(STATUS_OPEN);
-        } else {
-            newAuction.setStatus(STATUS_PENDING);
-        }
-
+        newAuction.setStatus(seller.isGood() ? STATUS_OPEN : STATUS_PENDING);
         return newAuction;
     }
 
-    // --- GETTERS & SETTERS ---
-
-    public Item getItem() {
-        return item;
-    }
-
-    public void setItem(Item item) {
-        this.item = item;
-    }
-
-    public User getSeller() {
-        return seller;
-    }
-
-    public void setSeller(User seller) {
-        this.seller = seller;
-    }
-
-    public long getCurrentPrice() {
-        return currentPrice;
-    }
-
-    public void setCurrentPrice(long currentPrice) {
-        this.currentPrice = currentPrice;
-    }
-
-    public long getHighestMaxBid() {
-        return highestMaxBid;
-    }
-
-    public void setHighestMaxBid(long highestMaxBid) {
-        this.highestMaxBid = highestMaxBid;
-    }
-
-    public long getBidIncrement() {
-        return bidIncrement;
-    }
-
-    public void setBidIncrement(long bidIncrement) {
-        this.bidIncrement = bidIncrement;
-    }
-
-    public User getWinningBidder() {
-        return winningBidder;
-    }
-
-    public void setWinningBidder(User winningBidder) {
-        this.winningBidder = winningBidder;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getEndTime() {
-        return endTime;
-    }
-
-    public void setEndTime(LocalDateTime endTime) {
-        this.endTime = endTime;
-    }
-
-    public LocalDateTime getMaxEndTime() {
-        return maxEndTime;
-    }
-
-    public void setMaxEndTime(LocalDateTime maxEndTime) {
-        this.maxEndTime = maxEndTime;
-    }
-
-    public List<BidTransaction> getBidHistory() {
-        return bidHistory;
-    }
-
-    public void setBidHistory(List<BidTransaction> bidHistory) {
-        this.bidHistory = bidHistory;
-    }
-
-    public LocalDateTime getStartTime() {
-        return startTime;
-    }
-
-    public void setStartTime(LocalDateTime startTime) {
-        this.startTime = startTime;
-    }
-
-    public PriorityBlockingQueue<AutoBid> getActiveAutoBids() {
-        return activeAutoBids;
-    }
-
-    // --- BUSINESS LOGIC METHODS ---
+    // -------------------------------------------------------------------------
+    // Inner class: BidResult
+    // -------------------------------------------------------------------------
 
     /**
-     * Container for holding the calculated results of a bid attempt before it is applied.
+     * Kết quả tính toán của một lần bid trước khi được áp dụng.
+     * Immutable; dùng trong pattern calculate → DB commit → apply.
      */
     public static class BidResult {
-        public final User newWinner;
-        public final long newHighestMaxBid;
-        public final long newCurrentPrice;
+        public final User          newWinner;
+        public final long          newHighestMaxBid;
+        public final long          newCurrentPrice;
         public final LocalDateTime newEndTime;
 
-        public BidResult(User newWinner, long newHighestMaxBid, long newCurrentPrice, LocalDateTime newEndTime) {
-            this.newWinner = newWinner;
+        /**
+         * Cờ đánh dấu đây là bid đầu tiên của phiên (WAITING_FOR_BID → RUNNING).
+         * Khi {@code true}: caller phải cập nhật {@code status = RUNNING} trong DB.
+         */
+        public final boolean isFirstBid;
+
+        public BidResult(User newWinner, long newHighestMaxBid,
+                         long newCurrentPrice, LocalDateTime newEndTime,
+                         boolean isFirstBid) {
+            this.newWinner        = newWinner;
             this.newHighestMaxBid = newHighestMaxBid;
-            this.newCurrentPrice = newCurrentPrice;
-            this.newEndTime = newEndTime;
+            this.newCurrentPrice  = newCurrentPrice;
+            this.newEndTime       = newEndTime;
+            this.isFirstBid       = isFirstBid;
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Business Logic: calculateBidResult
+    // -------------------------------------------------------------------------
+
     /**
-     * Calculates the potential outcome of a bid without modifying the auction state.
-     * This follows the MVC pattern by keeping business logic within the Model.
+     * Tính toán kết quả đặt giá mà <strong>không thay đổi trạng thái</strong> auction.
      *
-     * @param bidder    The user attempting to bid.
-     * @param newMaxBid The maximum bid amount.
-     * @return A BidResult object containing the calculated state, or null if invalid.
+     * <h3>Các trạng thái được chấp nhận:</h3>
+     * <ul>
+     *   <li>{@link #STATUS_WAITING_FOR_BID} – bid đầu tiên; {@code endTime} sẽ được
+     *       tính = {@code now + durationMinutes} và trả về trong {@code BidResult}.</li>
+     *   <li>{@link #STATUS_RUNNING} – bid bình thường; anti-sniping không có hard-cap.</li>
+     * </ul>
+     *
+     * @param bidder    Người đặt giá.
+     * @param newMaxBid Mức giá tối đa người dùng sẵn sàng trả.
+     * @return {@link BidResult} với kết quả tính toán, hoặc {@code null} nếu bid không hợp lệ.
      */
     public BidResult calculateBidResult(User bidder, long newMaxBid) {
-        if (status.equals(STATUS_DELETED) || !status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
+        boolean isWaiting = STATUS_WAITING_FOR_BID.equals(status);
+        boolean isRunning = STATUS_RUNNING.equals(status);
+
+        // Chỉ chấp nhận hai trạng thái này
+        if (!isWaiting && !isRunning) {
             return null;
         }
 
-        long minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
+        // Nếu đang RUNNING: kiểm tra endTime chưa qua
+        if (isRunning) {
+            if (endTime == null || LocalDateTime.now().isAfter(endTime)) {
+                return null;
+            }
+        }
+
+        // ── Kiểm tra mức bid tối thiểu ──────────────────────────────────────
+        long minRequiredBid = (winningBidder == null)
+                ? currentPrice
+                : (currentPrice + bidIncrement);
+
         if (newMaxBid < minRequiredBid) {
             return null;
         }
 
-        User nextWinner = winningBidder;
+        // ── Tính toán winner & price mới ────────────────────────────────────
+        User nextWinner       = winningBidder;
         long nextHighestMaxBid = highestMaxBid;
-        long nextCurrentPrice = currentPrice;
-        LocalDateTime nextEndTime = endTime;
+        long nextCurrentPrice  = currentPrice;
 
         if (winningBidder == null) {
-            nextCurrentPrice = item.getStartingPrice();
-            nextHighestMaxBid = newMaxBid;
-            nextWinner = bidder;
+            // Bid đầu tiên (trạng thái WAITING_FOR_BID hoặc RUNNING chưa có winner)
+            nextCurrentPrice   = item.getStartingPrice();
+            nextHighestMaxBid  = newMaxBid;
+            nextWinner         = bidder;
+
         } else if (bidder.getId().equals(winningBidder.getId())) {
+            // Người đang thắng nâng mức đặt của chính họ
             if (newMaxBid > highestMaxBid) {
                 nextHighestMaxBid = newMaxBid;
             }
+
         } else {
+            // Người mới cố vượt qua người đang thắng
             if (newMaxBid > highestMaxBid) {
                 nextCurrentPrice = highestMaxBid + bidIncrement;
-                if (nextCurrentPrice > newMaxBid) nextCurrentPrice = newMaxBid;
+                if (nextCurrentPrice > newMaxBid) {
+                    nextCurrentPrice = newMaxBid;
+                }
                 nextHighestMaxBid = newMaxBid;
-                nextWinner = bidder;
+                nextWinner        = bidder;
             } else {
                 nextCurrentPrice = newMaxBid + bidIncrement;
-                if (nextCurrentPrice > highestMaxBid) nextCurrentPrice = highestMaxBid;
+                if (nextCurrentPrice > highestMaxBid) {
+                    nextCurrentPrice = highestMaxBid;
+                }
             }
         }
 
-        // --- CẬP NHẬT LOGIC ANTI-SNIPING (NÂNG CAO) ---
+        // ── Tính toán endTime mới ────────────────────────────────────────────
+        LocalDateTime nextEndTime;
+
+        if (isWaiting) {
+            // Bid đầu tiên: kích hoạt đồng hồ ngay bây giờ
+            nextEndTime = LocalDateTime.now().plusMinutes(durationMinutes);
+            return new BidResult(nextWinner, nextHighestMaxBid, nextCurrentPrice,
+                    nextEndTime, true /* isFirstBid */);
+        }
+
+        // RUNNING: kiểm tra anti-sniping
+        nextEndTime = endTime;
         LocalDateTime now = LocalDateTime.now();
-        long secondsRemaining = java.time.Duration.between(now, nextEndTime).getSeconds();
+        long secondsRemaining = Duration.between(now, endTime).getSeconds();
 
-        // Nếu có bid mới trong X giây cuối, cập nhật newEndTime = endTime.plusSeconds(Y)
         if (secondsRemaining > 0 && secondsRemaining <= ANTI_SNIPING_THRESHOLD_SECONDS) {
-            LocalDateTime proposedEndTime = nextEndTime.plusSeconds(ANTI_SNIPING_EXTENSION_SECONDS);
-
-            // Giữ lại lớp bảo vệ Hard-Cap (maxEndTime) chống lại việc spam bid kéo dài phiên vô tận
-            if (proposedEndTime.isBefore(maxEndTime)) {
-                nextEndTime = proposedEndTime;
-            } else {
-                nextEndTime = maxEndTime;
-            }
+            // Gia hạn vô hạn lần — KHÔNG có hard-cap
+            nextEndTime = endTime.plusSeconds(ANTI_SNIPING_EXTENSION_SECONDS);
         }
 
-        return new BidResult(nextWinner, nextHighestMaxBid, nextCurrentPrice, nextEndTime);
+        return new BidResult(nextWinner, nextHighestMaxBid, nextCurrentPrice,
+                nextEndTime, false /* isFirstBid */);
     }
 
+    // -------------------------------------------------------------------------
+    // Business Logic: applyBidResult
+    // -------------------------------------------------------------------------
+
     /**
-     * Applies a pre-calculated BidResult to the auction state in RAM.
-     * This should be called AFTER the database transaction has been successfully committed.
+     * Áp dụng kết quả bid đã tính ({@link BidResult}) vào trạng thái in-memory.
      *
-     * @param bidder    The user who placed the bid.
-     * @param result    The pre-calculated result to apply.
-     * @return The created BidTransaction.
+     * <p>Gọi phương thức này <strong>sau khi</strong> DB transaction đã commit thành công.
+     * Nếu {@code result.isFirstBid == true}, trạng thái sẽ tự động chuyển sang
+     * {@link #STATUS_RUNNING}.</p>
+     *
+     * @param bidder Người đặt giá.
+     * @param result Kết quả đã tính bởi {@link #calculateBidResult}.
+     * @return {@link BidTransaction} vừa tạo.
      */
     public BidTransaction applyBidResult(User bidder, BidResult result) {
-        this.winningBidder = result.newWinner;
-        this.highestMaxBid = result.newHighestMaxBid;
-        this.currentPrice = result.newCurrentPrice;
-        this.endTime = result.newEndTime;
+        this.winningBidder    = result.newWinner;
+        this.highestMaxBid    = result.newHighestMaxBid;
+        this.currentPrice     = result.newCurrentPrice;
+        this.endTime          = result.newEndTime;
 
-        BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
+        // Chuyển trạng thái khi bid đầu tiên kích hoạt đồng hồ
+        if (result.isFirstBid) {
+            this.status = STATUS_RUNNING;
+        }
+
+        BidTransaction transaction = new BidTransaction(
+                "TXN-" + System.currentTimeMillis(), bidder, currentPrice);
         bidHistory.add(transaction);
         return transaction;
     }
 
-    /**
-     * Processes a manual bid placed by a user.
-     * @deprecated Use calculateBidResult and applyBidResult for atomic DB-RAM sync in controllers.
-     */
-    @Deprecated
-    public BidTransaction placeBid(User bidder, long newMaxBid) {
-        if (status.equals(STATUS_DELETED)) {
-            return null;
-        }
-
-        if (!status.equals(STATUS_RUNNING) || LocalDateTime.now().isAfter(endTime)) {
-            return null;
-        }
-
-        if (newMaxBid < 0) {
-            return null;
-        }
-
-        long minRequiredBid = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
-        if (newMaxBid < minRequiredBid) {
-            return null;
-        }
-
-        if (winningBidder == null) {
-            currentPrice = item.getStartingPrice();
-            highestMaxBid = newMaxBid;
-            winningBidder = bidder;
-
-        } else if (bidder.getId().equals(winningBidder.getId())) {
-            if (newMaxBid > highestMaxBid) {
-                highestMaxBid = newMaxBid;
-            }
-        } else {
-            if (newMaxBid > highestMaxBid) {
-                currentPrice = highestMaxBid + bidIncrement;
-                if (currentPrice > newMaxBid) {
-                    currentPrice = newMaxBid;
-                }
-                highestMaxBid = newMaxBid;
-                winningBidder = bidder;
-            } else {
-                currentPrice = newMaxBid + bidIncrement;
-                if (currentPrice > highestMaxBid) {
-                    currentPrice = highestMaxBid;
-                }
-            }
-        }
-
-        BidTransaction transaction = new BidTransaction("TXN-" + System.currentTimeMillis(), bidder, currentPrice);
-        bidHistory.add(transaction);
-
-        // Anti-Sniping Algorithm with Hard-Cap Limit
-        if (LocalDateTime.now().plusMinutes(1).isAfter(endTime)) {
-            LocalDateTime proposedEndTime = endTime.plusMinutes(2);
-
-            // Ensure the new end time NEVER exceeds the hard-cap maxEndTime
-            if (proposedEndTime.isAfter(maxEndTime)) {
-                endTime = maxEndTime;
-            } else {
-                endTime = proposedEndTime;
-            }
-        }
-
-        return transaction;
-    }
+    // -------------------------------------------------------------------------
+    // Business Logic: closeAuctionIfTimeIsUp
+    // -------------------------------------------------------------------------
 
     /**
-     * Reverts a specific failed bid transaction. This is typically used to roll back the in-memory
-     * state if the corresponding database transaction fails.
+     * Kiểm tra thời gian và chuyển trạng thái sang {@link #STATUS_FINISHED} nếu đến giờ.
      *
-     * @param previousWinner        The user who was winning before the failed bid.
-     * @param previousHighestMaxBid The highest max bid before the failed bid.
-     * @param failedTransaction     The specific bid transaction that failed and needs to be removed.
-     */
-    public void revertLastBid(User previousWinner, long previousHighestMaxBid, BidTransaction failedTransaction) {
-        // 1. Remove the specific failed transaction from bidHistory
-        if (failedTransaction != null) {
-            bidHistory.remove(failedTransaction);
-        }
-
-        // 2. Restore winning bidder and highest max bid to the state before the failed transaction
-        this.winningBidder = previousWinner;
-        this.highestMaxBid = previousHighestMaxBid;
-
-        // 3. Recalculate currentPrice based on the remaining bid history
-        if (bidHistory.isEmpty()) {
-            this.currentPrice = item.getStartingPrice();
-        } else {
-            // The currentPrice should be the bidAmount of the last valid transaction
-            this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
-        }
-    }
-
-    /**
-     * Evaluates the current system time against the auction's end time.
-     * Transitions the status to FINISHED if the time has passed.
-     * Financial settlement and transition to PAID/CANCELED are handled by the AuctionMonitor.
+     * <p>Phiên ở trạng thái {@link #STATUS_WAITING_FOR_BID} sẽ không bao giờ bị đóng
+     * bởi phương thức này vì {@code endTime == null}.</p>
      */
     public void closeAuctionIfTimeIsUp() {
-        if ((this.status.equals(STATUS_RUNNING) || this.status.equals(STATUS_OPEN)) && LocalDateTime.now().isAfter(this.endTime)) {
+        // WAITING_FOR_BID: endTime = null, không đóng
+        if (endTime == null) {
+            return;
+        }
+        if (STATUS_RUNNING.equals(this.status) && LocalDateTime.now().isAfter(this.endTime)) {
             this.status = STATUS_FINISHED;
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Business Logic: revertLastBid
+    // -------------------------------------------------------------------------
+
     /**
-     * Registers a new automated bidding bot (AutoBid) for a user on this auction.
-     * The bot is placed into a PriorityBlockingQueue for chronological, thread-safe processing.
+     * Hoàn nguyên một giao dịch bid thất bại khỏi in-memory state.
+     * Thường dùng khi DB transaction rollback sau khi đã gọi {@link #applyBidResult}.
      *
-     * @param bidder        The user configuring the auto-bid.
-     * @param maxBid        The absolute maximum amount the user is willing to spend.
-     * @param userIncrement The incremental step amount to increase the price when outbidding.
-     * @return {@code true} if the registration is successful; {@code false} if constraints fail.
+     * @param previousWinner        Winner trước khi bid thất bại.
+     * @param previousHighestMaxBid Mức maxBid trước khi bid thất bại.
+     * @param previousEndTime       endTime trước khi bid thất bại (có thể null).
+     * @param previousStatus        Status trước khi bid thất bại.
+     * @param failedTransaction     Giao dịch cần xoá khỏi bidHistory.
+     */
+    public void revertLastBid(User previousWinner, long previousHighestMaxBid,
+                              LocalDateTime previousEndTime, String previousStatus,
+                              BidTransaction failedTransaction) {
+        if (failedTransaction != null) {
+            bidHistory.remove(failedTransaction);
+        }
+        this.winningBidder    = previousWinner;
+        this.highestMaxBid    = previousHighestMaxBid;
+        this.endTime          = previousEndTime;
+        this.status           = previousStatus;
+
+        if (bidHistory.isEmpty()) {
+            this.currentPrice = item.getStartingPrice();
+        } else {
+            this.currentPrice = bidHistory.get(bidHistory.size() - 1).getBidAmount();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Business Logic: registerAutoBid
+    // -------------------------------------------------------------------------
+
+    /**
+     * Đăng ký AutoBid bot cho người dùng.
+     * Chấp nhận cả khi phiên đang {@link #STATUS_WAITING_FOR_BID} để
+     * user có thể đặt sẵn bot trước khi phiên thực sự bắt đầu đếm.
+     *
+     * @param bidder        Người dùng.
+     * @param maxBid        Mức tối đa.
+     * @param userIncrement Bước tăng giá.
+     * @return {@code true} nếu đăng ký thành công.
      */
     public boolean registerAutoBid(User bidder, long maxBid, long userIncrement) {
-        if (!status.equals(STATUS_RUNNING)) {
+        boolean isActive = STATUS_RUNNING.equals(status)
+                || STATUS_WAITING_FOR_BID.equals(status);
+        if (!isActive) {
             return false;
         }
-
         if (maxBid <= currentPrice) {
             return false;
         }
-
-        AutoBid newAutoBid = new AutoBid(bidder, maxBid, userIncrement);
-        activeAutoBids.offer(newAutoBid);
-
+        activeAutoBids.offer(new AutoBid(bidder, maxBid, userIncrement));
         return true;
     }
 
+    // -------------------------------------------------------------------------
+    // Deprecated: placeBid (legacy single-step bid)
+    // -------------------------------------------------------------------------
+
     /**
-     * Returns a summary string containing the core details of this auction session.
-     *
-     * @return Formatted information string.
+     * @deprecated Dùng {@link #calculateBidResult} + {@link #applyBidResult} để đồng bộ
+     *     DB-RAM một cách atomic. Phương thức này giữ lại để backward-compat với test cũ.
      */
+    @Deprecated
+    public BidTransaction placeBid(User bidder, long newMaxBid) {
+        boolean canBid = STATUS_WAITING_FOR_BID.equals(status) || STATUS_RUNNING.equals(status);
+        if (!canBid) return null;
+        if (STATUS_RUNNING.equals(status) && (endTime == null || LocalDateTime.now().isAfter(endTime))) {
+            return null;
+        }
+        if (newMaxBid < 0) return null;
+
+        long minRequired = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
+        if (newMaxBid < minRequired) return null;
+
+        BidResult result = calculateBidResult(bidder, newMaxBid);
+        if (result == null) return null;
+        return applyBidResult(bidder, result);
+    }
+
+    // -------------------------------------------------------------------------
+    // getInfo
+    // -------------------------------------------------------------------------
+
     @Override
     public String getInfo() {
-        return "=== AUCTION INFORMATION ===\n" +
-                "Auction ID: " + this.getId() + "\n" +
-                "Item: " + (item != null ? item.getItemName() : "N/A") + "\n" +
-                "Current Price: VND " + this.currentPrice + "\n" +
-                "Leading Bidder: " + (winningBidder != null ? winningBidder.getUserName() : "None") + "\n" +
-                "Status: " + this.status;
+        return "=== AUCTION INFORMATION ===\n"
+                + "Auction ID   : " + this.getId() + "\n"
+                + "Item         : " + (item != null ? item.getItemName() : "N/A") + "\n"
+                + "Current Price: VND " + this.currentPrice + "\n"
+                + "Leading Bidder: " + (winningBidder != null ? winningBidder.getUserName() : "None") + "\n"
+                + "Status       : " + this.status + "\n"
+                + "End Time     : " + (endTime != null ? endTime : "Chờ bid đầu tiên…") + "\n"
+                + "Duration     : " + this.durationMinutes + " phút";
     }
+
+    // =========================================================================
+    // GETTERS & SETTERS
+    // =========================================================================
+
+    public Item getItem()                         { return item; }
+    public void setItem(Item item)                { this.item = item; }
+
+    public User getSeller()                       { return seller; }
+    public void setSeller(User seller)            { this.seller = seller; }
+
+    public long getCurrentPrice()                 { return currentPrice; }
+    public void setCurrentPrice(long currentPrice){ this.currentPrice = currentPrice; }
+
+    public long getHighestMaxBid()                { return highestMaxBid; }
+    public void setHighestMaxBid(long highestMaxBid){ this.highestMaxBid = highestMaxBid; }
+
+    public long getBidIncrement()                 { return bidIncrement; }
+    public void setBidIncrement(long bidIncrement){ this.bidIncrement = bidIncrement; }
+
+    public User getWinningBidder()                { return winningBidder; }
+    public void setWinningBidder(User winningBidder){ this.winningBidder = winningBidder; }
+
+    public String getStatus()                     { return status; }
+    public void setStatus(String status)          { this.status = status; }
+
+    public LocalDateTime getStartTime()           { return startTime; }
+    public void setStartTime(LocalDateTime startTime){ this.startTime = startTime; }
+
+    /**
+     * Trả về thời điểm kết thúc. <strong>Có thể null</strong> khi
+     * {@code status = WAITING_FOR_BID}.
+     */
+    public LocalDateTime getEndTime()             { return endTime; }
+    public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
+
+    public int getDurationMinutes()               { return durationMinutes; }
+    public void setDurationMinutes(int durationMinutes){ this.durationMinutes = durationMinutes; }
+
+    public List<BidTransaction> getBidHistory()   { return bidHistory; }
+    public void setBidHistory(List<BidTransaction> bidHistory){ this.bidHistory = bidHistory; }
+
+    public PriorityBlockingQueue<AutoBid> getActiveAutoBids(){ return activeAutoBids; }
+
 }
