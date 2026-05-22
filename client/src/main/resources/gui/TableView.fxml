@@ -9,20 +9,33 @@
 <?import javafx.scene.layout.VBox?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<VBox spacing="0" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<VBox spacing="0" style="-fx-background-color: #f8f9fa;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
     <children>
-        <HBox fx:id="searchBarContainer" alignment="CENTER_LEFT" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #ddd; -fx-border-width: 0 0 1 0;">
+        <!-- Thanh tìm kiếm nâng cấp hiệu ứng đổ bóng & bo góc nhẹ -->
+        <HBox fx:id="searchBarContainer" alignment="CENTER_LEFT" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 0 0 12 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);">
             <padding>
                 <Insets bottom="15" left="25" right="25" top="15" />
             </padding>
-            <FontIcon iconLiteral="mdi2n-note-search" />
-            <TextField fx:id="searchField" promptText="Search securities, stocks, or bidders..." styleClass="search-field" HBox.hgrow="ALWAYS" />
-            <Button fx:id="searchButton" mnemonicParsing="false" onAction="#search" text="Search" />
+            <children>
+                <!-- Icon giữ nguyên, chỉnh kích thước to rõ hơn nếu cần -->
+                <FontIcon iconColor="#5d606d" iconLiteral="mdi2n-note-search" iconSize="20" selectionEnd="0" />
+
+                <!-- Thanh nhập liệu cao hơn, bo góc mềm mại -->
+                <TextField fx:id="searchField" prefHeight="38.0" promptText="Search securities, stocks, or bidders..." style="-fx-background-color: #f1f3f5; -fx-background-radius: 8; -fx-padding: 0 15; -fx-font-size: 14;" styleClass="search-field" HBox.hgrow="ALWAYS" />
+
+                <!-- Nút Search đổi màu xanh công nghệ nổi bật -->
+                <Button fx:id="searchButton" mnemonicParsing="false" onAction="#search" prefHeight="38.0" prefWidth="100.0" style="-fx-background-color: #4e73df; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" text="Search" />
+            </children>
         </HBox>
 
-        <ScrollPane fx:id="scrollPane" hbarPolicy="NEVER" VBox.vgrow="ALWAYS">
+        <!-- Khu vực cuộn hiển thị lưới sản phẩm -->
+        <ScrollPane fx:id="scrollPane" fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent; -fx-background-insets: 0;" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
+            <padding>
+                <Insets bottom="25.0" left="25.0" right="25.0" top="25.0" />
+            </padding>
             <content>
-                <TilePane fx:id="mainTilePane" hgap="5.0" nodeOrientation="LEFT_TO_RIGHT" vgap="5.0" />
+                <!-- TilePane chứa các card sản phẩm, tăng khoảng cách hgap/vgap để các card không bị dính vào nhau -->
+                <TilePane fx:id="mainTilePane" hgap="20.0" nodeOrientation="LEFT_TO_RIGHT" style="-fx-background-color: transparent;" vgap="20.0" />
             </content>
         </ScrollPane>
     </children>

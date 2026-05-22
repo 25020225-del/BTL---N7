@@ -72,7 +72,7 @@ public class CreateAuctionController extends ScrollPane {
             log.info("Selected image file: {}", imagefile.getName());
 
             Image image = new Image(imagefile.toURI().toString());
-            CropImage.cropImage(ca_image, image, 720, 480);
+            CropImage.cropImage(ca_image, image, 600, 480);
         }
         else {
             log.warn("Please select an image file");
@@ -135,6 +135,8 @@ public class CreateAuctionController extends ScrollPane {
         ca_durationDays.clear();
         ca_durationHours.clear();
         ca_image.setImage(null);
+        ca_image.setFitHeight(-1.0);
+        ca_image.setFitWidth(-1.0);
         imagefile = null;
     }
 }
