@@ -200,12 +200,12 @@ public class ItemDetailController {
         try {
             long bidAmount = Long.parseLong(rawAmount);
             if (bidAmount <= 0) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Bid amount must be greater than 0.");
+                AlertUtils.showError("Validation Error", "Bid amount must be greater than 0.");
                 return;
             }
             AuctionService.placeBid(currentAuctionId, bidAmount);
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Invalid amount format.");
+            AlertUtils.showError("Validation Error", "Invalid amount format.");
         }
     }
 

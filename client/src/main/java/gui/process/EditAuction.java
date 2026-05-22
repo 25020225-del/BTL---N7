@@ -43,14 +43,14 @@ public class EditAuction {
 
         dialog.showAndWait().ifPresent(data -> {
             if (data.get("itemName").isEmpty() || data.get("startPrice").isEmpty()) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Name and Price cannot be empty.");
+                AlertUtils.showError("Validation Error", "Name and Price cannot be empty.");
                 return;
             }
             try {
                 Double.parseDouble(data.get("startPrice"));
                 NetworkService.sendMessage("EDIT_AUCTION", data);
             } catch (NumberFormatException e) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Invalid price format.");
+                AlertUtils.showError("Validation Error", "Invalid price format.");
             }
         });
     }

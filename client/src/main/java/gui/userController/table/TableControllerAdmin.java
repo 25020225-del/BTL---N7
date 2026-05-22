@@ -2,7 +2,7 @@ package gui.userController.table;
 
 import client.handler.AuctionEventBus;
 import client.service.AdminService;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import gui.widget.AdminUserItem;
 import gui.widget.item.MinimalItemAdmin;
 import gui.widget.item.MinimalUser;
@@ -80,7 +80,7 @@ public class TableControllerAdmin extends TableController {
             String msg = (String) result.get("message");
 
             Platform.runLater(() -> {
-                AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Thành công", msg);
+                AlertUtils.showInfo("Thành công", msg);
                 AdminService.fetchWithdrawRequests(); // tự reload lại danh sách
             });
         });

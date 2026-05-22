@@ -2,9 +2,8 @@ package gui;
 
 import client.handler.AuctionEventBus;
 import client.network.NetworkService;
-import client.utils.ErrorParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import gui.process.QRCodeHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -171,7 +170,7 @@ public class SettingsController extends VBox {
                 showQRDialog(totpData.get("secretKey"), totpData.get("qrUrl"));
             } catch (Exception e) {
                 log.error("Error parsing SETUP_2FA_SUCCESS: {}", e.getMessage());
-                AlertHelper.showAlert(Alert.AlertType.ERROR,
+                AlertUtils.showError(
                         "Lỗi", "Không thể tạo mã QR. Vui lòng thử lại.");
             }
         });
@@ -183,7 +182,7 @@ public class SettingsController extends VBox {
             currentUser.setTwoFactorStatus(TwoFactorStatus.ENABLED);
             // Server sẽ gửi lại user object đã cập nhật, nhưng ta cập nhật local ngay
             refreshTotpUI();
-            AlertHelper.showAlert(Alert.AlertType.INFORMATION,
+            AlertUtils.showInfo(
                     "TOTP đã thiết lập ✅",
                     "Xác thực 2 lớp đã được cài đặt thành công!\n\n"
                             + "Hãy chọn bên dưới để quyết định khi nào cần nhập mã OTP.");
@@ -204,7 +203,7 @@ public class SettingsController extends VBox {
             currentUser.setTwoFactorStatus(TwoFactorStatus.DISABLED);
             // setTwoFactorStatus(DISABLED) đã tự reset 2 cờ trong User.java
             refreshTotpUI();
-            AlertHelper.showAlert(Alert.AlertType.INFORMATION,
+            AlertUtils.showInfo(
                     "TOTP đã hủy", "Xác thực 2 lớp đã được gỡ bỏ hoàn toàn.");
         });
     }

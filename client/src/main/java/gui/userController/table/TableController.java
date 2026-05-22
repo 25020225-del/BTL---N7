@@ -1,40 +1,23 @@
 package gui.userController.table;
 
-import client.handler.AuctionEventBus;
-import client.service.AuctionService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gui.process.AlertHelper;
 import gui.process.Search;
-import gui.widget.AdminUserItem;
 import gui.widget.item.MinimalItem;
-import javafx.animation.FadeTransition;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.TilePane;
-import javafx.util.Duration;
 import model.auction.Auction;
-import model.item.Item;
-import model.item.ItemFactory;
-import model.user.User;
-import network.NetworkMessage;
-import org.apache.commons.text.similarity.JaroWinklerSimilarity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import utils.JacksonConfig;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
 public class TableController {

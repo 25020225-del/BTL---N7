@@ -4,7 +4,7 @@ import client.network.NetworkClient;
 import client.network.NetworkService;
 import client.utils.ErrorParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -44,7 +44,7 @@ public class LoginController {
         String password = loginPasswordAccount.getText().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
-            AlertHelper.showAlert(Alert.AlertType.WARNING,
+            AlertUtils.showWarning(
                     "Missing Information",
                     "Please enter your Username and Password!");
             return;
@@ -52,7 +52,7 @@ public class LoginController {
 
         setNetworkClient(NetworkService.get());
         if (networkClient == null) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR,
+            AlertUtils.showError(
                     "Network Error", "Unable to connect to the server.");
             return;
         }
@@ -89,7 +89,7 @@ public class LoginController {
                 case "LOGIN_FAIL", "ERROR" -> {
                     String err = ErrorParser.parse(response.getData());
                     log.warn("Login failed: {}", err);
-                    AlertHelper.showAlert(Alert.AlertType.ERROR,
+                    AlertUtils.showError(
                             "Login Failed", err);
                 }
                 default -> log.warn("Unknown command during login: {}", command);
@@ -123,7 +123,7 @@ public class LoginController {
                         loginButton.setDisable(false);
                         loginButton.setText("LOGIN");
 
-                        AlertHelper.showAlert(Alert.AlertType.WARNING,
+                        AlertUtils.showWarning(
                                 "Invalid OTP",
                                 "The OTP must be a 6-digit number. Please try again.");
                     }
@@ -151,7 +151,7 @@ public class LoginController {
             MainController.start(loggedInUser);
         } catch (Exception e) {
             log.error("Error processing LOGIN_SUCCESS: {}", e.getMessage(), e);
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Error", "Failed to load account data.");
+            AlertUtils.showError( "Error", "Failed to load account data.");
         }
     }
 }

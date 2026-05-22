@@ -3,7 +3,7 @@ package gui;
 import client.handler.AuctionEventBus;
 import client.service.AdminService;
 import client.service.AuctionService;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import gui.process.RemoveEventBus;
 import gui.userController.ItemDetailController;
 import gui.userController.table.TableControllerAdmin;
@@ -186,7 +186,7 @@ public class ClientAdminController {
     private void setMainViewController() {
         AuctionEventBus.addListener("ADMIN_ACTION_SUCCESS", event ->
                 Platform.runLater(() ->
-                        AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", (String) event.getNewValue())
+                        AlertUtils.showInfo("Success", (String) event.getNewValue())
                 )
         );
     }

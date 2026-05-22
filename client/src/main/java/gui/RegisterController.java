@@ -3,7 +3,7 @@ package gui;
 import client.network.NetworkClient;
 import client.network.NetworkService;
 import client.utils.ErrorParser;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -43,13 +43,13 @@ public class RegisterController {
                 ? confirmPasswordAccount.getText().trim() : "";
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty()) {
-            AlertHelper.showAlert(Alert.AlertType.WARNING,
+            AlertUtils.showWarning(
                     "Missing Information", "Please fill in all the required fields.");
             return;
         }
 
         if (confirmPasswordAccount != null && !password.equals(confirmPass)) {
-            AlertHelper.showAlert(Alert.AlertType.WARNING,
+            AlertUtils.showWarning(
                     "Password Mismatch", "Passwords do not match. Please verify and try again.");
             return;
         }
@@ -57,7 +57,7 @@ public class RegisterController {
         String passwordRegex =
                 "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{6,20}$";
         if (!password.matches(passwordRegex)) {
-            AlertHelper.showAlert(Alert.AlertType.WARNING,
+            AlertUtils.showWarning(
                     "Weak Password",
                     "Password must be 6-20 characters long and include at least "
                             + "one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).");
@@ -66,7 +66,7 @@ public class RegisterController {
 
         setNetworkClient(NetworkService.get());
         if (networkClient == null) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR,
+            AlertUtils.showError(
                     "Network Error", "Unable to connect to the server.");
             return;
         }
@@ -90,7 +90,7 @@ public class RegisterController {
 
             if ("REGISTER_SUCCESS".equals(command)) {
                 log.info("Registration successful for new user.");
-                AlertHelper.showAlert(Alert.AlertType.INFORMATION,
+                AlertUtils.showInfo(
                         "Registration Successful",
                         "Your account has been successfully created!\n"
                                 + "You can activate Two-Factor Authentication (2FA) inside the Settings "
@@ -102,7 +102,7 @@ public class RegisterController {
                     || "ERROR".equals(command)) {
                 String errorMsg = ErrorParser.parse(response.getData());
                 log.warn("Registration failed: {}", errorMsg);
-                AlertHelper.showAlert(Alert.AlertType.ERROR,
+                AlertUtils.showError(
                         "Registration Failed", errorMsg);
             }
         });

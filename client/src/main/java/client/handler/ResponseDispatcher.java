@@ -2,10 +2,9 @@ package client.handler;
 
 import client.network.NetworkClient;
 import client.utils.ErrorParser;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
-import model.auction.Auction;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,8 +67,7 @@ public class ResponseDispatcher {
                 String errMsg = ErrorParser.parse(message.getData());
                 log.warn("Server returned ERROR: {}", errMsg);
                 Platform.runLater(() ->
-                        AlertHelper.showAlert(
-                                Alert.AlertType.ERROR,
+                                AlertUtils.showError(
                                 "Lỗi từ Server",
                                 errMsg
                         )
@@ -159,8 +157,7 @@ public class ResponseDispatcher {
                 // FIX: removed e.printStackTrace() — log.error with stack trace is sufficient
                 log.error("Error handling command \"{}\": {}", command, e.getMessage(), e);
                 Platform.runLater(() ->
-                        AlertHelper.showAlert(
-                                Alert.AlertType.ERROR,
+                        AlertUtils.showError(
                                 "System Error",
                                 "A local error occurred while processing server data: " + e.getMessage()
                         )

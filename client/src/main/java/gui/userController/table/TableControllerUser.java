@@ -3,11 +3,10 @@ package gui.userController.table;
 import client.handler.AuctionEventBus;
 import client.service.AuctionService;
 import com.fasterxml.jackson.core.type.TypeReference;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import gui.widget.item.MinimalItem;
 import gui.widget.item.MinimalItemUser;
 import gui.widget.item.MinimalSellerItem;
-import gui.widget.item.MinimalUser;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -81,13 +80,13 @@ public class TableControllerUser extends TableController {
         AuctionEventBus.addListener("EDIT_SUCCESS", event -> {
 
             NetworkMessage response = (NetworkMessage) event.getNewValue();
-            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
+            AlertUtils.showInfo("Success", response.getData().toString());
             AuctionService.fetchAuctions();
         });
         AuctionEventBus.addListener("DELETE_SUCCESS", event -> {
 
             NetworkMessage response = (NetworkMessage) event.getNewValue();
-            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
+            AlertUtils.showInfo("Success", response.getData().toString());
             AuctionService.fetchAuctions();
         });
     }
