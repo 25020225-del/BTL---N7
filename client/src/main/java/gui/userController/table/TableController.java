@@ -85,22 +85,23 @@ public class TableController {
         }
     }
 
-    public void addNewAuction(MinimalItem item) {
+    public void addNewItem(MinimalItem item) {
         mainTilePane.getChildren().addFirst(item);
     }
 
-    public void addAllAuction(List<MinimalItem>  items) {
+    public void addAllItem(List<MinimalItem>  items) {
         mainTilePane.getChildren().clear();
         for(MinimalItem item : items) {
             mainTilePane.getChildren().add(item);
         }
     }
 
-    public void deleteAllAuction(){
+    public void deleteAllItem(){
         mainTilePane.getChildren().clear();
     }
 
-    public void removeAuction(String auctionIdToRemove) {
+
+    public void removeItem(String auctionIdToRemove) {
         mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
     }
 

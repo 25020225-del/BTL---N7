@@ -37,7 +37,7 @@ public class TableControllerUser extends TableController {
                 for(Map<String, Object> auction : auctions) {
                     items.add(buildMinimalItem(auction));
                 }
-                Platform.runLater(() -> {addAllAuction(items);});
+                Platform.runLater(() -> {addAllItem(items);});
             } catch (Exception e) {
                 log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
             }
@@ -54,7 +54,7 @@ public class TableControllerUser extends TableController {
                     MinimalItem item = MinimalSellerItem.newMinimalSellerItemFromMap(auction);
                     items.add(item);
                 }
-                Platform.runLater(() -> {addAllAuction(items);});
+                Platform.runLater(() -> {addAllItem(items);});
             } catch (IllegalArgumentException e) {
                 log.error("[Client] FETCH_MY_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
             }
@@ -66,7 +66,7 @@ public class TableControllerUser extends TableController {
                         response.getData(),
                         new TypeReference<Map<String, Object>>() {}
                 );
-                Platform.runLater(() -> {addNewAuction(buildMinimalItem(auction));});
+                Platform.runLater(() -> {addNewItem(buildMinimalItem(auction));});
 
             } catch (Exception e) {
                 log.error("[Client] NEW_AUCTION_ADDED parse error: {}", e.getMessage());
@@ -75,7 +75,7 @@ public class TableControllerUser extends TableController {
         AuctionEventBus.addListener("REMOVE_AUCTION", event -> {
             NetworkMessage response = (NetworkMessage) event.getNewValue();
             String auctionIdToRemove = (String) response.getData();
-            Platform.runLater(() -> {removeAuction(auctionIdToRemove);});
+            Platform.runLater(() -> {removeItem(auctionIdToRemove);});
 
         });
         AuctionEventBus.addListener("EDIT_SUCCESS", event -> {
