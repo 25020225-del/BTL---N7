@@ -91,11 +91,13 @@ public class    CommandDispatcher {
         // Register Data Fetching operations
         FetchAuctionsHandler fetchHandler = new FetchAuctionsHandler(auctionDAO);
         handlers.put("FETCH_AUCTIONS", fetchHandler);
+        handlers.put("FETCH_PENDING_AUCTIONS", fetchHandler);
+        handlers.put("FETCH_MY_AUCTIONS", fetchHandler);
+
 
         // Register Admin operations
         controller.ServerAdminController adminCtrl = new controller.ServerAdminController(userDAO, auctionDAO, walletDAO, withdrawalDAO);
         AdminActionHandler adminHandler = new AdminActionHandler(auctionDAO, userDAO, adminCtrl);
-        handlers.put("FETCH_PENDING_AUCTIONS", new FetchAuctionsHandler(auctionDAO));
         handlers.put("APPROVE_AUCTION", adminHandler);
         handlers.put("REJECT_AUCTION", adminHandler);
         handlers.put("FETCH_USERS", adminHandler);

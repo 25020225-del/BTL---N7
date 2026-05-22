@@ -20,6 +20,32 @@ import static utils.ConsoleColors.*;
 
 public class AuctionDAO {
 
+    public List<Map<String, Object>> getAuctionsBySeller(String sellerId) throws Exception {
+        String sql = "SELECT id, item_name, description, starting_price, current_price, " +
+                "end_time, image_url, seller_id, status, bid_increment FROM auctions WHERE seller_id = ?";
+        List<Map<String, Object>> result = new ArrayList<>();
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, sellerId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id",            rs.getString("id"));
+                map.put("itemName",     rs.getString("item_name"));
+                map.put("description",   rs.getString("description"));
+                map.put("startingPrice",rs.getLong("starting_price"));
+                map.put("currentPrice", rs.getLong("current_price"));
+                map.put("endTime", LocalDateTime.parse(rs.getString("end_time")).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                map.put("imageUrl",     rs.getString("image_url"));
+                map.put("sellerId",      rs.getString("seller_id"));
+                map.put("status",        rs.getString("status"));
+                map.put("bidIncrement",        rs.getLong("bid_increment"));
+                result.add(map);
+            }
+        }
+        return result;
+    }
+
     public Auction getAuctionById(String auctionId) throws SQLException {
         String sql = "SELECT * FROM auctions WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -109,7 +135,7 @@ public class AuctionDAO {
     }
 
     public List<Map<String, Object>> getAuctionsByStatus(String... statuses) throws SQLException {
-        StringBuilder sql = new StringBuilder("SELECT id, item_name, description, starting_price, current_price, end_time, image_url, seller_id FROM auctions WHERE status IN (");
+        StringBuilder sql = new StringBuilder("SELECT id, item_name, description, starting_price, current_price, end_time, image_url, seller_id, status FROM auctions WHERE status IN (");
         for (int i = 0; i < statuses.length; i++) {
             sql.append("?");
             if (i < statuses.length - 1) sql.append(", ");
@@ -133,6 +159,7 @@ public class AuctionDAO {
                     map.put("endTime", LocalDateTime.parse(rs.getString("end_time")).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
                     map.put("imageUrl", rs.getString("image_url"));
                     map.put("sellerId", rs.getString("seller_id"));
+                    map.put("status",rs.getString("status"));
                     list.add(map);
                 }
             }

@@ -36,7 +36,7 @@ public class MinimalUser extends MinimalItem {
      * @param isBlocked Whether the user account is currently blocked.
      */
     public MinimalUser(String id, String username, String name, String role, boolean isBlocked) {
-        super(id, username, "");
+        super(id);
         this.setUserData(id + name + role + isBlocked);
         this.setPrefSize(260, 100);
         this.isCurrentlyBlocked = isBlocked;

@@ -212,6 +212,8 @@ public class CreateAuctionController extends ScrollPane {
         ca_durationDays.clear();
         ca_durationHours.clear();
         ca_image.setImage(null);
+        ca_image.setFitHeight(-1.0);
+        ca_image.setFitWidth(-1.0);
         imagefile = null;
         AlertUtils.clearInlineError(lblError);
     }

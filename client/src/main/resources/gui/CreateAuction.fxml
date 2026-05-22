@@ -5,6 +5,7 @@
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
@@ -13,79 +14,126 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<fx:root maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" type="javafx.scene.control.ScrollPane" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<fx:root fitToWidth="true" hbarPolicy="NEVER" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" stylesheets="@Stylist.css" type="javafx.scene.control.ScrollPane" vbarPolicy="AS_NEEDED" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
    <content>
-      <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" spacing="10.0">
+      <VBox spacing="25.0" style="-fx-background-color: #f8f9fa;">
          <padding>
-            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+            <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
          </padding>
          <children>
-            <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Create Auction">
-               <font>
-                  <Font name="System Bold" size="14.0" />
-               </font>
-            </Text>
-            <HBox alignment="CENTER_LEFT" spacing="20.0">
+
+            <!-- Header Title Bar -->
+            <HBox alignment="CENTER_LEFT" spacing="15.0" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
                <children>
-                  <Label prefHeight="18.0" prefWidth="126.0" text="Item name" />
-                  <TextField fx:id="ca_itemName" />
+                  <Text strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-fill: #2c3e50;" text="Create New Auction" />
                </children>
             </HBox>
-            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="48.0" spacing="20.0">
+
+            <!-- Main Section: Split into 2 columns (Left: Image & Upload, Right: Detailed Info) -->
+            <HBox spacing="30.0" style="-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);" styleClass="content-box">
                <children>
-                  <Label prefWidth="126.0" text="Starting price" />
-                  <TextField fx:id="ca_startPrice" />
+
+                  <!-- LEFT COLUMN: Image Upload and Preview -->
+                  <VBox spacing="15.0" HBox.hgrow="ALWAYS">
+                     <children>
+                        <Label style="-fx-font-weight: bold; -fx-text-fill: #444;" text="Product Image" />
+                        <VBox alignment="CENTER" style="-fx-border-color: #eee; -fx-border-radius: 8; -fx-background-color: #fafafa; -fx-border-width: 1.5; -fx-border-style: dashed;" VBox.vgrow="ALWAYS">
+                           <children>
+                              <ImageView fx:id="ca_image" fitHeight="230.0" fitWidth="280.0" pickOnBounds="true" preserveRatio="true" VBox.vgrow="ALWAYS" />
+                           </children>
+                        </VBox>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                           <children>
+                              <Button fx:id="chooseFile" mnemonicParsing="false" onAction="#handleSelectImage" prefHeight="35.0" style="-fx-background-color: #4e73df; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="Choose Image" />
+                              <Label fx:id="fileLinkChoosen" style="-fx-text-fill: #6c757d; -fx-font-size: 12;" text="No file chosen" wrapText="true" HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
+
+                  <!-- RIGHT COLUMN: Text Input Fields -->
+                  <VBox spacing="15.0" HBox.hgrow="ALWAYS">
+                     <children>
+                        <Label text="Detailed Information">
+                           <font><Font name="System Bold" size="18.0" /></font>
+                        </Label>
+                        <Separator prefHeight="1.0" />
+
+                        <!-- Item Name -->
+                        <HBox alignment="CENTER_LEFT" spacing="15.0">
+                           <children>
+                              <Label prefWidth="110.0" style="-fx-font-size: 14;" text="Item Name:" />
+                              <TextField fx:id="ca_itemName" prefHeight="35.0" promptText="Enter item name..." HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
+
+                        <!-- Starting Price -->
+                        <HBox alignment="CENTER_LEFT" spacing="15.0">
+                           <children>
+                              <Label prefWidth="110.0" style="-fx-font-size: 14;" text="Starting Price:" />
+                              <TextField fx:id="ca_startPrice" prefHeight="35.0" promptText="e.g. 100000" HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
+
+                        <!-- Bid Increment -->
+                        <HBox alignment="CENTER_LEFT" spacing="15.0">
+                           <children>
+                              <Label prefWidth="110.0" style="-fx-font-size: 14;" text="Bid Increment:" />
+                              <TextField fx:id="ca_bidIncrement" prefHeight="35.0" promptText="e.g. 10000" HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
                </children>
             </HBox>
-            <HBox alignment="CENTER_LEFT" spacing="20.0">
+
+            <!-- Auction Timing Block -->
+            <VBox spacing="15.0" style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
                <children>
-                  <Label prefWidth="126.0" text="Bid Increment" />
-                  <TextField fx:id="ca_bidIncrement" />
+                  <Label style="-fx-font-weight: bold; -fx-font-size: 15; -fx-text-fill: #2c3e50;" text="Auction Schedule Settings" />
+                  <Separator prefHeight="1.0" />
+
+                  <!-- Start Time -->
+                  <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" spacing="15.0">
+                     <children>
+                        <Label prefWidth="110.0" style="-fx-font-size: 14;" text="Start Time:" />
+                        <DatePicker fx:id="ca_startDate" prefHeight="35.0" prefWidth="150.0" />
+                        <TextField fx:id="ca_startHour" alignment="CENTER" prefHeight="35.0" prefWidth="45.0" promptText="HH" />
+                        <Label text="Hour" />
+                        <TextField fx:id="ca_startMinute" alignment="CENTER" prefHeight="35.0" prefWidth="45.0" promptText="MM" />
+                        <Label text="Minute" />
+                     </children>
+                  </HBox>
+
+                  <!-- End Time / Duration -->
+                  <HBox alignment="CENTER_LEFT" spacing="15.0">
+                     <children>
+                        <Label prefWidth="110.0" style="-fx-font-size: 14;" text="Duration:" />
+                        <DatePicker fx:id="ca_endDate" disable="true" managed="false" visible="false" />
+                        <TextField fx:id="ca_durationDays" alignment="CENTER" prefHeight="35.0" prefWidth="55.0" promptText="0" />
+                        <Label text="Days" />
+                        <TextField fx:id="ca_durationHours" alignment="CENTER" prefHeight="35.0" prefWidth="55.0" promptText="0" />
+                        <Label text="Hours" />
+                     </children>
+                  </HBox>
+               </children>
+            </VBox>
+
+            <!-- Product Description Block -->
+            <VBox spacing="10.0" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #f0b90b; -fx-border-radius: 12; -fx-background-radius: 12; -fx-border-width: 1.5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
+               <children>
+                  <Label style="-fx-font-weight: bold; -fx-font-size: 16;" text="Detailed Product Description" />
+                  <TextArea fx:id="ca_description" minHeight="120.0" prefHeight="150.0" promptText="Enter detailed terms, conditions, and item condition here..." wrapText="true" />
+               </children>
+            </VBox>
+
+            <!-- Main Action Button -->
+            <HBox alignment="CENTER" prefHeight="60.0">
+               <children>
+                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" prefHeight="45.0" prefWidth="220.0" style="-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-size: 15; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" stylesheets="@Stylist.css" text="SUBMIT AUCTION" />
                </children>
             </HBox>
-            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="87.0" spacing="20.0">
-               <children>
-                  <Label prefWidth="126.0" text="Choose file" />
-                  <Button fx:id="chooseFile" mnemonicParsing="false" onAction="#handleSelectImage" text="Files" />
-                  <Label fx:id="fileLinkChoosen" />
-               </children>
-            </HBox>
-            <HBox>
-               <children>
-                  <ImageView fx:id="ca_image" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
-               </children>
-            </HBox>
-            <HBox layoutX="20.0" layoutY="85.0" maxWidth="1.7976931348623157E308" spacing="20.0" VBox.vgrow="ALWAYS">
-               <children>
-                  <Label text="Description" />
-                  <TextArea fx:id="ca_description" maxWidth="1.7976931348623157E308" prefHeight="202.0" HBox.hgrow="ALWAYS" />
-               </children>
-            </HBox>
-            <HBox fx:id="startHourCreator" alignment="CENTER_LEFT" layoutX="20.0" layoutY="122.0" spacing="20.0">
-               <children>
-                  <Label prefHeight="18.0" prefWidth="126.0" text="Starting time" />
-                  <DatePicker fx:id="ca_startDate" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
-                  <TextField fx:id="ca_startHour" prefWidth="30.0" />
-                  <Label text="Hour" />
-                  <TextField fx:id="ca_startMinute" prefHeight="27.0" prefWidth="30.0" />
-                  <Label text="Minute" />
-               </children>
-            </HBox>
-            <HBox alignment="CENTER_LEFT" layoutX="20.0" layoutY="232.0" spacing="20.0">
-               <children>
-                  <Label prefWidth="126.0" text="Duration" />
-                  <DatePicker fx:id="ca_endDate" disable="true" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="27.0" prefWidth="120.0" />
-                  <TextField fx:id="ca_durationDays" prefHeight="27.0" prefWidth="30.0" />
-                  <Label text="Day  " />
-                  <TextField fx:id="ca_durationHours" prefHeight="27.0" prefWidth="30.0" />
-                  <Label text="Hour" />
-               </children>
-            </HBox>
-            <HBox alignment="CENTER" prefHeight="100.0">
-               <children>
-                  <Button fx:id="createAuction" mnemonicParsing="false" onAction="#handleSubmitAuction" stylesheets="@index.css" text="Create" />
-               </children>
-            </HBox>
+
          </children>
       </VBox>
    </content>

@@ -5,6 +5,7 @@ import client.utils.ErrorParser;
 import gui.process.AlertHelper;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
+import model.auction.Auction;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,8 +101,9 @@ public class ResponseDispatcher {
 
     private void registerUserHandlers() {
         ClientUserHandler userHandler = new ClientUserHandler();
-        handlers.put("FETCH_AUCTIONS_SUCCESS",     userHandler);
-        handlers.put("FETCH_TRANSACTIONS_SUCCESS", userHandler);
+        handlers.put(AuctionEventBus.FETCH_AUCTIONS_SUCCESS,     userHandler);
+        handlers.put(AuctionEventBus.FETCH_MY_AUCTIONS_SUCCESS,  userHandler);
+        handlers.put(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS,  userHandler);
         handlers.put("NEW_AUCTION_ADDED",          userHandler);
         handlers.put("REMOVE_AUCTION",             userHandler);
         handlers.put("EDIT_SUCCESS",               userHandler);
