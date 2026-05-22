@@ -12,24 +12,29 @@ public class MinimalSellerItem extends MinimalItem{
     protected final String DEFAULT_IMAGEURL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
     ImageView imageView;
     Label lblName;
+    Label lblType;
     Label lblStatus;
     Label lblStartingPrice;
     Label lblCurrentPrice;
     Label lblBidIncrement;
     CountdownClock clock;
+
+
     String itemId;
     String imageUrl;
     String itemName;
+    String itemType;
     String status;
     long startingPrice;
     long currentPrice;
     long bidIncrement;
     long endTime;
     long highestMaxBid;
-    public MinimalSellerItem(String itemId, String imageUrl, String itemName, String status, long startingPrice, long currentPrice,  long bidIncrement, long endTime) {
+    public MinimalSellerItem(String itemId, String imageUrl, String itemName, String itemType, String status, long startingPrice, long currentPrice,  long bidIncrement, long endTime) {
         super(itemId);
         this.itemId = itemId;
         this.itemName = itemName;
+        this.itemType = itemType;
         this.status = status;
 
         imageView = new ImageView();
@@ -52,7 +57,10 @@ public class MinimalSellerItem extends MinimalItem{
         this.bidIncrement = bidIncrement;
         this.endTime = endTime;
         this.setUserData(itemId + itemName + status);
+
         lblName = new Label("Name: " + itemName);
+        lblType = new Label(itemType);
+        lblType.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
         lblStatus = new Label("Status: "+status);
         lblStartingPrice = new Label("Starting price: " + String.valueOf(startingPrice) + " VND");
         lblCurrentPrice = new Label("Current price: " + String.valueOf(currentPrice) + " VND");
@@ -62,6 +70,7 @@ public class MinimalSellerItem extends MinimalItem{
         this.getChildren().addAll(
                 imageView,
                 lblName,
+                lblType,
                 lblStatus,
                 lblStartingPrice,
                 lblCurrentPrice,
@@ -74,6 +83,7 @@ public class MinimalSellerItem extends MinimalItem{
                 (String) map.get("id"),
                 (String) map.get("imageUrl"),
                 (String) map.get("itemName"),
+                (String) map.get("itemType"),
                 (String) map.get("status"),
                 ((Number) map.get("startingPrice")).longValue(),
                 ((Number) map.get("currentPrice")).longValue(),

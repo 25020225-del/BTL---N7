@@ -4,6 +4,7 @@ import gui.MainApplication;
 import javafx.stage.FileChooser;
 import model.auction.Auction;
 import model.item.Item;
+import model.item.ItemFactory;
 import model.user.User;
 
 import java.io.File;
@@ -130,10 +131,10 @@ public class CreateAuctionModel {
     }
 
     /** Tạo Item từ dữ liệu form và file ảnh. */
-    public static Item createItem(String name, String desc, long startPrice, File image)
+    public static Item createItem(String name, String type, String desc, long startPrice, File image)
             throws Exception {
         String itemId = "ITEM-" + System.currentTimeMillis();
-        Item item = new Item(itemId, name, desc, startPrice);
+        Item item = ItemFactory.createItem(type,itemId,name,desc,startPrice);
         byte[] imageBytes = ImageCompressor.compressToBytes(image, 0.05F);
         item.setFile(imageBytes);
         return item;

@@ -8,6 +8,7 @@ package model.item;
 public class ServicePackage extends Item {
     public ServicePackage(String id, String itemName, String description, long startingPrice) {
         super(id, itemName, description, startingPrice);
+        this.setType(ItemFactory.TYPE_SERVICE);
     }
 
     @Override

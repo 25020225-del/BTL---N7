@@ -6,14 +6,18 @@ import gui.MainApplication;
 import gui.process.AlertUtils;
 import gui.process.CreateAuctionModel;
 import gui.process.CropImage;
+import gui.widget.Selector;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import model.auction.Auction;
 import model.item.Item;
+import model.item.ItemFactory;
 import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +62,9 @@ public class CreateAuctionController extends ScrollPane {
     @FXML private TextField ca_durationDays;
     @FXML private TextField ca_durationHours;
     @FXML private ImageView ca_image;
+    @FXML private VBox ca_details;
+
+    private Selector selector;
 
     /**
      * [CHỈ DÙNG CHO CÁCH 2] Label lỗi inline nằm cuối form.
@@ -153,7 +160,7 @@ public class CreateAuctionController extends ScrollPane {
             );
 
             Item item = CreateAuctionModel.createItem(
-                    name, desc, Long.parseLong(startPrice), imagefile
+                    name, selector.getChoice(), desc, Long.parseLong(startPrice), imagefile
             );
             Auction auction = CreateAuctionModel.createAuction(
                     item, new User(), Long.parseLong(bidInc), startDT, startDT.plus(dr)
@@ -191,6 +198,10 @@ public class CreateAuctionController extends ScrollPane {
 
     @FXML
     private void initialize() {
+        selector = new Selector("type", ItemFactory.TYPE_TANGIBLE,
+                ItemFactory.TYPE_DIGITAL,
+                ItemFactory.TYPE_SERVICE);
+        ca_details.getChildren().add(selector);
         AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, event ->
                 Platform.runLater(() -> {
                     resetForm();

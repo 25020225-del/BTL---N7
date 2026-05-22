@@ -8,6 +8,7 @@ package model.item;
 public class TangibleItem extends Item {
     public TangibleItem(String id, String itemName, String description, long startingPrice) {
         super(id, itemName, description, startingPrice);
+        this.setType(ItemFactory.TYPE_TANGIBLE);
     }
 
     @Override

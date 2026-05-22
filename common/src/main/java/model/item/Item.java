@@ -14,6 +14,7 @@ public class Item extends Entity {
     private String imageUrl;
     private byte[] file;
     private String approvalStatus;
+    private String type = "IDK";
 
     /**
      * Default constructor.
@@ -87,6 +88,9 @@ public class Item extends Entity {
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
     }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
 
     /**
      * Generates a formatted summary string containing the item's core details.

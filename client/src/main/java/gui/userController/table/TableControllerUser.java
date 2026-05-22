@@ -96,7 +96,7 @@ public class TableControllerUser extends TableController {
         auction.setId((String) map.get("id"));
 
         Item item = ItemFactory.createItem(
-                ItemFactory.TYPE_TANGIBLE,
+                (String) map.get("itemType"),
                 "ITM-" + map.get("id"),
                 (String) map.get("itemName"),
                 (String) map.get("description"),
@@ -121,6 +121,7 @@ public class TableControllerUser extends TableController {
     protected MinimalItemUser buildMinimalItem(Map<String, Object> map) {
         String id       = (String) map.get("id");
         String name     = (String) map.get("itemName");
+        String itemType     = (String) map.get("itemType");
         String imageUrl = (String) map.get("imageUrl");
         String sellerId = (String) map.get("sellerId");
         double price    = ((Number) map.get("currentPrice")).doubleValue();
@@ -128,7 +129,7 @@ public class TableControllerUser extends TableController {
 
         Auction auction = auctionFromMap(map);
 
-        MinimalItemUser item = new MinimalItemUser(id, imageUrl, name,
+        MinimalItemUser item = new MinimalItemUser(id, imageUrl, name, itemType,
                 String.format("%,.0f", price), endTime);
         item.getAuctionButton().setOnAction(e -> openItemDetail(auction));
         return item;
