@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import gui.process.AlertHelper;
 import gui.widget.item.MinimalItem;
 import gui.widget.item.MinimalItemUser;
+import gui.widget.item.MinimalSellerItem;
 import gui.widget.item.MinimalUser;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -25,7 +26,7 @@ import java.util.Map;
 public class TableControllerUser extends TableController {
     @FXML protected void initialize() {
         setupSearch();
-        AuctionEventBus.addListener("FETCH_AUCTIONS_SUCCESS", event -> {
+        AuctionEventBus.addListener(AuctionEventBus.FETCH_AUCTIONS_SUCCESS, event -> {
             try {
                 NetworkMessage response = (NetworkMessage) event.getNewValue();
                 List<Map<String, Object>> auctions = mapper.convertValue(
@@ -39,6 +40,23 @@ public class TableControllerUser extends TableController {
                 Platform.runLater(() -> {addAllAuction(items);});
             } catch (Exception e) {
                 log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
+            }
+        });
+        AuctionEventBus.addListener(AuctionEventBus.FETCH_MY_AUCTIONS_SUCCESS, event -> {
+            try {
+                NetworkMessage response = (NetworkMessage) event.getNewValue();
+                List<Map<String,Object>> auctions = mapper.convertValue(
+                        response.getData(),
+                        new  TypeReference<List<Map<String, Object>>>() {}
+                );
+                List<MinimalItem> items = new ArrayList<>();
+                for(Map<String, Object> auction : auctions) {
+                    MinimalItem item = MinimalSellerItem.newMinimalSellerItemFromMap(auction);
+                    items.add(item);
+                }
+                Platform.runLater(() -> {addAllAuction(items);});
+            } catch (IllegalArgumentException e) {
+                log.error("[Client] FETCH_MY_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
             }
         });
         AuctionEventBus.addListener("NEW_AUCTION_ADDED", event -> {

@@ -59,6 +59,7 @@ public class ClientUserController {
     private IconButton accountBtn;
     private IconButton toggleList           = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
     private IconButton marketplaceBtn       = new IconButton("mdi2s-storefront-outline",    "Marketplace",           "Marketplace",     "special-button");
+    private IconButton myAuctionsBtn       = new IconButton("mdi2s-storefront-outline",     "My Auctions",           "My Auctions",     "special-button");
     private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
     private IconButton walletBtn            = new IconButton("mdi2w-wallet-bifold-outline", "Wallet",                "Wallet",          "special-button");
     private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
@@ -109,6 +110,7 @@ public class ClientUserController {
         mainDock.getChildren().addAll(
                 toggleList,
                 marketplaceBtn,
+                myAuctionsBtn,
                 createAuctionBtn,
                 walletBtn,
                 separator,
@@ -129,6 +131,16 @@ public class ClientUserController {
         });
 
         marketplaceBtn.setOnAction(event -> handleBackToMarketplace());
+
+        myAuctionsBtn.setOnAction(event -> {
+            if (currentDetailController != null) {
+                currentDetailController.dispose();
+                currentDetailController = null;
+            }
+            mainViewController.getChildren().clear();
+            mainViewController.getChildren().add(tableView.getParent());
+            AuctionService.fetchMyAuctions();
+        });
 
         createAuctionBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
@@ -161,6 +173,7 @@ public class ClientUserController {
         mainViewController.getChildren().add(tableView.getParent());
         AuctionService.fetchAuctions();
     }
+
 
     @FXML
     public void handleSignOut() {

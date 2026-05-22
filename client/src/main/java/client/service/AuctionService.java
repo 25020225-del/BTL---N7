@@ -96,4 +96,8 @@ public final class AuctionService {
         );
         NetworkService.sendMessage("EXTEND_AUCTION_TIME", payload);
     }
+
+    public static void fetchMyAuctions() {
+        NetworkService.sendMessage("FETCH_MY_AUCTIONS", "");
+    }
 }

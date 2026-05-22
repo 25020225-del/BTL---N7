@@ -2,6 +2,7 @@ package gui.widget.item;
 
 import client.network.NetworkService;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 
 import java.util.function.Consumer;
@@ -9,9 +10,12 @@ import java.util.function.Consumer;
 public class MinimalItemAdmin extends MinimalItem {
 
     public MinimalItemAdmin(String id, String name, String price) {
-        super(id, name, price);
+        super(id);
+        Label lblName = new Label(name);
+        Label lblPrice = new Label(price);
         this.setUserData(id+name+price);
         this.setPrefSize(260,100);
+        this.getChildren().addAll(lblName, lblPrice);
     }
 
     public void addAdminOptions(String id, Consumer<String> command) {

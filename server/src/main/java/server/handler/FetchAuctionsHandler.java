@@ -55,6 +55,15 @@ public class FetchAuctionsHandler implements CommandHandler {
             if ("FETCH_AUCTIONS".equals(command)) {
                 auctionList = auctionDAO.getAuctionsByStatus("RUNNING", "OPEN");
 
+            } else if ("FETCH_MY_AUCTIONS".equals(command)) {
+                if (client.getUser() == null) {
+                    client.sendResponse("ERROR", "Not authenticated.");
+                    return;
+                }
+                auctionList = auctionDAO.getAuctionsBySeller(client.getUser().getId());
+                // tính secondsRemaining như bình thường (vòng for bên dưới xử lý luôn)
+                client.sendResponse("FETCH_MY_AUCTIONS_SUCCESS", auctionList);
+                return;
             } else if ("FETCH_PENDING_AUCTIONS".equals(command)) {
                 if (client.getUser() != null && client.getUser().getRole().equalsIgnoreCase("ADMIN")) {
                     auctionList = auctionDAO.getAuctionsByStatus("PENDING_APPROVAL");

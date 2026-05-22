@@ -12,6 +12,11 @@ import javafx.scene.image.ImageView;
 import java.util.function.Consumer;
 
 public class MinimalItemUser extends MinimalItem {
+    protected final String DEFAULT_IMAGEURL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
+    protected Label lblName;
+    protected Label lblPrice;
+    protected ImageView imageView;
+    protected CountdownClock countdownClock;
 
     public MinimalItemUser(String id, String imageUrl, String nameString, String priceString, long dateString) {
         super(id);
@@ -31,8 +36,8 @@ public class MinimalItemUser extends MinimalItem {
                 );
             }
         });
-        this.nameLabel = new Label(nameString);
-        this.priceLabel = new Label(priceString + " VND");
+        this.lblName = new Label(nameString);
+        this.lblPrice = new Label(priceString + " VND");
         this.countdownClock = new CountdownClock();
         this.countdownClock.start(dateString);
 
@@ -40,8 +45,8 @@ public class MinimalItemUser extends MinimalItem {
 
         this.getChildren().addAll(
                 imageView,
-                nameLabel,
-                priceLabel,
+                lblName,
+                lblPrice,
                 countdownClock,
                 auctionButton
         );
@@ -63,5 +68,14 @@ public class MinimalItemUser extends MinimalItem {
 
         contextMenu.getItems().addAll(editItem, deleteItem);
         this.setOnContextMenuRequested(e -> contextMenu.show(this, e.getScreenX(), e.getScreenY()));
+    }
+
+    /**
+     * Retrieves the primary interaction button for this item card.
+     *
+     * @return The "AUCTION" button.
+     */
+    public IconButton getAuctionButton() {
+        return auctionButton;
     }
 }
