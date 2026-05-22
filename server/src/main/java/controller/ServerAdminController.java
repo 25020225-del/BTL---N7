@@ -177,6 +177,148 @@ public class ServerAdminController {
             return false;
         }
     }
+    /**
+     * Đảo ngược trạng thái "Trusted" ({@code is_good}) của một user.
+     *
+     * <h3>Business rules</h3>
+     * <ul>
+     *   <li>Chỉ Admin hợp lệ mới được gọi method này.</li>
+     *   <li>Admin không thể toggle chính mình (tránh tự cấp quyền ưu tiên).</li>
+     *   <li>Không toggle user có {@code role = ADMIN} — whitelist chỉ áp dụng
+     *       cho SELLER / USER thông thường.</li>
+     *   <li>Toggle và đọc kết quả mới được thực hiện trong <b>cùng một
+     *       Connection</b> để đảm bảo tính nhất quán (SQLite WAL mode).</li>
+     * </ul>
+     *
+     * @param admin        Admin đang thực hiện lệnh.
+     * @param targetUserId ID của user cần toggle.
+     * @return {@link ToggleResult} chứa trạng thái mới và thông báo kết quả,
+     *         hoặc {@code null} nếu thao tác thất bại do lỗi bảo mật / DB.
+     */
+    public ToggleResult toggleGoodStatus(Admin admin, String targetUserId) {
+
+        // ── Guard 1: Admin hợp lệ ────────────────────────────────────────
+        if (!isAuthorizedAdmin(admin)) {
+            log.warn("[TOGGLE_GOOD] Unauthorized attempt by user '{}'.", admin.getUserName());
+            return ToggleResult.unauthorized();
+        }
+
+        // ── Guard 2: Không self-toggle ───────────────────────────────────
+        if (admin.getId().equals(targetUserId)) {
+            log.warn("[TOGGLE_GOOD] Admin '{}' attempted to toggle their own status. Denied.",
+                    admin.getUserName());
+            return ToggleResult.denied("Admin không thể thay đổi trạng thái của chính mình.");
+        }
+
+        // ── Guard 3 + DB operation — dùng chung 1 Connection ────────────
+        try (Connection conn = DatabaseManager.getConnection()) {
+
+            // Tắt auto-commit để toggle + read là một đơn vị nguyên tử
+            conn.setAutoCommit(false);
+            try {
+                // Guard 3: Không toggle Admin khác
+                User target = userDAO.getUserById(targetUserId);
+                if (target == null) {
+                    conn.rollback();
+                    log.warn("[TOGGLE_GOOD] Target user '{}' not found.", targetUserId);
+                    return ToggleResult.notFound();
+                }
+                if (target.getRole().equalsIgnoreCase("ADMIN")) {
+                    conn.rollback();
+                    log.warn("[TOGGLE_GOOD] Admin '{}' attempted to toggle another admin '{}'. Denied.",
+                            admin.getUserName(), target.getUserName());
+                    return ToggleResult.denied("Không thể thay đổi trạng thái Trusted của tài khoản Admin.");
+                }
+
+                // Thực hiện toggle nguyên tử
+                boolean toggled = userDAO.toggleGoodStatus(conn, targetUserId);
+                if (!toggled) {
+                    conn.rollback();
+                    log.error("[TOGGLE_GOOD] toggleGoodStatus returned false for user '{}'.", targetUserId);
+                    return ToggleResult.dbError();
+                }
+
+                // Đọc lại trạng thái mới trong cùng transaction
+                Boolean newStatus = userDAO.readGoodStatus(conn, targetUserId);
+                if (newStatus == null) {
+                    conn.rollback();
+                    return ToggleResult.dbError();
+                }
+
+                conn.commit();
+
+                log.info("[TOGGLE_GOOD] Admin '{}' toggled user '{}' → is_good = {}.",
+                        admin.getUserName(), targetUserId, newStatus);
+
+                return ToggleResult.success(targetUserId, newStatus);
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e; // ném lại để catch bên ngoài xử lý log
+            }
+
+        } catch (SQLException e) {
+            log.error("[TOGGLE_GOOD] Database error while toggling user '{}': {}",
+                    targetUserId, e.getMessage(), e);
+            return ToggleResult.dbError();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // [NEW] Inner result type — tránh dùng Object / Map làm return value
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Kết quả của {@link #toggleGoodStatus}.
+     *
+     * <p>Dùng sealed-class-like pattern với factory methods để handler tầng
+     * trên có thể phân nhánh rõ ràng mà không cần instanceof check.</p>
+     */
+    public static final class ToggleResult {
+
+        public enum Status { SUCCESS, UNAUTHORIZED, DENIED, NOT_FOUND, DB_ERROR }
+
+        private final Status status;
+        private final String userId;      // null nếu không SUCCESS
+        private final Boolean newIsGood;  // null nếu không SUCCESS
+        private final String message;
+
+        private ToggleResult(Status status, String userId, Boolean newIsGood, String message) {
+            this.status    = status;
+            this.userId    = userId;
+            this.newIsGood = newIsGood;
+            this.message   = message;
+        }
+
+        // Factory methods
+        public static ToggleResult success(String userId, boolean newIsGood) {
+            String label = newIsGood ? "Trusted (ưu tiên duyệt tự động)" : "Thường (chờ Admin duyệt)";
+            return new ToggleResult(Status.SUCCESS, userId, newIsGood,
+                    "Đã cập nhật trạng thái người dùng thành: " + label);
+        }
+        public static ToggleResult unauthorized() {
+            return new ToggleResult(Status.UNAUTHORIZED, null, null,
+                    "Bạn không có quyền thực hiện thao tác này.");
+        }
+        public static ToggleResult denied(String reason) {
+            return new ToggleResult(Status.DENIED, null, null, reason);
+        }
+        public static ToggleResult notFound() {
+            return new ToggleResult(Status.NOT_FOUND, null, null,
+                    "Không tìm thấy người dùng với ID đã cung cấp.");
+        }
+        public static ToggleResult dbError() {
+            return new ToggleResult(Status.DB_ERROR, null, null,
+                    "Lỗi cơ sở dữ liệu khi cập nhật trạng thái người dùng.");
+        }
+
+        // Accessors
+        public Status  getStatus()    { return status; }
+        public String  getUserId()    { return userId; }
+        public Boolean getNewIsGood() { return newIsGood; }
+        public String  getMessage()   { return message; }
+        public boolean isSuccess()    { return status == Status.SUCCESS; }
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // WITHDRAWAL — Checker Step (Admin duyệt / từ chối)

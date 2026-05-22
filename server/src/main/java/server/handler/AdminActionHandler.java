@@ -63,12 +63,16 @@ public class AdminActionHandler implements CommandHandler {
     // DISPATCHER CHÍNH
     // ─────────────────────────────────────────────────────────────────────────
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // DISPATCHER CHÍNH (PATCH: thêm TOGGLE_GOOD_STATUS)
+    // ─────────────────────────────────────────────────────────────────────────
+
     @Override
     public void handle(NetworkMessage message, ClientHandler client) throws Exception {
-        String command   = message.getCommand();
-        User adminUser   = client.getUser();
+        String command = message.getCommand();
+        User adminUser = client.getUser();
 
-        // ── GUARD: Chặn quyền truy cập ngay từ đầu ──────────────────────────
+        // ── GUARD: Chỉ Admin mới được gọi ───────────────────────────────────
         if (adminUser == null || !adminUser.getRole().equalsIgnoreCase("ADMIN")) {
             throw new AuctionExceptions.UnauthorizedAccessException(
                     "Chỉ Quản trị viên mới được phép thực hiện lệnh này.");
@@ -80,14 +84,17 @@ public class AdminActionHandler implements CommandHandler {
 
             // ── Quản lý người dùng ───────────────────────────────────────────
             case "FETCH_USERS"   -> handleFetchUsers(client);
-            case "BLOCK_USER"    -> handleUserBlock(admin, message.getData().toString(), true, client);
+            case "BLOCK_USER"    -> handleUserBlock(admin, message.getData().toString(), true,  client);
             case "UNBLOCK_USER"  -> handleUserBlock(admin, message.getData().toString(), false, client);
 
+            // ── [NEW] Whitelist toggle ───────────────────────────────────────
+            case "TOGGLE_GOOD_STATUS" -> handleToggleGoodStatus(admin, message.getData(), client);
+
             // ── Quản lý phiên đấu giá ────────────────────────────────────────
-            case "APPROVE_AUCTION" -> handleAuctionAction(admin, (String) message.getData(), true, client);
+            case "APPROVE_AUCTION" -> handleAuctionAction(admin, (String) message.getData(), true,  client);
             case "REJECT_AUCTION"  -> handleAuctionAction(admin, (String) message.getData(), false, client);
 
-            // ── Quản lý rút tiền [NEW] ───────────────────────────────────────
+            // ── Quản lý rút tiền ─────────────────────────────────────────────
             case "FETCH_WITHDRAW_REQUESTS" -> handleFetchWithdrawRequests(admin, client);
             case "APPROVE_WITHDRAW"        -> handleWithdrawAction(admin, message.getData(), true,  client);
             case "REJECT_WITHDRAW"         -> handleWithdrawAction(admin, message.getData(), false, client);
@@ -95,6 +102,101 @@ public class AdminActionHandler implements CommandHandler {
             default -> throw new AuctionExceptions.InvalidPayloadException(
                     "Lệnh Admin không hợp lệ: " + command);
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // [NEW] TOGGLE_GOOD_STATUS handler
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Xử lý lệnh {@code TOGGLE_GOOD_STATUS} từ Admin.
+     *
+     * <h3>Payload từ Client</h3>
+     * <pre>
+     * {
+     *   "command": "TOGGLE_GOOD_STATUS",
+     *   "data":    "USR-12345"       // userId dạng String thuần
+     * }
+     * </pre>
+     *
+     * <h3>Response commands</h3>
+     * <ul>
+     *   <li>{@code TOGGLE_GOOD_SUCCESS} — Thành công, {@code data} là:
+     *       <pre>{ "userId": "USR-12345", "isGood": true, "message": "..." }</pre></li>
+     *   <li>{@code ERROR} — Thất bại kèm {@link ErrorPayload}.</li>
+     * </ul>
+     *
+     * <p>Tác vụ DB được uỷ thác qua {@link TransactionManager} để tuân thủ
+     * mô hình single-writer của SQLite WAL, nhất quán với các handler khác.</p>
+     *
+     * @param admin  Admin đang thực hiện lệnh.
+     * @param data   Payload thô từ NetworkMessage — phải là userId String.
+     * @param client ClientHandler của Admin.
+     */
+    private void handleToggleGoodStatus(Admin admin, Object data, ClientHandler client) {
+
+        // ── Parse userId ─────────────────────────────────────────────────────
+        String targetUserId;
+        try {
+            targetUserId = data.toString().trim();
+            if (targetUserId.isBlank()) {
+                throw new IllegalArgumentException("userId is blank");
+            }
+        } catch (Exception e) {
+            client.sendResponse("ERROR",
+                    new ErrorPayload("ERR_PAY_030", "User ID không hợp lệ hoặc bị thiếu trong payload."));
+            return;
+        }
+
+        log.info("[TOGGLE_GOOD] Admin '{}' requested toggle for user '{}'.",
+                admin.getUserName(), targetUserId);
+
+        // ── Uỷ thác cho TransactionManager (bất đồng bộ) ────────────────────
+        TransactionManager.submitTask(() -> adminCtrl.toggleGoodStatus(admin, targetUserId))
+                .thenAccept(result -> {
+
+                    if (result == null) {
+                        // Không nên xảy ra — toggleGoodStatus luôn trả về non-null
+                        client.sendResponse("ERROR",
+                                new ErrorPayload("ERR_SYS_500", "Lỗi máy chủ không xác định."));
+                        return;
+                    }
+
+                    switch (result.getStatus()) {
+
+                        case SUCCESS -> {
+                            // Trả về trạng thái mới để Client cập nhật UI ngay lập tức
+                            Map<String, Object> payload = Map.of(
+                                    "userId",  result.getUserId(),
+                                    "isGood",  result.getNewIsGood(),
+                                    "message", result.getMessage()
+                            );
+                            client.sendResponse("TOGGLE_GOOD_SUCCESS", payload);
+                            log.info("[TOGGLE_GOOD] Success — user '{}' is_good → {}.",
+                                    result.getUserId(), result.getNewIsGood());
+                        }
+
+                        case UNAUTHORIZED -> client.sendResponse("ERROR",
+                                new ErrorPayload("ERR_AUTH_403", result.getMessage()));
+
+                        case DENIED -> client.sendResponse("ERROR",
+                                new ErrorPayload("ERR_USR_001", result.getMessage()));
+
+                        case NOT_FOUND -> client.sendResponse("ERROR",
+                                new ErrorPayload("ERR_USR_404", result.getMessage()));
+
+                        case DB_ERROR -> client.sendResponse("ERROR",
+                                new ErrorPayload("ERR_DB_005", result.getMessage()));
+                    }
+                })
+                .exceptionally(ex -> {
+                    log.error("[TOGGLE_GOOD] Unexpected async error for user '{}': {}",
+                            targetUserId, ex.getMessage(), ex);
+                    client.sendResponse("ERROR",
+                            new ErrorPayload("ERR_SYS_500",
+                                    "Lỗi máy chủ nghiêm trọng khi cập nhật trạng thái người dùng."));
+                    return null;
+                });
     }
 
     // ─────────────────────────────────────────────────────────────────────────

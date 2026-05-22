@@ -90,9 +90,16 @@ public class UserDAO {
         return null;
     }
 
-    /** Returns a list of all users (public fields only — no secrets). */
+    /**
+     * Returns a list of all users (public fields only — no secrets).
+     *
+     * <p>PATCH: Bổ sung trường {@code is_good} để Admin UI có thể hiển thị
+     * trạng thái "Trusted" và bật/tắt toggle mà không cần một round-trip
+     * riêng lấy chi tiết user.</p>
+     */
     public List<Map<String, Object>> getAllUsers() throws SQLException {
-        String sql = "SELECT id, username, name, role, is_blocked FROM users";
+        // CHANGED: thêm is_good vào SELECT
+        String sql = "SELECT id, username, name, role, is_blocked, is_good FROM users";
         List<Map<String, Object>> users = new ArrayList<>();
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -104,10 +111,54 @@ public class UserDAO {
                 user.put("name",       rs.getString("name"));
                 user.put("role",       rs.getString("role"));
                 user.put("is_blocked", rs.getInt("is_blocked") == 1);
+                user.put("is_good",    rs.getInt("is_good") == 1);   // NEW
                 users.add(user);
             }
         }
         return users;
+    }
+
+    /**
+     * Đảo ngược (toggle) cờ {@code is_good} của user trong một lần UPDATE
+     * duy nhất, tránh race-condition read-then-write.
+     *
+     * <p>Sử dụng cú pháp SQLite {@code 1 - is_good} để đảo bit nguyên tử
+     * ngay tại DB layer — không cần đọc giá trị hiện tại lên Java.</p>
+     *
+     * @param conn   Connection đang dùng (caller quản lý vòng đời).
+     * @param userId ID của user cần toggle.
+     * @return {@code true} nếu UPDATE thành công (row tồn tại).
+     * @throws SQLException nếu có lỗi DB.
+     */
+    public boolean toggleGoodStatus(Connection conn, String userId) throws SQLException {
+        // Atomic toggle: 1 - is_good  →  0→1 hoặc 1→0
+        String sql = "UPDATE users SET is_good = 1 - is_good WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, userId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Đọc lại giá trị {@code is_good} hiện tại sau khi toggle để trả về
+     * cho Client — tránh Client phải tự suy đoán trạng thái mới.
+     *
+     * @param conn   Connection đang dùng.
+     * @param userId ID của user.
+     * @return {@code true} / {@code false} tương ứng với is_good = 1 / 0,
+     *         hoặc {@code null} nếu user không tồn tại.
+     * @throws SQLException nếu có lỗi DB.
+     */
+    public Boolean readGoodStatus(Connection conn, String userId) throws SQLException {
+        String sql = "SELECT is_good FROM users WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, userId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("is_good") == 1;
+            }
+        }
+        return null; // user không tồn tại
     }
 
     // ─────────────────────────────────────────────────────────────────

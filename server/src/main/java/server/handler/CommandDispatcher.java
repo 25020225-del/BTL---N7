@@ -103,6 +103,7 @@ public class    CommandDispatcher {
         handlers.put("FETCH_USERS", adminHandler);
         handlers.put("BLOCK_USER", adminHandler);
         handlers.put("UNBLOCK_USER", adminHandler);
+        handlers.put("TOGGLE_GOOD_STATUS", adminHandler);
         
         // Register Bidding operations
         BidActionHandler bidHandler = new BidActionHandler(new controller.ServerBidderController(bidDAO), auctionDAO);
