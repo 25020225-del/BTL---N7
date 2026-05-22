@@ -59,6 +59,7 @@ public class ItemDetailController {
     // ── FXML Components ───────────────────────────────────────────────────────
     @FXML private HBox      hbTime;
     @FXML private ImageView imgLarge;
+    @FXML private Label     lblItemType;
     @FXML private Label     lblDetailTitle;
     @FXML private Label     lblStartPrice;
     @FXML private Label     lblCurrentPrice;
@@ -200,12 +201,12 @@ public class ItemDetailController {
         try {
             long bidAmount = Long.parseLong(rawAmount);
             if (bidAmount <= 0) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Bid amount must be greater than 0.");
+                AlertUtils.showError("Validation Error", "Bid amount must be greater than 0.");
                 return;
             }
             AuctionService.placeBid(currentAuctionId, bidAmount);
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Invalid amount format.");
+            AlertUtils.showError("Validation Error", "Invalid amount format.");
         }
     }
 
@@ -268,6 +269,7 @@ public class ItemDetailController {
         String leader = (auction.getWinningBidder() != null)
                 ? auction.getWinningBidder().getUserName() : "None";
 
+        lblItemType.setText(auction.getItem().getType());
         lblDetailTitle.setText(auction.getItem().getItemName());
         txtDescription.setText(auction.getItem().getDescription());
         lblStartPrice.setText(String.format("%,d VND", auction.getItem().getStartingPrice()));

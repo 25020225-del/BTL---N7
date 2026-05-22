@@ -3,7 +3,6 @@ package gui.widget;
 import client.handler.AuctionEventBus;
 import client.handler.ClientAuctionHandler;
 import client.service.AuctionService;
-import gui.process.AlertHelper;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;

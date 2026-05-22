@@ -52,7 +52,7 @@
                   </VBox>
 
                   <!-- RIGHT COLUMN: Text Input Fields -->
-                  <VBox spacing="15.0" HBox.hgrow="ALWAYS">
+                  <VBox fx:id="ca_details" spacing="15.0" HBox.hgrow="ALWAYS">
                      <children>
                         <Label text="Detailed Information">
                            <font><Font name="System Bold" size="18.0" /></font>

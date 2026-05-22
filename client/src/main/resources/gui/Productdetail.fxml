@@ -50,6 +50,7 @@
 
                                 <VBox spacing="10.0">
                                     <children>
+                              <Label fx:id="lblItemType" style="-fx-font-weight: bold; -fx-font-size: 20;" textFill="#e53238" />
                                         <HBox alignment="CENTER_LEFT">
                                             <children>
                                                 <Label prefWidth="130.0" style="-fx-font-size: 14;" text="Giá khởi điểm:" />

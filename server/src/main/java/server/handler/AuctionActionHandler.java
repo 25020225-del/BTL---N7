@@ -83,7 +83,9 @@ public class AuctionActionHandler implements CommandHandler {
             durationMinutes = MAX_DURATION_MINUTES;
         }
 
-        String itemType = ItemFactory.TYPE_TANGIBLE;
+        String itemType = auction.getItem().getType() != null
+                ? auction.getItem().getType()
+                : ItemFactory.TYPE_TANGIBLE;
         String newItemId = "ITM-" + System.currentTimeMillis();
         Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
         item.setImageUrl(imageUrl);

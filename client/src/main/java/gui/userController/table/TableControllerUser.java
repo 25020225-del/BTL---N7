@@ -3,11 +3,10 @@ package gui.userController.table;
 import client.handler.AuctionEventBus;
 import client.service.AuctionService;
 import com.fasterxml.jackson.core.type.TypeReference;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import gui.widget.item.MinimalItem;
 import gui.widget.item.MinimalItemUser;
 import gui.widget.item.MinimalSellerItem;
-import gui.widget.item.MinimalUser;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -37,7 +36,7 @@ public class TableControllerUser extends TableController {
                 for(Map<String, Object> auction : auctions) {
                     items.add(buildMinimalItem(auction));
                 }
-                Platform.runLater(() -> {addAllAuction(items);});
+                Platform.runLater(() -> {addAllItem(items);});
             } catch (Exception e) {
                 log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
             }
@@ -54,7 +53,7 @@ public class TableControllerUser extends TableController {
                     MinimalItem item = MinimalSellerItem.newMinimalSellerItemFromMap(auction);
                     items.add(item);
                 }
-                Platform.runLater(() -> {addAllAuction(items);});
+                Platform.runLater(() -> {addAllItem(items);});
             } catch (IllegalArgumentException e) {
                 log.error("[Client] FETCH_MY_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
             }
@@ -66,7 +65,7 @@ public class TableControllerUser extends TableController {
                         response.getData(),
                         new TypeReference<Map<String, Object>>() {}
                 );
-                Platform.runLater(() -> {addNewAuction(buildMinimalItem(auction));});
+                Platform.runLater(() -> {addNewItem(buildMinimalItem(auction));});
 
             } catch (Exception e) {
                 log.error("[Client] NEW_AUCTION_ADDED parse error: {}", e.getMessage());
@@ -75,19 +74,19 @@ public class TableControllerUser extends TableController {
         AuctionEventBus.addListener("REMOVE_AUCTION", event -> {
             NetworkMessage response = (NetworkMessage) event.getNewValue();
             String auctionIdToRemove = (String) response.getData();
-            Platform.runLater(() -> {removeAuction(auctionIdToRemove);});
+            Platform.runLater(() -> {removeItem(auctionIdToRemove);});
 
         });
         AuctionEventBus.addListener("EDIT_SUCCESS", event -> {
 
             NetworkMessage response = (NetworkMessage) event.getNewValue();
-            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
+            AlertUtils.showInfo("Success", response.getData().toString());
             AuctionService.fetchAuctions();
         });
         AuctionEventBus.addListener("DELETE_SUCCESS", event -> {
 
             NetworkMessage response = (NetworkMessage) event.getNewValue();
-            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Success", response.getData().toString());
+            AlertUtils.showInfo("Success", response.getData().toString());
             AuctionService.fetchAuctions();
         });
     }
@@ -97,7 +96,7 @@ public class TableControllerUser extends TableController {
         auction.setId((String) map.get("id"));
 
         Item item = ItemFactory.createItem(
-                ItemFactory.TYPE_TANGIBLE,
+                (String) map.get("itemType"),
                 "ITM-" + map.get("id"),
                 (String) map.get("itemName"),
                 (String) map.get("description"),
@@ -122,6 +121,7 @@ public class TableControllerUser extends TableController {
     protected MinimalItemUser buildMinimalItem(Map<String, Object> map) {
         String id       = (String) map.get("id");
         String name     = (String) map.get("itemName");
+        String itemType     = (String) map.get("itemType");
         String imageUrl = (String) map.get("imageUrl");
         String sellerId = (String) map.get("sellerId");
         double price    = ((Number) map.get("currentPrice")).doubleValue();
@@ -129,7 +129,7 @@ public class TableControllerUser extends TableController {
 
         Auction auction = auctionFromMap(map);
 
-        MinimalItemUser item = new MinimalItemUser(id, imageUrl, name,
+        MinimalItemUser item = new MinimalItemUser(id, imageUrl, name, itemType,
                 String.format("%,.0f", price), endTime);
         item.getAuctionButton().setOnAction(e -> openItemDetail(auction));
         return item;

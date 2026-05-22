@@ -14,11 +14,12 @@ import java.util.function.Consumer;
 public class MinimalItemUser extends MinimalItem {
     protected final String DEFAULT_IMAGEURL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
     protected Label lblName;
+    protected Label lblType;
     protected Label lblPrice;
     protected ImageView imageView;
     protected CountdownClock countdownClock;
 
-    public MinimalItemUser(String id, String imageUrl, String nameString, String priceString, long dateString) {
+    public MinimalItemUser(String id, String imageUrl, String nameString, String itemType, String priceString, long dateString) {
         super(id);
         this.setUserData(id + nameString + priceString + dateString);
 
@@ -37,6 +38,8 @@ public class MinimalItemUser extends MinimalItem {
             }
         });
         this.lblName = new Label(nameString);
+        this.lblType = new Label(itemType);
+        this.lblType.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
         this.lblPrice = new Label(priceString + " VND");
         this.countdownClock = new CountdownClock();
         this.countdownClock.start(dateString);
@@ -46,6 +49,7 @@ public class MinimalItemUser extends MinimalItem {
         this.getChildren().addAll(
                 imageView,
                 lblName,
+                lblType,
                 lblPrice,
                 countdownClock,
                 auctionButton

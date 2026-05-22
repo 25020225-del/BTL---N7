@@ -2,7 +2,7 @@ package gui.userController.table;
 
 import client.handler.AuctionEventBus;
 import client.service.AdminService;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import gui.widget.AdminUserItem;
 import gui.widget.item.MinimalItemAdmin;
 import gui.widget.item.MinimalUser;
@@ -35,7 +35,7 @@ public class TableControllerAdmin extends TableController {
                     (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
             Platform.runLater(() -> {
                 mainTilePane.getChildren().clear();
-                data.forEach(map -> addNewAuction(buildMinimalItem(map)));
+                data.forEach(map -> addNewItem(buildMinimalItem(map)));
             });
         });
 
@@ -47,7 +47,7 @@ public class TableControllerAdmin extends TableController {
                 // FIX LỖI 1: Đổi deleteAllAuctions() → deleteAllAuction()
                 // (tên method trong lớp cha TableController là deleteAllAuction — không có 's')
                 // HOẶC: Đổi tên trong TableController thành deleteAllAuctions() cho nhất quán
-                deleteAllAuction();  // ✅ FIX: gọi đúng tên method của lớp cha
+                deleteAllItem();  // ✅ FIX: gọi đúng tên method của lớp cha
                 users.forEach(data -> mainTilePane.getChildren().add(buildUserItem(data)));
             });
         });
@@ -58,7 +58,7 @@ public class TableControllerAdmin extends TableController {
                     (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
 
             Platform.runLater(() -> {
-                deleteAllAuction(); // clear panel hiện tại
+                deleteAllItem(); // clear panel hiện tại
                 for (Map<String, Object> req : requests) {
                     mainTilePane.getChildren().add(
                             new WithdrawRequestItem(req, command -> {
@@ -80,7 +80,7 @@ public class TableControllerAdmin extends TableController {
             String msg = (String) result.get("message");
 
             Platform.runLater(() -> {
-                AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Thành công", msg);
+                AlertUtils.showInfo("Thành công", msg);
                 AdminService.fetchWithdrawRequests(); // tự reload lại danh sách
             });
         });

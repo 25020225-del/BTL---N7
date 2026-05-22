@@ -6,10 +6,7 @@ import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
 /**
  * Manages database connections using HikariCP connection pooling.
@@ -87,6 +84,11 @@ public class DatabaseManager {
             createWithdrawalTables(stmt);
             applyMigrations(stmt);
             seedDefaultAdmin(conn);
+            ResultSet rs = conn.getMetaData().getColumns(null, null, "auctions", "item_type");
+            if (!rs.next()) {
+                stmt.execute("ALTER TABLE auctions ADD COLUMN item_type VARCHAR(20) DEFAULT 'TANGIBLE'");
+                log.info("Migration: added item_type column to auctions");
+            }
 
             log.info("Database initialized successfully (testEnv={})", IS_TEST_ENV);
 

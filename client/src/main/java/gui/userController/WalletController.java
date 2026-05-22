@@ -4,7 +4,7 @@ import client.handler.AuctionEventBus;
 import client.handler.ClientPaymentHandler;
 import client.network.NetworkService;
 import client.service.WalletService;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import gui.process.AnimateEffect;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -25,7 +25,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Controller and Custom Node for the Wallet view.
@@ -112,7 +111,7 @@ public class WalletController extends VBox {
         String payoutDetails = txtPayoutDetails.getText().trim();
 
         if (amountStr.isEmpty() || payoutDetails.isEmpty()) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR,
+            AlertUtils.showError(
                     "Thiếu thông tin",
                     "Vui lòng nhập đầy đủ số tiền và thông tin tài khoản.");
             return;
@@ -123,7 +122,7 @@ public class WalletController extends VBox {
             amount = Long.parseLong(amountStr.replace(",", "").replace(".", ""));
             if (amount <= 0) throw new NumberFormatException();
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR,
+            AlertUtils.showError(
                     "Số tiền không hợp lệ",
                     "Vui lòng nhập số tiền hợp lệ (số nguyên dương).");
             return;
@@ -232,7 +231,7 @@ public class WalletController extends VBox {
         // ── [NEW] Lắng nghe kết quả rút tiền ────────────────────────────────────
         AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_REQUEST_SUCCESS, event ->
                 Platform.runLater(() -> {
-                    AlertHelper.showAlert(Alert.AlertType.INFORMATION,
+                    AlertUtils.showInfo(
                             "Yêu cầu đã gửi",
                             "Yêu cầu rút tiền đang chờ Admin duyệt.");
                     txtWithdrawAmount.clear();
@@ -242,14 +241,14 @@ public class WalletController extends VBox {
         );
         AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_APPROVED, event ->
                 Platform.runLater(() ->
-                        AlertHelper.showAlert(Alert.AlertType.INFORMATION,
+                        AlertUtils.showInfo(
                                 "Rút tiền thành công",
                                 "Admin đã duyệt yêu cầu của bạn. Tiền đã được chuyển.")
                 )
         );
         AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_REJECTED, event ->
                 Platform.runLater(() ->
-                        AlertHelper.showAlert(Alert.AlertType.WARNING,
+                        AlertUtils.showWarning(
                                 "Yêu cầu bị từ chối",
                                 "Admin đã từ chối yêu cầu rút tiền. Số tiền đã được hoàn lại.")
                 )
@@ -316,7 +315,7 @@ public class WalletController extends VBox {
             if (amount <= 0) throw new NumberFormatException("Amount must be positive");
             return amount;
         } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Input Error", "Please enter a valid deposit amount.");
+            AlertUtils.showError( "Input Error", "Please enter a valid deposit amount.");
             return -1;
         }
     }
@@ -366,8 +365,7 @@ public class WalletController extends VBox {
      */
     private void onInvalidTotp(Object eventData) {
         Platform.runLater(() -> {
-            AlertHelper.showAlert(
-                    Alert.AlertType.ERROR,
+            AlertUtils.showError(
                     "Invalid TOTP Code",
                     "The 6-digit code you entered is incorrect or has expired.\n"
                             + "Please open Google Authenticator and enter the current code."

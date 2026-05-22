@@ -1,29 +1,16 @@
 package gui;
 
 import client.network.NetworkService;
-import gui.process.AlertHelper;
+import gui.process.AlertUtils;
 import gui.widget.SplashScreen;
-import javafx.animation.*;
-import javafx.geometry.Insets;
-import javafx.scene.control.Alert;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.*;
-import javafx.util.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import client.network.NetworkClient;
 import client.network.ServerDiscovery;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressIndicator;
-import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -167,8 +154,7 @@ public class MainApplication extends Application {
 
                     if (!NetworkService.get().isConnected()) {
                         log.warn("Server unreachable. Switched to OFFLINE mode.");
-                        AlertHelper.showAlert(Alert.AlertType.WARNING,
-                                "Network Issue", "Cannot connect to server. Running offline version.");
+                        AlertUtils.showWarning("Network Issue", "Cannot connect to server. Running offline version");
                     }
                     else {
                         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {

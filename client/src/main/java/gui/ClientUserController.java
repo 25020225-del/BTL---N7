@@ -206,22 +206,21 @@ public class ClientUserController {
         AuctionService.fetchAuctions();
 
         AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, evt -> {
-            Platform.runLater(() -> AlertHelper.showAlert(AlertType.INFORMATION, "Success", evt.getNewValue().toString()));
+            Platform.runLater(() -> AlertUtils.showInfo("Success", evt.getNewValue().toString()));
         });
 
         AuctionEventBus.addListener(AuctionEventBus.DEPOSIT_SUCCESS, evt -> {
-            Platform.runLater(() -> AlertHelper.showAlert(AlertType.INFORMATION, "Deposit Success", evt.getNewValue().toString()));
+            Platform.runLater(() -> AlertUtils.showInfo("Deposit Success", evt.getNewValue().toString()));
         });
 
         AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR, evt -> {
             String msg = evt.getNewValue() != null ? evt.getNewValue().toString() : "An unknown error occurred.";
-            Platform.runLater(() -> AlertHelper.showAlert(AlertType.ERROR, "System Error", msg));
+            Platform.runLater(() -> AlertUtils.showError("System Error", msg));
         });
 
         AuctionEventBus.addListener(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED, evt -> {
             Platform.runLater(() -> {
-                AlertHelper.showAlert(AlertType.INFORMATION, "Payment in process",
-                        "Payment gate has been opened.");
+                AlertUtils.showInfo( "Payment in process","Payment gate has been opened.");
             });
         });
     }

@@ -22,7 +22,7 @@ public class AuctionDAO {
 
     public List<Map<String, Object>> getAuctionsBySeller(String sellerId) throws Exception {
         String sql = "SELECT id, item_name, description, starting_price, current_price, " +
-                "end_time, image_url, seller_id, status, bid_increment FROM auctions WHERE seller_id = ?";
+                "end_time, image_url, seller_id, status, bid_increment, item_type FROM auctions WHERE seller_id = ?";
         List<Map<String, Object>> result = new ArrayList<>();
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -40,6 +40,7 @@ public class AuctionDAO {
                 map.put("sellerId",      rs.getString("seller_id"));
                 map.put("status",        rs.getString("status"));
                 map.put("bidIncrement",        rs.getLong("bid_increment"));
+                map.put("itemType",        rs.getString("item_type"));
                 result.add(map);
             }
         }
@@ -57,7 +58,7 @@ public class AuctionDAO {
                     auction.setId(rs.getString("id"));
 
                     model.item.Item item = ItemFactory.createItem(
-                            ItemFactory.TYPE_TANGIBLE,
+                            rs.getString("item_type"),
                             "ITM-" + System.currentTimeMillis(),
                             rs.getString("item_name"),
                             rs.getString("description"),
@@ -93,7 +94,7 @@ public class AuctionDAO {
     }
 
     public boolean addAuction(Auction auction) throws SQLException {
-        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url, winning_bidder_id, highest_max_bid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url, winning_bidder_id, highest_max_bid, item_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -111,6 +112,7 @@ public class AuctionDAO {
             pstmt.setString(11, item.getImageUrl());
             pstmt.setString(12, auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : null);
             pstmt.setLong(13, auction.getHighestMaxBid());
+            pstmt.setString(14, item.getType());
 
             return pstmt.executeUpdate() > 0;
         }
@@ -135,7 +137,7 @@ public class AuctionDAO {
     }
 
     public List<Map<String, Object>> getAuctionsByStatus(String... statuses) throws SQLException {
-        StringBuilder sql = new StringBuilder("SELECT id, item_name, description, starting_price, current_price, end_time, image_url, seller_id, status FROM auctions WHERE status IN (");
+        StringBuilder sql = new StringBuilder("SELECT id, item_name, description, starting_price, current_price, end_time, image_url, seller_id, bid_increment, status, item_type FROM auctions WHERE status IN (");
         for (int i = 0; i < statuses.length; i++) {
             sql.append("?");
             if (i < statuses.length - 1) sql.append(", ");
@@ -160,6 +162,8 @@ public class AuctionDAO {
                     map.put("imageUrl", rs.getString("image_url"));
                     map.put("sellerId", rs.getString("seller_id"));
                     map.put("status",rs.getString("status"));
+                    map.put("bidIncrement", rs.getLong("bid_increment"));
+                    map.put("itemType", rs.getString("item_type"));
                     list.add(map);
                 }
             }
