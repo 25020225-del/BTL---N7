@@ -300,8 +300,8 @@ public class WalletController extends VBox {
     private void updateBalanceDisplay(long balance, long frozenBalance) {
         currentBalance       = balance;
         currentFrozenBalance = frozenBalance;
-        lblTotalBalance.setText(String.format("%,d N VND", currentBalance));
-        lblFrozenBalance.setText(String.format("%,d N VND", currentFrozenBalance));
+        lblTotalBalance.setText(String.format("%,d VND", currentBalance));
+        lblFrozenBalance.setText(String.format("%,d VND", currentFrozenBalance));
     }
 
     /**
