@@ -75,7 +75,7 @@
                                     <children>
                                         <VBox spacing="5.0">
                                             <children>
-                                                <Label style="-fx-font-weight: bold; -fx-text-fill: #444;" text="Đặt giá thủ công (VND):" />
+                                                <Label style="-fx-font-weight: bold; -fx-text-fill: #444;" text="Đặt giá (VND):" />
                                                 <HBox spacing="10.0">
                                                     <children>
                                                         <TextField fx:id="txtBidAmount" prefHeight="38.0" promptText="Nhập số tiền muốn đặt..." HBox.hgrow="ALWAYS" />
@@ -86,39 +86,12 @@
                                         </VBox>
 
                                         <Separator prefHeight="1.0" />
-
-                                        <VBox spacing="5.0">
-                                            <children>
-                                                <Label style="-fx-font-weight: bold; -fx-text-fill: #444;" text="Cấu hình đặt giá tự động (Auto Bid):" />
-                                                <HBox spacing="10.0">
-                                                    <children>
-                                                        <TextField fx:id="txtMaxBid" prefHeight="38.0" promptText="Giá tối đa..." HBox.hgrow="ALWAYS" />
-                                                        <TextField fx:id="txtBidIncrement" prefHeight="38.0" promptText="Bước nhảy..." HBox.hgrow="ALWAYS" />
-                                                        <Button mnemonicParsing="false" onAction="#handleAutoBid" prefHeight="38.0" style="-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="KÍCH HOẠT" />
-                                                    </children>
-                                                </HBox>
-                                            </children>
-                                        </VBox>
                                     </children>
                                 </VBox>
 
                                 <VBox fx:id="vbAuctionControl" spacing="12.0" style="-fx-background-color: #fff9e6; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #f0b90b; -fx-border-width: 1; -fx-border-radius: 8;">
                                     <children>
                                         <Label style="-fx-font-weight: bold; -fx-text-fill: #b7791f;" text="Bảng điều khiển của chủ tài sản:" />
-
-                                        <VBox spacing="5.0">
-                                            <children>
-                                                <Label style="-fx-font-weight: bold; -fx-text-fill: #555; -fx-font-size: 13;" text="Gia hạn thêm thời gian (Phút):" />
-                                                <HBox spacing="10.0">
-                                                    <children>
-                                                        <TextField fx:id="txtExtendTime" prefHeight="38.0" promptText="Nhập số phút muốn gia hạn thêm..." HBox.hgrow="ALWAYS" />
-                                                        <Button onAction="#handleUpdateTime" prefHeight="38.0" style="-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="XÁC NHẬN GIA HẠN" />
-                                                    </children>
-                                                </HBox>
-                                            </children>
-                                        </VBox>
-
-                                        <Separator prefHeight="1.0" style="-fx-background-color: #f0b90b;" />
 
                                         <HBox spacing="15.0">
                                             <children>

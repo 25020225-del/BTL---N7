@@ -66,12 +66,9 @@ public class ItemDetailController {
     @FXML private TextField txtBidAmount;
     @FXML private Button    btnPlaceBid;
     @FXML private TextArea  txtDescription;
-    @FXML private TextField txtMaxBid;
-    @FXML private TextField txtBidIncrement;
     @FXML private VBox      vbBidHandle;
     @FXML private VBox      vbAuctionControl;
     @FXML private VBox      vbAdminControl;
-    @FXML private TextField txtExtendTime;
 
     @FXML private LineChart<String, Number> bidHistoryChart;
     @FXML private CategoryAxis              xAxisTime;
@@ -209,57 +206,6 @@ public class ItemDetailController {
             AuctionService.placeBid(currentAuctionId, bidAmount);
         } catch (NumberFormatException e) {
             AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Invalid amount format.");
-        }
-    }
-
-    /**
-     * Validates the auto-bid configuration and sends the setup request.
-     */
-    @FXML
-    private void handleAutoBid() {
-        AnimateEffect.pauseNode(vbBidHandle, 2);
-        String maxBidStr    = txtMaxBid.getText().replace(",", "").trim();
-        String incrementStr = txtBidIncrement.getText().replace(",", "").trim();
-
-        if (maxBidStr.isEmpty() || incrementStr.isEmpty()) {
-            AlertHelper.showAlert(Alert.AlertType.WARNING, "Missing Information", "Please enter both Max Bid and Bid Increment.");
-            return;
-        }
-
-        try {
-            long maxBid       = Long.parseLong(maxBidStr);
-            long bidIncrement = Long.parseLong(incrementStr);
-            if (maxBid <= 0 || bidIncrement <= 0) {
-                AlertHelper.showAlert(Alert.AlertType.ERROR, "Validation Error", "Amounts must be greater than 0.");
-                return;
-            }
-            AuctionService.setAutoBid(currentAuctionId, maxBid, bidIncrement);
-            log.info("Auto-bid configured for auction {}: max={}, increment={}", currentAuctionId, maxBid, bidIncrement);
-            AlertHelper.showAlert(Alert.AlertType.INFORMATION, "Auto-Bid Active", "Automatic bidding has been configured.");
-        } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Please enter valid numeric values only.");
-        }
-    }
-
-    /**
-     * Validates the extension duration and sends the time-extension request to the server.
-     *
-     * <p><b>FIX:</b> The original implementation swallowed both {@link NumberFormatException}
-     * and {@link NullPointerException} with only a log message, providing no user feedback.
-     * Now uses a guard clause with a proper alert.</p>
-     */
-    @FXML
-    private void handleUpdateTime() {
-        String input = txtExtendTime.getText().trim();
-        if (input.isEmpty()) {
-            AlertHelper.showAlert(Alert.AlertType.WARNING, "Input Required", "Please enter the number of minutes to extend.");
-            return;
-        }
-        try {
-            long minutes = Long.parseLong(input);
-            AuctionService.extendAuctionTimeMinutes(currentAuctionId, minutes);
-        } catch (NumberFormatException e) {
-            AlertHelper.showAlert(Alert.AlertType.ERROR, "Format Error", "Extension duration must be a valid whole number.");
         }
     }
 
