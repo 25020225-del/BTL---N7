@@ -13,17 +13,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Model/helper class cho luồng tạo phiên đấu giá.
- *
- * <p><b>Refactor:</b>
- * <ul>
- *   <li>Sửa lỗi chính tả: {@code "Vui đòng"} → {@code "Vui lòng"}.</li>
- *   <li>Xóa import {@code javafx.scene.control.Alert} — class này KHÔNG được gọi
- *       UI trực tiếp. Mọi thông báo lỗi do Controller đảm nhận.</li>
- *   <li>Tách validation lỗi size ảnh ra Exception thay vì gọi AlertHelper trực tiếp,
- *       giữ class này thuần logic, không phụ thuộc UI.</li>
- * </ul>
- * </p>
+ * Core transactional model controller backing the Auction Creation layout form wizard.
+ * Handles pure data structure parsing, file boundary constraints, and logic mutations.
+ * Enforces loose UI decoupling by bubbling up validation constraints via Exceptions.
  */
 public class CreateAuctionModel {
 
@@ -133,8 +125,8 @@ public class CreateAuctionModel {
     /** Tạo Item từ dữ liệu form và file ảnh. */
     public static Item createItem(String name, String type, String desc, long startPrice, File image)
             throws Exception {
-        String itemId = "ITEM-" + System.currentTimeMillis();
-        Item item = ItemFactory.createItem(type,itemId,name,desc,startPrice);
+        String itemId = "ITEM-" + utils.IdGenerator.generateUUIDv7();
+        Item item = ItemFactory.createItem(type, itemId, name, desc, startPrice);
         byte[] imageBytes = ImageCompressor.compressToBytes(image, 0.05F);
         item.setFile(imageBytes);
         return item;
@@ -145,7 +137,7 @@ public class CreateAuctionModel {
             Item item, User user, long bidInc,
             LocalDateTime startDateTime, LocalDateTime endDateTime
     ) {
-        String auctionId = "AUC-" + System.currentTimeMillis();
+        String auctionId = "AUC-" + utils.IdGenerator.generateUUIDv7();
         return new Auction(auctionId, item, user, bidInc, startDateTime, endDateTime);
     }
 }

@@ -145,9 +145,8 @@ public class ServerPaymentController {
         }
 
         Callable<String> withdrawTask = () -> {
-            String requestId  = "WD-" + System.currentTimeMillis() + "-"
-                    + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-            String now        = LocalDateTime.now().toString();
+            String requestId = utils.IdGenerator.generateSecureShortId("WD-", 8);
+            String now = LocalDateTime.now().toString();
 
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);

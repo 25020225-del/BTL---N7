@@ -47,7 +47,6 @@ public class ServerSellerController {
      * @return A newly created {@link Auction} instance if successful; {@code null} if a database error occurs.
      */
     public Auction addAuction(User currentUser, Item item, long bidIncrement, LocalDateTime startTime, int durationMinutes) {
-        // Utilize the factory method to prepare the Auction object in RAM
         Auction newAuction = Auction.createNewAuction(item, currentUser, bidIncrement, startTime, durationMinutes);
 
         try {

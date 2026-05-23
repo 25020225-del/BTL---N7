@@ -1,30 +1,34 @@
 package client.utils;
 
+import client.network.ErrorPayload;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import client.network.ErrorPayload; // [FIXED]: Sửa đường dẫn import tránh lỗi Split Package
 
 public class ErrorParser {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     /**
-     * Bóc tách thông điệp lỗi từ payload của máy chủ.
+     * Extracts and flattens user-friendly error messages from server response payloads.
+     * Safely handles legacy string fallback packages and structural ErrorPayload data models.
+     *
+     * @param data Raw untyped network packet data object.
+     * @return Sanitized error string map to be displayed on UI alert prompts.
      */
     public static String parse(Object data) {
         if (data == null) {
-            return "Lỗi không xác định từ máy chủ.";
+            return "Unknown internal server error.";
         }
 
-        // 1. Nếu Server vẫn còn luồng nào đó lỡ gửi String trần (fallback an toàn)
+        // Fallback boundary: if server returns a raw string message
         if (data instanceof String) {
             return (String) data;
         }
 
-        // 2. Nếu Server gửi object ErrorPayload chuẩn
+        // Standard boundary: read serialized secure structural ErrorPayload model mapping
         try {
             ErrorPayload payload = mapper.convertValue(data, ErrorPayload.class);
             return payload.getErrorMessage();
         } catch (IllegalArgumentException e) {
-            return "Không thể đọc dữ liệu lỗi từ máy chủ. (Lỗi định dạng)";
+            return "Malformed error package received from server.";
         }
     }
 }
