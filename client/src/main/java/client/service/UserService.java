@@ -9,8 +9,11 @@ import client.network.NetworkService;
  */
 public final class UserService {
 
-    /** Private constructor — utility class, not instantiable. */
-    private UserService() {}
+    /**
+     * Private constructor — utility class, not instantiable.
+     */
+    private UserService() {
+    }
 
     /**
      * Sends a logout request to the server for the currently authenticated user session.

@@ -6,7 +6,7 @@ import client.service.AuctionService;
 import client.service.UserService;
 import client.service.WalletService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gui.process.*;
+import gui.process.AlertUtils;
 import gui.process.RemoveEventBus;
 import gui.userController.CreateAuctionController;
 import gui.userController.ItemDetailController;
@@ -18,9 +18,13 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.*;
-import javafx.scene.control.Alert.AlertType;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 import model.auction.Auction;
 import model.user.User;
 import org.slf4j.Logger;
@@ -49,20 +53,24 @@ public class ClientUserController {
 
     private User currentUser;
 
-    @FXML private VBox mainDock;
-    @FXML private VBox mainViewController;
+    @FXML
+    private VBox mainDock;
+    @FXML
+    private VBox mainViewController;
 
 
-    @FXML private Label accName;
-    @FXML private Label accUsername;
+    @FXML
+    private Label accName;
+    @FXML
+    private Label accUsername;
 
     private IconButton accountBtn;
-    private IconButton toggleList           = new IconButton("mdi2m-menu",                  "List",                  "List",            "special-button");
-    private IconButton marketplaceBtn       = new IconButton("mdi2s-storefront-outline",    "Marketplace",           "Marketplace",     "special-button");
-    private IconButton myAuctionsBtn       = new IconButton("mdi2s-storefront-outline",     "My Auctions",           "My Auctions",     "special-button");
-    private IconButton createAuctionBtn     = new IconButton("mdi2a-archive-plus-outline",  "Sell Item",             "Create Auction",  "special-button");
-    private IconButton walletBtn            = new IconButton("mdi2w-wallet-bifold-outline", "Wallet",                "Wallet",          "special-button");
-    private IconButton settingsBtn          = new IconButton("mdi2c-cog",                   "Settings",              "Settings",        "special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private IconButton marketplaceBtn = new IconButton("mdi2s-storefront-outline", "Marketplace", "Marketplace", "special-button");
+    private IconButton myAuctionsBtn = new IconButton("mdi2s-storefront-outline", "My Auctions", "My Auctions", "special-button");
+    private IconButton createAuctionBtn = new IconButton("mdi2a-archive-plus-outline", "Sell Item", "Create Auction", "special-button");
+    private IconButton walletBtn = new IconButton("mdi2w-wallet-bifold-outline", "Wallet", "Wallet", "special-button");
+    private IconButton settingsBtn = new IconButton("mdi2c-cog", "Settings", "Settings", "special-button");
 
     /**
      * Initializes the Unified User Controller and loads all required FXML layouts.
@@ -72,7 +80,7 @@ public class ClientUserController {
      */
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
-        this.accountBtn  = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
+        this.accountBtn = new IconButton("mdi2a-account", "Hello, " + user.getName(), "Account", "special-button");
 
         FXMLLoader mainLoader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainLoader.setController(this);
@@ -220,7 +228,7 @@ public class ClientUserController {
 
         AuctionEventBus.addListener(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED, evt -> {
             Platform.runLater(() -> {
-                AlertUtils.showInfo( "Payment in process","Payment gate has been opened.");
+                AlertUtils.showInfo("Payment in process", "Payment gate has been opened.");
             });
         });
     }

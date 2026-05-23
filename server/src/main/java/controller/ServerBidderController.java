@@ -61,7 +61,9 @@ public class ServerBidderController {
             "Tài khoản của bạn đã bị Quản trị viên khóa, "
                     + "không thể thực hiện thao tác này.";
 
-    /** Mã lỗi dành riêng cho trường hợp tài khoản bị khóa cố đặt giá. */
+    /**
+     * Mã lỗi dành riêng cho trường hợp tài khoản bị khóa cố đặt giá.
+     */
     static final String ERR_CODE_BLOCKED = "ERR_BID_403";
 
     private final BidDAO bidDAO;
@@ -146,8 +148,8 @@ public class ServerBidderController {
 
         // ── Phần còn lại KHÔNG THAY ĐỔI — giữ nguyên hoàn toàn ─────────────
         Callable<String> bidTask = () -> {
-            long   expectedPrice;
-            long   expectedMaxBid;
+            long expectedPrice;
+            long expectedMaxBid;
             String expectedWinnerId;
 
             // ── Phase 1: Snapshot trạng thái RAM (Critical Section tối thiểu) ──
@@ -157,8 +159,8 @@ public class ServerBidderController {
                             auction.getId(), auction.getStatus());
                     return "NOT_RUNNING";
                 }
-                expectedPrice    = auction.getCurrentPrice();
-                expectedMaxBid   = auction.getHighestMaxBid();
+                expectedPrice = auction.getCurrentPrice();
+                expectedMaxBid = auction.getHighestMaxBid();
                 expectedWinnerId = auction.getWinningBidder() != null
                         ? auction.getWinningBidder().getId()
                         : null;
@@ -232,7 +234,7 @@ public class ServerBidderController {
                         case "SUCCESS" -> {
                             Map<String, Object> update = new HashMap<>();
                             update.put("auctionId", auction.getId());
-                            update.put("newPrice",  auction.getCurrentPrice());
+                            update.put("newPrice", auction.getCurrentPrice());
                             update.put("winnerName", currentUser.getUserName());
                             update.put("newEndTime", auction.getEndTime()
                                     .atZone(ZoneId.systemDefault())

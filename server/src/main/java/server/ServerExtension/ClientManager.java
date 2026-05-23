@@ -1,9 +1,9 @@
 package server.ServerExtension;
 
+import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ClientHandler;
-import model.user.User;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -11,7 +11,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.BLUE;
+import static utils.ConsoleColors.RESET;
 
 /**
  * Manages all active client connections and coordinates communication across the server.
@@ -41,7 +42,9 @@ public class ClientManager {
     // BROADCAST
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Gửi plain-text chat đến tất cả client (ngoại trừ sender). */
+    /**
+     * Gửi plain-text chat đến tất cả client (ngoại trừ sender).
+     */
     public static void broadcast(String message, ClientHandler sender) {
         for (ClientHandler client : clients) {
             if (client != sender) {
@@ -56,7 +59,9 @@ public class ClientManager {
         }
     }
 
-    /** Gửi NetworkMessage (command + data) đến tất cả client (ngoại trừ sender). */
+    /**
+     * Gửi NetworkMessage (command + data) đến tất cả client (ngoại trừ sender).
+     */
     public static void broadcast(String command, Object data, ClientHandler sender) {
         for (ClientHandler client : clients) {
             if (client != sender) {
@@ -75,7 +80,9 @@ public class ClientManager {
     // TARGETED MESSAGING
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Gửi private message từ Admin đến một client theo username. */
+    /**
+     * Gửi private message từ Admin đến một client theo username.
+     */
     public static void privateMsg(String receiver, String message) {
         receiver = receiver.trim();
         for (ClientHandler client : clients) {

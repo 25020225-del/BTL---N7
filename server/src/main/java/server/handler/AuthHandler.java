@@ -2,7 +2,6 @@ package server.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import exception.AuctionExceptions;
-import model.user.Admin;
 import model.user.User;
 import network.ErrorPayload;
 import network.NetworkMessage;
@@ -37,16 +36,16 @@ public class AuthHandler implements CommandHandler {
     @Override
     public void handle(NetworkMessage message, ClientHandler client) throws Exception {
         switch (message.getCommand()) {
-            case "LOGIN"              -> processLogin(message.getData(), client);
-            case "VERIFY_2FA"         -> processVerify2FA(message.getData(), client);
-            case "REGISTER"           -> processRegister(message.getData(), client);
-            case "LOGOUT"             -> processLogout(client);
-            case "REQUEST_SETUP_2FA"  -> processRequestSetup2FA(client);
-            case "CANCEL_2FA_SETUP"   -> processCancelSetup2FA(client);
-            case "VERIFY_2FA_SETUP"   -> processVerify2FASetup(message.getData(), client);
-            case "CONFIRM_SETUP_2FA"  -> processVerify2FASetup(message.getData(), client);
-            case "DISABLE_2FA"        -> processDisable2FA(message.getData(), client);
-            case "UPDATE_TOTP_PREFS"  -> processUpdateTotpPrefs(message.getData(), client); // ← THÊM DÒNG NÀY
+            case "LOGIN" -> processLogin(message.getData(), client);
+            case "VERIFY_2FA" -> processVerify2FA(message.getData(), client);
+            case "REGISTER" -> processRegister(message.getData(), client);
+            case "LOGOUT" -> processLogout(client);
+            case "REQUEST_SETUP_2FA" -> processRequestSetup2FA(client);
+            case "CANCEL_2FA_SETUP" -> processCancelSetup2FA(client);
+            case "VERIFY_2FA_SETUP" -> processVerify2FASetup(message.getData(), client);
+            case "CONFIRM_SETUP_2FA" -> processVerify2FASetup(message.getData(), client);
+            case "DISABLE_2FA" -> processDisable2FA(message.getData(), client);
+            case "UPDATE_TOTP_PREFS" -> processUpdateTotpPrefs(message.getData(), client); // ← THÊM DÒNG NÀY
             default -> throw new AuctionExceptions.InvalidPayloadException(
                     "Lệnh xác thực không hợp lệ: " + message.getCommand());
         }
@@ -110,7 +109,7 @@ public class AuthHandler implements CommandHandler {
             return;
         }
 
-        String secret   = pending.getTotpSecret();
+        String secret = pending.getTotpSecret();
         boolean verified = (secret != null)
                 && client.getUserController()
                 .getTotpService()
@@ -247,8 +246,8 @@ public class AuthHandler implements CommandHandler {
 
     @SuppressWarnings("unchecked")
     private void processVerify2FASetup(Object data, ClientHandler client) {
-        User currentUser       = client.getUser();
-        String pendingSecret   = client.getPendingTotpSecret();
+        User currentUser = client.getUser();
+        String pendingSecret = client.getPendingTotpSecret();
 
         if (currentUser == null || pendingSecret == null) {
             client.sendResponse("ERROR",
@@ -305,7 +304,7 @@ public class AuthHandler implements CommandHandler {
         }
 
         String password = null;
-        int    code     = 0;
+        int code = 0;
         try {
             Map<String, Object> map = (Map<String, Object>) data;
             if (map.containsKey("password")) {
@@ -370,7 +369,7 @@ public class AuthHandler implements CommandHandler {
         boolean paymentEnabled;
         try {
             Map<String, Object> map = (Map<String, Object>) data;
-            loginEnabled   = Boolean.TRUE.equals(map.get("loginEnabled"));
+            loginEnabled = Boolean.TRUE.equals(map.get("loginEnabled"));
             paymentEnabled = Boolean.TRUE.equals(map.get("paymentEnabled"));
         } catch (Exception e) {
             client.sendResponse("ERROR",
@@ -388,9 +387,9 @@ public class AuthHandler implements CommandHandler {
 
             client.sendResponse("UPDATE_TOTP_PREFS_SUCCESS",
                     Map.of(
-                            "loginEnabled",   loginEnabled,
+                            "loginEnabled", loginEnabled,
                             "paymentEnabled", paymentEnabled,
-                            "message",        "Tùy chọn TOTP đã được cập nhật."
+                            "message", "Tùy chọn TOTP đã được cập nhật."
                     ));
             log.info("TOTP prefs updated for user {}: login={}, payment={}",
                     currentUser.getUserName(), loginEnabled, paymentEnabled);

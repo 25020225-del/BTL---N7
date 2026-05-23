@@ -4,17 +4,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
  * Unit Tests cho UserService.
- *
+ * <p>
  * SAU KHI REFACTOR:
- *   - LogOut() → logout() (Java camelCase — đây là lý do compile error)
+ * - LogOut() → logout() (Java camelCase — đây là lý do compile error)
  */
 @DisplayName("UserService — Network Command Tests")
 class UserServiceTest {

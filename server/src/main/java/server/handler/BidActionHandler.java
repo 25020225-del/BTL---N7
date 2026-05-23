@@ -46,11 +46,11 @@ public class BidActionHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(BidActionHandler.class);
 
     // ── Error codes cho SETUP_AUTOBID ───────────────────────────────────────
-    private static final String ERR_AUTOBID_FUNDS    = "ERR_BID_010";
+    private static final String ERR_AUTOBID_FUNDS = "ERR_BID_010";
     private static final String ERR_AUTOBID_CONFLICT = "ERR_BID_012";
 
     private final ServerBidderController bidderCtrl;
-    private final AuctionDAO             auctionDAO;
+    private final AuctionDAO auctionDAO;
 
     /**
      * Khởi tạo handler với các dependency được inject từ bên ngoài.
@@ -77,7 +77,7 @@ public class BidActionHandler implements CommandHandler {
     @Override
     public void handle(NetworkMessage message, ClientHandler client) throws Exception {
         switch (message.getCommand()) {
-            case "PLACE_BID"     -> handlePlaceBid(message.getData(), client);
+            case "PLACE_BID" -> handlePlaceBid(message.getData(), client);
             case "SETUP_AUTOBID" -> handleSetupAutoBid(message.getData(), client);
             default -> throw new AuctionExceptions.InvalidPayloadException(
                     "Lệnh đấu giá không hợp lệ: " + message.getCommand());
@@ -167,7 +167,7 @@ public class BidActionHandler implements CommandHandler {
         long maxBid;
         long increment;
         try {
-            maxBid    = Long.parseLong(payload.get("maxBid").toString());
+            maxBid = Long.parseLong(payload.get("maxBid").toString());
             increment = Long.parseLong(payload.get("increment").toString());
         } catch (NumberFormatException | NullPointerException e) {
             throw new AuctionExceptions.InvalidPayloadException(
@@ -240,12 +240,12 @@ public class BidActionHandler implements CommandHandler {
      * Uỷ quyền đăng ký / nâng cấp Auto-Bid đến {@link ServerBidderController#setupAutoBid}
      * và xử lý phản hồi bất đồng bộ.
      *
-     * @param currentUser   Người dùng đăng ký.
-     * @param auction       Phiên đấu giá mục tiêu (đã resolve).
-     * @param auctionId     ID phiên — dùng để build response payload.
-     * @param maxBid        Mức giá tối đa đã validate ({@code > 0}).
-     * @param increment     Bước tăng giá đã validate ({@code > 0}).
-     * @param client        Context kết nối để gửi response.
+     * @param currentUser Người dùng đăng ký.
+     * @param auction     Phiên đấu giá mục tiêu (đã resolve).
+     * @param auctionId   ID phiên — dùng để build response payload.
+     * @param maxBid      Mức giá tối đa đã validate ({@code > 0}).
+     * @param increment   Bước tăng giá đã validate ({@code > 0}).
+     * @param client      Context kết nối để gửi response.
      */
     private void dispatchSetupAutoBid(
             User currentUser, Auction auction, String auctionId,
@@ -382,9 +382,9 @@ public class BidActionHandler implements CommandHandler {
             String auctionId, long maxBid, long increment, boolean isActive) {
         Map<String, Object> resp = new HashMap<>();
         resp.put("auctionId", auctionId);
-        resp.put("maxBid",    maxBid);
+        resp.put("maxBid", maxBid);
         resp.put("increment", increment);
-        resp.put("isActive",  isActive);
+        resp.put("isActive", isActive);
         return resp;
     }
 }

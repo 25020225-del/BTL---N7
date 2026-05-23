@@ -2,12 +2,12 @@ package server.handler;
 
 import controller.ServerSellerController;
 import exception.AuctionExceptions;
-import network.ErrorPayload;
+import model.auction.Auction;
 import model.user.User;
+import network.ErrorPayload;
 import network.NetworkMessage;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
-import model.auction.Auction;
 
 import java.util.Map;
 

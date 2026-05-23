@@ -8,7 +8,10 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TextField;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 import model.auction.Auction;
@@ -49,35 +52,50 @@ public class BidPanelController {
     private static final Logger log = LoggerFactory.getLogger(BidPanelController.class);
 
     // ── Retry configuration ───────────────────────────────────────────────
-    /** Maximum number of automatic retries on a CONFLICT response. */
+    /**
+     * Maximum number of automatic retries on a CONFLICT response.
+     */
     private static final int MAX_RETRY_COUNT = 2;
-    /** Milliseconds between retries (randomised ±50 ms to reduce thundering herd). */
-    private static final int RETRY_DELAY_MS  = 300;
+    /**
+     * Milliseconds between retries (randomised ±50 ms to reduce thundering herd).
+     */
+    private static final int RETRY_DELAY_MS = 300;
 
     // ── JavaFX node references ─────────────────────────────────────────────
-    @FXML private TabPane   bidPanelRoot;
+    @FXML
+    private TabPane bidPanelRoot;
 
     // Tab 1
-    @FXML private TextField txtBidAmount;
-    @FXML private Button    btnPlaceBid;
-    @FXML private Label     lblMinBidHint;
-    @FXML private Label     lblManualError;
+    @FXML
+    private TextField txtBidAmount;
+    @FXML
+    private Button btnPlaceBid;
+    @FXML
+    private Label lblMinBidHint;
+    @FXML
+    private Label lblManualError;
 
     // Tab 2
-    @FXML private TextField txtMaxBudget;
-    @FXML private TextField txtIncrement;
-    @FXML private Button    btnToggleAutoBid;
-    @FXML private Label     lblAutoBidStatus;
-    @FXML private Label     lblAutoBidError;
-    @FXML private Circle    circleStatus;
+    @FXML
+    private TextField txtMaxBudget;
+    @FXML
+    private TextField txtIncrement;
+    @FXML
+    private Button btnToggleAutoBid;
+    @FXML
+    private Label lblAutoBidStatus;
+    @FXML
+    private Label lblAutoBidError;
+    @FXML
+    private Circle circleStatus;
 
     // ── State ─────────────────────────────────────────────────────────────
-    private final User  currentUser;
-    private Auction     currentAuction;
-    private boolean     autoBidActive = false;
+    private final User currentUser;
+    private Auction currentAuction;
+    private boolean autoBidActive = false;
 
     // Retry counter for the current pending manual bid
-    private int         retryCount    = 0;
+    private int retryCount = 0;
 
     // EventBus listeners kept as fields so we can remove them in dispose()
     private PropertyChangeListener autobidSetupListener;
@@ -87,8 +105,8 @@ public class BidPanelController {
 
     // ── CSS style classes for the signal dot ─────────────────────────────
     private static final String DOT_INACTIVE = "status-dot-inactive"; // grey
-    private static final String DOT_ACTIVE   = "status-dot-active";   // green
-    private static final String DOT_PENDING  = "status-dot-pending";  // orange/yellow
+    private static final String DOT_ACTIVE = "status-dot-active";   // green
+    private static final String DOT_PENDING = "status-dot-pending";  // orange/yellow
 
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor & FXML loading
@@ -113,7 +131,9 @@ public class BidPanelController {
         }
     }
 
-    /** @return The root {@link Parent} node to embed in a parent layout. */
+    /**
+     * @return The root {@link Parent} node to embed in a parent layout.
+     */
     public Parent getRoot() {
         return bidPanelRoot;
     }
@@ -130,8 +150,8 @@ public class BidPanelController {
      */
     public void setAuction(Auction auction) {
         this.currentAuction = auction;
-        this.retryCount     = 0;
-        this.autoBidActive  = false;
+        this.retryCount = 0;
+        this.autoBidActive = false;
 
         Platform.runLater(() -> {
             long minBid = auction.getCurrentPrice() + auction.getBidIncrement();
@@ -145,10 +165,13 @@ public class BidPanelController {
      * <b>Must</b> be called when the parent controller navigates away.
      */
     public void dispose() {
-        if (autobidSetupListener  != null) AuctionEventBus.removeListener(ClientAuctionHandler.AUTOBID_SETUP_SUCCESS, autobidSetupListener);
-        if (autobidActiveListener != null) AuctionEventBus.removeListener(ClientAuctionHandler.AUTOBID_ACTIVE,        autobidActiveListener);
-        if (bidSuccessListener    != null) AuctionEventBus.removeListener(AuctionEventBus.BID_SUCCESS,                bidSuccessListener);
-        if (priceUpdatedListener  != null) AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED,             priceUpdatedListener);
+        if (autobidSetupListener != null)
+            AuctionEventBus.removeListener(ClientAuctionHandler.AUTOBID_SETUP_SUCCESS, autobidSetupListener);
+        if (autobidActiveListener != null)
+            AuctionEventBus.removeListener(ClientAuctionHandler.AUTOBID_ACTIVE, autobidActiveListener);
+        if (bidSuccessListener != null) AuctionEventBus.removeListener(AuctionEventBus.BID_SUCCESS, bidSuccessListener);
+        if (priceUpdatedListener != null)
+            AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED, priceUpdatedListener);
         log.debug("BidPanelController disposed.");
     }
 
@@ -156,7 +179,9 @@ public class BidPanelController {
     // FXML initialisation
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Called by FXMLLoader after all @FXML fields are injected. */
+    /**
+     * Called by FXMLLoader after all @FXML fields are injected.
+     */
     @FXML
     public void initialize() {
         setupNumericInput(txtBidAmount);
@@ -277,7 +302,7 @@ public class BidPanelController {
 
             if (errorCode != null && errorCode.contains("CONFLICT") && retryCount < MAX_RETRY_COUNT) {
                 retryCount++;
-                int delayMs = RETRY_DELAY_MS + (int)(Math.random() * 100 - 50); // jitter ±50 ms
+                int delayMs = RETRY_DELAY_MS + (int) (Math.random() * 100 - 50); // jitter ±50 ms
                 log.info("CONFLICT detected — retrying bid in {} ms (attempt {}/{})",
                         delayMs, retryCount + 1, MAX_RETRY_COUNT + 1);
 
@@ -322,8 +347,8 @@ public class BidPanelController {
                 btnToggleAutoBid.setDisable(false);
 
                 if (isActive) {
-                    long maxBid   = ((Number) data.get("maxBid")).longValue();
-                    long incr     = ((Number) data.get("increment")).longValue();
+                    long maxBid = ((Number) data.get("maxBid")).longValue();
+                    long incr = ((Number) data.get("increment")).longValue();
                     setDotActive();
                     lblAutoBidStatus.setText(
                             "Đang hoạt động — Tối đa: " + formatAmount(maxBid) + " VNĐ"
@@ -397,7 +422,9 @@ public class BidPanelController {
     // UI helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Resets the Auto-Bid tab to its default (inactive) state. */
+    /**
+     * Resets the Auto-Bid tab to its default (inactive) state.
+     */
     private void resetAutoBidUI() {
         autoBidActive = false;
         setDotInactive();
@@ -410,9 +437,17 @@ public class BidPanelController {
         clearError(lblAutoBidError);
     }
 
-    private void setDotActive()   { setDot(DOT_ACTIVE);   }
-    private void setDotInactive() { setDot(DOT_INACTIVE); }
-    private void setDotPending()  { setDot(DOT_PENDING);  }
+    private void setDotActive() {
+        setDot(DOT_ACTIVE);
+    }
+
+    private void setDotInactive() {
+        setDot(DOT_INACTIVE);
+    }
+
+    private void setDotPending() {
+        setDot(DOT_PENDING);
+    }
 
     private void setDot(String styleClass) {
         circleStatus.getStyleClass().removeAll(DOT_ACTIVE, DOT_INACTIVE, DOT_PENDING);
@@ -458,7 +493,9 @@ public class BidPanelController {
         }
     }
 
-    /** Formats a VNĐ amount with comma separators (e.g. 1000000 → "1,000,000"). */
+    /**
+     * Formats a VNĐ amount with comma separators (e.g. 1000000 → "1,000,000").
+     */
     private String formatAmount(long amount) {
         return String.format("%,d", amount);
     }

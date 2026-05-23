@@ -41,7 +41,9 @@ public class User extends Entity {
     private String name;
     private String role;
 
-    /** The authoritative 3-state 2FA lifecycle status. */
+    /**
+     * The authoritative 3-state 2FA lifecycle status.
+     */
     private TwoFactorStatus twoFactorStatus = TwoFactorStatus.DISABLED;
 
     /**
@@ -58,7 +60,9 @@ public class User extends Entity {
     @JsonIgnore
     private String tempSecretKey;
 
-    /** Trusted-user flag. */
+    /**
+     * Trusted-user flag.
+     */
     private boolean isGood;
 
     // ── NEW FIELDS ────────────────────────────────────────────────────
@@ -82,38 +86,60 @@ public class User extends Entity {
     // CONSTRUCTORS  (GIỮ NGUYÊN)
     // ─────────────────────────────────────────────────────────────────
 
-    public User() { super(); }
+    public User() {
+        super();
+    }
 
     public User(String id, String userName, String password, String name, String role) {
         super(id);
         this.userName = userName;
         this.password = password;
-        this.name     = name;
-        this.role     = role;
+        this.name = name;
+        this.role = role;
     }
 
     public User(String id, String userName, String password, String name) {
         super(id);
         this.userName = userName;
         this.password = password;
-        this.name     = name;
+        this.name = name;
     }
 
     // ─────────────────────────────────────────────────────────────────
     // GETTERS & SETTERS — core fields  (GIỮ NGUYÊN)
     // ─────────────────────────────────────────────────────────────────
 
-    public String getUserName()                { return userName; }
-    public void   setUserName(String userName) { this.userName = userName; }
+    public String getUserName() {
+        return userName;
+    }
 
-    public String getPassword()                { return password; }
-    public void   setPassword(String password) { this.password = password; }
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
 
-    public String getName()                    { return name; }
-    public void   setName(String name)         { this.name = name; }
+    public String getPassword() {
+        return password;
+    }
 
-    public String getRole()                    { return role; }
-    public void   setRole(String role)         { this.role = role; }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
 
     /**
      * Kiểm tra xem tài khoản có đang bị Admin khóa hay không.
@@ -123,12 +149,19 @@ public class User extends Entity {
      * đã thiết lập role = "BLOCKED" khi cột is_blocked = 1 trong DB.</p>
      *
      * @return {@code true} nếu role == "BLOCKED" (không phân biệt hoa thường).
-     **
+     * *
      */
-    public boolean isBlocked() {return "BLOCKED".equalsIgnoreCase(this.role);}
+    public boolean isBlocked() {
+        return "BLOCKED".equalsIgnoreCase(this.role);
+    }
 
-    public boolean isGood()                    { return isGood; }
-    public void    setGood(boolean good)       { this.isGood = good; }
+    public boolean isGood() {
+        return isGood;
+    }
+
+    public void setGood(boolean good) {
+        this.isGood = good;
+    }
 
     /**
      * Lấy trạng thái xác thực 2 lớp (2FA) hiện tại của người dùng.
@@ -148,7 +181,7 @@ public class User extends Entity {
         this.twoFactorStatus = (status != null) ? status : TwoFactorStatus.DISABLED;
         // Bất biến: 2 cờ chỉ được true khi ENABLED
         if (this.twoFactorStatus != TwoFactorStatus.ENABLED) {
-            this.isTotpLoginEnabled   = false;
+            this.isTotpLoginEnabled = false;
             this.isTotpPaymentEnabled = false;
         }
     }
@@ -161,28 +194,44 @@ public class User extends Entity {
         return twoFactorStatus == TwoFactorStatus.ENABLED;
     }
 
-    /** @deprecated Prefer {@link #setTwoFactorStatus(TwoFactorStatus)}. */
+    /**
+     * @deprecated Prefer {@link #setTwoFactorStatus(TwoFactorStatus)}.
+     */
     @Deprecated
     public void set2FAEnabled(boolean v) {
         setTwoFactorStatus(v ? TwoFactorStatus.ENABLED : TwoFactorStatus.DISABLED);
     }
 
     @JsonIgnore
-    public String getTotpSecret()          { return totpSecret; }
-    @JsonIgnore
-    public void   setTotpSecret(String v)  { this.totpSecret = v; }
+    public String getTotpSecret() {
+        return totpSecret;
+    }
 
     @JsonIgnore
-    public String getTempSecretKey()         { return tempSecretKey; }
+    public void setTotpSecret(String v) {
+        this.totpSecret = v;
+    }
+
     @JsonIgnore
-    public void   setTempSecretKey(String v) { this.tempSecretKey = v; }
+    public String getTempSecretKey() {
+        return tempSecretKey;
+    }
+
+    @JsonIgnore
+    public void setTempSecretKey(String v) {
+        this.tempSecretKey = v;
+    }
 
     // ─────────────────────────────────────────────────────────────────
     // GETTERS & SETTERS — TOTP Granular Prefs  (NEW)
     // ─────────────────────────────────────────────────────────────────
 
-    /** True khi TOTP được yêu cầu tại bước Đăng nhập. */
-    public boolean isTotpLoginEnabled() { return isTotpLoginEnabled; }
+    /**
+     * True khi TOTP được yêu cầu tại bước Đăng nhập.
+     */
+    public boolean isTotpLoginEnabled() {
+        return isTotpLoginEnabled;
+    }
 
     /**
      * Set cờ Login TOTP.
@@ -196,8 +245,12 @@ public class User extends Entity {
         this.isTotpLoginEnabled = enabled;
     }
 
-    /** True khi TOTP được yêu cầu trước Giao dịch tài chính. */
-    public boolean isTotpPaymentEnabled() { return isTotpPaymentEnabled; }
+    /**
+     * True khi TOTP được yêu cầu trước Giao dịch tài chính.
+     */
+    public boolean isTotpPaymentEnabled() {
+        return isTotpPaymentEnabled;
+    }
 
     /**
      * Set cờ Payment TOTP.
@@ -215,8 +268,13 @@ public class User extends Entity {
      * Internal setter dùng trong UserDAO.mapUser() và UserController —
      * không enforce guard vì DB là source of truth tại thời điểm đọc.
      */
-    public void setTotpLoginEnabledRaw(boolean v)   { this.isTotpLoginEnabled   = v; }
-    public void setTotpPaymentEnabledRaw(boolean v) { this.isTotpPaymentEnabled = v; }
+    public void setTotpLoginEnabledRaw(boolean v) {
+        this.isTotpLoginEnabled = v;
+    }
+
+    public void setTotpPaymentEnabledRaw(boolean v) {
+        this.isTotpPaymentEnabled = v;
+    }
 
     // ─────────────────────────────────────────────────────────────────
     // ENTITY INTERFACE
@@ -227,10 +285,10 @@ public class User extends Entity {
         String tag = this.isGood() ? "[TRUSTED] " : "";
         return tag + "ID: " + this.getId()
                 + " | Username: " + userName
-                + " | Name: "     + name
-                + " | Role: "     + role
-                + " | 2FA: "      + twoFactorStatus
+                + " | Name: " + name
+                + " | Role: " + role
+                + " | 2FA: " + twoFactorStatus
                 + " | LoginOTP: " + isTotpLoginEnabled
-                + " | PayOTP: "   + isTotpPaymentEnabled;
+                + " | PayOTP: " + isTotpPaymentEnabled;
     }
 }

@@ -28,10 +28,14 @@ public class TableController {
 
     protected Parent tableView;
 
-    @FXML protected HBox searchBarContainer;
-    @FXML protected TilePane mainTilePane;
-    @FXML protected TextField searchField;
-    @FXML protected Button searchButton;
+    @FXML
+    protected HBox searchBarContainer;
+    @FXML
+    protected TilePane mainTilePane;
+    @FXML
+    protected TextField searchField;
+    @FXML
+    protected Button searchButton;
 
     public TableController() {
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("/gui/TableView.fxml"));
@@ -42,15 +46,19 @@ public class TableController {
             throw new RuntimeException(e);
         }
     }
+
     public Parent getParent() {
         return tableView;
     }
+
     public void setOnAuctionListener(Consumer<Auction> auctionListener) {
         this.auctionListener = auctionListener;
     }
 
     protected void setupSearch() {
-        searchField.setOnAction(event -> { if (searchButton != null) searchButton.fire(); });
+        searchField.setOnAction(event -> {
+            if (searchButton != null) searchButton.fire();
+        });
     }
 
     @FXML
@@ -72,14 +80,14 @@ public class TableController {
         mainTilePane.getChildren().addFirst(item);
     }
 
-    public void addAllItem(List<MinimalItem>  items) {
+    public void addAllItem(List<MinimalItem> items) {
         mainTilePane.getChildren().clear();
-        for(MinimalItem item : items) {
+        for (MinimalItem item : items) {
             mainTilePane.getChildren().add(item);
         }
     }
 
-    public void deleteAllItem(){
+    public void deleteAllItem() {
         mainTilePane.getChildren().clear();
     }
 
@@ -87,7 +95,6 @@ public class TableController {
     public void removeItem(String auctionIdToRemove) {
         mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
     }
-
 
 
     protected void openItemDetail(Auction auction) {

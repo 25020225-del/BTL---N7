@@ -23,8 +23,8 @@ public class WalletService {
     /**
      * Sends a deposit request (with optional TOTP code) to the server.
      *
-     * @param amount    Amount to deposit in VND (must be &gt; 0).
-     * @param totpCode  6-digit TOTP code, or {@code null} if TOTP is not enabled.
+     * @param amount   Amount to deposit in VND (must be &gt; 0).
+     * @param totpCode 6-digit TOTP code, or {@code null} if TOTP is not enabled.
      */
     public static void createDeposit(long amount, String totpCode) {
         Map<String, Object> payload = new HashMap<>();

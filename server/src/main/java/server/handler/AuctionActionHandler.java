@@ -1,15 +1,15 @@
 package server.handler;
 
-import exception.AuctionExceptions;
-import network.ErrorPayload;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import exception.AuctionExceptions;
 import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
 import model.user.User;
+import network.ErrorPayload;
 import network.NetworkMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
@@ -46,7 +46,8 @@ public class AuctionActionHandler implements CommandHandler {
 
         Auction auction;
         try {
-            auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {});
+            auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {
+            });
         } catch (IllegalArgumentException e) {
             throw new AuctionExceptions.InvalidPayloadException("Dữ liệu phiên đấu giá không hợp lệ.");
         }
@@ -90,9 +91,9 @@ public class AuctionActionHandler implements CommandHandler {
         Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
         item.setImageUrl(imageUrl);
 
-            // Forward the creation request to the Seller Controller
-            model.user.Seller sellerRole = new model.user.Seller(authenticatedUser);
-            Auction newAuction = sellerCtrl.addAuction(sellerRole, item, bidIncrement, reqStart, (int) durationMinutes);
+        // Forward the creation request to the Seller Controller
+        model.user.Seller sellerRole = new model.user.Seller(authenticatedUser);
+        Auction newAuction = sellerCtrl.addAuction(sellerRole, item, bidIncrement, reqStart, (int) durationMinutes);
 
         if (newAuction != null) {
             log.info("{} has created an auction.", authenticatedUser.getUserName());

@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.shape.Circle?>
-<?import javafx.scene.text.Font?>
-
 <!--
   BidPanel.fxml
   Root component: a TabPane with two tabs —
@@ -22,6 +16,10 @@
       BidPanelController bpc = (BidPanelController) loader.getNamespace().get("bidPanelController");
       bpc.init(auction, currentUser);
 -->
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
 <TabPane
         fx:id="bidPanelRoot"
         tabClosingPolicy="UNAVAILABLE"
@@ -39,7 +37,9 @@
     <Tab text="Đặt giá thủ công" fx:id="tabManual">
         <content>
             <VBox spacing="12" styleClass="tab-content">
-                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                <padding>
+                    <Insets top="16" right="16" bottom="16" left="16"/>
+                </padding>
 
                 <!-- Hint label -->
                 <Label fx:id="lblMinBidHint"
@@ -79,7 +79,9 @@
     <Tab text="Tự động đấu giá (AutoBid)" fx:id="tabAutoBid">
         <content>
             <VBox spacing="12" styleClass="tab-content">
-                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                <padding>
+                    <Insets top="16" right="16" bottom="16" left="16"/>
+                </padding>
 
                 <!-- Status row: signal dot + text label -->
                 <HBox spacing="8" alignment="CENTER_LEFT">

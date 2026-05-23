@@ -1,9 +1,9 @@
 package server.handler;
 
 import exception.AuctionExceptions;
+import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import network.NetworkMessage;
 import server.ClientHandler;
 
 import java.util.HashMap;
@@ -15,7 +15,7 @@ import java.util.Map;
  * implementations. It decodes incoming {@link NetworkMessage} objects and dispatches them
  * to the appropriate handler based on the command string.
  */
-public class    CommandDispatcher {
+public class CommandDispatcher {
     private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
     private final Map<String, CommandHandler> handlers = new HashMap<>();
@@ -42,7 +42,7 @@ public class    CommandDispatcher {
             service.TOTPService totpService,
             controller.ServerSellerController sellerCtrl,
             controller.ServerPaymentController paymentCtrl) {
-        
+
         this.userDAO = userDAO;
         this.auctionDAO = auctionDAO;
         this.bidDAO = bidDAO;
@@ -51,7 +51,7 @@ public class    CommandDispatcher {
         this.sellerCtrl = sellerCtrl;
         this.paymentCtrl = paymentCtrl;
         this.withdrawalDAO = withdrawalDAO;
-        
+
         registerHandlers();
     }
 
@@ -72,13 +72,13 @@ public class    CommandDispatcher {
         handlers.put("LOGIN", authHandler);
         handlers.put("REGISTER", authHandler);
         handlers.put("LOGOUT", authHandler);
-        handlers.put("VERIFY_2FA",         authHandler);
-        handlers.put("REQUEST_SETUP_2FA",  authHandler);
-        handlers.put("CANCEL_2FA_SETUP",   authHandler);
-        handlers.put("VERIFY_2FA_SETUP",   authHandler);
-        handlers.put("CONFIRM_SETUP_2FA",  authHandler);
-        handlers.put("DISABLE_2FA",        authHandler);
-        handlers.put("UPDATE_TOTP_PREFS",  authHandler);
+        handlers.put("VERIFY_2FA", authHandler);
+        handlers.put("REQUEST_SETUP_2FA", authHandler);
+        handlers.put("CANCEL_2FA_SETUP", authHandler);
+        handlers.put("VERIFY_2FA_SETUP", authHandler);
+        handlers.put("CONFIRM_SETUP_2FA", authHandler);
+        handlers.put("DISABLE_2FA", authHandler);
+        handlers.put("UPDATE_TOTP_PREFS", authHandler);
 
         // Register Auction creation and management
         AuctionActionHandler auctionHandler = new AuctionActionHandler(sellerCtrl);
@@ -108,7 +108,7 @@ public class    CommandDispatcher {
         handlers.put("BLOCK_USER", adminHandler);
         handlers.put("UNBLOCK_USER", adminHandler);
         handlers.put("TOGGLE_GOOD_STATUS", adminHandler);
-        
+
         // Register Bidding operations
         BidActionHandler bidHandler = new BidActionHandler(new controller.ServerBidderController(bidDAO), auctionDAO);
         handlers.put("PLACE_BID", bidHandler);
@@ -123,8 +123,8 @@ public class    CommandDispatcher {
         handlers.put("DELETE_AUCTION", sellerHandler);
 
         handlers.put("FETCH_WITHDRAW_REQUESTS", adminHandler);
-        handlers.put("APPROVE_WITHDRAW",        adminHandler);
-        handlers.put("REJECT_WITHDRAW",         adminHandler);
+        handlers.put("APPROVE_WITHDRAW", adminHandler);
+        handlers.put("REJECT_WITHDRAW", adminHandler);
 
         handlers.put("CANCEL_AUCTION", adminHandler);
 

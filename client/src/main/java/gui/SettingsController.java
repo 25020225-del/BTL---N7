@@ -41,15 +41,22 @@ public class SettingsController extends VBox {
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
     // ── FXML — Section 1: Chưa setup ─────────────────────────────────
-    @FXML private VBox   vboxSetupTotp;
-    @FXML private Button btnSetupTotp;
+    @FXML
+    private VBox vboxSetupTotp;
+    @FXML
+    private Button btnSetupTotp;
 
     // ── FXML — Section 2: Đã setup, quản lý prefs ───────────────────
-    @FXML private VBox     vboxTotpPrefs;
-    @FXML private CheckBox chkLoginEnabled;
-    @FXML private CheckBox chkPaymentEnabled;
-    @FXML private Label    lblPrefsStatus;
-    @FXML private Button   btnDisableTotp;
+    @FXML
+    private VBox vboxTotpPrefs;
+    @FXML
+    private CheckBox chkLoginEnabled;
+    @FXML
+    private CheckBox chkPaymentEnabled;
+    @FXML
+    private Label lblPrefsStatus;
+    @FXML
+    private Button btnDisableTotp;
 
     // ── Dependencies ─────────────────────────────────────────────────
     private User currentUser;
@@ -77,8 +84,13 @@ public class SettingsController extends VBox {
         }
     }
 
-    public void setOnBackToMarketplace(Runnable r) { this.onBackToMarketplace = r; }
-    public void setOnSignOut(Runnable r)            { this.onSignOut = r; }
+    public void setOnBackToMarketplace(Runnable r) {
+        this.onBackToMarketplace = r;
+    }
+
+    public void setOnSignOut(Runnable r) {
+        this.onSignOut = r;
+    }
 
     // ── FXML initialize ──────────────────────────────────────────────
 
@@ -88,12 +100,21 @@ public class SettingsController extends VBox {
         registerEventListeners();
     }
 
-    @FXML public void handleBackToMarketplace() { if (onBackToMarketplace != null) onBackToMarketplace.run(); }
-    @FXML public void handleSignOut()           { if (onSignOut != null) onSignOut.run(); }
+    @FXML
+    public void handleBackToMarketplace() {
+        if (onBackToMarketplace != null) onBackToMarketplace.run();
+    }
+
+    @FXML
+    public void handleSignOut() {
+        if (onSignOut != null) onSignOut.run();
+    }
 
     // ── FXML Actions ─────────────────────────────────────────────────
 
-    /** Nút "Thiết lập TOTP" — chỉ hiện khi chưa có secret. */
+    /**
+     * Nút "Thiết lập TOTP" — chỉ hiện khi chưa có secret.
+     */
     @FXML
     public void handleSetupTotp() {
         btnSetupTotp.setDisable(true);
@@ -106,7 +127,7 @@ public class SettingsController extends VBox {
      */
     @FXML
     public void handleTotpPrefsChanged() {
-        boolean loginEnabled   = chkLoginEnabled.isSelected();
+        boolean loginEnabled = chkLoginEnabled.isSelected();
         boolean paymentEnabled = chkPaymentEnabled.isSelected();
 
         // Vô hiệu hóa tạm thời để tránh double-click
@@ -116,12 +137,14 @@ public class SettingsController extends VBox {
 
         NetworkService.sendMessage("UPDATE_TOTP_PREFS",
                 Map.of(
-                        "loginEnabled",   loginEnabled,
+                        "loginEnabled", loginEnabled,
                         "paymentEnabled", paymentEnabled
                 ));
     }
 
-    /** Nút "Hủy hoàn toàn TOTP". */
+    /**
+     * Nút "Hủy hoàn toàn TOTP".
+     */
     @FXML
     public void handleDisableTotp() {
         // Cảnh báo 2 bước (giống code gốc)
@@ -159,7 +182,9 @@ public class SettingsController extends VBox {
 
     // ── EventBus Response Handlers ────────────────────────────────────
 
-    /** Server trả về QR code → hiển thị dialog quét QR. */
+    /**
+     * Server trả về QR code → hiển thị dialog quét QR.
+     */
     @SuppressWarnings("unchecked")
     private void onSetup2FASuccess(Object eventData) {
         Platform.runLater(() -> {
@@ -176,7 +201,9 @@ public class SettingsController extends VBox {
         });
     }
 
-    /** User xác nhận OTP thành công → ENABLED; hiển thị section quản lý prefs. */
+    /**
+     * User xác nhận OTP thành công → ENABLED; hiển thị section quản lý prefs.
+     */
     private void onConfirm2FASuccess(Object eventData) {
         Platform.runLater(() -> {
             currentUser.setTwoFactorStatus(TwoFactorStatus.ENABLED);
@@ -189,7 +216,9 @@ public class SettingsController extends VBox {
         });
     }
 
-    /** User hủy QR dialog → server reset PENDING → DISABLED. */
+    /**
+     * User hủy QR dialog → server reset PENDING → DISABLED.
+     */
     private void onCancel2FASuccess(Object eventData) {
         Platform.runLater(() -> {
             currentUser.setTwoFactorStatus(TwoFactorStatus.DISABLED);
@@ -197,7 +226,9 @@ public class SettingsController extends VBox {
         });
     }
 
-    /** Server confirm DISABLE_2FA_SUCCESS → quay về state ban đầu. */
+    /**
+     * Server confirm DISABLE_2FA_SUCCESS → quay về state ban đầu.
+     */
     private void onDisable2FASuccess(Object eventData) {
         Platform.runLater(() -> {
             currentUser.setTwoFactorStatus(TwoFactorStatus.DISABLED);
@@ -217,7 +248,7 @@ public class SettingsController extends VBox {
             try {
                 NetworkMessage msg = (NetworkMessage) eventData;
                 Map<String, Object> data = (Map<String, Object>) msg.getData();
-                boolean loginEnabled   = Boolean.TRUE.equals(data.get("loginEnabled"));
+                boolean loginEnabled = Boolean.TRUE.equals(data.get("loginEnabled"));
                 boolean paymentEnabled = Boolean.TRUE.equals(data.get("paymentEnabled"));
 
                 // Cập nhật in-memory user (raw setter — secret đã tồn tại)
@@ -269,13 +300,15 @@ public class SettingsController extends VBox {
         }
     }
 
-    /** Tạo text mô tả trạng thái cờ hiện tại. */
+    /**
+     * Tạo text mô tả trạng thái cờ hiện tại.
+     */
     private String buildPrefsStatusText(boolean loginEnabled, boolean paymentEnabled) {
         if (!loginEnabled && !paymentEnabled) {
             return "ℹ️  TOTP đã thiết lập nhưng chưa áp dụng cho tình huống nào.";
         }
         StringBuilder sb = new StringBuilder("🛡 Đang bảo vệ: ");
-        if (loginEnabled)   sb.append("Đăng nhập ");
+        if (loginEnabled) sb.append("Đăng nhập ");
         if (paymentEnabled) sb.append("Giao dịch");
         return sb.toString().trim();
     }
@@ -312,8 +345,11 @@ public class SettingsController extends VBox {
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         dialog.setResultConverter(btn -> {
             if (btn == ButtonType.OK) {
-                try { return Integer.parseInt(otpField.getText().trim()); }
-                catch (NumberFormatException e) { return null; }
+                try {
+                    return Integer.parseInt(otpField.getText().trim());
+                } catch (NumberFormatException e) {
+                    return null;
+                }
             }
             return null;
         });
@@ -330,25 +366,27 @@ public class SettingsController extends VBox {
     // ── EventBus registration ─────────────────────────────────────────
 
     private void registerEventListeners() {
-        setup2FAListener      = e -> onSetup2FASuccess(e.getNewValue());
-        confirm2FAListener    = e -> onConfirm2FASuccess(e.getNewValue());
-        cancel2FAListener     = e -> onCancel2FASuccess(e.getNewValue());
-        disable2FAListener    = e -> onDisable2FASuccess(e.getNewValue());
-        updatePrefsListener   = e -> onUpdateTotpPrefsSuccess(e.getNewValue()); // NEW
+        setup2FAListener = e -> onSetup2FASuccess(e.getNewValue());
+        confirm2FAListener = e -> onConfirm2FASuccess(e.getNewValue());
+        cancel2FAListener = e -> onCancel2FASuccess(e.getNewValue());
+        disable2FAListener = e -> onDisable2FASuccess(e.getNewValue());
+        updatePrefsListener = e -> onUpdateTotpPrefsSuccess(e.getNewValue()); // NEW
 
-        AuctionEventBus.addListener("SETUP_2FA_SUCCESS",         setup2FAListener);
-        AuctionEventBus.addListener("CONFIRM_2FA_SUCCESS",       confirm2FAListener);
-        AuctionEventBus.addListener("CANCEL_2FA_SUCCESS",        cancel2FAListener);
-        AuctionEventBus.addListener("DISABLE_2FA_SUCCESS",       disable2FAListener);
+        AuctionEventBus.addListener("SETUP_2FA_SUCCESS", setup2FAListener);
+        AuctionEventBus.addListener("CONFIRM_2FA_SUCCESS", confirm2FAListener);
+        AuctionEventBus.addListener("CANCEL_2FA_SUCCESS", cancel2FAListener);
+        AuctionEventBus.addListener("DISABLE_2FA_SUCCESS", disable2FAListener);
         AuctionEventBus.addListener("UPDATE_TOTP_PREFS_SUCCESS", updatePrefsListener); // NEW
     }
 
-    /** Gọi khi view bị ẩn/dispose để tránh memory leak. */
+    /**
+     * Gọi khi view bị ẩn/dispose để tránh memory leak.
+     */
     public void dispose() {
-        AuctionEventBus.removeListener("SETUP_2FA_SUCCESS",         setup2FAListener);
-        AuctionEventBus.removeListener("CONFIRM_2FA_SUCCESS",       confirm2FAListener);
-        AuctionEventBus.removeListener("CANCEL_2FA_SUCCESS",        cancel2FAListener);
-        AuctionEventBus.removeListener("DISABLE_2FA_SUCCESS",       disable2FAListener);
+        AuctionEventBus.removeListener("SETUP_2FA_SUCCESS", setup2FAListener);
+        AuctionEventBus.removeListener("CONFIRM_2FA_SUCCESS", confirm2FAListener);
+        AuctionEventBus.removeListener("CANCEL_2FA_SUCCESS", cancel2FAListener);
+        AuctionEventBus.removeListener("DISABLE_2FA_SUCCESS", disable2FAListener);
         AuctionEventBus.removeListener("UPDATE_TOTP_PREFS_SUCCESS", updatePrefsListener); // NEW
     }
 }

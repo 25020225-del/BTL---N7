@@ -4,10 +4,8 @@ import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
-import javafx.scene.paint.Color;
 
 import java.util.Optional;
-import java.util.function.Consumer;
 
 /**
  * Centralized utility for all UI-facing notifications in the Auction System client.

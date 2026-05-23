@@ -1,6 +1,5 @@
 package gui.widget.item;
 
-import client.service.AdminService;
 import gui.process.AnimateEffect;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;

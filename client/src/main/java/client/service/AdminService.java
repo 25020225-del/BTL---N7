@@ -12,8 +12,11 @@ import client.network.NetworkService;
  */
 public final class AdminService {
 
-    /** Private constructor — utility class, not instantiable. */
-    private AdminService() {}
+    /**
+     * Private constructor — utility class, not instantiable.
+     */
+    private AdminService() {
+    }
 
     /**
      * Requests the server to return the list of auctions pending admin approval.
@@ -76,6 +79,7 @@ public final class AdminService {
     public static void unblockUser(String userId) {
         NetworkService.sendMessage("UNBLOCK_USER", userId);
     }
+
     public static void fetchWithdrawRequests() {
         NetworkService.sendMessage("FETCH_WITHDRAW_REQUESTS", "");
     }

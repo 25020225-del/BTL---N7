@@ -1,17 +1,17 @@
 package gui;
 
 import client.network.NetworkService;
+import client.network.ServerDiscovery;
 import gui.process.AlertUtils;
 import gui.widget.SplashScreen;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import client.network.ServerDiscovery;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,7 +19,8 @@ import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.GREEN;
+import static utils.ConsoleColors.RESET;
 
 /**
  * The main entry point for the JavaFX client application.
@@ -46,10 +47,10 @@ public class MainApplication extends Application {
     public static void main(String[] args) {
 
         System.out.println(GREEN + "===================================================================");
-        System.out.println(        "|                                                                 |");
-        System.out.println(        "|                               LOG                               |");
-        System.out.println(        "|                                                                 |");
-        System.out.println(        "===================================================================" + RESET);
+        System.out.println("|                                                                 |");
+        System.out.println("|                               LOG                               |");
+        System.out.println("|                                                                 |");
+        System.out.println("===================================================================" + RESET);
         launch(args);
     }
 
@@ -155,8 +156,7 @@ public class MainApplication extends Application {
                     if (!NetworkService.get().isConnected()) {
                         log.warn("Server unreachable. Switched to OFFLINE mode.");
                         AlertUtils.showWarning("Network Issue", "Cannot connect to server. Running offline version");
-                    }
-                    else {
+                    } else {
                         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
                             if (NetworkService.get() != null && NetworkService.get().isConnected()) {
                                 NetworkService.get().sendMessage("TIME_SYNC", System.currentTimeMillis());

@@ -2,10 +2,6 @@ package gui.process;
 
 import javafx.animation.*;
 import javafx.scene.Node;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.TilePane;
-import javafx.scene.layout.VBox;
-import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 /**

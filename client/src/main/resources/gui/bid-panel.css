@@ -45,7 +45,7 @@
 
 .bid-input:focused {
     -fx-border-color: #3498db;
-    -fx-effect: dropshadow(gaussian, rgba(52,152,219,0.25), 4, 0, 0, 0);
+    -fx-effect: dropshadow(gaussian, rgba(52, 152, 219, 0.25), 4, 0, 0, 0);
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────────── */
@@ -106,14 +106,14 @@
 
 /* ── Signal dots ─────────────────────────────────────────────────────── */
 .status-dot-inactive {
-    -fx-fill: #bdc3c7;    /* grey */
+    -fx-fill: #bdc3c7; /* grey */
 }
 
 .status-dot-active {
-    -fx-fill: #27ae60;    /* green */
-    -fx-effect: dropshadow(gaussian, rgba(39,174,96,0.5), 6, 0, 0, 0);
+    -fx-fill: #27ae60; /* green */
+    -fx-effect: dropshadow(gaussian, rgba(39, 174, 96, 0.5), 6, 0, 0, 0);
 }
 
 .status-dot-pending {
-    -fx-fill: #f39c12;    /* amber */
+    -fx-fill: #f39c12; /* amber */
 }

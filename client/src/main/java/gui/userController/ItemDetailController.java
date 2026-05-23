@@ -5,7 +5,6 @@ import client.service.AdminService;
 import client.service.AuctionService;
 import gui.process.*;
 import gui.widget.CountdownClock;
-import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -19,15 +18,12 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.util.Duration;
 import model.auction.Auction;
 import model.user.User;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import utils.TimeUtil;
 
-import javax.management.relation.Role;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -57,38 +53,54 @@ public class ItemDetailController {
     private static final int MAX_CHART_POINTS = 20;
 
     // ── FXML Components ───────────────────────────────────────────────────────
-    @FXML private HBox      hbTime;
-    @FXML private ImageView imgLarge;
-    @FXML private Label     lblItemType;
-    @FXML private Label     lblDetailTitle;
-    @FXML private Label     lblStartPrice;
-    @FXML private Label     lblCurrentPrice;
-    @FXML private Label     lblLeader;
-    @FXML private TextField txtBidAmount;
-    @FXML private Button    btnPlaceBid;
-    @FXML private TextArea  txtDescription;
-    @FXML private VBox      vbBidHandle;
-    @FXML private VBox      vbAuctionControl;
-    @FXML private VBox      vbAdminControl;
+    @FXML
+    private HBox hbTime;
+    @FXML
+    private ImageView imgLarge;
+    @FXML
+    private Label lblItemType;
+    @FXML
+    private Label lblDetailTitle;
+    @FXML
+    private Label lblStartPrice;
+    @FXML
+    private Label lblCurrentPrice;
+    @FXML
+    private Label lblLeader;
+    @FXML
+    private TextField txtBidAmount;
+    @FXML
+    private Button btnPlaceBid;
+    @FXML
+    private TextArea txtDescription;
+    @FXML
+    private VBox vbBidHandle;
+    @FXML
+    private VBox vbAuctionControl;
+    @FXML
+    private VBox vbAdminControl;
 
-    @FXML private LineChart<String, Number> bidHistoryChart;
-    @FXML private CategoryAxis              xAxisTime;
-    @FXML private NumberAxis               yAxisPrice;
+    @FXML
+    private LineChart<String, Number> bidHistoryChart;
+    @FXML
+    private CategoryAxis xAxisTime;
+    @FXML
+    private NumberAxis yAxisPrice;
 
     // ── State ─────────────────────────────────────────────────────────────────
     private final User currentUser;
     private Parent detailView;
 
-    private final CountdownClock            lblTimeLeft   = new CountdownClock();
-    private final DateTimeFormatter         timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-    private XYChart.Series<String, Number>  priceSeries;
+    private final CountdownClock lblTimeLeft = new CountdownClock();
+    private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private XYChart.Series<String, Number> priceSeries;
 
-    private Runnable             onReturnToMarketplace;
+    private Runnable onReturnToMarketplace;
     private PropertyChangeListener priceUpdateListener;
 
     private String currentAuctionId;
-    private long   endTimeMillis;
-    private long   currentPriceValue = 0L;
+    private long endTimeMillis;
+    private long currentPriceValue = 0L;
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -112,7 +124,9 @@ public class ItemDetailController {
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    /** @return The root {@link Parent} node of this controller's FXML layout. */
+    /**
+     * @return The root {@link Parent} node of this controller's FXML layout.
+     */
     public Parent getParent() {
         return detailView;
     }
@@ -134,7 +148,7 @@ public class ItemDetailController {
      */
     public void setAuctionData(Auction auction) {
         this.currentAuctionId = auction.getId();
-        this.endTimeMillis    = auction.getEndTime()
+        this.endTimeMillis = auction.getEndTime()
                 .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
         this.currentPriceValue = auction.getCurrentPrice();
 
@@ -152,7 +166,7 @@ public class ItemDetailController {
      */
     public void setTransactionHistoryData(List<Map<String, Object>> transactionHistory) { // FIX: renamed from setTransActionHistoryData
         for (Map<String, Object> map : transactionHistory) {
-            long          amount  = ((Number) map.get("bid_amount")).longValue();
+            long amount = ((Number) map.get("bid_amount")).longValue();
             LocalDateTime bidTime = LocalDateTime.parse((String) map.get("bid_time"));
             addPointToChart(amount, bidTime);
         }
@@ -246,7 +260,7 @@ public class ItemDetailController {
      * Configures the visibility of buyer vs. seller control panels based on ownership.
      */
     private void configureRoleVisibility(Auction auction) {
-        if(currentUser.getRole().equals("Admin")) {
+        if (currentUser.getRole().equals("Admin")) {
             vbBidHandle.setVisible(false);
             vbAuctionControl.setVisible(false);
             vbBidHandle.setManaged(false);
@@ -307,12 +321,12 @@ public class ItemDetailController {
         priceUpdateListener = evt -> {
             @SuppressWarnings("unchecked")
             Map<String, Object> data = (Map<String, Object>) evt.getNewValue();
-            String auctionId         = (String) data.get("auctionId");
+            String auctionId = (String) data.get("auctionId");
 
             if (this.currentAuctionId != null && this.currentAuctionId.equals(auctionId)) {
-                long   newPrice     = ((Number) data.get("newPrice")).longValue();
-                String winnerName   = (String) data.get("winnerName");
-                long   newEndTime   = ((Number) data.get("newEndTime")).longValue();
+                long newPrice = ((Number) data.get("newPrice")).longValue();
+                String winnerName = (String) data.get("winnerName");
+                long newEndTime = ((Number) data.get("newEndTime")).longValue();
 
                 endTimeMillis = newEndTime;
                 lblTimeLeft.start(endTimeMillis);
@@ -350,7 +364,7 @@ public class ItemDetailController {
      * Updates the price label with an animated transition and adds a new chart data point.
      */
     private void updateRealTimePrice(long newPrice, String winnerName) {
-        long oldPrice          = this.currentPriceValue;
+        long oldPrice = this.currentPriceValue;
         this.currentPriceValue = newPrice;
 
         gui.process.PriceTweener.animatePriceChange(lblCurrentPrice, oldPrice, newPrice);

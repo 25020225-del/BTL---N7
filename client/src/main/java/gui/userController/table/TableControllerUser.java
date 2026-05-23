@@ -9,7 +9,6 @@ import gui.widget.item.MinimalItemUser;
 import gui.widget.item.MinimalSellerItem;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
@@ -23,20 +22,24 @@ import java.util.List;
 import java.util.Map;
 
 public class TableControllerUser extends TableController {
-    @FXML protected void initialize() {
+    @FXML
+    protected void initialize() {
         setupSearch();
         AuctionEventBus.addListener(AuctionEventBus.FETCH_AUCTIONS_SUCCESS, event -> {
             try {
                 NetworkMessage response = (NetworkMessage) event.getNewValue();
                 List<Map<String, Object>> auctions = mapper.convertValue(
                         response.getData(),
-                        new TypeReference<List<Map<String, Object>>>() {}
+                        new TypeReference<List<Map<String, Object>>>() {
+                        }
                 );
                 List<MinimalItem> items = new ArrayList<>();
-                for(Map<String, Object> auction : auctions) {
+                for (Map<String, Object> auction : auctions) {
                     items.add(buildMinimalItem(auction));
                 }
-                Platform.runLater(() -> {addAllItem(items);});
+                Platform.runLater(() -> {
+                    addAllItem(items);
+                });
             } catch (Exception e) {
                 log.error("[Client] FETCH_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
             }
@@ -44,16 +47,19 @@ public class TableControllerUser extends TableController {
         AuctionEventBus.addListener(AuctionEventBus.FETCH_MY_AUCTIONS_SUCCESS, event -> {
             try {
                 NetworkMessage response = (NetworkMessage) event.getNewValue();
-                List<Map<String,Object>> auctions = mapper.convertValue(
+                List<Map<String, Object>> auctions = mapper.convertValue(
                         response.getData(),
-                        new  TypeReference<List<Map<String, Object>>>() {}
+                        new TypeReference<List<Map<String, Object>>>() {
+                        }
                 );
                 List<MinimalItem> items = new ArrayList<>();
-                for(Map<String, Object> auction : auctions) {
+                for (Map<String, Object> auction : auctions) {
                     MinimalItem item = MinimalSellerItem.newMinimalSellerItemFromMap(auction);
                     items.add(item);
                 }
-                Platform.runLater(() -> {addAllItem(items);});
+                Platform.runLater(() -> {
+                    addAllItem(items);
+                });
             } catch (IllegalArgumentException e) {
                 log.error("[Client] FETCH_MY_AUCTIONS_SUCCESS parse error: {}", e.getMessage());
             }
@@ -63,9 +69,12 @@ public class TableControllerUser extends TableController {
                 NetworkMessage response = (NetworkMessage) event.getNewValue();
                 Map<String, Object> auction = mapper.convertValue(
                         response.getData(),
-                        new TypeReference<Map<String, Object>>() {}
+                        new TypeReference<Map<String, Object>>() {
+                        }
                 );
-                Platform.runLater(() -> {addNewItem(buildMinimalItem(auction));});
+                Platform.runLater(() -> {
+                    addNewItem(buildMinimalItem(auction));
+                });
 
             } catch (Exception e) {
                 log.error("[Client] NEW_AUCTION_ADDED parse error: {}", e.getMessage());
@@ -74,7 +83,9 @@ public class TableControllerUser extends TableController {
         AuctionEventBus.addListener("REMOVE_AUCTION", event -> {
             NetworkMessage response = (NetworkMessage) event.getNewValue();
             String auctionIdToRemove = (String) response.getData();
-            Platform.runLater(() -> {removeItem(auctionIdToRemove);});
+            Platform.runLater(() -> {
+                removeItem(auctionIdToRemove);
+            });
 
         });
         AuctionEventBus.addListener("EDIT_SUCCESS", event -> {
@@ -118,14 +129,15 @@ public class TableControllerUser extends TableController {
 
         return auction;
     }
+
     protected MinimalItemUser buildMinimalItem(Map<String, Object> map) {
-        String id       = (String) map.get("id");
-        String name     = (String) map.get("itemName");
-        String itemType     = (String) map.get("itemType");
+        String id = (String) map.get("id");
+        String name = (String) map.get("itemName");
+        String itemType = (String) map.get("itemType");
         String imageUrl = (String) map.get("imageUrl");
         String sellerId = (String) map.get("sellerId");
-        double price    = ((Number) map.get("currentPrice")).doubleValue();
-        long endTime    = ((Number) map.get("endTime")).longValue();
+        double price = ((Number) map.get("currentPrice")).doubleValue();
+        long endTime = ((Number) map.get("endTime")).longValue();
 
         Auction auction = auctionFromMap(map);
 

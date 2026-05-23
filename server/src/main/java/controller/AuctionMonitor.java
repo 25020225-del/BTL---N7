@@ -5,10 +5,10 @@ import database.TransactionManager;
 import database.dao.AuctionDAO;
 import database.dao.WalletDAO;
 import model.auction.Auction;
-import server.ServerExtension.AuctionManager;
-import server.ServerExtension.ClientManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.ServerExtension.AuctionManager;
+import server.ServerExtension.ClientManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -39,8 +39,8 @@ public class AuctionMonitor {
 
     public AuctionMonitor(List<Auction> allAuctions, AuctionDAO auctionDAO, WalletDAO walletDAO) {
         this.allAuctions = allAuctions;
-        this.auctionDAO  = auctionDAO;
-        this.walletDAO   = walletDAO;
+        this.auctionDAO = auctionDAO;
+        this.walletDAO = walletDAO;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -97,11 +97,11 @@ public class AuctionMonitor {
                         snapshotEndAtDecision = auction.getEndTime();
                     }
                 } else if (currentStatus.equals(Auction.STATUS_WAITING_FOR_BID)) {
-                if (now.isAfter(auction.getEndTime())) {
-                    targetStatus = Auction.STATUS_CANCELED;
-                    snapshotEndAtDecision = auction.getEndTime();
+                    if (now.isAfter(auction.getEndTime())) {
+                        targetStatus = Auction.STATUS_CANCELED;
+                        snapshotEndAtDecision = auction.getEndTime();
+                    }
                 }
-            }
             }
 
             if (targetStatus == null) {
@@ -208,9 +208,9 @@ public class AuctionMonitor {
     /**
      * FIX 1: Đổi TransactionManager.submit() → TransactionManager.submitTask()
      * FIX 2/3: Các hàm nghiệp vụ settleWinner / refundLosingAutoBidders
-     *           được kéo thành private method của chính AuctionMonitor,
-     *           KHÔNG đặt trong TransactionManager (vi phạm SRP).
-     *
+     * được kéo thành private method của chính AuctionMonitor,
+     * KHÔNG đặt trong TransactionManager (vi phạm SRP).
+     * <p>
      * Toàn bộ khối transaction được bọc trong Callable<Boolean> và
      * đẩy vào TransactionManager.submitTask() để chạy bất đồng bộ
      * trên DB-Worker thread pool.
@@ -286,7 +286,7 @@ public class AuctionMonitor {
 
     /**
      * FIX 2: settleWinner là private method của AuctionMonitor, không phải TransactionManager.
-     *
+     * <p>
      * Logic:
      * 1. Khấu trừ finalPrice khỏi locked_balance của người thắng
      * 2. Hoàn phần dư (maxBid - finalPrice) về balance của người thắng
@@ -295,10 +295,10 @@ public class AuctionMonitor {
      */
     private void settleWinner(Connection conn, Auction auction,
                               String auctionId) throws SQLException {
-        String now          = LocalDateTime.now().toString();
-        long   finalPrice   = auction.getCurrentPrice();
-        long   lockedAmount = auction.getHighestMaxBid();
-        String winnerId     = auction.getWinningBidder().getId();
+        String now = LocalDateTime.now().toString();
+        long finalPrice = auction.getCurrentPrice();
+        long lockedAmount = auction.getHighestMaxBid();
+        String winnerId = auction.getWinningBidder().getId();
 
         // Khấu trừ vĩnh viễn số tiền thực tế từ locked_balance
         walletDAO.deductFromLocked(conn, winnerId, finalPrice);
@@ -321,7 +321,7 @@ public class AuctionMonitor {
 
     /**
      * FIX 3: refundLosingAutoBidders là private method của AuctionMonitor, không phải TransactionManager.
-     *
+     * <p>
      * Hoàn toàn bộ locked_balance cho tất cả auto-bidder KHÔNG phải winner.
      */
     private void refundLosingAutoBidders(Connection conn, Auction auction,

@@ -11,8 +11,6 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Utility class responsible for discovering the server's public address and
  * establishing the appropriate network connection.

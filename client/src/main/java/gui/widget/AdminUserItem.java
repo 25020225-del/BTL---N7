@@ -1,7 +1,6 @@
 package gui.widget;
 
 import client.network.NetworkService;
-import gui.MainApplication;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
@@ -18,7 +17,7 @@ public class AdminUserItem extends VBox {
 
         Label lblUser = new Label("User: " + name + " (@" + username + ")");
         Label lblRole = new Label("Role: " + role);
-        
+
         Button btnAction;
         if (isBlocked) {
             btnAction = new Button("Unblock");

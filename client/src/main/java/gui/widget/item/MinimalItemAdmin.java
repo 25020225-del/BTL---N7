@@ -1,6 +1,5 @@
 package gui.widget.item;
 
-import client.network.NetworkService;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
@@ -13,8 +12,8 @@ public class MinimalItemAdmin extends MinimalItem {
         super(id);
         Label lblName = new Label(name);
         Label lblPrice = new Label(price);
-        this.setUserData(id+name+price);
-        this.setPrefSize(260,100);
+        this.setUserData(id + name + price);
+        this.setPrefSize(260, 100);
         this.getChildren().addAll(lblName, lblPrice);
     }
 
@@ -45,6 +44,6 @@ public class MinimalItemAdmin extends MinimalItem {
         });
 
         HBox btnGroup = new HBox(10, btnApprove, btnReject);
-        this.getChildren().addAll(btnShowItem,btnGroup);
+        this.getChildren().addAll(btnShowItem, btnGroup);
     }
 }

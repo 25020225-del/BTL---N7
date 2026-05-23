@@ -71,7 +71,7 @@ public class ClientAuctionHandler implements ResponseHandler {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> priceData = (Map<String, Object>) message.getData();
                 String auctionId = (String) priceData.get("auctionId");
-                long   newPrice  = ((Number) priceData.get("newPrice")).longValue();
+                long newPrice = ((Number) priceData.get("newPrice")).longValue();
                 log.info("[Auction {}] Price updated → {}", auctionId, newPrice);
                 AuctionEventBus.fireEvent(AuctionEventBus.PRICE_UPDATED, priceData);
             }

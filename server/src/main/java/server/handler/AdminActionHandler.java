@@ -48,11 +48,10 @@ public class AdminActionHandler implements CommandHandler {
     private final ServerAdminController adminCtrl;
     private final AdminAuctionService adminAuctionService;
 
-    private static final String ERR_CANCEL_NOT_FOUND       = "ERR_ADMIN_010";
+    private static final String ERR_CANCEL_NOT_FOUND = "ERR_ADMIN_010";
     private static final String ERR_CANCEL_NOT_CANCELLABLE = "ERR_ADMIN_011";
-    private static final String ERR_CANCEL_DB_ERROR        = "ERR_ADMIN_012";
+    private static final String ERR_CANCEL_DB_ERROR = "ERR_ADMIN_012";
     private static final String ERR_CANCEL_INVALID_PAYLOAD = "ERR_ADMIN_013";
-
 
 
     /**
@@ -66,7 +65,7 @@ public class AdminActionHandler implements CommandHandler {
                               database.dao.UserDAO userDAO,
                               ServerAdminController adminCtrl,
                               AdminAuctionService adminAuctionService) {
-        this.userDAO   = userDAO;
+        this.userDAO = userDAO;
         this.adminCtrl = adminCtrl;
         this.adminAuctionService = adminAuctionService;
     }
@@ -95,21 +94,21 @@ public class AdminActionHandler implements CommandHandler {
         switch (command) {
 
             // ── Quản lý người dùng ───────────────────────────────────────────
-            case "FETCH_USERS"   -> handleFetchUsers(client);
-            case "BLOCK_USER"    -> handleUserBlock(admin, message.getData().toString(), true,  client);
-            case "UNBLOCK_USER"  -> handleUserBlock(admin, message.getData().toString(), false, client);
+            case "FETCH_USERS" -> handleFetchUsers(client);
+            case "BLOCK_USER" -> handleUserBlock(admin, message.getData().toString(), true, client);
+            case "UNBLOCK_USER" -> handleUserBlock(admin, message.getData().toString(), false, client);
 
             // ── [NEW] Whitelist toggle ───────────────────────────────────────
             case "TOGGLE_GOOD_STATUS" -> handleToggleGoodStatus(admin, message.getData(), client);
 
             // ── Quản lý phiên đấu giá ────────────────────────────────────────
-            case "APPROVE_AUCTION" -> handleAuctionAction(admin, (String) message.getData(), true,  client);
-            case "REJECT_AUCTION"  -> handleAuctionAction(admin, (String) message.getData(), false, client);
+            case "APPROVE_AUCTION" -> handleAuctionAction(admin, (String) message.getData(), true, client);
+            case "REJECT_AUCTION" -> handleAuctionAction(admin, (String) message.getData(), false, client);
 
             // ── Quản lý rút tiền ─────────────────────────────────────────────
             case "FETCH_WITHDRAW_REQUESTS" -> handleFetchWithdrawRequests(admin, client);
-            case "APPROVE_WITHDRAW"        -> handleWithdrawAction(admin, message.getData(), true,  client);
-            case "REJECT_WITHDRAW"         -> handleWithdrawAction(admin, message.getData(), false, client);
+            case "APPROVE_WITHDRAW" -> handleWithdrawAction(admin, message.getData(), true, client);
+            case "REJECT_WITHDRAW" -> handleWithdrawAction(admin, message.getData(), false, client);
 
             case "CANCEL_AUCTION" -> handleCancelAuction(admin, message.getData(), client);
 
@@ -181,8 +180,8 @@ public class AdminActionHandler implements CommandHandler {
                         case SUCCESS -> {
                             // Trả về trạng thái mới để Client cập nhật UI ngay lập tức
                             Map<String, Object> payload = Map.of(
-                                    "userId",  result.getUserId(),
-                                    "isGood",  result.getNewIsGood(),
+                                    "userId", result.getUserId(),
+                                    "isGood", result.getNewIsGood(),
                                     "message", result.getMessage()
                             );
                             client.sendResponse("TOGGLE_GOOD_SUCCESS", payload);
@@ -272,7 +271,7 @@ public class AdminActionHandler implements CommandHandler {
         // ── Phản hồi thông báo thành công về cho màn hình của Admin ───────────────────
         String actionLabel = block ? "khóa" : "mở khóa";
         client.sendResponse("ADMIN_ACTION_SUCCESS", Map.of(
-                "userId",  userId,
+                "userId", userId,
                 "blocked", block,
                 "message", "Tài khoản người dùng " + userId + " đã được " + actionLabel
                         + " thành công."
@@ -435,6 +434,7 @@ public class AdminActionHandler implements CommandHandler {
                     return null;
                 });
     }
+
     private void handleCancelAuction(Admin admin, Object data, ClientHandler client) {
         String auctionId;
         try {

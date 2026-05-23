@@ -4,8 +4,14 @@ import database.DatabaseManager;
 import model.user.User;
 import model.user.User.TwoFactorStatus;
 
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Data Access Object for user-related database operations.
@@ -62,7 +68,9 @@ public class UserDAO {
     // READ
     // ─────────────────────────────────────────────────────────────────
 
-    /** Finds a user by username, including all TOTP fields (for server-side use only). */
+    /**
+     * Finds a user by username, including all TOTP fields (for server-side use only).
+     */
     public User findUserByUsername(String userName) throws SQLException {
         String sql = "SELECT * FROM users WHERE username = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -76,7 +84,9 @@ public class UserDAO {
         return null;
     }
 
-    /** Finds a user by ID, including all TOTP fields. */
+    /**
+     * Finds a user by ID, including all TOTP fields.
+     */
     public User getUserById(String userId) throws SQLException {
         String sql = "SELECT * FROM users WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -106,12 +116,12 @@ public class UserDAO {
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 Map<String, Object> user = new HashMap<>();
-                user.put("id",         rs.getString("id"));
-                user.put("username",   rs.getString("username"));
-                user.put("name",       rs.getString("name"));
-                user.put("role",       rs.getString("role"));
+                user.put("id", rs.getString("id"));
+                user.put("username", rs.getString("username"));
+                user.put("name", rs.getString("name"));
+                user.put("role", rs.getString("role"));
                 user.put("is_blocked", rs.getInt("is_blocked") == 1);
-                user.put("is_good",    rs.getInt("is_good") == 1);   // NEW
+                user.put("is_good", rs.getInt("is_good") == 1);   // NEW
                 users.add(user);
             }
         }
@@ -146,7 +156,7 @@ public class UserDAO {
      * @param conn   Connection đang dùng.
      * @param userId ID của user.
      * @return {@code true} / {@code false} tương ứng với is_good = 1 / 0,
-     *         hoặc {@code null} nếu user không tồn tại.
+     * hoặc {@code null} nếu user không tồn tại.
      * @throws SQLException nếu có lỗi DB.
      */
     public Boolean readGoodStatus(Connection conn, String userId) throws SQLException {
@@ -192,7 +202,7 @@ public class UserDAO {
      * <p>Promotes {@code tempSecretKey} to {@code totp_secret}, clears the temp field,
      * and sets the status to {@code ENABLED}.</p>
      *
-     * @param userId        The user's ID.
+     * @param userId          The user's ID.
      * @param confirmedSecret The same secret that was stored as {@code tempSecretKey} and just
      *                        verified successfully against the user's OTP input.
      * @return {@code true} if the row was updated.
@@ -207,6 +217,7 @@ public class UserDAO {
             return ps.executeUpdate() > 0;
         }
     }
+
     /**
      * Resets TOÀN BỘ TOTP state về DISABLED:
      * - totp_status   = 'DISABLED'
@@ -215,7 +226,7 @@ public class UserDAO {
      * - is_totp_enabled  = 0
      * - totp_login_enabled   = 0  ← MỚI
      * - totp_payment_enabled = 0  ← MỚI
-     *
+     * <p>
      * Dùng cho: DISABLE_2FA (hủy hoàn toàn 2FA).
      */
     public boolean resetTotpToDisabled(String userId) throws SQLException {
@@ -259,9 +270,9 @@ public class UserDAO {
 
     /**
      * @deprecated Use {@link #updateTotpEnabled(String, String)} or
-     *             {@link #resetTotpToDisabled(String)} instead.
-     *             Kept here only to avoid breaking any code that still references this method
-     *             during the migration transition period.
+     * {@link #resetTotpToDisabled(String)} instead.
+     * Kept here only to avoid breaking any code that still references this method
+     * during the migration transition period.
      */
     @Deprecated
     public boolean updateTotpSetup(String userId, String secret, boolean enabled) throws SQLException {
@@ -274,7 +285,7 @@ public class UserDAO {
 
     /**
      * @deprecated Use {@link #resetTotpToDisabled(String)} for DISABLE_2FA.
-     *             Kept for transition period.
+     * Kept for transition period.
      */
     @Deprecated
     public boolean updateTotpEnabledFlag(String userId, boolean enabled) throws SQLException {
@@ -313,6 +324,7 @@ public class UserDAO {
             return ps.executeUpdate() > 0;
         }
     }
+
     /**
      * <b>UPDATE_TOTP_PREFS — Cập nhật 2 cờ Login / Payment TOTP.</b>
      *
@@ -320,9 +332,9 @@ public class UserDAO {
      * Nếu user chưa thiết lập TOTP hoàn chỉnh, query sẽ không affect
      * bất kỳ row nào và method trả về {@code false}.</p>
      *
-     * @param userId              ID của user.
-     * @param loginEnabled        Bật/tắt yêu cầu TOTP khi đăng nhập.
-     * @param paymentEnabled      Bật/tắt yêu cầu TOTP khi giao dịch.
+     * @param userId         ID của user.
+     * @param loginEnabled   Bật/tắt yêu cầu TOTP khi đăng nhập.
+     * @param paymentEnabled Bật/tắt yêu cầu TOTP khi giao dịch.
      * @return {@code true} nếu row được cập nhật thành công.
      */
     public boolean updateTotpPrefs(String userId,
@@ -335,7 +347,7 @@ public class UserDAO {
                 + "WHERE id = ? AND totp_status = 'ENABLED'";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, loginEnabled   ? 1 : 0);
+            ps.setInt(1, loginEnabled ? 1 : 0);
             ps.setInt(2, paymentEnabled ? 1 : 0);
             ps.setString(3, userId);
             return ps.executeUpdate() > 0;

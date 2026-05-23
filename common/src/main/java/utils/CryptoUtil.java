@@ -11,9 +11,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 import java.util.Base64;
 
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
-
 /**
  * Utility class for cryptographic operations.
  * Implements secure RSA-2048 for key exchange and AES-256-GCM for payload encryption.

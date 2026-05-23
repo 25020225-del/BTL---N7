@@ -16,8 +16,11 @@ import java.util.Map;
  */
 public final class AuctionService {
 
-    /** Private constructor — utility class, not instantiable. */
-    private AuctionService() {}
+    /**
+     * Private constructor — utility class, not instantiable.
+     */
+    private AuctionService() {
+    }
 
     /**
      * Sends a bid placement request to the server.
@@ -43,7 +46,7 @@ public final class AuctionService {
     public static void setAutoBid(String auctionId, long maxBid, long bidIncrement) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("auctionId", auctionId);
-        payload.put("maxBid",    maxBid);
+        payload.put("maxBid", maxBid);
         payload.put("increment", bidIncrement);
         NetworkService.sendMessage("SETUP_AUTOBID", payload);
     }
@@ -91,7 +94,7 @@ public final class AuctionService {
     public static void extendAuctionTimeMinutes(String auctionId, long timeMinutes) {
         // FIX: Removed inappropriate placeholder alert. Implemented proper server call.
         Map<String, Object> payload = Map.of(
-                "auctionId",   auctionId,
+                "auctionId", auctionId,
                 "timeMinutes", timeMinutes
         );
         NetworkService.sendMessage("EXTEND_AUCTION_TIME", payload);

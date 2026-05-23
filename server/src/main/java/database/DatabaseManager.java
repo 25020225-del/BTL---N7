@@ -115,7 +115,7 @@ public class DatabaseManager {
                         + "payout_method  TEXT    NOT NULL, "
                         + "payout_details TEXT    NOT NULL, "
                         + "status         TEXT    NOT NULL DEFAULT 'PENDING' "
-                        +     "CHECK(status IN ('PENDING','APPROVED','REJECTED','COMPLETED')), "
+                        + "CHECK(status IN ('PENDING','APPROVED','REJECTED','COMPLETED')), "
                         + "created_at     TEXT    NOT NULL, "
                         + "processed_at   TEXT, "
                         + "admin_id       TEXT, "

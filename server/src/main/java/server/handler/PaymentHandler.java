@@ -43,7 +43,9 @@ public class PaymentHandler implements CommandHandler {
     private final TOTPService totpService;
     private final WalletDAO walletDAO;
 
-    /** Các lệnh nạp tiền đang chờ xử lý (orderId → DepositInfo). */
+    /**
+     * Các lệnh nạp tiền đang chờ xử lý (orderId → DepositInfo).
+     */
     public static final Map<String, DepositInfo> pendingDeposits = new ConcurrentHashMap<>();
 
     private final ScheduledExecutorService cleanupScheduler =
@@ -53,10 +55,10 @@ public class PaymentHandler implements CommandHandler {
     public PaymentHandler(ServerPaymentController paymentController,
                           TOTPService totpService,
                           WalletDAO walletDAO) {
-        this.payPalService      = new PayPalService();
-        this.paymentController  = paymentController;
-        this.totpService        = totpService;
-        this.walletDAO          = walletDAO;
+        this.payPalService = new PayPalService();
+        this.paymentController = paymentController;
+        this.totpService = totpService;
+        this.walletDAO = walletDAO;
         startCleanupTask();
     }
 
@@ -66,9 +68,9 @@ public class PaymentHandler implements CommandHandler {
 
     @Override
     public void handle(NetworkMessage message, ClientHandler client) throws Exception {
-        String command     = message.getCommand();
-        Object data        = message.getData();
-        User currentUser   = client.getUser();
+        String command = message.getCommand();
+        Object data = message.getData();
+        User currentUser = client.getUser();
 
         // Guard: Tất cả lệnh tài chính đều yêu cầu xác thực
         if (currentUser == null) {
@@ -77,9 +79,9 @@ public class PaymentHandler implements CommandHandler {
         }
 
         switch (command) {
-            case "CREATE_DEPOSIT"   -> handleCreateDeposit(data, client, currentUser);
-            case "CONFIRM_DEPOSIT"  -> handleConfirmDeposit(data, client, currentUser);
-            case "FETCH_WALLET"     -> handleFetchWallet(client, currentUser);
+            case "CREATE_DEPOSIT" -> handleCreateDeposit(data, client, currentUser);
+            case "CONFIRM_DEPOSIT" -> handleConfirmDeposit(data, client, currentUser);
+            case "FETCH_WALLET" -> handleFetchWallet(client, currentUser);
             case "REQUEST_WITHDRAW" -> handleRequestWithdraw(data, client, currentUser);
             default -> throw new AuctionExceptions.InvalidPayloadException(
                     "Lệnh thanh toán không hợp lệ: " + command);
@@ -136,8 +138,8 @@ public class PaymentHandler implements CommandHandler {
         try {
             Map<String, Object> map = (Map<String, Object>) data;
 
-            amountVND     = Long.parseLong(map.get("amount").toString());
-            payoutMethod  = (String) map.get("payoutMethod");
+            amountVND = Long.parseLong(map.get("amount").toString());
+            payoutMethod = (String) map.get("payoutMethod");
             payoutDetails = (String) map.get("payoutDetails");
 
             Object codeObj = map.get("totpCode");
@@ -170,10 +172,10 @@ public class PaymentHandler implements CommandHandler {
                 // Thách thức Client — chưa có mã OTP
                 client.sendResponse("REQUIRE_TOTP_PAYMENT",
                         Map.of(
-                                "message",       "Giao dịch rút tiền này yêu cầu xác thực TOTP. "
+                                "message", "Giao dịch rút tiền này yêu cầu xác thực TOTP. "
                                         + "Vui lòng nhập mã 6 số từ ứng dụng Authenticator.",
-                                "amount",        amountVND,
-                                "payoutMethod",  payoutMethod,
+                                "amount", amountVND,
+                                "payoutMethod", payoutMethod,
                                 "payoutDetails", payoutDetails
                         ));
                 log.info("[WITHDRAW] TOTP challenge issued for user {} (amount={})",
@@ -220,9 +222,9 @@ public class PaymentHandler implements CommandHandler {
         }
 
         // ── BƯỚC 4: Đưa task vào TransactionManager để xử lý bất đồng bộ ───
-        final long finalAmount        = amountVND;
-        final String finalMethod      = payoutMethod;
-        final String finalDetails     = payoutDetails;
+        final long finalAmount = amountVND;
+        final String finalMethod = payoutMethod;
+        final String finalDetails = payoutDetails;
 
         paymentController.createWithdrawalRequest(
                 currentUser, finalAmount, finalMethod, finalDetails
@@ -233,7 +235,7 @@ public class PaymentHandler implements CommandHandler {
                             Map.of(
                                     "message", "Yêu cầu rút " + finalAmount
                                             + " VND đã được ghi nhận và đang chờ Admin duyệt.",
-                                    "amount",  finalAmount
+                                    "amount", finalAmount
                             ));
                     log.info("[WITHDRAW] Request created successfully for user {} (amount={})",
                             currentUser.getUserName(), finalAmount);
@@ -341,7 +343,7 @@ public class PaymentHandler implements CommandHandler {
                 client.sendResponse("REQUIRE_TOTP_PAYMENT",
                         Map.of(
                                 "message", "Giao dịch này yêu cầu xác thực TOTP. Vui lòng nhập mã 6 số.",
-                                "amount",  amountVND
+                                "amount", amountVND
                         ));
                 log.info("TOTP challenge issued for deposit {} by user {}",
                         amountVND, currentUser.getUserName());
@@ -383,21 +385,21 @@ public class PaymentHandler implements CommandHandler {
         }
 
         log.info("Creating deposit order of {} VND for {}", amountVND, currentUser.getUserName());
-        String[] orderInfo   = payPalService.createOrder(amountVND);
-        String orderId       = orderInfo[0];
-        String approvalUrl   = orderInfo[1];
+        String[] orderInfo = payPalService.createOrder(amountVND);
+        String orderId = orderInfo[0];
+        String approvalUrl = orderInfo[1];
 
         pendingDeposits.put(orderId,
                 new DepositInfo(amountVND, System.currentTimeMillis(), client, currentUser));
 
         Map<String, String> responseData = new HashMap<>();
         responseData.put("orderId", orderId);
-        responseData.put("url",     approvalUrl);
+        responseData.put("url", approvalUrl);
         client.sendResponse("PAYMENT_REDIRECT", responseData);
     }
 
     private void handleConfirmDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
-        String orderId         = data.toString().trim();
+        String orderId = data.toString().trim();
         DepositInfo depositInfo = pendingDeposits.get(orderId);
 
         if (depositInfo == null) {
@@ -463,7 +465,7 @@ public class PaymentHandler implements CommandHandler {
             long now = System.currentTimeMillis();
 
             for (Map.Entry<String, DepositInfo> entry : pendingDeposits.entrySet()) {
-                String orderId   = entry.getKey();
+                String orderId = entry.getKey();
                 DepositInfo info = entry.getValue();
 
                 if (now - info.getCreatedAt() > DEPOSIT_EXPIRATION_MS) {
@@ -518,14 +520,28 @@ public class PaymentHandler implements CommandHandler {
         public DepositInfo(long amountVND, long createdAt, ClientHandler client, User user) {
             this.amountVND = amountVND;
             this.createdAt = createdAt;
-            this.client    = client;
-            this.user      = user;
+            this.client = client;
+            this.user = user;
         }
 
-        public long getAmountVND()          { return amountVND; }
-        public long getCreatedAt()          { return createdAt; }
-        public ClientHandler getClient()    { return client; }
-        public User getUser()               { return user; }
-        public AtomicBoolean getIsProcessing() { return isProcessing; }
+        public long getAmountVND() {
+            return amountVND;
+        }
+
+        public long getCreatedAt() {
+            return createdAt;
+        }
+
+        public ClientHandler getClient() {
+            return client;
+        }
+
+        public User getUser() {
+            return user;
+        }
+
+        public AtomicBoolean getIsProcessing() {
+            return isProcessing;
+        }
     }
 }

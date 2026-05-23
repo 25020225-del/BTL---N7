@@ -1,34 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ProgressBar?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Region?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
-
-<BorderPane prefHeight="700.0" prefWidth="1100.0" style="-fx-background-color: #f4f7f6;" stylesheets="@Stylist.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ClientAdminController">
+<BorderPane prefHeight="700.0" prefWidth="1100.0" style="-fx-background-color: #f4f7f6;" stylesheets="@Stylist.css"
+            xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="gui.ClientAdminController">
 
     <left>
         <VBox prefWidth="220.0" spacing="10.0" style="-fx-background-color: #2c3e50; -fx-padding: 20;">
             <children>
                 <Label text="           ADMIN" textAlignment="CENTER" textFill="WHITE">
-                    <font><Font name="System Bold" size="20.0" /></font>
-                    <VBox.margin><Insets bottom="30.0" /></VBox.margin>
+                    <font>
+                        <Font name="System Bold" size="20.0"/>
+                    </font>
+                    <VBox.margin>
+                        <Insets bottom="30.0"/>
+                    </VBox.margin>
                 </Label>
 
-                <Button alignment="BASELINE_LEFT" maxWidth="Infinity" styleClass="sidebar-link-active" text="🏠 Dashboard" />
-                <Button alignment="BASELINE_LEFT" maxWidth="Infinity" onAction="#handleManageUsers" styleClass="sidebar-link" text="👥 Users Management" />
-                <Button alignment="BASELINE_LEFT" maxWidth="Infinity" styleClass="sidebar-link" text="📦 Products" />
-                <Button alignment="BASELINE_LEFT" maxWidth="Infinity" styleClass="sidebar-link" text="⚖️ Auctions" />
+                <Button alignment="BASELINE_LEFT" maxWidth="Infinity" styleClass="sidebar-link-active"
+                        text="🏠 Dashboard"/>
+                <Button alignment="BASELINE_LEFT" maxWidth="Infinity" onAction="#handleManageUsers"
+                        styleClass="sidebar-link" text="👥 Users Management"/>
+                <Button alignment="BASELINE_LEFT" maxWidth="Infinity" styleClass="sidebar-link" text="📦 Products"/>
+                <Button alignment="BASELINE_LEFT" maxWidth="Infinity" styleClass="sidebar-link" text="⚖️ Auctions"/>
 
-                <Region VBox.vgrow="ALWAYS" />
+                <Region VBox.vgrow="ALWAYS"/>
             </children>
         </VBox>
     </left>
@@ -36,7 +35,7 @@
     <center>
         <VBox spacing="25.0">
             <padding>
-                <Insets bottom="25.0" left="25.0" right="25.0" top="25.0" />
+                <Insets bottom="25.0" left="25.0" right="25.0" top="25.0"/>
             </padding>
             <children>
                 <HBox alignment="CENTER_LEFT">
@@ -44,13 +43,15 @@
                         <VBox>
                             <children>
                                 <Label text="System Management">
-                                    <font><Font name="System Bold" size="24.0" /></font>
+                                    <font>
+                                        <Font name="System Bold" size="24.0"/>
+                                    </font>
                                 </Label>
-                                <Label text="Ohayo Gozaimasu, Admin-sama!" textFill="#7f8c8d" />
+                                <Label text="Ohayo Gozaimasu, Admin-sama!" textFill="#7f8c8d"/>
                             </children>
                         </VBox>
-                        <Region HBox.hgrow="ALWAYS" />
-                        <TextField prefWidth="250.0" promptText="Tìm kiếm nhanh..." styleClass="search-field" />
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <TextField prefWidth="250.0" promptText="Tìm kiếm nhanh..." styleClass="search-field"/>
                     </children>
                 </HBox>
 
@@ -58,24 +59,29 @@
                     <children>
                         <VBox prefWidth="250.0" styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Tổng doanh thu" textFill="#7f8c8d" />
-                                <Label fx:id="lblTotalRevenue" style="-fx-font-size: 28; -fx-font-weight: bold;" text="67.000 VND" />
-                                <Label style="-fx-font-size: 12;" text="+12% so với tháng trước" textFill="#27ae60" />
+                                <Label text="Tổng doanh thu" textFill="#7f8c8d"/>
+                                <Label fx:id="lblTotalRevenue" style="-fx-font-size: 28; -fx-font-weight: bold;"
+                                       text="67.000 VND"/>
+                                <Label style="-fx-font-size: 12;" text="+12% so với tháng trước" textFill="#27ae60"/>
                             </children>
                         </VBox>
 
-                        <Button maxWidth="Infinity" onAction="#handleManageUsers" prefWidth="250.0" styleClass="stat-card-btn" HBox.hgrow="ALWAYS">
+                        <Button maxWidth="Infinity" onAction="#handleManageUsers" prefWidth="250.0"
+                                styleClass="stat-card-btn" HBox.hgrow="ALWAYS">
                             <graphic>
                                 <VBox alignment="CENTER_LEFT" spacing="5.0">
                                     <children>
-                                        <Label text="New Users (Click to Manage)" textFill="#7f8c8d" />
+                                        <Label text="New Users (Click to Manage)" textFill="#7f8c8d"/>
                                         <HBox alignment="CENTER_LEFT" spacing="10.0">
                                             <children>
-                                                <Label fx:id="lblNewUsers" style="-fx-font-size: 28; -fx-font-weight: bold; -fx-text-fill: #3498db;" text="169" />
-                                                <Label style="-fx-font-size: 24;" text="👥" />
+                                                <Label fx:id="lblNewUsers"
+                                                       style="-fx-font-size: 28; -fx-font-weight: bold; -fx-text-fill: #3498db;"
+                                                       text="169"/>
+                                                <Label style="-fx-font-size: 24;" text="👥"/>
                                             </children>
                                         </HBox>
-                                        <Label style="-fx-font-size: 12; -fx-font-weight: bold;" text="Xem danh sách &amp; Ban →" textFill="#3498db" />
+                                        <Label style="-fx-font-size: 12; -fx-font-weight: bold;"
+                                               text="Xem danh sách &amp; Ban →" textFill="#3498db"/>
                                     </children>
                                 </VBox>
                             </graphic>
@@ -83,26 +89,30 @@
 
                         <VBox prefWidth="250.0" styleClass="stat-card" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="Phiên đang đấu giá" textFill="#7f8c8d" />
-                                <Label fx:id="lblActiveAuctions" style="-fx-font-size: 28; -fx-font-weight: bold;" text="45" />
-                                <ProgressBar maxWidth="Infinity" progress="0.6" />
+                                <Label text="Phiên đang đấu giá" textFill="#7f8c8d"/>
+                                <Label fx:id="lblActiveAuctions" style="-fx-font-size: 28; -fx-font-weight: bold;"
+                                       text="45"/>
+                                <ProgressBar maxWidth="Infinity" progress="0.6"/>
                             </children>
                         </VBox>
                     </children>
                 </HBox>
 
-                <VBox spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;" VBox.vgrow="ALWAYS">
+                <VBox spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;"
+                      VBox.vgrow="ALWAYS">
                     <children>
                         <Label text="Phiên đấu giá cần chú ý">
-                            <font><Font name="System Bold" size="18.0" /></font>
+                            <font>
+                                <Font name="System Bold" size="18.0"/>
+                            </font>
                         </Label>
                         <TableView fx:id="tableRecentAuctions" VBox.vgrow="ALWAYS">
                             <columns>
-                                <TableColumn prefWidth="100.0" text="ID" />
-                                <TableColumn prefWidth="250.0" text="Tên sản phẩm" />
-                                <TableColumn prefWidth="150.0" text="Giá hiện tại" />
-                                <TableColumn prefWidth="150.0" text="Người dẫn đầu" />
-                                <TableColumn prefWidth="150.0" text="Thời gian còn lại" />
+                                <TableColumn prefWidth="100.0" text="ID"/>
+                                <TableColumn prefWidth="250.0" text="Tên sản phẩm"/>
+                                <TableColumn prefWidth="150.0" text="Giá hiện tại"/>
+                                <TableColumn prefWidth="150.0" text="Người dẫn đầu"/>
+                                <TableColumn prefWidth="150.0" text="Thời gian còn lại"/>
                             </columns>
                         </TableView>
                     </children>

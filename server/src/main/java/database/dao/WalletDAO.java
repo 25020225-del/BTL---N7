@@ -93,10 +93,11 @@ public class WalletDAO {
             return pstmt.executeUpdate() > 0;
         }
     }
+
     /**
      * Chuyển tiền từ số dư khả dụng sang tạm giữ (Locking)
      */
-    public boolean lockBalance(Connection conn, String userId, double amount) throws SQLException {
+    public boolean lockBalance(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET balance = balance - ?, locked_balance = locked_balance + ? " +
                 "WHERE user_id = ? AND balance >= ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -111,7 +112,7 @@ public class WalletDAO {
     /**
      * Hoàn trả tiền từ tạm giữ về số dư khả dụng (Unlocking)
      */
-    public boolean unlockBalance(Connection conn, String userId, double amount) throws SQLException {
+    public boolean unlockBalance(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET balance = balance + ?, locked_balance = locked_balance - ? " +
                 "WHERE user_id = ? AND locked_balance >= ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -126,7 +127,7 @@ public class WalletDAO {
     /**
      * Khấu trừ vĩnh viễn từ số tiền đã tạm giữ (Deducting from lock)
      */
-    public boolean deductFromLocked(Connection conn, String userId, double amount) throws SQLException {
+    public boolean deductFromLocked(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET locked_balance = locked_balance - ? " +
                 "WHERE user_id = ? AND locked_balance >= ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -143,7 +144,7 @@ public class WalletDAO {
      */
     public Map<String, Object> getWalletData(String userId) throws SQLException {
         String walletSql = "SELECT balance, locked_balance FROM wallets WHERE user_id = ?";
-        String txnSql    = "SELECT id, amount, description, created_at FROM wallet_transactions " +
+        String txnSql = "SELECT id, amount, description, created_at FROM wallet_transactions " +
                 "WHERE user_id = ? ORDER BY created_at DESC LIMIT 50";
 
         try (Connection conn = DatabaseManager.getConnection()) {
@@ -155,8 +156,8 @@ public class WalletDAO {
                 ps.setString(1, userId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
-                        result.put("balance",        rs.getLong("balance"));
-                        result.put("lockedBalance",  rs.getLong("locked_balance"));
+                        result.put("balance", rs.getLong("balance"));
+                        result.put("lockedBalance", rs.getLong("locked_balance"));
                     }
                 }
             }
@@ -168,10 +169,10 @@ public class WalletDAO {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         Map<String, Object> txn = new HashMap<>();
-                        txn.put("id",          rs.getString("id"));
-                        txn.put("amount",      rs.getLong("amount"));
+                        txn.put("id", rs.getString("id"));
+                        txn.put("amount", rs.getLong("amount"));
                         txn.put("description", rs.getString("description"));
-                        txn.put("createdAt",   rs.getString("created_at"));
+                        txn.put("createdAt", rs.getString("created_at"));
                         transactions.add(txn);
                     }
                 }

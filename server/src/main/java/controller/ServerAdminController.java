@@ -55,10 +55,10 @@ public class ServerAdminController {
                                  AuctionDAO auctionDAO,
                                  WalletDAO walletDAO,
                                  WithdrawalDAO withdrawalDAO) {
-        this.userDAO        = userDAO;
-        this.auctionDAO     = auctionDAO;
-        this.walletDAO      = walletDAO;
-        this.withdrawalDAO  = withdrawalDAO;
+        this.userDAO = userDAO;
+        this.auctionDAO = auctionDAO;
+        this.walletDAO = walletDAO;
+        this.withdrawalDAO = withdrawalDAO;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -90,7 +90,9 @@ public class ServerAdminController {
         }
     }
 
-    /** Unblocks a previously blocked user account. */
+    /**
+     * Unblocks a previously blocked user account.
+     */
     public boolean unblockUser(Admin admin, String targetUserId) {
         if (!isAuthorizedAdmin(admin)) return false;
         try {
@@ -101,7 +103,9 @@ public class ServerAdminController {
         }
     }
 
-    /** Permanently deletes a user account. Cannot delete another admin. */
+    /**
+     * Permanently deletes a user account. Cannot delete another admin.
+     */
     public boolean deleteUser(Admin admin, String targetUserId) {
         if (!isAuthorizedAdmin(admin)) return false;
         if (admin.getId().equals(targetUserId)) return false;
@@ -115,7 +119,9 @@ public class ServerAdminController {
         }
     }
 
-    /** Approves a pending auction, scheduling it with recalculated times if needed. */
+    /**
+     * Approves a pending auction, scheduling it with recalculated times if needed.
+     */
     public boolean approveAuction(Admin admin, String auctionId) {
         if (!isAuthorizedAdmin(admin)) {
             log.warn("Unauthorized approval attempt for auction {}", auctionId);
@@ -131,16 +137,16 @@ public class ServerAdminController {
             LocalDateTime[] times = auctionDAO.getAuctionTimes(auctionId);
             if (times == null) return false;
 
-            LocalDateTime now      = LocalDateTime.now();
+            LocalDateTime now = LocalDateTime.now();
             LocalDateTime newStart = times[0];
-            LocalDateTime newEnd   = times[1];
+            LocalDateTime newEnd = times[1];
 
             if (newStart == null || !newStart.isAfter(now)) {
                 long durationMinutes = (newStart != null && newEnd != null)
                         ? java.time.Duration.between(newStart, newEnd).toMinutes()
                         : 60L;
                 newStart = now;
-                newEnd   = now.plusMinutes(durationMinutes);
+                newEnd = now.plusMinutes(durationMinutes);
                 log.info("Auction {} approved: recalculated start time to NOW.", auctionId);
             } else {
                 log.info("Auction {} approved: keeping original scheduled times.", auctionId);
@@ -161,7 +167,9 @@ public class ServerAdminController {
         return false;
     }
 
-    /** Rejects a pending auction, marking it as CANCELED. */
+    /**
+     * Rejects a pending auction, marking it as CANCELED.
+     */
     public boolean rejectAuction(Admin admin, String auctionId) {
         if (!isAuthorizedAdmin(admin)) return false;
         try {
@@ -177,6 +185,7 @@ public class ServerAdminController {
             return false;
         }
     }
+
     /**
      * Đảo ngược trạng thái "Trusted" ({@code is_good}) của một user.
      *
@@ -193,7 +202,7 @@ public class ServerAdminController {
      * @param admin        Admin đang thực hiện lệnh.
      * @param targetUserId ID của user cần toggle.
      * @return {@link ToggleResult} chứa trạng thái mới và thông báo kết quả,
-     *         hoặc {@code null} nếu thao tác thất bại do lỗi bảo mật / DB.
+     * hoặc {@code null} nếu thao tác thất bại do lỗi bảo mật / DB.
      */
     public ToggleResult toggleGoodStatus(Admin admin, String targetUserId) {
 
@@ -276,7 +285,7 @@ public class ServerAdminController {
      */
     public static final class ToggleResult {
 
-        public enum Status { SUCCESS, UNAUTHORIZED, DENIED, NOT_FOUND, DB_ERROR }
+        public enum Status {SUCCESS, UNAUTHORIZED, DENIED, NOT_FOUND, DB_ERROR}
 
         private final Status status;
         private final String userId;      // null nếu không SUCCESS
@@ -284,10 +293,10 @@ public class ServerAdminController {
         private final String message;
 
         private ToggleResult(Status status, String userId, Boolean newIsGood, String message) {
-            this.status    = status;
-            this.userId    = userId;
+            this.status = status;
+            this.userId = userId;
             this.newIsGood = newIsGood;
-            this.message   = message;
+            this.message = message;
         }
 
         // Factory methods
@@ -296,28 +305,46 @@ public class ServerAdminController {
             return new ToggleResult(Status.SUCCESS, userId, newIsGood,
                     "Đã cập nhật trạng thái người dùng thành: " + label);
         }
+
         public static ToggleResult unauthorized() {
             return new ToggleResult(Status.UNAUTHORIZED, null, null,
                     "Bạn không có quyền thực hiện thao tác này.");
         }
+
         public static ToggleResult denied(String reason) {
             return new ToggleResult(Status.DENIED, null, null, reason);
         }
+
         public static ToggleResult notFound() {
             return new ToggleResult(Status.NOT_FOUND, null, null,
                     "Không tìm thấy người dùng với ID đã cung cấp.");
         }
+
         public static ToggleResult dbError() {
             return new ToggleResult(Status.DB_ERROR, null, null,
                     "Lỗi cơ sở dữ liệu khi cập nhật trạng thái người dùng.");
         }
 
         // Accessors
-        public Status  getStatus()    { return status; }
-        public String  getUserId()    { return userId; }
-        public Boolean getNewIsGood() { return newIsGood; }
-        public String  getMessage()   { return message; }
-        public boolean isSuccess()    { return status == Status.SUCCESS; }
+        public Status getStatus() {
+            return status;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public Boolean getNewIsGood() {
+            return newIsGood;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public boolean isSuccess() {
+            return status == Status.SUCCESS;
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -371,12 +398,12 @@ public class ServerAdminController {
      * @param requestId  ID của yêu cầu rút tiền cần xử lý.
      * @param isApproved {@code true} = duyệt (APPROVE), {@code false} = từ chối (REJECT).
      * @return {@link CompletableFuture} chứa một trong các kết quả:
-     *         <ul>
-     *           <li>{@code "SUCCESS"}      — Xử lý thành công.</li>
-     *           <li>{@code "NOT_FOUND"}    — Yêu cầu không tồn tại hoặc đã được xử lý.</li>
-     *           <li>{@code "WALLET_ERROR"} — Lỗi thao tác ví (vd: locked_balance không đủ).</li>
-     *           <li>{@code "DB_ERROR"}     — Lỗi hệ thống database.</li>
-     *         </ul>
+     * <ul>
+     *   <li>{@code "SUCCESS"}      — Xử lý thành công.</li>
+     *   <li>{@code "NOT_FOUND"}    — Yêu cầu không tồn tại hoặc đã được xử lý.</li>
+     *   <li>{@code "WALLET_ERROR"} — Lỗi thao tác ví (vd: locked_balance không đủ).</li>
+     *   <li>{@code "DB_ERROR"}     — Lỗi hệ thống database.</li>
+     * </ul>
      */
     public CompletableFuture<String> processWithdrawal(Admin admin,
                                                        String requestId,
@@ -386,9 +413,9 @@ public class ServerAdminController {
         }
 
         Callable<String> task = () -> {
-            String now     = LocalDateTime.now().toString();
+            String now = LocalDateTime.now().toString();
             String adminId = admin.getId();
-            String action  = isApproved ? "APPROVE" : "REJECT";
+            String action = isApproved ? "APPROVE" : "REJECT";
 
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
@@ -405,7 +432,7 @@ public class ServerAdminController {
                     }
 
                     String userId = (String) request.get("userId");
-                    long amount   = ((Number) request.get("amount")).longValue();
+                    long amount = ((Number) request.get("amount")).longValue();
 
                     if (isApproved) {
                         // ── APPROVE: Trừ vĩnh viễn khỏi locked_balance ───────────
@@ -444,8 +471,8 @@ public class ServerAdminController {
                         ClientManager.sendToUser(userId, "WITHDRAW_APPROVED",
                                 Map.of(
                                         "requestId", requestId,
-                                        "amount",    amount,
-                                        "message",   "Yêu cầu rút tiền của bạn đã được duyệt và hoàn tất."
+                                        "amount", amount,
+                                        "message", "Yêu cầu rút tiền của bạn đã được duyệt và hoàn tất."
                                 ));
 
                     } else {
@@ -485,8 +512,8 @@ public class ServerAdminController {
                         ClientManager.sendToUser(userId, "WITHDRAW_REJECTED",
                                 Map.of(
                                         "requestId", requestId,
-                                        "amount",    amount,
-                                        "message",   "Yêu cầu rút tiền của bạn đã bị từ chối. "
+                                        "amount", amount,
+                                        "message", "Yêu cầu rút tiền của bạn đã bị từ chối. "
                                                 + "Số tiền đã được hoàn lại vào ví."
                                 ));
                     }

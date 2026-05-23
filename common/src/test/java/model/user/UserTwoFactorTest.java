@@ -53,8 +53,8 @@ class UserTwoFactorTest {
         // Now disable
         user.setTwoFactorStatus(User.TwoFactorStatus.DISABLED);
 
-        assertFalse(user.isTotpLoginEnabled(),   "LoginEnabled phải bị reset khi DISABLED");
-        assertFalse(user.isTotpPaymentEnabled(),  "PaymentEnabled phải bị reset khi DISABLED");
+        assertFalse(user.isTotpLoginEnabled(), "LoginEnabled phải bị reset khi DISABLED");
+        assertFalse(user.isTotpPaymentEnabled(), "PaymentEnabled phải bị reset khi DISABLED");
     }
 
     @Test

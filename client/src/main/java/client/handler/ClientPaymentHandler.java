@@ -5,7 +5,7 @@ import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.Desktop;
+import java.awt.*;
 import java.net.URI;
 import java.util.Map;
 
@@ -30,23 +30,35 @@ public class ClientPaymentHandler implements ResponseHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ClientPaymentHandler.class);
 
-    /** Fired when PayPal URL is opened and user needs to confirm in browser. */
-    public static final String PAYMENT_CONFIRM_REQUIRED  = "PAYMENT_CONFIRM_REQUIRED";
+    /**
+     * Fired when PayPal URL is opened and user needs to confirm in browser.
+     */
+    public static final String PAYMENT_CONFIRM_REQUIRED = "PAYMENT_CONFIRM_REQUIRED";
 
-    /** Fired when server requests a TOTP code before a payment/withdrawal. */
-    public static final String REQUIRE_TOTP_PAYMENT      = "REQUIRE_TOTP_PAYMENT";
+    /**
+     * Fired when server requests a TOTP code before a payment/withdrawal.
+     */
+    public static final String REQUIRE_TOTP_PAYMENT = "REQUIRE_TOTP_PAYMENT";
 
-    /** Fired when the submitted TOTP code is rejected by the server. */
-    public static final String INVALID_TOTP              = "INVALID_TOTP";
+    /**
+     * Fired when the submitted TOTP code is rejected by the server.
+     */
+    public static final String INVALID_TOTP = "INVALID_TOTP";
 
-    /** Fired when a withdrawal request has been successfully created (PENDING). */
-    public static final String WITHDRAW_REQUEST_SUCCESS  = "WITHDRAW_REQUEST_SUCCESS";
+    /**
+     * Fired when a withdrawal request has been successfully created (PENDING).
+     */
+    public static final String WITHDRAW_REQUEST_SUCCESS = "WITHDRAW_REQUEST_SUCCESS";
 
-    /** Fired (real-time) when an admin approves the user's withdrawal request. */
-    public static final String WITHDRAW_APPROVED         = "WITHDRAW_APPROVED";
+    /**
+     * Fired (real-time) when an admin approves the user's withdrawal request.
+     */
+    public static final String WITHDRAW_APPROVED = "WITHDRAW_APPROVED";
 
-    /** Fired (real-time) when an admin rejects the user's withdrawal request. */
-    public static final String WITHDRAW_REJECTED         = "WITHDRAW_REJECTED";
+    /**
+     * Fired (real-time) when an admin rejects the user's withdrawal request.
+     */
+    public static final String WITHDRAW_REJECTED = "WITHDRAW_REJECTED";
 
     @Override
     @SuppressWarnings("unchecked")

@@ -224,12 +224,30 @@
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
-<<<<<<< HEAD
-/*nut dang xuất*/
-=======
+
+<
+<
+<
+<
+<
+<
+<
+HEAD
 
 /*nut dang xuất*/
->>>>>>> 89dfeebe728517716e9e02ef0007a89fd2b33f70
+=
+=
+=
+=
+=
+=
+=
+
+/*nut dang xuất*/
+>>> >>> >
+
+89
+dfeebe728517716e9e02ef0007a89fd2b33f70
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;
@@ -242,6 +260,7 @@
 .button-logout:hover {
     -fx-background-color: #fff1f1;
 }
+
 /* hiển thị  */
 .balance-card {
     -fx-background-color: linear-gradient(to right, #3665f3, #2b50c7);
@@ -268,9 +287,21 @@
 }
 
 
-.status-completed { -fx-text-fill: #28a745; -fx-font-weight: bold; }
-.status-pending { -fx-text-fill: #f39c12; -fx-font-weight: bold; }
-.status-hold { -fx-text-fill: #3665f3; -fx-font-weight: bold; }
+.status-completed {
+    -fx-text-fill: #28a745;
+    -fx-font-weight: bold;
+}
+
+.status-pending {
+    -fx-text-fill: #f39c12;
+    -fx-font-weight: bold;
+}
+
+.status-hold {
+    -fx-text-fill: #3665f3;
+    -fx-font-weight: bold;
+}
+
 #myava1 {
     -fx-fill: url("images/logo3.jpg");
 }

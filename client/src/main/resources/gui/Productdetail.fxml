@@ -4,38 +4,39 @@
 <?import javafx.scene.chart.CategoryAxis?>
 <?import javafx.scene.chart.LineChart?>
 <?import javafx.scene.chart.NumberAxis?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.Separator?>
-<?import javafx.scene.control.TextArea?>
-<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.*?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
-
-<ScrollPane fitToWidth="true" hbarPolicy="NEVER" stylesheets="@Stylist.css" vbarPolicy="AS_NEEDED" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" stylesheets="@Stylist.css" vbarPolicy="AS_NEEDED"
+            xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
     <content>
         <VBox spacing="25.0" style="-fx-background-color: #f8f9fa;">
             <padding>
-                <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
+                <Insets bottom="30.0" left="30.0" right="30.0" top="30.0"/>
             </padding>
             <children>
 
-                <HBox alignment="CENTER_LEFT" spacing="15.0" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
+                <HBox alignment="CENTER_LEFT" spacing="15.0"
+                      style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
                     <children>
-                        <Button onAction="#handleBackToMarketplace" prefHeight="38.0" style="-fx-background-color: #6c757d; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="← TRỜ LẠI DANH SÁCH" />
-                        <Text style="-fx-font-size: 18; -fx-font-weight: bold; -fx-fill: #2c3e50;" text="Chi Tiết Phiên Đấu Giá Real-time" />
+                        <Button onAction="#handleBackToMarketplace" prefHeight="38.0"
+                                style="-fx-background-color: #6c757d; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                                text="← TRỜ LẠI DANH SÁCH"/>
+                        <Text style="-fx-font-size: 18; -fx-font-weight: bold; -fx-fill: #2c3e50;"
+                              text="Chi Tiết Phiên Đấu Giá Real-time"/>
                     </children>
                 </HBox>
 
-                <HBox spacing="30.0" style="-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
+                <HBox spacing="30.0"
+                      style="-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
                     <children>
-                        <VBox alignment="CENTER" prefHeight="431.0" prefWidth="322.0" style="-fx-border-color: #eee; -fx-border-radius: 8; -fx-background-color: #fafafa;">
+                        <VBox alignment="CENTER" prefHeight="431.0" prefWidth="322.0"
+                              style="-fx-border-color: #eee; -fx-border-radius: 8; -fx-background-color: #fafafa;">
                             <children>
-                                <ImageView fx:id="imgLarge" fitHeight="320.0" fitWidth="320.0" pickOnBounds="true" preserveRatio="true" />
+                                <ImageView fx:id="imgLarge" fitHeight="320.0" fitWidth="320.0" pickOnBounds="true"
+                                           preserveRatio="true"/>
                             </children>
                         </VBox>
 
@@ -43,80 +44,114 @@
                             <children>
                                 <Label fx:id="lblDetailTitle" text="Tên Sản Phẩm" wrapText="true">
                                     <font>
-                                        <Font name="System Bold" size="26.0" />
+                                        <Font name="System Bold" size="26.0"/>
                                     </font>
                                 </Label>
-                                <Separator prefHeight="1.0" />
+                                <Separator prefHeight="1.0"/>
 
                                 <VBox spacing="10.0">
                                     <children>
-                              <Label fx:id="lblItemType" style="-fx-font-weight: bold; -fx-font-size: 20;" textFill="#e53238" />
+                                        <Label fx:id="lblItemType" style="-fx-font-weight: bold; -fx-font-size: 20;"
+                                               textFill="#e53238"/>
                                         <HBox alignment="CENTER_LEFT">
                                             <children>
-                                                <Label prefWidth="130.0" style="-fx-font-size: 14;" text="Giá khởi điểm:" />
-                                                <Label fx:id="lblStartPrice" style="-fx-font-weight: bold; -fx-font-size: 20;" text="0 VND" textFill="#e53238" />
+                                                <Label prefWidth="130.0" style="-fx-font-size: 14;"
+                                                       text="Giá khởi điểm:"/>
+                                                <Label fx:id="lblStartPrice"
+                                                       style="-fx-font-weight: bold; -fx-font-size: 20;" text="0 VND"
+                                                       textFill="#e53238"/>
                                             </children>
                                         </HBox>
                                         <HBox alignment="CENTER_LEFT">
                                             <children>
-                                                <Label prefWidth="130.0" style="-fx-font-size: 14;" text="Giá hiện tại:" />
-                                                <Label fx:id="lblCurrentPrice" style="-fx-font-weight: bold; -fx-font-size: 22;" text="0 VND" textFill="#e53238" />
+                                                <Label prefWidth="130.0" style="-fx-font-size: 14;"
+                                                       text="Giá hiện tại:"/>
+                                                <Label fx:id="lblCurrentPrice"
+                                                       style="-fx-font-weight: bold; -fx-font-size: 22;" text="0 VND"
+                                                       textFill="#e53238"/>
                                             </children>
                                         </HBox>
                                         <HBox alignment="CENTER_LEFT">
                                             <children>
-                                                <Label prefWidth="130.0" style="-fx-font-size: 14;" text="Người dẫn đầu:" />
-                                                <Label fx:id="lblLeader" style="-fx-font-weight: bold; -fx-font-size: 16;" text="None" textFill="#3665f3" />
+                                                <Label prefWidth="130.0" style="-fx-font-size: 14;"
+                                                       text="Người dẫn đầu:"/>
+                                                <Label fx:id="lblLeader"
+                                                       style="-fx-font-weight: bold; -fx-font-size: 16;" text="None"
+                                                       textFill="#3665f3"/>
                                             </children>
                                         </HBox>
                                     </children>
                                 </VBox>
 
-                                <VBox fx:id="vbBidHandle" spacing="12.0" style="-fx-background-color: #f8f9fa; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #ddd; -fx-border-width: 1; -fx-border-radius: 8;">
+                                <VBox fx:id="vbBidHandle" spacing="12.0"
+                                      style="-fx-background-color: #f8f9fa; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #ddd; -fx-border-width: 1; -fx-border-radius: 8;">
                                     <children>
                                         <VBox spacing="5.0">
                                             <children>
-                                                <Label style="-fx-font-weight: bold; -fx-text-fill: #444;" text="Đặt giá (VND):" />
+                                                <Label style="-fx-font-weight: bold; -fx-text-fill: #444;"
+                                                       text="Đặt giá (VND):"/>
                                                 <HBox spacing="10.0">
                                                     <children>
-                                                        <TextField fx:id="txtBidAmount" prefHeight="38.0" promptText="Nhập số tiền muốn đặt..." HBox.hgrow="ALWAYS" />
-                                                        <Button fx:id="btnPlaceBid" mnemonicParsing="false" onAction="#handlePlaceBid" prefHeight="38.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="ĐẶT GIÁ" />
+                                                        <TextField fx:id="txtBidAmount" prefHeight="38.0"
+                                                                   promptText="Nhập số tiền muốn đặt..."
+                                                                   HBox.hgrow="ALWAYS"/>
+                                                        <Button fx:id="btnPlaceBid" mnemonicParsing="false"
+                                                                onAction="#handlePlaceBid" prefHeight="38.0"
+                                                                style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                                                                text="ĐẶT GIÁ"/>
                                                     </children>
                                                 </HBox>
                                             </children>
                                         </VBox>
 
-                                        <Separator prefHeight="1.0" />
+                                        <Separator prefHeight="1.0"/>
                                     </children>
                                 </VBox>
 
-                                <VBox fx:id="vbAuctionControl" spacing="12.0" style="-fx-background-color: #fff9e6; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #f0b90b; -fx-border-width: 1; -fx-border-radius: 8;">
+                                <VBox fx:id="vbAuctionControl" spacing="12.0"
+                                      style="-fx-background-color: #fff9e6; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #f0b90b; -fx-border-width: 1; -fx-border-radius: 8;">
                                     <children>
-                                        <Label style="-fx-font-weight: bold; -fx-text-fill: #b7791f;" text="Bảng điều khiển của chủ tài sản:" />
+                                        <Label style="-fx-font-weight: bold; -fx-text-fill: #b7791f;"
+                                               text="Bảng điều khiển của chủ tài sản:"/>
 
                                         <HBox spacing="15.0">
                                             <children>
-                                                <Button fx:id="btnEditAuction" onAction="#handleEditAuction" prefHeight="38.0" prefWidth="160.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="Sửa Thông Tin" />
-                                                <Button fx:id="btnRemoveAuction" onAction="#handleDeleteAuction" prefHeight="38.0" prefWidth="160.0" style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="Hủy Phiên Bán" />
+                                                <Button fx:id="btnEditAuction" onAction="#handleEditAuction"
+                                                        prefHeight="38.0" prefWidth="160.0"
+                                                        style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                                                        text="Sửa Thông Tin"/>
+                                                <Button fx:id="btnRemoveAuction" onAction="#handleDeleteAuction"
+                                                        prefHeight="38.0" prefWidth="160.0"
+                                                        style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                                                        text="Hủy Phiên Bán"/>
                                             </children>
                                         </HBox>
                                     </children>
                                 </VBox>
-                        <VBox fx:id="vbAdminControl" layoutX="10.0" layoutY="394.0" spacing="12.0" style="-fx-background-color: #fff9e6; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #f0b90b; -fx-border-width: 1; -fx-border-radius: 8;">
-                           <children>
-                              <Label style="-fx-font-weight: bold; -fx-text-fill: #b7791f;" text="Bảng điều khiển của admin:" />
-                              <HBox spacing="15.0">
-                                 <children>
-                                    <Button onAction="#handleApproveAuction" prefHeight="38.0" prefWidth="160.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="Approve Auction" />
-                                    <Button fx:id="btnRemoveAuction1" onAction="#handleRejectAuction" prefHeight="38.0" prefWidth="160.0" style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="Reject Auction" />
-                                 </children>
-                              </HBox>
-                           </children>
-                        </VBox>
+                                <VBox fx:id="vbAdminControl" layoutX="10.0" layoutY="394.0" spacing="12.0"
+                                      style="-fx-background-color: #fff9e6; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #f0b90b; -fx-border-width: 1; -fx-border-radius: 8;">
+                                    <children>
+                                        <Label style="-fx-font-weight: bold; -fx-text-fill: #b7791f;"
+                                               text="Bảng điều khiển của admin:"/>
+                                        <HBox spacing="15.0">
+                                            <children>
+                                                <Button onAction="#handleApproveAuction" prefHeight="38.0"
+                                                        prefWidth="160.0"
+                                                        style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                                                        text="Approve Auction"/>
+                                                <Button fx:id="btnRemoveAuction1" onAction="#handleRejectAuction"
+                                                        prefHeight="38.0" prefWidth="160.0"
+                                                        style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                                                        text="Reject Auction"/>
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
 
                                 <HBox fx:id="hbTime" alignment="CENTER_LEFT" spacing="5.0">
                                     <children>
-                                        <Label style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #666;" text="Thời gian còn lại: " />
+                                        <Label style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #666;"
+                                               text="Thời gian còn lại: "/>
                                     </children>
                                 </HBox>
                             </children>
@@ -124,22 +159,30 @@
                     </children>
                 </HBox>
 
-                <VBox spacing="10.0" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #f0b90b; -fx-border-radius: 12; -fx-background-radius: 12; -fx-border-width: 1.5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
+                <VBox spacing="10.0"
+                      style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #f0b90b; -fx-border-radius: 12; -fx-background-radius: 12; -fx-border-width: 1.5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
                     <children>
-                        <Label style="-fx-font-weight: bold; -fx-font-size: 16; -fx-text-fill: #2c3e50;" text="Mô tả chi tiết sản phẩm" />
-                        <TextArea fx:id="txtDescription" editable="false" minHeight="120.0" prefHeight="120.0" style="-fx-focus-color: transparent; -fx-text-box-border: #eee;" wrapText="true" VBox.vgrow="ALWAYS" />
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 16; -fx-text-fill: #2c3e50;"
+                               text="Mô tả chi tiết sản phẩm"/>
+                        <TextArea fx:id="txtDescription" editable="false" minHeight="120.0" prefHeight="120.0"
+                                  style="-fx-focus-color: transparent; -fx-text-box-border: #eee;" wrapText="true"
+                                  VBox.vgrow="ALWAYS"/>
                     </children>
                 </VBox>
 
-                <VBox spacing="10.0" style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 12; -fx-border-color: #eef0f2; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
+                <VBox spacing="10.0"
+                      style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 12; -fx-border-color: #eef0f2; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);">
                     <children>
-                        <Label style="-fx-font-weight: bold; -fx-font-size: 18; -fx-text-fill: #2c3e50;" text="Biểu đồ diễn biến giá thị trường (Real-time)" />
-                        <LineChart fx:id="bidHistoryChart" animated="true" legendVisible="false" minHeight="350.0" prefHeight="350.0" VBox.vgrow="ALWAYS">
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 18; -fx-text-fill: #2c3e50;"
+                               text="Biểu đồ diễn biến giá thị trường (Real-time)"/>
+                        <LineChart fx:id="bidHistoryChart" animated="true" legendVisible="false" minHeight="350.0"
+                                   prefHeight="350.0" VBox.vgrow="ALWAYS">
                             <xAxis>
-                                <CategoryAxis label="Thời gian hệ thống" side="BOTTOM" fx:id="xAxisTime" />
+                                <CategoryAxis label="Thời gian hệ thống" side="BOTTOM" fx:id="xAxisTime"/>
                             </xAxis>
                             <yAxis>
-                                <NumberAxis fx:id="yAxisPrice" forceZeroInRange="false" label="Mức giá hiện tại (VND)" side="LEFT" />
+                                <NumberAxis fx:id="yAxisPrice" forceZeroInRange="false" label="Mức giá hiện tại (VND)"
+                                            side="LEFT"/>
                             </yAxis>
                         </LineChart>
                     </children>

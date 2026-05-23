@@ -13,10 +13,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests cho cơ chế thời gian mới của Auction:
- *   - WAITING_FOR_BID: endTime = null, chờ bid đầu tiên
- *   - Bid đầu tiên kích hoạt đồng hồ
- *   - Anti-sniping vô hạn lần (không hard-cap)
- *   - Xoá maxEndTime
+ * - WAITING_FOR_BID: endTime = null, chờ bid đầu tiên
+ * - Bid đầu tiên kích hoạt đồng hồ
+ * - Anti-sniping vô hạn lần (không hard-cap)
+ * - Xoá maxEndTime
  */
 @DisplayName("Auction – New Timer Logic Tests")
 class AuctionNewTimerTest {
@@ -24,14 +24,14 @@ class AuctionNewTimerTest {
     private static final int DURATION = 30; // phút
 
     private Auction auction;
-    private User    seller;
-    private User    bidder1;
-    private User    bidder2;
-    private Item    item;
+    private User seller;
+    private User bidder1;
+    private User bidder2;
+    private Item item;
 
     @BeforeEach
     void setUp() {
-        seller  = new User("S-1", "seller",  "pass", "Seller",   "SELLER");
+        seller = new User("S-1", "seller", "pass", "Seller", "SELLER");
         bidder1 = new User("B-1", "bidder1", "pass", "Bidder 1", "USER");
         bidder2 = new User("B-2", "bidder2", "pass", "Bidder 2", "USER");
 
@@ -292,7 +292,9 @@ class AuctionNewTimerTest {
     // Helper
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Kích hoạt phiên bằng bid đầu tiên hợp lệ từ bidder1. */
+    /**
+     * Kích hoạt phiên bằng bid đầu tiên hợp lệ từ bidder1.
+     */
     private void activateAuction() {
         Auction.BidResult firstResult = auction.calculateBidResult(bidder1, 1500L);
         assertNotNull(firstResult, "Bid đầu tiên phải hợp lệ");

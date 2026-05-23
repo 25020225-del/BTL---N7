@@ -4,7 +4,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Tooltip;
 import org.kordamp.ikonli.javafx.FontIcon;
 
-import static utils.ConsoleColors.*;
+import static utils.ConsoleColors.RED;
+import static utils.ConsoleColors.RESET;
 
 /**
  * A custom JavaFX {@link Button} that seamlessly integrates a scalable {@link FontIcon}

@@ -14,8 +14,11 @@ import client.handler.ClientPaymentHandler;
  */
 public final class RemoveEventBus {
 
-    /** Private constructor — utility class, not instantiable. */
-    private RemoveEventBus() {}
+    /**
+     * Private constructor — utility class, not instantiable.
+     */
+    private RemoveEventBus() {
+    }
 
     /**
      * Removes all EventBus listeners registered during an active user session.

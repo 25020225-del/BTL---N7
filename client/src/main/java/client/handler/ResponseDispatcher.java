@@ -4,7 +4,6 @@ import client.network.NetworkClient;
 import client.utils.ErrorParser;
 import gui.process.AlertUtils;
 import javafx.application.Platform;
-import javafx.scene.control.Alert;
 import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,8 +55,8 @@ public class ResponseDispatcher {
 
     private void registerSystemHandlers() {
         ClientSystemHandler systemHandler = new ClientSystemHandler();
-        handlers.put("REDIRECT",      systemHandler);
-        handlers.put("KICKED",        systemHandler);
+        handlers.put("REDIRECT", systemHandler);
+        handlers.put("KICKED", systemHandler);
         handlers.put("TIME_SYNC_ACK", systemHandler);
         handlers.put("GENERAL_ERROR", systemHandler);
         ResponseHandler errorHandler = (message, client) -> {
@@ -67,7 +66,7 @@ public class ResponseDispatcher {
                 String errMsg = ErrorParser.parse(message.getData());
                 log.warn("Server returned ERROR: {}", errMsg);
                 Platform.runLater(() ->
-                                AlertUtils.showError(
+                        AlertUtils.showError(
                                 "Lỗi từ Server",
                                 errMsg
                         )
@@ -79,54 +78,54 @@ public class ResponseDispatcher {
 
     private void registerAuctionHandlers() {
         ClientAuctionHandler auctionHandler = new ClientAuctionHandler();
-        handlers.put("CLI_BROADCAST",       auctionHandler);
-        handlers.put("CREATE_SUCCESS",      auctionHandler);
-        handlers.put("CHAT",                auctionHandler);
+        handlers.put("CLI_BROADCAST", auctionHandler);
+        handlers.put("CREATE_SUCCESS", auctionHandler);
+        handlers.put("CHAT", auctionHandler);
         handlers.put("UPDATE_AUCTION_PRICE", auctionHandler);
-        handlers.put("AUCTION_STATUS_CHANGED",  auctionHandler);
+        handlers.put("AUCTION_STATUS_CHANGED", auctionHandler);
     }
 
     private void registerPaymentHandlers() {
         ClientPaymentHandler paymentHandler = new ClientPaymentHandler();
-        handlers.put("PAYMENT_REDIRECT",    paymentHandler);
-        handlers.put("DEPOSIT_SUCCESS",     paymentHandler);
+        handlers.put("PAYMENT_REDIRECT", paymentHandler);
+        handlers.put("DEPOSIT_SUCCESS", paymentHandler);
         handlers.put("REQUIRE_TOTP_PAYMENT", paymentHandler);
-        handlers.put("INVALID_TOTP",        paymentHandler);
+        handlers.put("INVALID_TOTP", paymentHandler);
         handlers.put("WITHDRAW_REQUEST_SUCCESS", paymentHandler);
-        handlers.put("WITHDRAW_APPROVED",        paymentHandler);
-        handlers.put("WITHDRAW_REJECTED",        paymentHandler);
+        handlers.put("WITHDRAW_APPROVED", paymentHandler);
+        handlers.put("WITHDRAW_REJECTED", paymentHandler);
     }
 
     private void registerUserHandlers() {
         ClientUserHandler userHandler = new ClientUserHandler();
-        handlers.put(AuctionEventBus.FETCH_AUCTIONS_SUCCESS,     userHandler);
-        handlers.put(AuctionEventBus.FETCH_MY_AUCTIONS_SUCCESS,  userHandler);
-        handlers.put(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS,  userHandler);
-        handlers.put("NEW_AUCTION_ADDED",          userHandler);
-        handlers.put("REMOVE_AUCTION",             userHandler);
-        handlers.put("EDIT_SUCCESS",               userHandler);
-        handlers.put("DELETE_SUCCESS",             userHandler);
-        handlers.put("FETCH_WALLET_SUCCESS",       userHandler);
-        handlers.put("FETCH_USERS_SUCCESS",        userHandler);
-        handlers.put("SETUP_2FA_SUCCESS",          userHandler);
-        handlers.put("CONFIRM_2FA_SUCCESS",        userHandler);
-        handlers.put("DISABLE_2FA_SUCCESS",        userHandler);
-        handlers.put("CANCEL_2FA_SUCCESS",         userHandler);
-        handlers.put("UPDATE_TOTP_PREFS_SUCCESS",  userHandler);
+        handlers.put(AuctionEventBus.FETCH_AUCTIONS_SUCCESS, userHandler);
+        handlers.put(AuctionEventBus.FETCH_MY_AUCTIONS_SUCCESS, userHandler);
+        handlers.put(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS, userHandler);
+        handlers.put("NEW_AUCTION_ADDED", userHandler);
+        handlers.put("REMOVE_AUCTION", userHandler);
+        handlers.put("EDIT_SUCCESS", userHandler);
+        handlers.put("DELETE_SUCCESS", userHandler);
+        handlers.put("FETCH_WALLET_SUCCESS", userHandler);
+        handlers.put("FETCH_USERS_SUCCESS", userHandler);
+        handlers.put("SETUP_2FA_SUCCESS", userHandler);
+        handlers.put("CONFIRM_2FA_SUCCESS", userHandler);
+        handlers.put("DISABLE_2FA_SUCCESS", userHandler);
+        handlers.put("CANCEL_2FA_SUCCESS", userHandler);
+        handlers.put("UPDATE_TOTP_PREFS_SUCCESS", userHandler);
 
 
     }
+
     private void registerAdminHandlers() {
         ResponseHandler adminHandler = (message, client) -> {
             switch (message.getCommand()) {
                 case "FETCH_WITHDRAW_REQUESTS_SUCCESS" ->
                         AuctionEventBus.fireEvent("FETCH_WITHDRAW_REQUESTS_SUCCESS", message);
-                case "WITHDRAW_ACTION_SUCCESS" ->
-                        AuctionEventBus.fireEvent("WITHDRAW_ACTION_SUCCESS", message);
+                case "WITHDRAW_ACTION_SUCCESS" -> AuctionEventBus.fireEvent("WITHDRAW_ACTION_SUCCESS", message);
             }
         };
         handlers.put("FETCH_WITHDRAW_REQUESTS_SUCCESS", adminHandler);
-        handlers.put("WITHDRAW_ACTION_SUCCESS",          adminHandler);
+        handlers.put("WITHDRAW_ACTION_SUCCESS", adminHandler);
     }
 
     // ── Dispatch ──────────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class EditAuction {
-    public static void edit(String currentAuctionId){
+    public static void edit(String currentAuctionId) {
         Dialog<Map<String, String>> dialog = new Dialog<>();
         dialog.setTitle("Edit Auction");
         dialog.setHeaderText("Update details for auction: " + currentAuctionId);
@@ -17,16 +17,21 @@ public class EditAuction {
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
         GridPane grid = new GridPane();
-        grid.setHgap(10); grid.setVgap(10);
+        grid.setHgap(10);
+        grid.setVgap(10);
         grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
 
         TextField nameField = new TextField();
-        TextArea descField = new TextArea(); descField.setPrefRowCount(3);
+        TextArea descField = new TextArea();
+        descField.setPrefRowCount(3);
         TextField priceField = new TextField();
 
-        grid.add(new Label("Item Name:"), 0, 0); grid.add(nameField, 1, 0);
-        grid.add(new Label("Description:"), 0, 1); grid.add(descField, 1, 1);
-        grid.add(new Label("Starting Price:"), 0, 2); grid.add(priceField, 1, 2);
+        grid.add(new Label("Item Name:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("Description:"), 0, 1);
+        grid.add(descField, 1, 1);
+        grid.add(new Label("Starting Price:"), 0, 2);
+        grid.add(priceField, 1, 2);
 
         dialog.getDialogPane().setContent(grid);
         dialog.setResultConverter(dialogButton -> {
