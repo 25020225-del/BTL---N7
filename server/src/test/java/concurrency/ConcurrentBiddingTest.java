@@ -7,6 +7,7 @@ import database.dao.BidDAO;
 import database.dao.WalletDAO;
 import model.auction.Auction;
 import model.item.Item;
+import model.item.TangibleItem;
 import model.user.User;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -51,10 +52,7 @@ class ConcurrentBiddingTest {
         seller.setId("SELLER-" + runId);
         seller.setUserName("seller-" + runId);
 
-        Item item = new Item();
-        item.setId("ITEM-" + runId);
-        item.setItemName("Test Item");
-        item.setStartingPrice(1000L);
+        Item item = new TangibleItem("ITEM-" + runId, "Test Item", "", 1000L);
 
         LocalDateTime now = LocalDateTime.now().minusSeconds(5);
         Auction auction = new Auction("AUC-" + runId, item, seller, 50L, now, now.plusMinutes(10));
