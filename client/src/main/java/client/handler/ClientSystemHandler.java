@@ -6,7 +6,7 @@ import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.Desktop;
+import java.awt.*;
 import java.net.URI;
 import java.util.Map;
 
@@ -23,17 +23,19 @@ public class ClientSystemHandler implements ResponseHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ClientSystemHandler.class);
 
-    /** Delay in milliseconds before forcibly exiting after a KICKED event. */
+    /**
+     * Delay in milliseconds before forcibly exiting after a KICKED event.
+     */
     private static final long KICK_EXIT_DELAY_MS = 1_000L;
 
     @Override
     public void handle(NetworkMessage message, NetworkClient client) throws Exception {
         switch (message.getCommand()) {
-            case "REDIRECT"      -> handleRedirect(message);
-            case "KICKED"        -> handleKicked(message, client);
+            case "REDIRECT" -> handleRedirect(message);
+            case "KICKED" -> handleKicked(message, client);
             case "TIME_SYNC_ACK" -> handleTimeSyncAck(message);
             case "GENERAL_ERROR" -> handleGeneralError(message);
-            default              -> log.warn("Unhandled system command: {}", message.getCommand());
+            default -> log.warn("Unhandled system command: {}", message.getCommand());
         }
     }
 
@@ -86,8 +88,8 @@ public class ClientSystemHandler implements ResponseHandler {
     @SuppressWarnings("unchecked")
     private void handleTimeSyncAck(NetworkMessage message) {
         Map<String, Number> syncData = (Map<String, Number>) message.getData();
-        long clientSendTime    = syncData.get("clientSendTime").longValue();
-        long serverTime        = syncData.get("serverTime").longValue();
+        long clientSendTime = syncData.get("clientSendTime").longValue();
+        long serverTime = syncData.get("serverTime").longValue();
         long clientReceiveTime = System.currentTimeMillis();
         utils.TimeUtil.calibrateOffset(clientSendTime, serverTime, clientReceiveTime);
         log.debug("Clock synchronized with server. Offset calibrated.");

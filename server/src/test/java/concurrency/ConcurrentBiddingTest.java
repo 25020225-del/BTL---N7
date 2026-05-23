@@ -85,7 +85,10 @@ class ConcurrentBiddingTest {
                     ps.setString(3, u.getName());
                     ps.executeUpdate();
                 }
-                try { walletDAO.createWallet(conn, u.getId()); } catch (SQLException ignored) {}
+                try {
+                    walletDAO.createWallet(conn, u.getId());
+                } catch (SQLException ignored) {
+                }
                 walletDAO.updateBalance(conn, u.getId(), initialBalance);
             }
             conn.commit();

@@ -88,7 +88,7 @@ public class CreateAuctionModel {
     /**
      * Kiểm tra và tạo LocalDateTime cho thời điểm bắt đầu đấu giá.
      *
-     * @throws NumberFormatException nếu giờ/phút không hợp lệ.
+     * @throws NumberFormatException       nếu giờ/phút không hợp lệ.
      * @throws java.time.DateTimeException nếu giá trị giờ/phút nằm ngoài phạm vi.
      */
     public static LocalDateTime checkStartTime(
@@ -106,7 +106,7 @@ public class CreateAuctionModel {
     /**
      * Kiểm tra và tạo Duration cho thời lượng đấu giá.
      *
-     * @throws NumberFormatException nếu số ngày/giờ không hợp lệ.
+     * @throws NumberFormatException    nếu số ngày/giờ không hợp lệ.
      * @throws IllegalArgumentException nếu tổng thời lượng bằng 0.
      */
     public static Duration checkEndTime(String days, String hours) {
@@ -122,7 +122,9 @@ public class CreateAuctionModel {
         return duration;
     }
 
-    /** Tạo Item từ dữ liệu form và file ảnh. */
+    /**
+     * Tạo Item từ dữ liệu form và file ảnh.
+     */
     public static Item createItem(String name, String type, String desc, long startPrice, File image)
             throws Exception {
         String itemId = "ITEM-" + utils.IdGenerator.generateUUIDv7();
@@ -132,7 +134,9 @@ public class CreateAuctionModel {
         return item;
     }
 
-    /** Tạo Auction từ Item và các thông số đấu giá. */
+    /**
+     * Tạo Auction từ Item và các thông số đấu giá.
+     */
     public static Auction createAuction(
             Item item, User user, long bidInc,
             LocalDateTime startDateTime, LocalDateTime endDateTime

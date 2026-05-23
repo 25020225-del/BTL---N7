@@ -8,20 +8,20 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit Tests cho AdminService.
- *
+ * <p>
  * AdminService là static utility class gọi NetworkService.sendMessage() (cũng static).
  * → Cần dùng Mockito MockedStatic để intercept lời gọi static.
- *
+ * <p>
  * ĐẶT FILE NÀY Ở: client/src/test/java/client/service/AdminServiceTest.java
- *
+ * <p>
  * DEPENDENCY cần trong client/pom.xml:
- *   - mockito-inline (version 5.2.0) — cho phép mock static methods
- *   - junit-jupiter (version 5.11.0)
- *
+ * - mockito-inline (version 5.2.0) — cho phép mock static methods
+ * - junit-jupiter (version 5.11.0)
+ * <p>
  * SAU KHI REFACTOR — những thay đổi cần biết:
- *   - blockUser(String command, String id) → blockUser(String id) [bỏ param command]
- *   - unblockUser(String id) — method mới hoàn toàn
- *   - Constants BLOCK_USER, UNBLOCK_USER bị XOÁ khỏi AdminService
+ * - blockUser(String command, String id) → blockUser(String id) [bỏ param command]
+ * - unblockUser(String id) — method mới hoàn toàn
+ * - Constants BLOCK_USER, UNBLOCK_USER bị XOÁ khỏi AdminService
  */
 @DisplayName("AdminService — Network Command Tests")
 class AdminServiceTest {

@@ -1,8 +1,6 @@
 package utils;
 
-import java.nio.ByteBuffer;
 import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.UUID;
 
 /**
@@ -18,7 +16,8 @@ public final class IdGenerator {
     private static final char[] BASE62_CHARS =
             "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
 
-    private IdGenerator() {}
+    private IdGenerator() {
+    }
 
     /**
      * Generates a time-ordered UUIDv7 string.
@@ -45,7 +44,7 @@ public final class IdGenerator {
      * Generates a compact, secure random Base62 identifier appended to a shortened encoded timestamp.
      * Ideal for user-facing reference numbers like deposit order IDs or withdrawal requests.
      *
-     * @param prefix Optional string prefix (e.g., "WD-", "DEP-").
+     * @param prefix       Optional string prefix (e.g., "WD-", "DEP-").
      * @param randomLength Number of secure random trailing characters.
      * @return Unpredictable compact unique string ID.
      */

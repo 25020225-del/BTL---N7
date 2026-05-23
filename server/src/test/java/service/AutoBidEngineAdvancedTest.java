@@ -9,7 +9,6 @@ import model.user.User;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -17,11 +16,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.eq;
 
 /**
  * Lớp kiểm thử nâng cao dành riêng cho AutoBidEngine.
@@ -81,9 +80,12 @@ class AutoBidEngineAdvancedTest {
     @SuppressWarnings("unchecked")
     void processNextBot_With3Bots_ShouldCalculateWinnerAndExecuteOnce() throws Exception {
         // Arrange: Tạo 3 chiến thần AutoBid với các mức giá giằng co
-        User u1 = new User(); u1.setId("BOT-1");
-        User u2 = new User(); u2.setId("BOT-2");
-        User u3 = new User(); u3.setId("BOT-3");
+        User u1 = new User();
+        u1.setId("BOT-1");
+        User u2 = new User();
+        u2.setId("BOT-2");
+        User u3 = new User();
+        u3.setId("BOT-3");
 
         AutoBid b1 = new AutoBid(u1, 2000L, 50L);
         AutoBid b2 = new AutoBid(u2, 3000L, 50L);
@@ -121,7 +123,8 @@ class AutoBidEngineAdvancedTest {
     @SuppressWarnings("unchecked")
     void processNextBot_WhenControllerThrowsException_ShouldStillReleaseLock() throws Exception {
         // Arrange: Kịch bản rủi ro - Controller văng lỗi
-        User u1 = new User(); u1.setId("BOT-1");
+        User u1 = new User();
+        u1.setId("BOT-1");
         AutoBid b1 = new AutoBid(u1, 2000L, 50L);
         auction.getActiveAutoBids().offer(b1);
 

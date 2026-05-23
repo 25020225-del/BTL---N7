@@ -11,8 +11,6 @@ import server.ServerExtension.AuctionManager;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Controller responsible for handling auction-related actions initiated by a seller.
  * It provides functionality to create new auctions, modify existing ones under specific
@@ -26,7 +24,7 @@ public class ServerSellerController {
 
     /**
      * Constructs the controller with the necessary Data Access Objects.
-     * This implementation follows the Dependency Injection pattern to facilitate 
+     * This implementation follows the Dependency Injection pattern to facilitate
      * easier testing and decoupling.
      *
      * @param auctionDAO The DAO responsible for auction-related database transactions.

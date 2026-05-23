@@ -163,6 +163,7 @@
     -fx-background-radius: 10;
     -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.1), 10, 0, 0, 5);
 }
+
 /* Thẻ hiển thị số dư lớn */
 .balance-card {
     -fx-background-color: linear-gradient(to right, #3665f3, #2b50c7);
@@ -189,9 +190,21 @@
 }
 
 /* Trạng thái giao dịch trong bảng */
-.status-completed { -fx-text-fill: #28a745; -fx-font-weight: bold; }
-.status-pending { -fx-text-fill: #f39c12; -fx-font-weight: bold; }
-.status-hold { -fx-text-fill: #3665f3; -fx-font-weight: bold; }
+.status-completed {
+    -fx-text-fill: #28a745;
+    -fx-font-weight: bold;
+}
+
+.status-pending {
+    -fx-text-fill: #f39c12;
+    -fx-font-weight: bold;
+}
+
+.status-hold {
+    -fx-text-fill: #3665f3;
+    -fx-font-weight: bold;
+}
+
 /* Nút Chặn (Ban) - Đỏ đặc trưng của eBay */
 .button-ban {
     -fx-background-color: transparent;
@@ -225,7 +238,7 @@
     -fx-padding: 15;
     -fx-background-radius: 10;
     -fx-border-color: transparent;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 5, 0, 0, 2);
     -fx-cursor: hand;
 }
 
@@ -233,6 +246,7 @@
     -fx-border-color: #3665f3;
     -fx-background-color: #f0f5ff;
 }
+
 /* Style chung cho nhãn trạng thái */
 .status-label {
     -fx-padding: 2 8 2 8;
@@ -243,19 +257,42 @@
 }
 
 /* Các biến thể màu sắc */
-.status-won { -fx-background-color: #28a745; }      /* Xanh lá: Thắng/Thành công */
-.status-lost { -fx-background-color: #dc3545; }     /* Đỏ: Thua/Thất bại */
-.status-pending { -fx-background-color: #ffc107; -fx-text-fill: #212529; } /* Vàng: Đang chờ */
-.status-ongoing { -fx-background-color: #17a2b8; }  /* Xanh biển: Đang diễn ra */
-.status-sold { -fx-background-color: #6f42c1; }     /* Tím: Đã bán (cho Seller) */
+.status-won {
+    -fx-background-color: #28a745;
+}
+
+/* Xanh lá: Thắng/Thành công */
+.status-lost {
+    -fx-background-color: #dc3545;
+}
+
+/* Đỏ: Thua/Thất bại */
+.status-pending {
+    -fx-background-color: #ffc107;
+    -fx-text-fill: #212529;
+}
+
+/* Vàng: Đang chờ */
+.status-ongoing {
+    -fx-background-color: #17a2b8;
+}
+
+/* Xanh biển: Đang diễn ra */
+.status-sold {
+    -fx-background-color: #6f42c1;
+}
+
+/* Tím: Đã bán (cho Seller) */
 #myava1 {
     -fx-fill: url("gui/images/logo3.jpg.png");
 }
+
 /* Màu sắc của đường vẽ đồ thị biểu diễn giá */
 .chart-series-line {
     -fx-stroke: #3665f3;
     -fx-stroke-width: 3px;
 }
+
 .chart-line-symbol {
     -fx-background-color: #2c3e50, white;
     -fx-background-radius: 5px;
@@ -268,10 +305,12 @@
     -fx-border-color: #ccc;
     -fx-border-radius: 5;
 }
+
 .text-field:focused {
     -fx-border-color: #3665f3;
     -fx-border-width: 1.5;
 }
+
 /* TỔNG THỂ TRANG CHÍNH CỦA SELLER */
 .seller-detail-root {
     -fx-background-color: #f8f9fa; /* Màu nền nhẹ nhàng, chuyên nghiệp */
@@ -284,7 +323,7 @@
     -fx-background-radius: 12; /* Bo góc mượt mà */
     -fx-border-color: #eef0f2;
     -fx-border-radius: 12;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5); /* Bóng đổ nhẹ tạo chiều sâu */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 10, 0, 0, 5); /* Bóng đổ nhẹ tạo chiều sâu */
 }
 
 /* TRANG TRÍ RIÊNG CHO KHỐI MÔ TẢ SẢN PHẨM (NƠI ĐANG CÓ VIỀN VÀNG) */
@@ -294,13 +333,15 @@
     -fx-border-color: #f0b90b; /* Giữ màu viền vàng nổi bật */
     -fx-border-width: 1;
     -fx-border-radius: 12;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 10, 0, 0, 5);
 }
+
 .description-title {
     -fx-font-weight: bold;
     -fx-font-size: 18;
     -fx-text-fill: #212529;
 }
+
 .description-text-area {
     -fx-background-color: transparent;
     -fx-background-insets: 0;
@@ -312,6 +353,7 @@
     -fx-stroke: #3665f3; /* Màu xanh thương hiệu cho đường vẽ */
     -fx-stroke-width: 3px;
 }
+
 .chart-line-symbol {
     -fx-background-color: #2c3e50, white; /* Bo góc và đổ màu cho các điểm nút */
     -fx-background-radius: 5px;
@@ -326,9 +368,11 @@
     -fx-background-radius: 5;
     -fx-cursor: hand;
 }
+
 .button-primary:hover {
     -fx-background-color: #1e4bd8; /* Hiệu ứng đổi màu khi di chuột vào */
 }
+
 .button-danger {
     -fx-background-color: #dc3545;
     -fx-text-fill: white;
@@ -336,6 +380,7 @@
     -fx-background-radius: 5;
     -fx-cursor: hand;
 }
+
 .button-danger:hover {
     -fx-background-color: #c82333;
 }

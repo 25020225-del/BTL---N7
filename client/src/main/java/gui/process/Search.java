@@ -22,8 +22,11 @@ public final class Search {
      */
     public static final double FUZZY_MATCH_THRESHOLD = 0.22; // FIX: renamed from MATCH_SCORE for clarity
 
-    /** Private constructor — utility class, not instantiable. */
-    private Search() {}
+    /**
+     * Private constructor — utility class, not instantiable.
+     */
+    private Search() {
+    }
 
     // ── Scene Graph Search ────────────────────────────────────────────────────
 

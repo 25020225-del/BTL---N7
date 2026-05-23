@@ -6,7 +6,9 @@ import client.utils.ErrorParser;
 import gui.process.AlertUtils;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import model.user.User;
 import network.NetworkMessage;
 import org.slf4j.Logger;
@@ -20,12 +22,18 @@ public class RegisterController {
     private static final Logger log =
             LoggerFactory.getLogger(RegisterController.class);
 
-    @FXML private TextField   registerName;
-    @FXML private TextField   registerAccountName;
-    @FXML private PasswordField registerPasswordAccount;
-    @FXML private PasswordField confirmPasswordAccount;
-    @FXML private Button registerButton;
-    @FXML private Button changeLoginScene;
+    @FXML
+    private TextField registerName;
+    @FXML
+    private TextField registerAccountName;
+    @FXML
+    private PasswordField registerPasswordAccount;
+    @FXML
+    private PasswordField confirmPasswordAccount;
+    @FXML
+    private Button registerButton;
+    @FXML
+    private Button changeLoginScene;
 
     private NetworkClient networkClient;
 
@@ -36,9 +44,9 @@ public class RegisterController {
     @FXML
     protected void onRegisterButtonClick() {
         log.info("Registration process started.");
-        String name        = registerName.getText().trim();
-        String username    = registerAccountName.getText().trim();
-        String password    = registerPasswordAccount.getText().trim();
+        String name = registerName.getText().trim();
+        String username = registerAccountName.getText().trim();
+        String password = registerPasswordAccount.getText().trim();
         String confirmPass = confirmPasswordAccount != null
                 ? confirmPasswordAccount.getText().trim() : "";
 

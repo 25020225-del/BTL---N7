@@ -15,7 +15,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Separator;
@@ -38,17 +37,19 @@ public class ClientAdminController {
     // ✅ Dùng đúng kiểu: SettingsController (extends VBox, tự load FXML của nó)
     private SettingsController settingsView;
 
-    @FXML private VBox mainDock;
-    @FXML private VBox mainViewController;
+    @FXML
+    private VBox mainDock;
+    @FXML
+    private VBox mainViewController;
 
     private TableControllerAdmin tableView;
     private User currentUser; // ✅ Lưu user để truyền vào SettingsController
     private ItemDetailController currentDetailController;
 
     private IconButton account;
-    private IconButton toggleList   = new IconButton("mdi2m-menu", "List", "List", "special-button");
-    private IconButton accountList  = new IconButton("mdi2a-account-box-multiple-outline", "Accounts", "Manage Accounts", "special-button");
-    private IconButton itemList     = new IconButton("mdi2a-archive-settings-outline", "Items", "Manage Items", "special-button");
+    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private IconButton accountList = new IconButton("mdi2a-account-box-multiple-outline", "Accounts", "Manage Accounts", "special-button");
+    private IconButton itemList = new IconButton("mdi2a-archive-settings-outline", "Items", "Manage Items", "special-button");
     private IconButton withdrawList = new IconButton(
             "mdi2c-cash-refund", "Withdrawals", "Withdraw Requests", "special-button"
     );

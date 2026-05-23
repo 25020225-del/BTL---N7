@@ -30,9 +30,9 @@ public class AdminAuctionItem extends VBox {
         super(10);
         this.setStyle("-fx-border-color: #aaa; -fx-padding: 10; -fx-background-color: white;");
 
-        Label  lblName    = new Label("Item: " + itemName);
+        Label lblName = new Label("Item: " + itemName);
         Button btnApprove = new Button("Approve");
-        Button btnReject  = new Button("Reject");
+        Button btnReject = new Button("Reject");
 
         btnApprove.setStyle("-fx-background-color: green; -fx-text-fill: white;");
         btnReject.setStyle("-fx-background-color: red;   -fx-text-fill: white;");

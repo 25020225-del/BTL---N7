@@ -6,7 +6,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,8 +32,8 @@ public class WithdrawalDAO {
     // CONSTANTS — trạng thái yêu cầu
     // ─────────────────────────────────────────────────────────────────────────
 
-    public static final String STATUS_PENDING   = "PENDING";
-    public static final String STATUS_REJECTED  = "REJECTED";
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_REJECTED = "REJECTED";
     public static final String STATUS_COMPLETED = "COMPLETED";
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -114,7 +113,7 @@ public class WithdrawalDAO {
      * Dùng cho màn hình Admin.
      *
      * @return Danh sách các yêu cầu PENDING, sắp xếp theo thời gian tạo tăng dần
-     *         (cũ nhất xử lý trước — FIFO).
+     * (cũ nhất xử lý trước — FIFO).
      * @throws SQLException nếu xảy ra lỗi database.
      */
     public List<Map<String, Object>> getPendingRequests() throws SQLException {
@@ -167,9 +166,9 @@ public class WithdrawalDAO {
      * <p><b>⚠ QUAN TRỌNG:</b> Phải gọi bên trong transaction đang mở cùng với
      * {@link WalletDAO#deductFromLocked} để đảm bảo tính nguyên tử.</p>
      *
-     * @param conn      Kết nối database đang trong transaction.
-     * @param requestId ID của yêu cầu cần duyệt.
-     * @param adminId   ID của Admin thực hiện duyệt.
+     * @param conn        Kết nối database đang trong transaction.
+     * @param requestId   ID của yêu cầu cần duyệt.
+     * @param adminId     ID của Admin thực hiện duyệt.
      * @param processedAt Thời điểm xử lý (ISO-8601 String).
      * @return {@code true} nếu update thành công (row tồn tại và đang PENDING).
      * @throws SQLException nếu xảy ra lỗi database.
@@ -261,26 +260,34 @@ public class WithdrawalDAO {
      */
     private Map<String, Object> mapRow(ResultSet rs) throws SQLException {
         Map<String, Object> row = new HashMap<>();
-        row.put("id",            rs.getString("id"));
-        row.put("userId",        rs.getString("user_id"));
-        row.put("amount",        rs.getLong("amount"));
-        row.put("payoutMethod",  rs.getString("payout_method"));
+        row.put("id", rs.getString("id"));
+        row.put("userId", rs.getString("user_id"));
+        row.put("amount", rs.getLong("amount"));
+        row.put("payoutMethod", rs.getString("payout_method"));
         row.put("payoutDetails", rs.getString("payout_details"));
-        row.put("status",        rs.getString("status"));
-        row.put("createdAt",     rs.getString("created_at"));
+        row.put("status", rs.getString("status"));
+        row.put("createdAt", rs.getString("created_at"));
 
         // Các cột có thể NULL (chỉ có giá trị sau khi Admin xử lý)
-        try { row.put("processedAt", rs.getString("processed_at")); }
-        catch (SQLException ignored) { row.put("processedAt", null); }
+        try {
+            row.put("processedAt", rs.getString("processed_at"));
+        } catch (SQLException ignored) {
+            row.put("processedAt", null);
+        }
 
-        try { row.put("adminId", rs.getString("admin_id")); }
-        catch (SQLException ignored) { row.put("adminId", null); }
+        try {
+            row.put("adminId", rs.getString("admin_id"));
+        } catch (SQLException ignored) {
+            row.put("adminId", null);
+        }
 
         // JOIN với bảng users (chỉ có trong getPendingRequests)
-        try { row.put("username", rs.getString("username")); }
-        catch (SQLException ignored) { /* cột không tồn tại trong query này */ }
-        try { row.put("name", rs.getString("name")); }
-        catch (SQLException ignored) { /* cột không tồn tại trong query này */ }
+        try {
+            row.put("username", rs.getString("username"));
+        } catch (SQLException ignored) { /* cột không tồn tại trong query này */ }
+        try {
+            row.put("name", rs.getString("name"));
+        } catch (SQLException ignored) { /* cột không tồn tại trong query này */ }
 
         return row;
     }

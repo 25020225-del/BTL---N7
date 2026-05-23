@@ -1,91 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.PasswordField?>
-<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.*?>
 <?import javafx.scene.effect.DropShadow?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.text.Text?>
-
-<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.RegisterController">
+<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css"
+           xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="gui.RegisterController">
     <children>
         <HBox fx:id="registerBox" alignment="CENTER" fillHeight="false" spacing="0.0">
             <children>
 
-                <VBox alignment="CENTER" prefHeight="600.0" prefWidth="450.0" spacing="20.0" style="-fx-background-color: linear-gradient(to bottom right, #3665f3, #2c3e50); -fx-background-radius: 15 0 0 15;">
+                <VBox alignment="CENTER" prefHeight="600.0" prefWidth="450.0" spacing="20.0"
+                      style="-fx-background-color: linear-gradient(to bottom right, #3665f3, #2c3e50); -fx-background-radius: 15 0 0 15;">
                     <children>
                         <StackPane prefHeight="120.0" prefWidth="359.0">
                             <children>
-                        <Circle fill="WHITE" radius="68.0" stroke="BLACK" strokeType="INSIDE" strokeWidth="0.0" />
+                                <Circle fill="WHITE" radius="68.0" stroke="BLACK" strokeType="INSIDE"
+                                        strokeWidth="0.0"/>
                                 <ImageView fitHeight="100.0" fitWidth="100.0" pickOnBounds="true" preserveRatio="true">
                                     <image>
-                                        <Image url="@images/logo4.png" />
+                                        <Image url="@images/logo4.png"/>
                                     </image>
                                 </ImageView>
                             </children>
                             <effect>
-                                <DropShadow color="0x00000033" radius="10" />
+                                <DropShadow color="0x00000033" radius="10"/>
                             </effect>
                         </StackPane>
-                        <Text style="-fx-fill: white; -fx-font-size: 32; -fx-font-weight: bold;" text="Online Auction Service" />
+                        <Text style="-fx-fill: white; -fx-font-size: 32; -fx-font-weight: bold;"
+                              text="Online Auction Service"/>
                     </children>
                 </VBox>
 
-                <VBox alignment="CENTER" fillWidth="false" prefHeight="600.0" prefWidth="550.0" spacing="25.0" style="-fx-background-color: white; -fx-background-radius: 0 15 15 0;" styleClass="auth-card">
+                <VBox alignment="CENTER" fillWidth="false" prefHeight="600.0" prefWidth="550.0" spacing="25.0"
+                      style="-fx-background-color: white; -fx-background-radius: 0 15 15 0;" styleClass="auth-card">
                     <children>
                         <VBox alignment="CENTER_LEFT" spacing="5.0">
                             <children>
-                                <Text style="-fx-font-size: 28; -fx-font-weight: bold;" styleClass="auth-title" text="CREATE ACCOUNT" />
-                                <Text style="-fx-fill: #777;" text="                           WELCOME" textAlignment="CENTER" />
+                                <Text style="-fx-font-size: 28; -fx-font-weight: bold;" styleClass="auth-title"
+                                      text="CREATE ACCOUNT"/>
+                                <Text style="-fx-fill: #777;" text="                           WELCOME"
+                                      textAlignment="CENTER"/>
                             </children>
                         </VBox>
 
                         <VBox prefWidth="400.0" spacing="12.0">
                             <children>
                                 <VBox spacing="5.0">
-                                    <Label style="-fx-font-weight: bold; -fx-text-fill: #555;" text="Display Name" />
-                                    <TextField fx:id="registerName" prefHeight="40.0" promptText="Enter your display name" styleClass="auth-input" />
+                                    <Label style="-fx-font-weight: bold; -fx-text-fill: #555;" text="Display Name"/>
+                                    <TextField fx:id="registerName" prefHeight="40.0"
+                                               promptText="Enter your display name" styleClass="auth-input"/>
                                 </VBox>
 
                                 <VBox spacing="5.0">
-                                    <Label style="-fx-font-weight: bold; -fx-text-fill: #555;" text="Username" />
-                                    <TextField fx:id="registerAccountName" prefHeight="40.0" promptText="Choose a unique username" styleClass="auth-input" />
+                                    <Label style="-fx-font-weight: bold; -fx-text-fill: #555;" text="Username"/>
+                                    <TextField fx:id="registerAccountName" prefHeight="40.0"
+                                               promptText="Choose a unique username" styleClass="auth-input"/>
                                 </VBox>
 
                                 <VBox spacing="5.0">
-                                    <Label style="-fx-font-weight: bold; -fx-text-fill: #555;" text="Password" />
-                                    <PasswordField fx:id="registerPasswordAccount" prefHeight="40.0" promptText="Create a strong password" styleClass="auth-input" />
+                                    <Label style="-fx-font-weight: bold; -fx-text-fill: #555;" text="Password"/>
+                                    <PasswordField fx:id="registerPasswordAccount" prefHeight="40.0"
+                                                   promptText="Create a strong password" styleClass="auth-input"/>
                                 </VBox>
 
                                 <VBox spacing="5.0">
-                                    <Label style="-fx-font-weight: bold; -fx-text-fill: #555;" text="Confirm Password" />
-                                    <PasswordField fx:id="confirmPasswordAccount" prefHeight="40.0" promptText="Repeat your password" styleClass="auth-input" />
+                                    <Label style="-fx-font-weight: bold; -fx-text-fill: #555;" text="Confirm Password"/>
+                                    <PasswordField fx:id="confirmPasswordAccount" prefHeight="40.0"
+                                                   promptText="Repeat your password" styleClass="auth-input"/>
                                 </VBox>
                             </children>
                         </VBox>
 
                         <VBox alignment="CENTER" spacing="15.0">
                             <children>
-                                <Button fx:id="registerButton" onAction="#onRegisterButtonClick" prefHeight="45.0" prefWidth="400.0" style="-fx-cursor: hand; -fx-font-weight: bold; -fx-background-color: #3665f3; -fx-text-fill: white;" styleClass="auth-btn-primary" text="REGISTER" />
+                                <Button fx:id="registerButton" onAction="#onRegisterButtonClick" prefHeight="45.0"
+                                        prefWidth="400.0"
+                                        style="-fx-cursor: hand; -fx-font-weight: bold; -fx-background-color: #3665f3; -fx-text-fill: white;"
+                                        styleClass="auth-btn-primary" text="REGISTER"/>
 
-                                <Button fx:id="changeLoginScene" onAction="#onLoginViewButtonClick" style="-fx-background-color: transparent; -fx-text-fill: #3665f3; -fx-cursor: hand;" styleClass="auth-link" text="Already have an account? Login here" />
+                                <Button fx:id="changeLoginScene" onAction="#onLoginViewButtonClick"
+                                        style="-fx-background-color: transparent; -fx-text-fill: #3665f3; -fx-cursor: hand;"
+                                        styleClass="auth-link" text="Already have an account? Login here"/>
                             </children>
                         </VBox>
                     </children>
                     <padding>
-                        <Insets bottom="30" left="50" right="50" top="30" />
+                        <Insets bottom="30" left="50" right="50" top="30"/>
                     </padding>
                 </VBox>
             </children>
             <effect>
-                <DropShadow color="0x00000033" radius="20" />
+                <DropShadow color="0x00000033" radius="20"/>
             </effect>
         </HBox>
     </children>

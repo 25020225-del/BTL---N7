@@ -23,11 +23,16 @@ public final class NetworkService {
 
     private static final Logger log = LoggerFactory.getLogger(NetworkService.class); // FIX: was ClientUserController.class
 
-    /** The globally shared, active network client session. May be null before connection is established. */
+    /**
+     * The globally shared, active network client session. May be null before connection is established.
+     */
     private static NetworkClient instance;
 
-    /** Private constructor — this is a utility class and must not be instantiated. */
-    private NetworkService() {}
+    /**
+     * Private constructor — this is a utility class and must not be instantiated.
+     */
+    private NetworkService() {
+    }
 
     /**
      * Returns the current active {@link NetworkClient} instance.

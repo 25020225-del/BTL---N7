@@ -40,7 +40,9 @@ public class BidDAO {
      */
     private AutoBidLockService autoBidLockService = new AutoBidLockService(walletDAO);
 
-    /** Allows injection of a test double for the lock service. */
+    /**
+     * Allows injection of a test double for the lock service.
+     */
     public void setBidLockService(AutoBidLockService service) {
         this.autoBidLockService = service;
     }
@@ -49,26 +51,30 @@ public class BidDAO {
     // Inner types
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Immutable snapshot of the auction state after a successful bid commit. */
+    /**
+     * Immutable snapshot of the auction state after a successful bid commit.
+     */
     public static final class BidCommitResult {
-        public final String        auctionId;
-        public final double        newCurrentPrice;
-        public final double        newHighestMaxBid;
-        public final String        newWinnerId;
+        public final String auctionId;
+        public final double newCurrentPrice;
+        public final double newHighestMaxBid;
+        public final String newWinnerId;
         public final LocalDateTime newEndTime;
 
         public BidCommitResult(String auctionId, long newCurrentPrice,
                                long newHighestMaxBid, String newWinnerId,
                                LocalDateTime newEndTime) {
-            this.auctionId        = auctionId;
-            this.newCurrentPrice  = newCurrentPrice;
+            this.auctionId = auctionId;
+            this.newCurrentPrice = newCurrentPrice;
             this.newHighestMaxBid = newHighestMaxBid;
-            this.newWinnerId      = newWinnerId;
-            this.newEndTime       = newEndTime;
+            this.newWinnerId = newWinnerId;
+            this.newEndTime = newEndTime;
         }
     }
 
-    /** Thrown when a user's available balance is too low to place a bid. */
+    /**
+     * Thrown when a user's available balance is too low to place a bid.
+     */
     public static class InsufficientFundsException extends RuntimeException {
         public InsufficientFundsException(String message) {
             super(message);
@@ -127,11 +133,11 @@ public class BidDAO {
                 + "status, winning_bidder_id, seller_id, item_type, item_name, description "
                 + "FROM auctions WHERE id = ?";
 
-        long          startingPrice, currentPrice, highestMaxBid, bidIncrement;
+        long startingPrice, currentPrice, highestMaxBid, bidIncrement;
         LocalDateTime startTime;
         LocalDateTime endTime;
-        int           durationMinutes;
-        String        status, winningBidderId, sellerId, itemType, itemName, description;
+        int durationMinutes;
+        String status, winningBidderId, sellerId, itemType, itemName, description;
 
         try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
             ps.setString(1, auctionId);
@@ -145,17 +151,17 @@ public class BidDAO {
                         || Auction.STATUS_RUNNING.equals(status);
                 if (!isAcceptable) return null;
 
-                startingPrice   = rs.getLong("starting_price");
-                currentPrice    = rs.getLong("current_price");
-                highestMaxBid   = rs.getLong("highest_max_bid");
-                bidIncrement    = rs.getLong("bid_increment");
+                startingPrice = rs.getLong("starting_price");
+                currentPrice = rs.getLong("current_price");
+                highestMaxBid = rs.getLong("highest_max_bid");
+                bidIncrement = rs.getLong("bid_increment");
                 durationMinutes = rs.getInt("duration_minutes");
-                startTime       = LocalDateTime.parse(rs.getString("start_time"));
+                startTime = LocalDateTime.parse(rs.getString("start_time"));
                 winningBidderId = rs.getString("winning_bidder_id");
-                sellerId        = rs.getString("seller_id");
-                itemType        = rs.getString("item_type");
-                itemName        = rs.getString("item_name");
-                description     = rs.getString("description");
+                sellerId = rs.getString("seller_id");
+                itemType = rs.getString("item_type");
+                itemName = rs.getString("item_name");
+                description = rs.getString("description");
 
                 String endTimeStr = rs.getString("end_time");
                 endTime = (endTimeStr != null && !endTimeStr.trim().isEmpty())
@@ -193,9 +199,9 @@ public class BidDAO {
         if (result == null) return null;
 
         // ── Step 2: Điều chỉnh ví tiền ─────────────────────────────────────────
-        String  now                  = LocalDateTime.now().toString();
-        long    previousHighestMaxBid = highestMaxBid;
-        boolean wasPreviousWinnerBot  = wasPreviousBidBot(conn, auctionId, winningBidderId);
+        String now = LocalDateTime.now().toString();
+        long previousHighestMaxBid = highestMaxBid;
+        boolean wasPreviousWinnerBot = wasPreviousBidBot(conn, auctionId, winningBidderId);
 
         if (result.newWinner != null && result.newWinner.getId().equals(currentUser.getId())) {
             if (winningBidderId != null && winningBidderId.equals(currentUser.getId())) {
@@ -234,9 +240,9 @@ public class BidDAO {
             ps.setString(1, "BID-" + java.util.UUID.randomUUID());
             ps.setString(2, auctionId);
             ps.setString(3, currentUser.getId());
-            ps.setLong(4,   result.newCurrentPrice);
+            ps.setLong(4, result.newCurrentPrice);
             ps.setString(5, now);
-            ps.setInt(6,    isBot ? 1 : 0);
+            ps.setInt(6, isBot ? 1 : 0);
             ps.executeUpdate();
         }
 
@@ -248,10 +254,10 @@ public class BidDAO {
                     + "WHERE id = ? AND winning_bidder_id IS NULL AND status = ?";
 
             try (PreparedStatement ps = conn.prepareStatement(firstBidSql)) {
-                ps.setLong(1,   result.newCurrentPrice);
+                ps.setLong(1, result.newCurrentPrice);
                 ps.setString(2, result.newEndTime.toString());
                 ps.setString(3, result.newWinner.getId());
-                ps.setLong(4,   result.newHighestMaxBid);
+                ps.setLong(4, result.newHighestMaxBid);
                 ps.setString(5, Auction.STATUS_RUNNING);
                 ps.setString(6, auctionId);
                 ps.setString(7, Auction.STATUS_WAITING_FOR_BID);
@@ -272,13 +278,13 @@ public class BidDAO {
             }
 
             try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
-                ps.setLong(1,   result.newCurrentPrice);
+                ps.setLong(1, result.newCurrentPrice);
                 ps.setString(2, result.newEndTime.toString());
                 ps.setString(3, result.newWinner != null ? result.newWinner.getId() : null);
-                ps.setLong(4,   result.newHighestMaxBid);
+                ps.setLong(4, result.newHighestMaxBid);
                 ps.setString(5, auctionId);
-                ps.setLong(6,   currentPrice);
-                ps.setLong(7,   highestMaxBid);
+                ps.setLong(6, currentPrice);
+                ps.setLong(7, highestMaxBid);
                 if (winningBidderId != null) {
                     ps.setString(8, winningBidderId);
                     ps.setString(9, Auction.STATUS_RUNNING);
@@ -312,13 +318,13 @@ public class BidDAO {
      * @param maxBid      The maximum amount the bot will not exceed.
      * @param increment   The step increment for each automatic outbid.
      * @return {@code true} on success; {@code false} if the balance is insufficient or
-     *         a DB error occurred.
+     * a DB error occurred.
      * @throws SQLException if a non-recoverable DB error occurs outside the lock check.
      */
     public boolean saveAutoBid(User currentUser, Auction auction, long maxBid, long increment)
             throws SQLException {
 
-        final String checkSql  = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
+        final String checkSql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
         final String upsertSql =
                 "INSERT OR REPLACE INTO auto_bids "
                         + "(id, auction_id, bidder_id, max_bid, increment_amount, is_active) "
@@ -350,8 +356,8 @@ public class BidDAO {
                     ps.setString(1, "AB-" + java.util.UUID.randomUUID());
                     ps.setString(2, auction.getId());
                     ps.setString(3, currentUser.getId());
-                    ps.setLong(4,   maxBid);
-                    ps.setLong(5,   increment);
+                    ps.setLong(4, maxBid);
+                    ps.setLong(5, increment);
                     ps.executeUpdate();
                 }
 
@@ -376,11 +382,11 @@ public class BidDAO {
      * @param currentUser The bidder cancelling their auto-bid.
      * @param auction     The target auction.
      * @return {@code true} if the cancellation was committed; {@code false} if no
-     *         active auto-bid exists or a DB error occurred.
+     * active auto-bid exists or a DB error occurred.
      * @throws SQLException on non-recoverable DB failure.
      */
     public boolean cancelAutoBid(User currentUser, Auction auction) throws SQLException {
-        final String checkSql  = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
+        final String checkSql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
         final String deleteSql = "UPDATE auto_bids SET is_active = 0 WHERE auction_id = ? AND bidder_id = ?";
 
         try (Connection conn = DatabaseManager.getConnection()) {
@@ -443,7 +449,7 @@ public class BidDAO {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
                     row.put("bid_amount", rs.getLong("bid_amount"));
-                    row.put("bid_time",   rs.getString("bid_time"));
+                    row.put("bid_time", rs.getString("bid_time"));
                     list.add(row);
                 }
             }

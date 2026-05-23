@@ -1,24 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Separator?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
-
-<?import javafx.scene.control.ComboBox?>
-<fx:root prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css" type="javafx.scene.layout.VBox" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<fx:root prefWidth="800.0" spacing="25.0" style="-fx-background-color: #f7f7f7;" stylesheets="@Stylist.css"
+         type="javafx.scene.layout.VBox" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
     <children>
         <HBox alignment="CENTER_LEFT" spacing="10.0">
             <children>
-                <Button mnemonicParsing="false" onAction="#handleReturn" style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại" />
+                <Button mnemonicParsing="false" onAction="#handleReturn"
+                        style="-fx-background-color: transparent; -fx-cursor: hand;" text="← Quay lại"/>
                 <Label text="MY WALLET">
-                    <font><Font name="System Bold" size="24.0" /></font>
+                    <font>
+                        <Font name="System Bold" size="24.0"/>
+                    </font>
                 </Label>
             </children>
         </HBox>
@@ -27,38 +23,50 @@
             <children>
                 <VBox prefWidth="350.0" styleClass="balance-card">
                     <padding>
-                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
                     </padding>
                     <children>
-                        <Label text="Tổng số dư" textFill="#666666" />
+                        <Label text="Tổng số dư" textFill="#666666"/>
                         <Label fx:id="lblTotalBalance" text="0 N VND">
-                            <font><Font name="System Bold" size="28.0" /></font>
+                            <font>
+                                <Font name="System Bold" size="28.0"/>
+                            </font>
                         </Label>
                         <Separator prefWidth="200.0">
-                            <VBox.margin><Insets bottom="10.0" top="10.0" /></VBox.margin>
+                            <VBox.margin>
+                                <Insets bottom="10.0" top="10.0"/>
+                            </VBox.margin>
                         </Separator>
-                        <Label text="Số dư đóng băng" textFill="#666666" />
+                        <Label text="Số dư đóng băng" textFill="#666666"/>
                         <Label fx:id="lblFrozenBalance" text="0 N VND" textFill="#e74c3c">
-                            <font><Font name="System Bold" size="18.0" /></font>
+                            <font>
+                                <Font name="System Bold" size="18.0"/>
+                            </font>
                         </Label>
                     </children>
                 </VBox>
 
-                <VBox prefWidth="400.0" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;">
+                <VBox prefWidth="400.0" spacing="15.0"
+                      style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;">
                     <children>
                         <Label text="Nạp tiền vào tài khoản">
-                            <font><Font name="System Bold" size="16.0" /></font>
+                            <font>
+                                <Font name="System Bold" size="16.0"/>
+                            </font>
                         </Label>
-                        <TextField fx:id="txtDepositAmount" prefHeight="40.0" promptText="Nhập số tiền (VND)" style="-fx-background-radius: 5;" />
+                        <TextField fx:id="txtDepositAmount" prefHeight="40.0" promptText="Nhập số tiền (VND)"
+                                   style="-fx-background-radius: 5;"/>
                         <HBox spacing="10.0">
                             <children>
-                                <Button onAction="#addQuickAmount" text="+50k" />
-                                <Button onAction="#addQuickAmount" text="+100k" />
-                                <Button onAction="#addQuickAmount" text="+500k" />
-                                <Button onAction="#addQuickAmount" text="+1M" />
+                                <Button onAction="#addQuickAmount" text="+50k"/>
+                                <Button onAction="#addQuickAmount" text="+100k"/>
+                                <Button onAction="#addQuickAmount" text="+500k"/>
+                                <Button onAction="#addQuickAmount" text="+1M"/>
                             </children>
                         </HBox>
-                        <Button fx:id="btnDeposit" maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0" style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="Pay via PayPal" />
+                        <Button fx:id="btnDeposit" maxWidth="Infinity" onAction="#handleDeposit" prefHeight="40.0"
+                                style="-fx-background-color: #3665f3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;"
+                                text="Pay via PayPal"/>
                     </children>
                 </VBox>
                 <!-- ── Withdrawal Form [NEW] ─────────────────────────────────────── -->
@@ -91,17 +99,20 @@
         </HBox>
 
 
-        <VBox spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 15;" VBox.vgrow="ALWAYS">
+        <VBox spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 15;"
+              VBox.vgrow="ALWAYS">
             <children>
                 <Label text="Lịch sử giao dịch gần đây">
-                    <font><Font name="System Bold" size="16.0" /></font>
+                    <font>
+                        <Font name="System Bold" size="16.0"/>
+                    </font>
                 </Label>
                 <TableView fx:id="tableTransactions" prefHeight="300.0" VBox.vgrow="ALWAYS">
                     <columns>
-                        <TableColumn fx:id="colId" text="id" />
-                        <TableColumn fx:id="colDate" text="ngày giao dịch" />
-                        <TableColumn fx:id="colAmount" text="Số tiền" />
-                        <TableColumn fx:id="colDescription" text="Mô tả" />
+                        <TableColumn fx:id="colId" text="id"/>
+                        <TableColumn fx:id="colDate" text="ngày giao dịch"/>
+                        <TableColumn fx:id="colAmount" text="Số tiền"/>
+                        <TableColumn fx:id="colDescription" text="Mô tả"/>
                     </columns>
                 </TableView>
             </children>

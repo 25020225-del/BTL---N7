@@ -88,7 +88,7 @@ public class NetworkClient {
                     log.warn("Failed at try {} - Connection refused", (i + 1));
                 }
             } catch (Exception e) {
-                log.warn("Failed at try {} - {}", (i+1), e.getMessage());
+                log.warn("Failed at try {} - {}", (i + 1), e.getMessage());
             }
 
             if (i < 4) {

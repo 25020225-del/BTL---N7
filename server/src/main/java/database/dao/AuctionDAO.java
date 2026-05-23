@@ -5,8 +5,6 @@ import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
 import model.user.User;
-import model.auction.Auction;
-import java.time.LocalDateTime;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -17,8 +15,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static utils.ConsoleColors.*;
 
 public class AuctionDAO {
 
@@ -32,17 +28,17 @@ public class AuctionDAO {
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 Map<String, Object> map = new HashMap<>();
-                map.put("id",            rs.getString("id"));
-                map.put("itemName",     rs.getString("item_name"));
-                map.put("description",   rs.getString("description"));
-                map.put("startingPrice",rs.getLong("starting_price"));
+                map.put("id", rs.getString("id"));
+                map.put("itemName", rs.getString("item_name"));
+                map.put("description", rs.getString("description"));
+                map.put("startingPrice", rs.getLong("starting_price"));
                 map.put("currentPrice", rs.getLong("current_price"));
                 map.put("endTime", LocalDateTime.parse(rs.getString("end_time")).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
-                map.put("imageUrl",     rs.getString("image_url"));
-                map.put("sellerId",      rs.getString("seller_id"));
-                map.put("status",        rs.getString("status"));
-                map.put("bidIncrement",        rs.getLong("bid_increment"));
-                map.put("itemType",        rs.getString("item_type"));
+                map.put("imageUrl", rs.getString("image_url"));
+                map.put("sellerId", rs.getString("seller_id"));
+                map.put("status", rs.getString("status"));
+                map.put("bidIncrement", rs.getLong("bid_increment"));
+                map.put("itemType", rs.getString("item_type"));
                 result.add(map);
             }
         }
@@ -163,7 +159,7 @@ public class AuctionDAO {
                     map.put("endTime", LocalDateTime.parse(rs.getString("end_time")).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
                     map.put("imageUrl", rs.getString("image_url"));
                     map.put("sellerId", rs.getString("seller_id"));
-                    map.put("status",rs.getString("status"));
+                    map.put("status", rs.getString("status"));
                     map.put("bidIncrement", rs.getLong("bid_increment"));
                     map.put("itemType", rs.getString("item_type"));
                     list.add(map);

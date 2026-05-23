@@ -32,13 +32,13 @@ public class CloudinaryService {
         // Tự động tìm và load file .env ở thư mục gốc của dự án
         dotenv = io.github.cdimascio.dotenv.Dotenv.configure().ignoreIfMissing().load();
 
-        String cloudName  = getEnvOrDotenv("CLOUDINARY_CLOUD_NAME");
-        String apiKey     = getEnvOrDotenv("CLOUDINARY_API_KEY");
-        String apiSecret  = getEnvOrDotenv("CLOUDINARY_API_SECRET");
+        String cloudName = getEnvOrDotenv("CLOUDINARY_CLOUD_NAME");
+        String apiKey = getEnvOrDotenv("CLOUDINARY_API_KEY");
+        String apiSecret = getEnvOrDotenv("CLOUDINARY_API_SECRET");
 
         cloudinary = new Cloudinary(com.cloudinary.utils.ObjectUtils.asMap(
                 "cloud_name", cloudName,
-                "api_key",    apiKey,
+                "api_key", apiKey,
                 "api_secret", apiSecret
         ));
     }
@@ -59,6 +59,7 @@ public class CloudinaryService {
         }
         return value;
     }
+
     /**
      * Uploads a byte array (compressed image) to Cloudinary and returns the secure HTTPS URL.
      *

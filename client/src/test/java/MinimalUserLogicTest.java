@@ -4,19 +4,19 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test logic block/unblock của MinimalUser.
- *
+ * <p>
  * Vì MinimalUser gắn với JavaFX toolkit, chúng ta test LOGIC command-routing
  * bằng cách simulate hành vi của nút bấm thông qua Consumer<String>.
- *
+ * <p>
  * SAU KHI REFACTOR — lỗi đã fix:
- *   - AdminService.BLOCK_USER (constant bị xoá) → "BLOCK_USER" (string literal)
- *   - Logic đảo ngược đã được sửa:
- *     isBlocked=true  → command phải là UNBLOCK_USER (muốn unblock)
- *     isBlocked=false → command phải là BLOCK_USER   (muốn block)
+ * - AdminService.BLOCK_USER (constant bị xoá) → "BLOCK_USER" (string literal)
+ * - Logic đảo ngược đã được sửa:
+ * isBlocked=true  → command phải là UNBLOCK_USER (muốn unblock)
+ * isBlocked=false → command phải là BLOCK_USER   (muốn block)
  */
 @DisplayName("MinimalUser — Block/Unblock Logic Tests")
 class MinimalUserLogicTest {
@@ -24,7 +24,7 @@ class MinimalUserLogicTest {
     /**
      * Helper class: giả lập logic command-selection của MinimalUser
      * mà không cần khởi tạo JavaFX component.
-     *
+     * <p>
      * Đây là EXTRACT METHOD pattern — tách logic khỏi UI để test được.
      */
     static String selectCommand(boolean isCurrentlyBlocked) {

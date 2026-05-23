@@ -8,16 +8,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit Tests cho Search.matchesFuzzy().
- *
+ * <p>
  * Class Search là pure utility (stateless) → không cần Mock gì cả.
  * Đây là loại test dễ nhất và có giá trị cao nhất sau Refactor.
- *
+ * <p>
  * ĐẶT FILE NÀY Ở: client/src/test/java/gui/process/SearchTest.java
- *
+ * <p>
  * SAU KHI REFACTOR — những thay đổi cần biết:
- *   - Tên cũ: SearchText(String text, String content)  → tên mới: matchesFuzzy(String keyword, String content)
- *   - Thứ tự tham số cũ: (content, keyword)            → mới: (keyword, content)
- *   - Logic bug đã sửa: content.contains(keyword) thay vì keyword.contains(content) (reversed)
+ * - Tên cũ: SearchText(String text, String content)  → tên mới: matchesFuzzy(String keyword, String content)
+ * - Thứ tự tham số cũ: (content, keyword)            → mới: (keyword, content)
+ * - Logic bug đã sửa: content.contains(keyword) thay vì keyword.contains(content) (reversed)
  */
 @DisplayName("Search.matchesFuzzy() — Fuzzy Text Matching Tests")
 class SearchTest {

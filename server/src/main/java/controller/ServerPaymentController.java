@@ -129,11 +129,11 @@ public class ServerPaymentController {
      * @param payoutMethod  Phương thức nhận tiền (vd: "BANK_TRANSFER", "MOMO").
      * @param payoutDetails Thông tin tài khoản nhận (vd: "Ngân hàng: VCB | STK: 1234567890").
      * @return {@link CompletableFuture} chứa một trong các kết quả:
-     *         <ul>
-     *           <li>{@code "SUCCESS"}           — Yêu cầu đã được tạo thành công.</li>
-     *           <li>{@code "INSUFFICIENT_FUNDS"} — Số dư khả dụng không đủ.</li>
-     *           <li>{@code "DB_ERROR"}           — Lỗi hệ thống cơ sở dữ liệu.</li>
-     *         </ul>
+     * <ul>
+     *   <li>{@code "SUCCESS"}           — Yêu cầu đã được tạo thành công.</li>
+     *   <li>{@code "INSUFFICIENT_FUNDS"} — Số dư khả dụng không đủ.</li>
+     *   <li>{@code "DB_ERROR"}           — Lỗi hệ thống cơ sở dữ liệu.</li>
+     * </ul>
      */
     public CompletableFuture<String> createWithdrawalRequest(User user,
                                                              long amount,

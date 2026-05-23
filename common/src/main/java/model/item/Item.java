@@ -20,7 +20,7 @@ public abstract class Item extends Entity {
     private byte[] file;
     private String approvalStatus;
     private String type = "IDK";
-    
+
     protected Item() {
         super();
     }
@@ -91,8 +91,13 @@ public abstract class Item extends Entity {
         this.imageUrl = imageUrl;
     }
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 
     /**
      * Generates a formatted summary string containing the item's core details.

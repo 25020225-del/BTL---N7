@@ -9,7 +9,6 @@ import gui.widget.item.MinimalUser;
 import gui.widget.item.WithdrawRequestItem;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
@@ -65,7 +64,7 @@ public class TableControllerAdmin extends TableController {
                                 String[] parts = command.split(":", 2);
                                 String action = parts[0], id = parts[1];
                                 if ("APPROVE".equals(action)) AdminService.approveWithdraw(id);
-                                else                           AdminService.rejectWithdraw(id);
+                                else AdminService.rejectWithdraw(id);
                             })
                     );
                 }
@@ -87,10 +86,10 @@ public class TableControllerAdmin extends TableController {
     }
 
     private MinimalUser buildUserItem(Map<String, Object> data) {
-        String  id        = (String)  data.get("id");
-        String  username  = (String)  data.get("username");
-        String  name      = (String)  data.get("name");
-        String  role      = (String)  data.get("role");
+        String id = (String) data.get("id");
+        String username = (String) data.get("username");
+        String name = (String) data.get("name");
+        String role = (String) data.get("role");
         boolean isBlocked = (boolean) data.get("is_blocked");
 
         MinimalUser userItem = new MinimalUser(id, username, name, role, isBlocked);
@@ -132,7 +131,7 @@ public class TableControllerAdmin extends TableController {
     }
 
     protected MinimalItemAdmin buildMinimalItem(Map<String, Object> map) {
-        String id   = (String) map.get("id");
+        String id = (String) map.get("id");
         String name = (String) map.get("itemName");
 
         Auction auction = auctionFromMap(map);
@@ -141,8 +140,10 @@ public class TableControllerAdmin extends TableController {
         item.addAdminOptions(id, command -> {
             switch (command) {
                 case "APPROVE_AUCTION" -> AdminService.approveAuction(id);
-                case "REJECT_AUCTION"  -> AdminService.rejectAuction(id);
-                case "SHOW_AUCTION" -> {openItemDetail(auction);}
+                case "REJECT_AUCTION" -> AdminService.rejectAuction(id);
+                case "SHOW_AUCTION" -> {
+                    openItemDetail(auction);
+                }
             }
         });
         return item;

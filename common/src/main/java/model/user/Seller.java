@@ -1,7 +1,9 @@
 package model.user;
 
 public class Seller extends User {
-    public Seller() { super(); }
+    public Seller() {
+        super();
+    }
 
     public Seller(User user) {
         super(user.getId(), user.getUserName(), user.getPassword(), user.getName(), "SELLER");

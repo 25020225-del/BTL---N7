@@ -1,22 +1,14 @@
 package server.handler;
 
+import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import database.DatabaseManager;
-import network.NetworkMessage;
 import server.ClientHandler;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static utils.ConsoleColors.*;
 
 /**
  * Handles requests for retrieving auction listings from the database.

@@ -12,8 +12,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.PriorityBlockingQueue;
 
-import static utils.ConsoleColors.*;
-
 /**
  * Represents an auction session within the system.
  *
@@ -50,7 +48,9 @@ public class Auction extends Entity {
     // Trạng thái vòng đời
     // -------------------------------------------------------------------------
 
-    /** Chờ admin duyệt. */
+    /**
+     * Chờ admin duyệt.
+     */
     public static final String STATUS_PENDING = "PENDING_APPROVAL";
 
     /**
@@ -73,15 +73,17 @@ public class Auction extends Entity {
     public static final String STATUS_RUNNING = "RUNNING";
 
     public static final String STATUS_FINISHED = "FINISHED";
-    public static final String STATUS_PAID     = "PAID";
+    public static final String STATUS_PAID = "PAID";
     public static final String STATUS_CANCELED = "CANCELED";
-    public static final String STATUS_DELETED  = "DELETED";
+    public static final String STATUS_DELETED = "DELETED";
 
     // -------------------------------------------------------------------------
     // Hằng số Anti-Sniping
     // -------------------------------------------------------------------------
 
-    /** Gia hạn khi có bid trong X giây cuối. */
+    /**
+     * Gia hạn khi có bid trong X giây cuối.
+     */
     public static final long ANTI_SNIPING_THRESHOLD_SECONDS = 60;
 
     /**
@@ -122,7 +124,9 @@ public class Auction extends Entity {
 
     private List<BidTransaction> bidHistory = new ArrayList<>();
 
-    /** Queue thread-safe xử lý AutoBid theo thứ tự thời gian đăng ký. */
+    /**
+     * Queue thread-safe xử lý AutoBid theo thứ tự thời gian đăng ký.
+     */
     private PriorityBlockingQueue<AutoBid> activeAutoBids;
 
     // -------------------------------------------------------------------------
@@ -154,15 +158,15 @@ public class Auction extends Entity {
                    LocalDateTime startTime, LocalDateTime endTime,
                    int durationMinutes) {
         super(id);
-        this.item          = item;
-        this.seller        = seller;
-        this.currentPrice  = item.getStartingPrice();
+        this.item = item;
+        this.seller = seller;
+        this.currentPrice = item.getStartingPrice();
         this.highestMaxBid = 0;
-        this.bidIncrement  = bidIncrement;
-        this.startTime     = startTime;
-        this.endTime       = endTime;         // null khi WAITING_FOR_BID
+        this.bidIncrement = bidIncrement;
+        this.startTime = startTime;
+        this.endTime = endTime;         // null khi WAITING_FOR_BID
         this.durationMinutes = durationMinutes;
-        this.bidHistory    = new ArrayList<>();
+        this.bidHistory = new ArrayList<>();
         this.activeAutoBids = new PriorityBlockingQueue<>(
                 11, Comparator.comparing(AutoBid::getTimeRegistered));
 
@@ -226,9 +230,9 @@ public class Auction extends Entity {
      * Immutable; dùng trong pattern calculate → DB commit → apply.
      */
     public static class BidResult {
-        public final User          newWinner;
-        public final long          newHighestMaxBid;
-        public final long          newCurrentPrice;
+        public final User newWinner;
+        public final long newHighestMaxBid;
+        public final long newCurrentPrice;
         public final LocalDateTime newEndTime;
 
         /**
@@ -240,11 +244,11 @@ public class Auction extends Entity {
         public BidResult(User newWinner, long newHighestMaxBid,
                          long newCurrentPrice, LocalDateTime newEndTime,
                          boolean isFirstBid) {
-            this.newWinner        = newWinner;
+            this.newWinner = newWinner;
             this.newHighestMaxBid = newHighestMaxBid;
-            this.newCurrentPrice  = newCurrentPrice;
-            this.newEndTime       = newEndTime;
-            this.isFirstBid       = isFirstBid;
+            this.newCurrentPrice = newCurrentPrice;
+            this.newEndTime = newEndTime;
+            this.isFirstBid = isFirstBid;
         }
     }
 
@@ -292,15 +296,15 @@ public class Auction extends Entity {
         }
 
         // ── Tính toán winner & price mới ────────────────────────────────────
-        User nextWinner       = winningBidder;
+        User nextWinner = winningBidder;
         long nextHighestMaxBid = highestMaxBid;
-        long nextCurrentPrice  = currentPrice;
+        long nextCurrentPrice = currentPrice;
 
         if (winningBidder == null) {
             // Bid đầu tiên (trạng thái WAITING_FOR_BID hoặc RUNNING chưa có winner)
-            nextCurrentPrice   = item.getStartingPrice();
-            nextHighestMaxBid  = newMaxBid;
-            nextWinner         = bidder;
+            nextCurrentPrice = item.getStartingPrice();
+            nextHighestMaxBid = newMaxBid;
+            nextWinner = bidder;
 
         } else if (bidder.getId().equals(winningBidder.getId())) {
             // Người đang thắng nâng mức đặt của chính họ
@@ -316,7 +320,7 @@ public class Auction extends Entity {
                     nextCurrentPrice = newMaxBid;
                 }
                 nextHighestMaxBid = newMaxBid;
-                nextWinner        = bidder;
+                nextWinner = bidder;
             } else {
                 nextCurrentPrice = newMaxBid + bidIncrement;
                 if (nextCurrentPrice > highestMaxBid) {
@@ -365,10 +369,10 @@ public class Auction extends Entity {
      * @return {@link BidTransaction} vừa tạo.
      */
     public BidTransaction applyBidResult(User bidder, BidResult result) {
-        this.winningBidder    = result.newWinner;
-        this.highestMaxBid    = result.newHighestMaxBid;
-        this.currentPrice     = result.newCurrentPrice;
-        this.endTime          = result.newEndTime;
+        this.winningBidder = result.newWinner;
+        this.highestMaxBid = result.newHighestMaxBid;
+        this.currentPrice = result.newCurrentPrice;
+        this.endTime = result.newEndTime;
 
         // Chuyển trạng thái khi bid đầu tiên kích hoạt đồng hồ
         if (result.isFirstBid) {
@@ -421,10 +425,10 @@ public class Auction extends Entity {
         if (failedTransaction != null) {
             bidHistory.remove(failedTransaction);
         }
-        this.winningBidder    = previousWinner;
-        this.highestMaxBid    = previousHighestMaxBid;
-        this.endTime          = previousEndTime;
-        this.status           = previousStatus;
+        this.winningBidder = previousWinner;
+        this.highestMaxBid = previousHighestMaxBid;
+        this.endTime = previousEndTime;
+        this.status = previousStatus;
 
         if (bidHistory.isEmpty()) {
             this.currentPrice = item.getStartingPrice();
@@ -466,7 +470,7 @@ public class Auction extends Entity {
 
     /**
      * @deprecated Dùng {@link #calculateBidResult} + {@link #applyBidResult} để đồng bộ
-     *     DB-RAM một cách atomic. Phương thức này giữ lại để backward-compat với test cũ.
+     * DB-RAM một cách atomic. Phương thức này giữ lại để backward-compat với test cũ.
      */
     @Deprecated
     public BidTransaction placeBid(User bidder, long newMaxBid) {
@@ -505,43 +509,100 @@ public class Auction extends Entity {
     // GETTERS & SETTERS
     // =========================================================================
 
-    public Item getItem()                         { return item; }
-    public void setItem(Item item)                { this.item = item; }
+    public Item getItem() {
+        return item;
+    }
 
-    public User getSeller()                       { return seller; }
-    public void setSeller(User seller)            { this.seller = seller; }
+    public void setItem(Item item) {
+        this.item = item;
+    }
 
-    public long getCurrentPrice()                 { return currentPrice; }
-    public void setCurrentPrice(long currentPrice){ this.currentPrice = currentPrice; }
+    public User getSeller() {
+        return seller;
+    }
 
-    public long getHighestMaxBid()                { return highestMaxBid; }
-    public void setHighestMaxBid(long highestMaxBid){ this.highestMaxBid = highestMaxBid; }
+    public void setSeller(User seller) {
+        this.seller = seller;
+    }
 
-    public long getBidIncrement()                 { return bidIncrement; }
-    public void setBidIncrement(long bidIncrement){ this.bidIncrement = bidIncrement; }
+    public long getCurrentPrice() {
+        return currentPrice;
+    }
 
-    public User getWinningBidder()                { return winningBidder; }
-    public void setWinningBidder(User winningBidder){ this.winningBidder = winningBidder; }
+    public void setCurrentPrice(long currentPrice) {
+        this.currentPrice = currentPrice;
+    }
 
-    public String getStatus()                     { return status; }
-    public void setStatus(String status)          { this.status = status; }
+    public long getHighestMaxBid() {
+        return highestMaxBid;
+    }
 
-    public LocalDateTime getStartTime()           { return startTime; }
-    public void setStartTime(LocalDateTime startTime){ this.startTime = startTime; }
+    public void setHighestMaxBid(long highestMaxBid) {
+        this.highestMaxBid = highestMaxBid;
+    }
+
+    public long getBidIncrement() {
+        return bidIncrement;
+    }
+
+    public void setBidIncrement(long bidIncrement) {
+        this.bidIncrement = bidIncrement;
+    }
+
+    public User getWinningBidder() {
+        return winningBidder;
+    }
+
+    public void setWinningBidder(User winningBidder) {
+        this.winningBidder = winningBidder;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
 
     /**
      * Trả về thời điểm kết thúc. <strong>Có thể null</strong> khi
      * {@code status = WAITING_FOR_BID}.
      */
-    public LocalDateTime getEndTime()             { return endTime; }
-    public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
 
-    public int getDurationMinutes()               { return durationMinutes; }
-    public void setDurationMinutes(int durationMinutes){ this.durationMinutes = durationMinutes; }
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
 
-    public List<BidTransaction> getBidHistory()   { return bidHistory; }
-    public void setBidHistory(List<BidTransaction> bidHistory){ this.bidHistory = bidHistory; }
+    public int getDurationMinutes() {
+        return durationMinutes;
+    }
 
-    public PriorityBlockingQueue<AutoBid> getActiveAutoBids(){ return activeAutoBids; }
+    public void setDurationMinutes(int durationMinutes) {
+        this.durationMinutes = durationMinutes;
+    }
+
+    public List<BidTransaction> getBidHistory() {
+        return bidHistory;
+    }
+
+    public void setBidHistory(List<BidTransaction> bidHistory) {
+        this.bidHistory = bidHistory;
+    }
+
+    public PriorityBlockingQueue<AutoBid> getActiveAutoBids() {
+        return activeAutoBids;
+    }
 
 }

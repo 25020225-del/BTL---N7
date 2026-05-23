@@ -5,7 +5,6 @@ import database.TransactionManager;
 import database.dao.AuctionDAO;
 import database.dao.WalletDAO;
 import model.auction.Auction;
-import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
@@ -72,11 +71,11 @@ public class AdminAuctionService {
     };
 
     private final AuctionDAO auctionDAO;
-    private final WalletDAO  walletDAO;
+    private final WalletDAO walletDAO;
 
     public AdminAuctionService(AuctionDAO auctionDAO, WalletDAO walletDAO) {
         this.auctionDAO = auctionDAO;
-        this.walletDAO  = walletDAO;
+        this.walletDAO = walletDAO;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -274,10 +273,10 @@ public class AdminAuctionService {
                 if (!rs.next()) {
                     return null;
                 }
-                AuctionSnapshot snap    = new AuctionSnapshot();
-                snap.currentStatus      = rs.getString("status");
-                snap.winnerUserId       = rs.getString("winning_bidder_id"); // nullable
-                snap.highestMaxBid      = rs.getLong("highest_max_bid");
+                AuctionSnapshot snap = new AuctionSnapshot();
+                snap.currentStatus = rs.getString("status");
+                snap.winnerUserId = rs.getString("winning_bidder_id"); // nullable
+                snap.highestMaxBid = rs.getLong("highest_max_bid");
                 return snap;
             }
         }
@@ -465,7 +464,7 @@ public class AdminAuctionService {
                 "AUCTION_CANCELLED",
                 Map.of(
                         "auctionId", auctionId,
-                        "message",   "Phiên đấu giá đã bị Admin hủy. Tiền đặt giá sẽ được hoàn lại."
+                        "message", "Phiên đấu giá đã bị Admin hủy. Tiền đặt giá sẽ được hoàn lại."
                 ),
                 null
         );
@@ -500,16 +499,20 @@ public class AdminAuctionService {
     //  INNER DATA CLASSES — Value Objects thuần túy (không logic)
     // ═══════════════════════════════════════════════════════════════════
 
-    /** Snapshot tối thiểu của phiên đấu giá cần để thực hiện cancel. */
+    /**
+     * Snapshot tối thiểu của phiên đấu giá cần để thực hiện cancel.
+     */
     private static final class AuctionSnapshot {
         String currentStatus;
         String winnerUserId;   // nullable
-        long   highestMaxBid;  // = 0 nếu chưa có bid
+        long highestMaxBid;  // = 0 nếu chưa có bid
     }
 
-    /** Bản ghi AutoBid đang active cần hoàn tiền. */
+    /**
+     * Bản ghi AutoBid đang active cần hoàn tiền.
+     */
     private static final class AutoBidRecord {
         String userId;
-        long   maxBid;
+        long maxBid;
     }
 }

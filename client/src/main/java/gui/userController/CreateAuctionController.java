@@ -2,7 +2,6 @@ package gui.userController;
 
 import client.handler.AuctionEventBus;
 import client.service.AuctionService;
-import gui.MainApplication;
 import gui.process.AlertUtils;
 import gui.process.CreateAuctionModel;
 import gui.process.CropImage;
@@ -13,7 +12,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import model.auction.Auction;
 import model.item.Item;
@@ -52,17 +50,28 @@ public class CreateAuctionController extends ScrollPane {
     private File imagefile;
 
     // ── Form fields ───────────────────────────────────────────────────────────
-    @FXML private TextField ca_itemName;
-    @FXML private TextArea  ca_description;
-    @FXML private TextField ca_startPrice;
-    @FXML private TextField ca_bidIncrement;
-    @FXML private DatePicker ca_startDate;
-    @FXML private TextField ca_startHour;
-    @FXML private TextField ca_startMinute;
-    @FXML private TextField ca_durationDays;
-    @FXML private TextField ca_durationHours;
-    @FXML private ImageView ca_image;
-    @FXML private VBox ca_details;
+    @FXML
+    private TextField ca_itemName;
+    @FXML
+    private TextArea ca_description;
+    @FXML
+    private TextField ca_startPrice;
+    @FXML
+    private TextField ca_bidIncrement;
+    @FXML
+    private DatePicker ca_startDate;
+    @FXML
+    private TextField ca_startHour;
+    @FXML
+    private TextField ca_startMinute;
+    @FXML
+    private TextField ca_durationDays;
+    @FXML
+    private TextField ca_durationHours;
+    @FXML
+    private ImageView ca_image;
+    @FXML
+    private VBox ca_details;
 
     private Selector selector;
 
@@ -79,7 +88,8 @@ public class CreateAuctionController extends ScrollPane {
      *        style="-fx-text-fill: #D32F2F;"/>
      * }</pre>
      */
-    @FXML private Label lblError; // nullable — chỉ bắt buộc khi dùng Cách 2
+    @FXML
+    private Label lblError; // nullable — chỉ bắt buộc khi dùng Cách 2
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -141,10 +151,10 @@ public class CreateAuctionController extends ScrollPane {
      */
     @FXML
     public void handleSubmitAuction() {
-        String name       = ca_itemName.getText().trim();
-        String desc       = ca_description.getText().trim();
+        String name = ca_itemName.getText().trim();
+        String desc = ca_description.getText().trim();
         String startPrice = ca_startPrice.getText().trim();
-        String bidInc     = ca_bidIncrement.getText().trim();
+        String bidInc = ca_bidIncrement.getText().trim();
 
         try {
             CreateAuctionModel.checkInputInfo(name, desc, startPrice, bidInc, imagefile);
@@ -178,7 +188,6 @@ public class CreateAuctionController extends ScrollPane {
             // Validation lỗi — hiện thông báo rõ ràng cho người dùng
             log.warn("Auction creation validation failed: {}", e.getMessage());
             AlertUtils.showError("Lỗi Dữ Liệu", e.getMessage());
-
 
 
         } catch (java.time.DateTimeException e) {

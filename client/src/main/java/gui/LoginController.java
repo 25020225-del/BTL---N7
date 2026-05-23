@@ -7,7 +7,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gui.process.AlertUtils;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.shape.Circle;
 import model.user.User;
 import network.NetworkMessage;
@@ -26,10 +29,14 @@ public class LoginController {
     private static final Logger log =
             LoggerFactory.getLogger(LoginController.class);
 
-    @FXML private Circle        myava1;
-    @FXML private TextField     loginAccountName;
-    @FXML private PasswordField loginPasswordAccount;
-    @FXML private Button        loginButton;
+    @FXML
+    private Circle myava1;
+    @FXML
+    private TextField loginAccountName;
+    @FXML
+    private PasswordField loginPasswordAccount;
+    @FXML
+    private Button loginButton;
 
     private NetworkClient networkClient;
     private final ObjectMapper mapper = JacksonConfig.mapper();
@@ -83,9 +90,9 @@ public class LoginController {
             log.debug("Server Response: {}", command);
 
             switch (command) {
-                case "LOGIN_SUCCESS"       -> handleLoginSuccess(response);
-                case "REQUIRE_2FA"         -> handleRequire2FA();
-                case "VERIFY_2FA_SUCCESS"  -> handleLoginSuccess(response);
+                case "LOGIN_SUCCESS" -> handleLoginSuccess(response);
+                case "REQUIRE_2FA" -> handleRequire2FA();
+                case "VERIFY_2FA_SUCCESS" -> handleLoginSuccess(response);
                 case "LOGIN_FAIL", "ERROR" -> {
                     String err = ErrorParser.parse(response.getData());
                     log.warn("Login failed: {}", err);
@@ -151,7 +158,7 @@ public class LoginController {
             MainController.start(loggedInUser);
         } catch (Exception e) {
             log.error("Error processing LOGIN_SUCCESS: {}", e.getMessage(), e);
-            AlertUtils.showError( "Error", "Failed to load account data.");
+            AlertUtils.showError("Error", "Failed to load account data.");
         }
     }
 }

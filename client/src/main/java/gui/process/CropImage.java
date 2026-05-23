@@ -1,11 +1,10 @@
 package gui.process;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javafx.geometry.Rectangle2D;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CropImage {
     private static Logger log = LoggerFactory.getLogger(CropImage.class);

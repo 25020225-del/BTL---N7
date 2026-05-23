@@ -36,11 +36,13 @@ public class UserController {
     private final UserDAO userDAO;
 
     public UserController(UserDAO userDAO, TOTPService totpService) {
-        this.userDAO     = userDAO;
+        this.userDAO = userDAO;
         this.totpService = totpService;
     }
 
-    public TOTPService getTotpService() { return totpService; }
+    public TOTPService getTotpService() {
+        return totpService;
+    }
 
     // ─────────────────────────────────────────────────────────────────
     // REGISTER
@@ -54,7 +56,7 @@ public class UserController {
     public String register(String userName, String password, String name, String role) {
         try (Connection conn = DatabaseManager.getConnection()) {
             String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
-            String userId         = "U-" + System.currentTimeMillis();
+            String userId = "U-" + System.currentTimeMillis();
             userDAO.createUserAndWallet(conn, userId, userName, hashedPassword, name, role);
             return "SUCCESS";
         } catch (SQLException e) {
@@ -165,7 +167,7 @@ public class UserController {
      */
     public Map<String, String> setupTotp(String userId, String userName) throws SQLException {
         String secretKey = totpService.createSecretKey();
-        String qrUrl     = totpService.getQRUrl(userName, secretKey);
+        String qrUrl = totpService.getQRUrl(userName, secretKey);
 
         // Persist PENDING state — the key that triggers the lockout-prevention mechanism
         boolean saved = userDAO.updateTotpPending(userId, secretKey);
@@ -178,7 +180,7 @@ public class UserController {
 
         Map<String, String> result = new HashMap<>();
         result.put("secretKey", secretKey);
-        result.put("qrUrl",     qrUrl);
+        result.put("qrUrl", qrUrl);
         return result;
     }
 
@@ -226,10 +228,10 @@ public class UserController {
      *   <li>If incorrect: returns {@code false}. The state remains {@code PENDING}.</li>
      * </ol>
      *
-     * @param userId    The authenticated user's ID.
+     * @param userId     The authenticated user's ID.
      * @param tempSecret The provisional secret stored during setup
      *                   (retrieved from {@code ClientHandler.getPendingTotpSecret()}).
-     * @param code      The 6-digit OTP entered by the user.
+     * @param code       The 6-digit OTP entered by the user.
      * @return {@code true} if verification and DB update succeeded.
      */
     public boolean confirmTotp(String userId, String tempSecret, int code) {
@@ -287,6 +289,7 @@ public class UserController {
             return "Lỗi hệ thống máy chủ. Vui lòng thử lại sau!";
         }
     }
+
     /**
      * Cập nhật tùy chọn TOTP granular của user.
      *

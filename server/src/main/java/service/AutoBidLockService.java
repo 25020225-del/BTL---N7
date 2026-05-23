@@ -34,7 +34,9 @@ public final class AutoBidLockService {
 
     private static final Logger log = LoggerFactory.getLogger(AutoBidLockService.class);
 
-    /** Dependency-injected WalletDAO; no static calls inside this service. */
+    /**
+     * Dependency-injected WalletDAO; no static calls inside this service.
+     */
     private final WalletDAO walletDAO;
 
     public AutoBidLockService(WalletDAO walletDAO) {
@@ -158,7 +160,7 @@ public final class AutoBidLockService {
      * @param winningPrice The final auction closing price.
      * @param auctionId    For audit trail.
      * @return {@code true} if deduction succeeded; {@code false} if locked balance was
-     *         somehow insufficient (indicates a system consistency bug — log as CRITICAL).
+     * somehow insufficient (indicates a system consistency bug — log as CRITICAL).
      * @throws SQLException on DB error.
      */
     public boolean finalizeWinDeduction(

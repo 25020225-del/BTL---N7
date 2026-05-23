@@ -1,6 +1,5 @@
 package server;
 
-import com.sun.net.httpserver.HttpServer;
 import controller.AuctionMonitor;
 import controller.UserController;
 import io.github.cdimascio.dotenv.Dotenv;
@@ -13,7 +12,6 @@ import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -271,18 +269,18 @@ public class MultiThreadedServer {
         database.DatabaseManager.initializeDatabase();
 
         // 1. Initialize DAOs and Services
-        database.dao.UserDAO       userDAO       = new database.dao.UserDAO();
-        database.dao.AuctionDAO    auctionDAO    = new database.dao.AuctionDAO();
-        database.dao.BidDAO        bidDAO        = new database.dao.BidDAO();
-        database.dao.WalletDAO     walletDAO     = new database.dao.WalletDAO();
+        database.dao.UserDAO userDAO = new database.dao.UserDAO();
+        database.dao.AuctionDAO auctionDAO = new database.dao.AuctionDAO();
+        database.dao.BidDAO bidDAO = new database.dao.BidDAO();
+        database.dao.WalletDAO walletDAO = new database.dao.WalletDAO();
         database.dao.WithdrawalDAO withdrawalDAO = new database.dao.WithdrawalDAO(); // FIX: thêm mới
-        service.TOTPService        totpService   = new service.TOTPService();
+        service.TOTPService totpService = new service.TOTPService();
 
         // 2. Initialize Controllers with DI
         userController = new UserController(userDAO, totpService);
-        controller.ServerSellerController  sellerCtrl  = new controller.ServerSellerController(auctionDAO);
+        controller.ServerSellerController sellerCtrl = new controller.ServerSellerController(auctionDAO);
         controller.ServerPaymentController paymentCtrl = new controller.ServerPaymentController(walletDAO, withdrawalDAO);
-        controller.ServerBidderController  bidderCtrl  = new controller.ServerBidderController(bidDAO);
+        controller.ServerBidderController bidderCtrl = new controller.ServerBidderController(bidDAO);
 
         // 3. Inject dependencies into static utility services
         service.AutoBidEngine.setBidderController(bidderCtrl);
