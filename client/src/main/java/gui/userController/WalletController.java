@@ -225,6 +225,9 @@ public class WalletController extends VBox {
         requireTotpListener = event -> onRequireTotpPayment(event.getNewValue());
         invalidTotpListener = event -> onInvalidTotp(event.getNewValue());
 
+        AuctionEventBus.addListener(AuctionEventBus.DEPOSIT_SUCCESS, event ->
+                Platform.runLater(WalletService::fetchWalletHistory)
+        );
         AuctionEventBus.addListener(ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
         AuctionEventBus.addListener(ClientPaymentHandler.INVALID_TOTP,         invalidTotpListener);
 
