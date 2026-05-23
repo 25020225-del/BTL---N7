@@ -190,29 +190,27 @@ public class Auction extends Entity {
     // -------------------------------------------------------------------------
 
     /**
-     * Tạo một phiên đấu giá mới với cơ chế "chờ bid đầu tiên".
+     * Factory method creating a new auction session using the "waiting for first bid" mechanism.
+     * Unlike legacy implementations, the final expiration time is not pre-calculated on creation.
+     * The countdown timer initiates only when the first valid bid is successfully processed.
      *
-     * <p>Khác với phiên bản cũ, {@code endTime} <strong>không</strong> được tính ngay.
-     * {@code endTime} sẽ chỉ được xác lập tại thời điểm bid đầu tiên được đặt thành công.</p>
-     *
-     * @param item            Tài sản đấu giá.
-     * @param seller          Người bán.
-     * @param bidIncrement    Mức tăng tối thiểu.
-     * @param startTime       Thời điểm khai mạc phiên.
-     * @param durationMinutes Thời lượng phiên (tính từ bid đầu tiên).
-     * @return Auction mới, {@code endTime = null}, status = OPEN hoặc PENDING_APPROVAL.
+     * @param item            The target asset listed for auction.
+     * @param seller          The hosting user entity.
+     * @param bidIncrement    Minimum threshold gap required between bids.
+     * @param startTime       Scheduled opening date/time.
+     * @param durationMinutes Length of the running state once activated.
+     * @return Newly initialized Auction with status set to OPEN or PENDING_APPROVAL.
      */
     public static Auction createNewAuction(Item item, User seller,
                                            long bidIncrement,
                                            LocalDateTime startTime,
                                            int durationMinutes) {
-        String newId = "AUC-" + System.currentTimeMillis();
+        String newId = "AUC-" + utils.IdGenerator.generateUUIDv7();
 
-        // endTime = null: đồng hồ chưa chạy, chờ bid đầu tiên
         Auction newAuction = new Auction(
                 newId, item, seller,
                 bidIncrement,
-                startTime, null,   // <-- endTime = null
+                startTime, null, // End time remains null until active bidding triggers clock
                 durationMinutes);
 
         newAuction.setStatus(seller.isGood() ? STATUS_OPEN : STATUS_PENDING);
