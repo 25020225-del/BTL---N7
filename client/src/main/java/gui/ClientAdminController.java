@@ -154,6 +154,7 @@ public class ClientAdminController {
      */
     private void handleSignOutInternal() {
         RemoveEventBus.forUser();
+        RemoveEventBus.forAdmin();
         log.info("Admin is signing out.");
         AdminService.logout();
         MainApplication.setNewScene(MainApplication.rootLogin);
@@ -190,6 +191,18 @@ public class ClientAdminController {
                         AlertUtils.showInfo("Success", (String) event.getNewValue())
                 )
         );
+        AuctionEventBus.addListener(AuctionEventBus.ADMIN_ACTION_SUCCESS, event -> {
+            Platform.runLater(() -> {
+                AlertUtils.showInfo("Success", event.getNewValue().toString());
+                AuctionService.fetchAuctions(); // refresh lại danh sách
+            });
+        });
+
+        AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR, event -> {
+            Platform.runLater(() ->
+                    AlertUtils.showError("Error", event.getNewValue().toString())
+            );
+        });
     }
 
     public void start() {

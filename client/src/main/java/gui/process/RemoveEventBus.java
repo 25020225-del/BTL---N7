@@ -53,7 +53,11 @@ public final class RemoveEventBus {
      * Extend this method as admin-specific event subscriptions are added.
      */
     public static void forAdmin() {
-        // Admin-specific cleanup — extend as needed
         AuctionEventBus.removeAllListeners(AuctionEventBus.ADMIN_ACTION_SUCCESS);
+        AuctionEventBus.removeAllListeners(AuctionEventBus.FETCH_AUCTIONS_SUCCESS);
+        AuctionEventBus.removeAllListeners(AuctionEventBus.PRICE_UPDATED);
+        AuctionEventBus.removeAllListeners(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS);
+        AuctionEventBus.removeAllListeners(AuctionEventBus.GENERAL_ERROR);
+        AuctionEventBus.removeAllListeners("AUCTION_STATUS_CHANGED");
     }
 }

@@ -9,21 +9,16 @@ import java.util.function.Consumer;
 
 /**
  * A custom widget card for displaying a user account in the admin panel,
- * with an inline Block/Unblock action button.
- *
- * <p>The button label and action toggle between "Block" and "Unblock" with each click.
- * The widget is throttled with a 2-second cooldown to prevent rapid double-clicks.</p>
- *
- * <p><b>FIX (Logic Bug):</b> The original code had the block/unblock command inverted.
- * {@code command.accept(blocked ? AdminService.BLOCK_USER : AdminService.UNBLOCK_USER)}
- * was sending {@code BLOCK_USER} when the user was <em>already</em> blocked, and vice versa.
- * Fixed to send the correct command for the <em>next desired state</em>.</p>
+ * with inline Block/Unblock and Set Good/Remove Good action buttons.
  */
 public class MinimalUser extends MinimalItem {
 
     private Consumer<String> onActionCommand;
     private boolean isCurrentlyBlocked;
+    private boolean isCurrentlyGood;
+
     private final Button btnAction = new Button();
+    private final Button btnSetAtGood = new Button();
 
     /**
      * Constructs a MinimalUser card widget.
@@ -33,24 +28,33 @@ public class MinimalUser extends MinimalItem {
      * @param name      The user's display name.
      * @param role      The user's role (e.g., "USER", "ADMIN").
      * @param isBlocked Whether the user account is currently blocked.
+     * @param isGood    Whether the user has a "Good" status reputation.
      */
-    public MinimalUser(String id, String username, String name, String role, boolean isBlocked) {
+    public MinimalUser(String id, String username, String name, String role, boolean isBlocked, boolean isGood) {
         super(id);
-        this.setUserData(id + name + role + isBlocked);
+        if(role.trim().equals("Admin")){
+            btnSetAtGood.setDisable(true);
+            btnSetAtGood.setVisible(false);
+            btnAction.setDisable(true);
+            btnAction.setVisible(false);
+        }
+
+        this.setUserData(id);
         this.setPrefSize(260, 100);
+
         this.isCurrentlyBlocked = isBlocked;
+        this.isCurrentlyGood = isGood;
 
         Label lblUser = new Label("User: " + name + " (@" + username + ")");
         Label lblRole = new Label("Role: " + role);
 
         applyBlockButtonState(isBlocked);
+        applyGoodButtonState(isGood);
 
         btnAction.setOnAction(event -> {
             if (onActionCommand == null) return;
 
-            String command = isCurrentlyBlocked
-                    ? "UNBLOCK_USER"
-                    : "BLOCK_USER";
+            String command = isCurrentlyBlocked ? "UNBLOCK_USER" : "BLOCK_USER";
 
             onActionCommand.accept(command);
             isCurrentlyBlocked = !isCurrentlyBlocked;
@@ -58,34 +62,53 @@ public class MinimalUser extends MinimalItem {
             AnimateEffect.pauseNode(btnAction, 2);
         });
 
+        btnSetAtGood.setOnAction(event -> {
+            if (onActionCommand == null) return;
+
+            onActionCommand.accept("TOGGLE_GOOD_STATUS");
+            isCurrentlyGood = !isCurrentlyGood;
+            applyGoodButtonState(isCurrentlyGood);
+            AnimateEffect.pauseNode(btnSetAtGood, 2);
+        });
+
         HBox infoBox = new HBox(20, lblUser, lblRole);
-        this.getChildren().addAll(infoBox, btnAction);
+        this.getChildren().addAll(infoBox, btnAction, btnSetAtGood);
     }
 
     /**
-     * Sets the action handler invoked when the user clicks the Block/Unblock button.
-     * The handler receives the command string ({@code "BLOCK_USER"} or {@code "UNBLOCK_USER"}).
+     * Sets the action handler invoked when the user clicks the action buttons.
      *
-     * @param command A {@link Consumer} that accepts the action command string.
+     * @param command A Consumer that accepts the action command string.
      */
     public void setCommand(Consumer<String> command) {
         this.onActionCommand = command;
     }
 
-    // ── Private Helpers ───────────────────────────────────────────────────────
+    // Private Helpers
 
     /**
-     * Updates the button's label and color to reflect the intended next action.
-     *
-     * @param currentlyBlocked {@code true} if the user is currently blocked.
+     * Updates the block button's label and color to reflect the intended next action.
      */
     private void applyBlockButtonState(boolean currentlyBlocked) {
         if (currentlyBlocked) {
             btnAction.setText("Unblock");
-            btnAction.setStyle("-fx-background-color: green; -fx-text-fill: white;");
+            btnAction.setStyle("-fx-background-color: #2ECC71; -fx-text-fill: white; -fx-cursor: hand;");
         } else {
             btnAction.setText("Block");
-            btnAction.setStyle("-fx-background-color: red; -fx-text-fill: white;");
+            btnAction.setStyle("-fx-background-color: #E74C3C; -fx-text-fill: white; -fx-cursor: hand;");
+        }
+    }
+
+    /**
+     * Updates the Good status button's label and color to reflect the intended next action.
+     */
+    private void applyGoodButtonState(boolean currentlyGood) {
+        if (currentlyGood) {
+            btnSetAtGood.setText("Remove Good");
+            btnSetAtGood.setStyle("-fx-background-color: #7F8C8D; -fx-text-fill: white; -fx-cursor: hand;");
+        } else {
+            btnSetAtGood.setText("Set Good");
+            btnSetAtGood.setStyle("-fx-background-color: #27AE60; -fx-text-fill: white; -fx-cursor: hand;");
         }
     }
 }

@@ -43,14 +43,10 @@ public class TableControllerAdmin extends TableController {
             List<Map<String, Object>> users =
                     (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
             Platform.runLater(() -> {
-                // FIX LỖI 1: Đổi deleteAllAuctions() → deleteAllAuction()
-                // (tên method trong lớp cha TableController là deleteAllAuction — không có 's')
-                // HOẶC: Đổi tên trong TableController thành deleteAllAuctions() cho nhất quán
-                deleteAllItem();  // ✅ FIX: gọi đúng tên method của lớp cha
+                deleteAllItem();
                 users.forEach(data -> mainTilePane.getChildren().add(buildUserItem(data)));
             });
         });
-        // Lắng nghe danh sách yêu cầu rút tiền
         AuctionEventBus.addListener("FETCH_WITHDRAW_REQUESTS_SUCCESS", event -> {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> requests =
@@ -79,7 +75,7 @@ public class TableControllerAdmin extends TableController {
             String msg = (String) result.get("message");
 
             Platform.runLater(() -> {
-                AlertUtils.showInfo("Thành công", msg);
+                AlertUtils.showInfo("Success", msg);
                 AdminService.fetchWithdrawRequests(); // tự reload lại danh sách
             });
         });
@@ -91,13 +87,20 @@ public class TableControllerAdmin extends TableController {
         String name = (String) data.get("name");
         String role = (String) data.get("role");
         boolean isBlocked = (boolean) data.get("is_blocked");
+        boolean isGood = (boolean) data.get("is_good");
 
-        MinimalUser userItem = new MinimalUser(id, username, name, role, isBlocked);
+        MinimalUser userItem = new MinimalUser(id, username, name, role, isBlocked, isGood);
         userItem.setCommand(command -> {
-            if ("BLOCK_USER".equals(command)) {
-                AdminService.blockUser(id);
-            } else if ("UNBLOCK_USER".equals(command)) {
-                AdminService.unblockUser(id);
+            switch (command) {
+                case "BLOCK_USER" ->{
+                    AdminService.blockUser(id);
+                }
+                case "UNBLOCK_USER" ->{
+                    AdminService.unblockUser(id);
+                }
+                case "TOGGLE_GOOD_STATUS" ->{
+                    AdminService.toggleGoodStatus(id);
+                }
             }
         });
         return userItem;

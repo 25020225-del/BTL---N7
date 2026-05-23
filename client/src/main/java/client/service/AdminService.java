@@ -91,4 +91,18 @@ public final class AdminService {
     public static void rejectWithdraw(String requestId) {
         NetworkService.sendMessage("REJECT_WITHDRAW", requestId);
     }
+
+    /**
+     * Sends a request to flip the "Good User" trusted-seller flag for a user.
+     * Server handles the true↔false toggle logic internally.
+     *
+     * @param userId The unique identifier of the user to toggle.
+     */
+    public static void toggleGoodStatus(String userId) {
+        NetworkService.sendMessage("TOGGLE_GOOD_STATUS", userId);
+    }
+
+    public static void cancelAuction(String auctionId) {
+        NetworkService.sendMessage("CANCEL_AUCTION", auctionId);
+    }
 }
