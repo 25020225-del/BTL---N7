@@ -3,11 +3,16 @@ package model.item;
 import model.base.Entity;
 
 /**
- * Represents a generic item that can be placed in an auction.
- * This class serves as a base model containing core details such as the item's name,
- * description, starting price, and its administrative approval status.
+ * Abstract base class for all items that can be placed in an auction.
+ * Defines core attributes shared by every item (name, description, starting price,
+ * image, approval status, and category type). Concrete subclasses must specify the
+ * category they represent (e.g. {@link TangibleItem}, {@link DigitalItem},
+ * {@link ServicePackage}) and provide a meaningful {@link #getInfo()} implementation.
+ *
+ * <p>This class is intentionally abstract: the auction system should never deal
+ * with a plain "unknown-type" item; every item must belong to a concrete category.</p>
  */
-public class Item extends Entity {
+public abstract class Item extends Entity {
     private String itemName;
     private String description;
     private long startingPrice;
@@ -15,11 +20,8 @@ public class Item extends Entity {
     private byte[] file;
     private String approvalStatus;
     private String type = "IDK";
-
-    /**
-     * Default constructor.
-     */
-    public Item() {
+    
+    protected Item() {
         super();
     }
 

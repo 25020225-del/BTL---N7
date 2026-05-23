@@ -96,7 +96,12 @@ public class AuctionMonitor {
                         targetStatus = Auction.STATUS_FINISHED;
                         snapshotEndAtDecision = auction.getEndTime();
                     }
+                } else if (currentStatus.equals(Auction.STATUS_WAITING_FOR_BID)) {
+                if (now.isAfter(auction.getEndTime())) {
+                    targetStatus = Auction.STATUS_CANCELED;
+                    snapshotEndAtDecision = auction.getEndTime();
                 }
+            }
             }
 
             if (targetStatus == null) {
