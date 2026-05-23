@@ -1,6 +1,7 @@
 package model.auction;
 
 import model.item.Item;
+import model.item.TangibleItem;
 import model.user.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,10 +33,7 @@ class AuctionTest {
         bidder2.setId("BIDDER-2");
         bidder2.setUserName("Bidder2");
 
-        item = new Item();
-        item.setId("ITEM-1");
-        item.setItemName("Vintage Watch");
-        item.setStartingPrice(1000L);
+        item = new TangibleItem("ITEM-1", "Vintage Watch", "", 1000L);
 
         // Create an auction starting now and ending in 10 minutes
         auction = new Auction(
@@ -100,7 +98,7 @@ class AuctionTest {
         // If Bidder2 bids 1200, they are outbidding the CURRENT price (1000) but NOT the max bid (1500).
         // However, the rule says: minRequiredBid = currentPrice + bidIncrement.
         // So 1200 is technically a "valid" attempt to raise the price.
-        
+
         long bidAmount = 1020L; // Lower than currentPrice (1000) + increment (50)
         Auction.BidResult secondResult = auction.calculateBidResult(bidder2, bidAmount);
 
@@ -117,7 +115,7 @@ class AuctionTest {
         // Place a valid bid
         Auction.BidResult result = auction.calculateBidResult(bidder1, 2000L);
         assertNotNull(result);
-        
+
         // Anti-sniping in Auction.calculateBidResult(): newEndTime = oldEndTime.plusMinutes(2) (hard-capped by maxEndTime)
         assertEquals(nearEnd.plusMinutes(2), result.newEndTime, "End time should be exactly 2 minutes later than previous end time");
     }
@@ -127,16 +125,16 @@ class AuctionTest {
     void testConcurrentBidCalculation() {
         // Simulate a scenario where two bidders bid the same amount simultaneously
         // based on the same current price.
-        
+
         // Bidder 1 bids 1500
         Auction.BidResult result1 = auction.calculateBidResult(bidder1, 1500L);
-        
+
         // Bidder 2 also bids 1500 at the same time (before result1 is applied)
         Auction.BidResult result2 = auction.calculateBidResult(bidder2, 1500L);
-        
+
         assertNotNull(result1);
         assertNotNull(result2);
-        
+
         // From the same snapshot (no winner yet), each bidder becomes the provisional winner of their own calculation.
         assertEquals(bidder1, result1.newWinner);
         assertEquals(bidder2, result2.newWinner);

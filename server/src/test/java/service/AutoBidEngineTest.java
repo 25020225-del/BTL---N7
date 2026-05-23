@@ -5,6 +5,7 @@ import database.dao.BidDAO;
 import model.auction.Auction;
 import model.auction.AutoBid;
 import model.item.Item;
+import model.item.TangibleItem;
 import model.user.User;
 import org.junit.jupiter.api.Test;
 
@@ -36,8 +37,7 @@ class AutoBidEngineTest {
     @Test
     void autoBidEngine_prefersEarlierRegistrationWhenMaxBidTied() throws Exception {
         // Arrange
-        Item item = new Item();
-        item.setStartingPrice(1000L);
+        Item item = new TangibleItem("", "", "", 1000L);
 
         User seller = new User();
         seller.setId("SELLER-AE");
@@ -75,4 +75,3 @@ class AutoBidEngineTest {
         assertEquals(2000L, ctrl.lastMaxBid.get(), "Tie on maxBid should push to maxBid");
     }
 }
-

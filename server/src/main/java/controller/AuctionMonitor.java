@@ -96,7 +96,12 @@ public class AuctionMonitor {
                         targetStatus = Auction.STATUS_FINISHED;
                         snapshotEndAtDecision = auction.getEndTime();
                     }
+                } else if (currentStatus.equals(Auction.STATUS_WAITING_FOR_BID)) {
+                if (now.isAfter(auction.getEndTime())) {
+                    targetStatus = Auction.STATUS_CANCELED;
+                    snapshotEndAtDecision = auction.getEndTime();
                 }
+            }
             }
 
             if (targetStatus == null) {
@@ -331,7 +336,7 @@ public class AuctionMonitor {
             ps.setString(2, winnerId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    walletDAO.unlockBalance(conn, rs.getString("bidder_id"), rs.getDouble("max_bid"));
+                    walletDAO.unlockBalance(conn, rs.getString("bidder_id"), rs.getLong("max_bid"));
                 }
             }
         }

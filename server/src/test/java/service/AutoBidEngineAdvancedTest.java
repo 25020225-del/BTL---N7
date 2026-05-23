@@ -4,6 +4,7 @@ import controller.ServerBidderController;
 import model.auction.Auction;
 import model.auction.AutoBid;
 import model.item.Item;
+import model.item.TangibleItem;
 import model.user.User;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,8 +43,7 @@ class AutoBidEngineAdvancedTest {
         // 2. Setup dữ liệu phiên đấu giá ảo
         User seller = new User();
         seller.setId("SELLER-TEST");
-        Item item = new Item();
-        item.setStartingPrice(1000L);
+        Item item = new TangibleItem("", "", "", 1000L);
 
         auction = new Auction("AUC-DEADLOCK-TEST", item, seller, 50L,
                 LocalDateTime.now().minusMinutes(5),

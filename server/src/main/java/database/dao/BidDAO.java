@@ -3,6 +3,7 @@ package database.dao;
 import database.DatabaseManager;
 import model.auction.Auction;
 import model.item.Item;
+import model.item.ItemFactory;
 import model.user.User;
 import service.AutoBidLockService;
 
@@ -115,22 +116,22 @@ public class BidDAO {
      * Thực hiện một giao dịch bid đầy đủ trong một DB transaction (Dành cho SQLite).
      */
     public BidCommitResult executeBidTransactionSourceOfTruth(Connection conn,
-                                     String auctionId,
-                                     User currentUser,
-                                     long newMaxBid,
-                                     boolean isBot) throws SQLException, InsufficientFundsException {
+                                                              String auctionId,
+                                                              User currentUser,
+                                                              long newMaxBid,
+                                                              boolean isBot) throws SQLException, InsufficientFundsException {
 
         // ── Step 0: Đọc snapshot từ DB (BỎ 'FOR UPDATE' vì dùng SQLite) ──
         final String selectSql = "SELECT starting_price, current_price, highest_max_bid, "
                 + "bid_increment, start_time, end_time, duration_minutes, "
-                + "status, winning_bidder_id, seller_id "
+                + "status, winning_bidder_id, seller_id, item_type, item_name, description "
                 + "FROM auctions WHERE id = ?";
 
         long          startingPrice, currentPrice, highestMaxBid, bidIncrement;
         LocalDateTime startTime;
         LocalDateTime endTime;
         int           durationMinutes;
-        String        status, winningBidderId, sellerId;
+        String        status, winningBidderId, sellerId, itemType, itemName, description;
 
         try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
             ps.setString(1, auctionId);
@@ -152,6 +153,9 @@ public class BidDAO {
                 startTime       = LocalDateTime.parse(rs.getString("start_time"));
                 winningBidderId = rs.getString("winning_bidder_id");
                 sellerId        = rs.getString("seller_id");
+                itemType        = rs.getString("item_type");
+                itemName        = rs.getString("item_name");
+                description     = rs.getString("description");
 
                 String endTimeStr = rs.getString("end_time");
                 endTime = (endTimeStr != null && !endTimeStr.trim().isEmpty())
@@ -164,8 +168,7 @@ public class BidDAO {
         Auction auctionSnapshot = new Auction();
         auctionSnapshot.setId(auctionId);
 
-        Item item = new Item();
-        item.setStartingPrice(startingPrice);
+        Item item = ItemFactory.createItem(itemType, "", itemName, description, startingPrice);
         auctionSnapshot.setItem(item);
 
         User seller = new User();

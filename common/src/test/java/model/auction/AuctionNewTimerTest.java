@@ -1,6 +1,7 @@
 package model.auction;
 
 import model.item.Item;
+import model.item.TangibleItem;
 import model.user.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,9 +37,7 @@ class AuctionNewTimerTest {
 
         seller.setGood(true);
 
-        item = new Item();
-        item.setStartingPrice(1000L);
-        item.setItemName("Test Item");
+        item = new TangibleItem("", "Test Item", "", 1000L);
 
         // createNewAuction: endTime = null, status = OPEN (seller isGood)
         auction = Auction.createNewAuction(

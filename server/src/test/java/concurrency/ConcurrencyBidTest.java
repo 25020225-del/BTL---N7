@@ -2,6 +2,7 @@ package concurrency;
 
 import model.auction.Auction;
 import model.item.Item;
+import model.item.TangibleItem;
 import model.user.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,8 +34,7 @@ class ConcurrencyBidTest {
         bidder2 = new User();
         bidder2.setId("BIDDER-2");
 
-        Item item = new Item();
-        item.setStartingPrice(1000L);
+        Item item = new TangibleItem("", "", "", 1000L);
 
         LocalDateTime start = LocalDateTime.now().minusMinutes(10);
         LocalDateTime end = LocalDateTime.now().plusMinutes(10);
