@@ -135,7 +135,7 @@ public class WalletController extends VBox {
         payload.put("payoutDetails", payoutDetails);
 
         AnimateEffect.pauseNode(btnWithdraw, 3);
-        NetworkService.sendMessage("REQUEST_WITHDRAW", payload);
+        WalletService.requestWithdrawal(amount, payoutMethod, payoutDetails, null);
         log.info("Withdrawal request sent: {} VND via {}", amount, payoutMethod);
     }
 
