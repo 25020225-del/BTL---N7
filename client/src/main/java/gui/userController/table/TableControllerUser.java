@@ -4,6 +4,7 @@ import client.handler.AuctionEventBus;
 import client.service.AuctionService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import gui.process.AlertUtils;
+import gui.widget.Selector;
 import gui.widget.item.MinimalItem;
 import gui.widget.item.MinimalItemUser;
 import gui.widget.item.MinimalSellerItem;
@@ -22,8 +23,16 @@ import java.util.List;
 import java.util.Map;
 
 public class TableControllerUser extends TableController {
+    Selector chooseType;
+
     @FXML
     protected void initialize() {
+        removeAllSelectors();
+        chooseType = new Selector("Type","",ItemFactory.TYPE_TANGIBLE,ItemFactory.TYPE_DIGITAL,ItemFactory.TYPE_SERVICE);
+        chooseType.setOnChange((event1) -> {
+            searchByProperties("itemType",event1);
+        });
+        addSelector(chooseType);
         setupSearch();
         AuctionEventBus.addListener(AuctionEventBus.FETCH_AUCTIONS_SUCCESS, event -> {
             try {

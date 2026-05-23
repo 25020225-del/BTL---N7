@@ -22,6 +22,7 @@ public class MinimalItemUser extends MinimalItem {
     public MinimalItemUser(String id, String imageUrl, String nameString, String itemType, String priceString, long dateString) {
         super(id);
         this.setUserData(id + nameString + priceString + dateString);
+        this.getProperties().put("itemType", itemType);
 
         imageView = new ImageView();
 
