@@ -41,28 +41,43 @@ public class WalletController extends VBox {
     private static final Logger log = LoggerFactory.getLogger(WalletController.class); // FIX: was MainApplication.class
 
     // ── FXML Components ───────────────────────────────────────────────────────
-    @FXML private Label lblTotalBalance;
-    @FXML private Label lblFrozenBalance;
-    @FXML private TextField txtDepositAmount;
-    @FXML private Button btnDeposit;
-    @FXML private TextField  txtWithdrawAmount;
-    @FXML private ComboBox<String> cmbPayoutMethod;
-    @FXML private TextField  txtPayoutDetails;
-    @FXML private Button     btnWithdraw;
+    @FXML
+    private Label lblTotalBalance;
+    @FXML
+    private Label lblFrozenBalance;
+    @FXML
+    private TextField txtDepositAmount;
+    @FXML
+    private Button btnDeposit;
+    @FXML
+    private TextField txtWithdrawAmount;
+    @FXML
+    private ComboBox<String> cmbPayoutMethod;
+    @FXML
+    private TextField txtPayoutDetails;
+    @FXML
+    private Button btnWithdraw;
 
-    @FXML private TableView<WalletTransaction>          tableTransactions;
-    @FXML private TableColumn<WalletTransaction, String> colId;
-    @FXML private TableColumn<WalletTransaction, String> colDate;
-    @FXML private TableColumn<WalletTransaction, Long>   colAmount;
-    @FXML private TableColumn<WalletTransaction, String> colDescription;
+    @FXML
+    private TableView<WalletTransaction> tableTransactions;
+    @FXML
+    private TableColumn<WalletTransaction, String> colId;
+    @FXML
+    private TableColumn<WalletTransaction, String> colDate;
+    @FXML
+    private TableColumn<WalletTransaction, Long> colAmount;
+    @FXML
+    private TableColumn<WalletTransaction, String> colDescription;
 
     // ── State ─────────────────────────────────────────────────────────────────
     private Runnable onReturnAction;
-    private long currentBalance       = 0L;
+    private long currentBalance = 0L;
     private long currentFrozenBalance = 0L;
 
-    /** Stores the deposit amount that is awaiting TOTP confirmation so it can be retried. */
-    private double pendingDepositAmount = 0.0;
+    /**
+     * Stores the deposit amount that is awaiting TOTP confirmation so it can be retried.
+     */
+    private long pendingDepositAmount = 0L;
 
     private final ObservableList<WalletTransaction> transactionData =
             FXCollections.observableArrayList();
@@ -103,10 +118,11 @@ public class WalletController extends VBox {
         cmbPayoutMethod.getItems().addAll("BANK_TRANSFER", "E_WALLET");
         cmbPayoutMethod.getSelectionModel().selectFirst();
     }
+
     @FXML
     private void handleWithdraw() {
         // 1. Validate input
-        String amountStr    = txtWithdrawAmount.getText().trim();
+        String amountStr = txtWithdrawAmount.getText().trim();
         String payoutMethod = cmbPayoutMethod.getValue();
         String payoutDetails = txtPayoutDetails.getText().trim();
 
@@ -130,8 +146,8 @@ public class WalletController extends VBox {
 
         // 2. Build payload và gửi (không có TOTP lần đầu)
         Map<String, Object> payload = new java.util.HashMap<>();
-        payload.put("amount",        amount);
-        payload.put("payoutMethod",  payoutMethod);
+        payload.put("amount", amount);
+        payload.put("payoutMethod", payoutMethod);
         payload.put("payoutDetails", payoutDetails);
 
         AnimateEffect.pauseNode(btnWithdraw, 3);
@@ -178,7 +194,7 @@ public class WalletController extends VBox {
      */
     @FXML
     private void handleDeposit() {
-        double amount = parseDepositAmount();
+        long amount = parseDepositAmount();
         if (amount <= 0) return;
 
         AnimateEffect.pauseNode(btnDeposit, 2);
@@ -262,9 +278,9 @@ public class WalletController extends VBox {
      */
     @SuppressWarnings("unchecked")
     private void handleWalletDataReceived(NetworkMessage response) {
-        Map<String, Object> map       = (Map<String, Object>) response.getData();
-        long balance                  = Long.parseLong(map.get("balance").toString());
-        long lockedBalance            = Long.parseLong(map.get("lockedBalance").toString());
+        Map<String, Object> map = (Map<String, Object>) response.getData();
+        long balance = Long.parseLong(map.get("balance").toString());
+        long lockedBalance = Long.parseLong(map.get("lockedBalance").toString());
         List<Map<String, Object>> txs = (List<Map<String, Object>>) map.get("transactions");
 
         List<WalletTransaction> newTransactions = txs.stream()
@@ -298,7 +314,7 @@ public class WalletController extends VBox {
      * Updates the balance label fields and stores the current values in memory.
      */
     private void updateBalanceDisplay(long balance, long frozenBalance) {
-        currentBalance       = balance;
+        currentBalance = balance;
         currentFrozenBalance = frozenBalance;
         lblTotalBalance.setText(String.format("%,d VND", currentBalance));
         lblFrozenBalance.setText(String.format("%,d VND", currentFrozenBalance));
@@ -309,14 +325,14 @@ public class WalletController extends VBox {
      *
      * @return A positive {@code double} if valid; {@code -1} if validation fails.
      */
-    private double parseDepositAmount() {
+    private long parseDepositAmount() {
         String input = txtDepositAmount.getText().trim();
         try {
-            double amount = Double.parseDouble(input);
+            long amount = Long.parseLong(input);
             if (amount <= 0) throw new NumberFormatException("Amount must be positive");
             return amount;
         } catch (NumberFormatException e) {
-            AlertUtils.showError( "Input Error", "Please enter a valid deposit amount.");
+            AlertUtils.showError("Input Error", "Please enter a valid deposit amount.");
             return -1;
         }
     }
@@ -325,14 +341,14 @@ public class WalletController extends VBox {
      * Sends the deposit request to the server.
      * Stores the amount as {@link #pendingDepositAmount} for TOTP retry flow.
      *
-     * @param amount    The deposit amount in VND.
-     * @param totpCode  A 6-digit TOTP code, or {@code null} for the initial attempt.
+     * @param amount   The deposit amount in VND.
+     * @param totpCode A 6-digit TOTP code, or {@code null} for the initial attempt.
      */
-    private void sendDepositRequest(double amount, String totpCode) {
+    private void sendDepositRequest(long amount, String totpCode) {
         pendingDepositAmount = amount;
 
         Map<String, Object> payload = new java.util.HashMap<>();
-        payload.put("amount", (long) amount);
+        payload.put("amount", amount);
         if (totpCode != null && !totpCode.isBlank()) {
             payload.put("totpCode", totpCode);
         }
@@ -350,7 +366,7 @@ public class WalletController extends VBox {
     private void onRequireTotpPayment(Object eventData) {
         Platform.runLater(() -> {
             long serverAmount = resolveAmountFromEvent(eventData);
-            String totpCode   = showTotpChallengeDialog(serverAmount);
+            String totpCode = showTotpChallengeDialog(serverAmount);
 
             NetworkMessage msg = (NetworkMessage) eventData;
             Map<String, Object> data = (Map<String, Object>) msg.getData();
@@ -391,8 +407,8 @@ public class WalletController extends VBox {
     private long resolveAmountFromEvent(Object eventData) {
         if (pendingDepositAmount > 0) {
             try {
-                NetworkMessage msg          = (NetworkMessage) eventData;
-                Map<String, Object> data    = (Map<String, Object>) msg.getData();
+                NetworkMessage msg = (NetworkMessage) eventData;
+                Map<String, Object> data = (Map<String, Object>) msg.getData();
                 if (data.containsKey("amount")) {
                     return Long.parseLong(data.get("amount").toString());
                 }
