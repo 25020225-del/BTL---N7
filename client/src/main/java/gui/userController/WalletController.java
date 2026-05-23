@@ -351,11 +351,19 @@ public class WalletController extends VBox {
             long serverAmount = resolveAmountFromEvent(eventData);
             String totpCode   = showTotpChallengeDialog(serverAmount);
 
-            if (totpCode != null) {
-                sendDepositRequest(serverAmount, totpCode);
+            NetworkMessage msg = (NetworkMessage) eventData;
+            Map<String, Object> data = (Map<String, Object>) msg.getData();
+            if (data.containsKey("payoutMethod")) { // Identified as Withdrawal challenge
+                String payoutMethod = (String) data.get("payoutMethod");
+                String payoutDetails = (String) data.get("payoutDetails");
+                Map<String, Object> payload = new java.util.HashMap<>();
+                payload.put("amount", serverAmount);
+                payload.put("payoutMethod", payoutMethod);
+                payload.put("payoutDetails", payoutDetails);
+                payload.put("totpCode", totpCode);
+                NetworkService.sendMessage("REQUEST_WITHDRAW", payload);
             } else {
-                log.info("User cancelled TOTP challenge for deposit.");
-                btnDeposit.setDisable(false);
+                sendDepositRequest(serverAmount, totpCode);
             }
         });
     }
