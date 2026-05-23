@@ -37,7 +37,6 @@ public class TableControllerAdmin extends TableController {
                 data.forEach(map -> addNewItem(buildMinimalItem(map)));
             });
         });
-
         AuctionEventBus.addListener("FETCH_USERS_SUCCESS", event -> {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> users =
@@ -66,8 +65,6 @@ public class TableControllerAdmin extends TableController {
                 }
             });
         });
-
-// Lắng nghe kết quả Approve/Reject
         AuctionEventBus.addListener("WITHDRAW_ACTION_SUCCESS", event -> {
             @SuppressWarnings("unchecked")
             Map<String, Object> result =
@@ -106,47 +103,22 @@ public class TableControllerAdmin extends TableController {
         return userItem;
     }
 
-    protected Auction auctionFromMap(Map<String, Object> map) {
-        Auction auction = new Auction();
-        auction.setId((String) map.get("id"));
-
-        Item item = ItemFactory.createItem(
-                ItemFactory.TYPE_TANGIBLE,
-                "ITM-" + map.get("id"),
-                (String) map.get("itemName"),
-                (String) map.get("description"),
-                ((Number) map.get("startingPrice")).longValue()
-        );
-        item.setImageUrl((String) map.get("imageUrl"));
-        auction.setItem(item);
-
-        User seller = new User();
-        seller.setId((String) map.get("sellerId"));
-        auction.setSeller(seller);
-
-        auction.setCurrentPrice(((Number) map.get("currentPrice")).longValue());
-        auction.setEndTime(
-                Instant.ofEpochMilli(((Number) map.get("endTime")).longValue())
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDateTime()
-        );
-        return auction;
-    }
-
     protected MinimalItemAdmin buildMinimalItem(Map<String, Object> map) {
         String id = (String) map.get("id");
         String name = (String) map.get("itemName");
+        String status = (String) map.get("status");
+        long price = ((Number) map.get("currentPrice")).longValue();
 
-        Auction auction = auctionFromMap(map);
+        Auction auction = Auction.buildAuctionFromMap(map);
 
-        MinimalItemAdmin item = new MinimalItemAdmin(id, name, "");
+        MinimalItemAdmin item = new MinimalItemAdmin(id, name, status, price );
         item.addAdminOptions(id, command -> {
             switch (command) {
                 case "APPROVE_AUCTION" -> AdminService.approveAuction(id);
                 case "REJECT_AUCTION" -> AdminService.rejectAuction(id);
-                case "SHOW_AUCTION" -> {
-                    openItemDetail(auction);
-                }
+                case "SHOW_AUCTION" ->  openItemDetail(auction);
+                case "CANCEL_AUCTION" ->  AdminService.cancelAuction(id);
+
             }
         });
         return item;

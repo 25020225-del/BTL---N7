@@ -57,24 +57,6 @@ public class MinimalItemUser extends MinimalItem {
     }
 
     /**
-     * Adds seller-specific management options (Edit/Delete) to this item.
-     * These options are presented via a right-click context menu.
-     */
-    public void addSellerOptions(Consumer<String> onEdit, Consumer<String> onDelete) {
-        ContextMenu contextMenu = new ContextMenu();
-
-        MenuItem editItem = new MenuItem("Edit Auction");
-        editItem.setOnAction(e -> onEdit.accept(this.getId()));
-
-        MenuItem deleteItem = new MenuItem("Delete Auction");
-        deleteItem.setStyle("-fx-text-fill: red;");
-        deleteItem.setOnAction(e -> onDelete.accept(this.getId()));
-
-        contextMenu.getItems().addAll(editItem, deleteItem);
-        this.setOnContextMenuRequested(e -> contextMenu.show(this, e.getScreenX(), e.getScreenY()));
-    }
-
-    /**
      * Retrieves the primary interaction button for this item card.
      *
      * @return The "AUCTION" button.

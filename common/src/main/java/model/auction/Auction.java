@@ -3,13 +3,17 @@ package model.auction;
 import model.base.Entity;
 import model.finance.BidTransaction;
 import model.item.Item;
+import model.item.ItemFactory;
 import model.user.User;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
@@ -219,6 +223,35 @@ public class Auction extends Entity {
 
         newAuction.setStatus(seller.isGood() ? STATUS_OPEN : STATUS_PENDING);
         return newAuction;
+    }
+
+
+    public static Auction buildAuctionFromMap(Map<String, Object> map) {
+        Auction auction = new Auction();
+        auction.setId((String) map.get("id"));
+
+        Item item = ItemFactory.createItem(
+                (String) map.get("itemType"),
+                "ITM-" + map.get("id"),
+                (String) map.get("itemName"),
+                (String) map.get("description"),
+                ((Number) map.get("startingPrice")).longValue()
+        );
+        item.setImageUrl((String) map.get("imageUrl"));
+        auction.setItem(item);
+
+        User seller = new User();
+        seller.setId((String) map.get("sellerId"));
+        auction.setSeller(seller);
+
+        auction.setCurrentPrice(((Number) map.get("currentPrice")).longValue());
+        auction.setEndTime(
+                Instant.ofEpochMilli(((Number) map.get("endTime")).longValue())
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDateTime()
+        );
+
+        return auction;
     }
 
     // -------------------------------------------------------------------------
@@ -504,6 +537,8 @@ public class Auction extends Entity {
                 + "End Time     : " + (endTime != null ? endTime : "Chờ bid đầu tiên…") + "\n"
                 + "Duration     : " + this.durationMinutes + " phút";
     }
+
+
 
     // =========================================================================
     // GETTERS & SETTERS

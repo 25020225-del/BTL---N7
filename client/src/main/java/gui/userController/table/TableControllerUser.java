@@ -101,35 +101,6 @@ public class TableControllerUser extends TableController {
             AuctionService.fetchAuctions();
         });
     }
-
-    protected Auction auctionFromMap(Map<String, Object> map) {
-        Auction auction = new Auction();
-        auction.setId((String) map.get("id"));
-
-        Item item = ItemFactory.createItem(
-                (String) map.get("itemType"),
-                "ITM-" + map.get("id"),
-                (String) map.get("itemName"),
-                (String) map.get("description"),
-                ((Number) map.get("startingPrice")).longValue()
-        );
-        item.setImageUrl((String) map.get("imageUrl"));
-        auction.setItem(item);
-
-        User seller = new User();
-        seller.setId((String) map.get("sellerId"));
-        auction.setSeller(seller);
-
-        auction.setCurrentPrice(((Number) map.get("currentPrice")).longValue());
-        auction.setEndTime(
-                Instant.ofEpochMilli(((Number) map.get("endTime")).longValue())
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDateTime()
-        );
-
-        return auction;
-    }
-
     protected MinimalItemUser buildMinimalItem(Map<String, Object> map) {
         String id = (String) map.get("id");
         String name = (String) map.get("itemName");
@@ -139,7 +110,7 @@ public class TableControllerUser extends TableController {
         double price = ((Number) map.get("currentPrice")).doubleValue();
         long endTime = ((Number) map.get("endTime")).longValue();
 
-        Auction auction = auctionFromMap(map);
+        Auction auction = Auction.buildAuctionFromMap(map);
 
         MinimalItemUser item = new MinimalItemUser(id, imageUrl, name, itemType,
                 String.format("%,.0f", price), endTime);

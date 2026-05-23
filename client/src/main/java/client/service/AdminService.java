@@ -24,6 +24,7 @@ public final class AdminService {
     public static void fetchPendingAuctions() {
         NetworkService.sendMessage("FETCH_PENDING_AUCTIONS", "");
     }
+    public static void fetchRunningAuctions() {NetworkService.sendMessage("FETCH_AUCTIONS", "");}
 
     /**
      * Requests the server to return the full list of registered users.
