@@ -229,7 +229,7 @@ public class WalletController extends VBox {
                 Platform.runLater(WalletService::fetchWalletHistory)
         );
         AuctionEventBus.addListener(ClientPaymentHandler.REQUIRE_TOTP_PAYMENT, requireTotpListener);
-        AuctionEventBus.addListener(ClientPaymentHandler.INVALID_TOTP,         invalidTotpListener);
+        AuctionEventBus.addListener(ClientPaymentHandler.INVALID_TOTP, invalidTotpListener);
 
         // ── [NEW] Lắng nghe kết quả rút tiền ────────────────────────────────────
         AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_REQUEST_SUCCESS, event ->
@@ -243,18 +243,16 @@ public class WalletController extends VBox {
                 })
         );
         AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_APPROVED, event ->
-                Platform.runLater(() ->
-                        AlertUtils.showInfo(
-                                "Rút tiền thành công",
-                                "Admin đã duyệt yêu cầu của bạn. Tiền đã được chuyển.")
-                )
+                Platform.runLater(() -> {
+                    AlertUtils.showInfo("Withdraw successful", "Please wait while we transfer your money");
+                    WalletService.fetchWalletHistory();
+                })
         );
         AuctionEventBus.addListener(ClientPaymentHandler.WITHDRAW_REJECTED, event ->
-                Platform.runLater(() ->
-                        AlertUtils.showWarning(
-                                "Yêu cầu bị từ chối",
-                                "Admin đã từ chối yêu cầu rút tiền. Số tiền đã được hoàn lại.")
-                )
+                Platform.runLater(() -> {
+                    AlertUtils.showWarning("Withdraw failed", "Your request is rejected.");
+                    WalletService.fetchWalletHistory();
+                })
         );
     }
 
