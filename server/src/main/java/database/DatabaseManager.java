@@ -18,6 +18,61 @@ public class DatabaseManager {
     private static final HikariDataSource dataSource;
     private static final boolean IS_TEST_ENV;
 
+    private static final String TRIGGER_WALLET_NON_NEGATIVE = """
+    CREATE TRIGGER IF NOT EXISTS trg_wallet_balance_non_negative
+    BEFORE UPDATE OF balance, locked_balance ON wallets
+    FOR EACH ROW
+    WHEN NEW.balance < 0 OR NEW.locked_balance < 0
+    BEGIN
+        SELECT RAISE(ABORT,
+            '[C1-GUARD] Wallet invariant violated: balance or locked_balance would go negative. '
+            || 'user_id=' || NEW.user_id
+            || ', new_balance=' || NEW.balance
+            || ', new_locked=' || NEW.locked_balance);
+    END;
+    """;
+
+    private static final String TRIGGER_WINNER_LOCKED_INVARIANT = """
+    CREATE TRIGGER IF NOT EXISTS trg_winner_locked_balance_invariant
+    BEFORE UPDATE OF locked_balance ON wallets
+    FOR EACH ROW
+    WHEN NEW.locked_balance < OLD.locked_balance
+    BEGIN
+        SELECT RAISE(ABORT,
+            '[C1-GUARD] Financial invariant violated: cannot reduce locked_balance '
+            || 'below current_price while user is winning_bidder of an active auction. '
+            || 'user_id=' || NEW.user_id
+            || ', new_locked=' || NEW.locked_balance)
+        WHERE EXISTS (
+            SELECT 1
+            FROM auctions
+            WHERE winning_bidder_id = NEW.user_id
+              AND status IN ('RUNNING', 'FINISHED')
+              AND current_price > NEW.locked_balance
+        );
+    END;
+    """;
+
+    private static final String TRIGGER_WINNING_BIDDER_LOCKED_FUNDS = """
+    CREATE TRIGGER IF NOT EXISTS trg_winning_bidder_must_have_locked_funds
+    BEFORE UPDATE OF winning_bidder_id, current_price ON auctions
+    FOR EACH ROW
+    WHEN NEW.winning_bidder_id IS NOT NULL
+    BEGIN
+        SELECT RAISE(ABORT,
+            '[C1-GUARD] Cannot set winning_bidder: their locked_balance is less than current_price. '
+            || 'auction_id=' || NEW.id
+            || ', winning_bidder_id=' || NEW.winning_bidder_id
+            || ', current_price=' || NEW.current_price)
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM wallets
+            WHERE user_id = NEW.winning_bidder_id
+              AND locked_balance >= NEW.current_price
+        );
+    END;
+    """;
+
     static {
         IS_TEST_ENV = detectTestEnvironment();
         HikariConfig config = new HikariConfig();
@@ -54,8 +109,8 @@ public class DatabaseManager {
     /**
      * Retrieves an active connection from the underlying data source pool.
      *
-     * @return a valid {@link Connection} instance.
-     * @throws SQLException if a database access error occurs.
+     * @return a valid {@link Connection} instance
+     * @throws SQLException if a database access error occurs
      */
     public static Connection getConnection() throws SQLException {
         return dataSource.getConnection();
@@ -73,7 +128,7 @@ public class DatabaseManager {
     /**
      * Performs idempotent relational table provisioning and incremental schema migrations.
      *
-     * @throws IllegalStateException if any bootstrapping database mutation encounters a fatal exception.
+     * @throws IllegalStateException if any bootstrapping database mutation encounters a fatal exception
      */
     public static void initializeDatabase() {
         try (Connection conn = getConnection();
@@ -86,6 +141,7 @@ public class DatabaseManager {
             createAuctionTables(stmt);
             createWithdrawalTables(stmt);
             applyMigrations(stmt);
+            applyFinancialIntegrityTriggers(stmt);
             seedDefaultAdmin(conn);
 
             ResultSet rs = conn.getMetaData().getColumns(null, null, "auctions", "item_type");
@@ -234,7 +290,7 @@ public class DatabaseManager {
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_auctions_status_start ON auctions (status, start_time);");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_auctions_status_end ON auctions (status, end_time);");
         } catch (SQLException e) {
-            log.warn("Migration: Thất bại khi tạo index hỗ trợ thời gian: {}", e.getMessage());
+            log.warn("Migration: Failed to provision temporal indices: {}", e.getMessage());
         }
 
         try {
@@ -251,7 +307,6 @@ public class DatabaseManager {
         try {
             stmt.execute(ddl);
         } catch (SQLException ignored) {
-            // No operation required if schema mutation already exists
         }
     }
 
@@ -270,5 +325,12 @@ public class DatabaseManager {
             ps.setInt(7, 0);
             ps.executeUpdate();
         }
+    }
+
+    private static void applyFinancialIntegrityTriggers(Statement stmt) throws SQLException {
+        stmt.execute(TRIGGER_WALLET_NON_NEGATIVE);
+        stmt.execute(TRIGGER_WINNER_LOCKED_INVARIANT);
+        stmt.execute(TRIGGER_WINNING_BIDDER_LOCKED_FUNDS);
+        log.info("Financial integrity database triggers enforced successfully.");
     }
 }

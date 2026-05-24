@@ -17,11 +17,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
- * Data Access Object managing low-level bidding entries, ledger transactional commits,
- * and proxy wallet balance holding checkpoints.
+ * Data Access Object managing persistence layer bindings for bidding operations,
+ * atomic transaction execution, and auto-bid liquidity allocation.
  */
 public class BidDAO {
+
+    private static final Logger log = LoggerFactory.getLogger(BidDAO.class);
 
     private final WalletDAO walletDAO = new WalletDAO();
     private AutoBidLockService autoBidLockService = new AutoBidLockService(walletDAO);
@@ -62,27 +67,25 @@ public class BidDAO {
                 if (rs.next()) return rs.getInt("is_bot") == 1;
             }
         } catch (SQLException e) {
-            // Default conservative mapping strategy if trace lookup drops
         }
         return false;
     }
 
     /**
-     * Executes an atomic Compare-And-Swap (CAS) bidding script payload inside a shared transaction boundary.
+     * Executes an atomic Compare-And-Swap (CAS) state validation and bid placement sequence.
+     * Enforces currency lock allocations inside the connection's transaction boundary.
      *
-     * @param conn shared database transaction connection resource.
-     * @param auctionId unique primary identity pointer of the targeted auction.
-     * @param currentUser verified entity constructing the bid payload request.
-     * @param newMaxBid top monetary ceiling cap evaluated for registration.
-     * @param isBot flags if context is parsed from proxy engines or interactive views.
-     * @return verified {@link BidCommitResult} instance snapshot data, or null on locking collisions.
-     * @throws InsufficientFundsException if the active asset wallet cannot safely buffer the pledge bounds.
-     * @throws SQLException on persistence data query rejections.
+     * @param conn        the active transactional database connection resource
+     * @param auctionId   the unique identifier of the target auction asset
+     * @param currentUser the actor requesting the bid placement
+     * @param newMaxBid   the absolute monetary cap threshold for evaluation
+     * @param isBot       indicates if the request originates from automated engines or UI events
+     * @return the calculated {@link BidCommitResult} state changes tuple, or {@code null} on race conditions
+     * @throws InsufficientFundsException if the actor's wallet lacks the overhead balance to satisfy constraints
+     * @throws SQLException                on database transaction routing errors
      */
     public BidCommitResult executeBidTransactionSourceOfTruth(Connection conn, String auctionId, User currentUser, long newMaxBid, boolean isBot) throws SQLException, InsufficientFundsException {
-
-        // SQLite does not support row-level 'FOR UPDATE' locks; state consistency is enforced
-        // through direct field constraints during the final atomized conditional UPDATE statements.
+        // SQLite utilizes immediate database connection serialization to counter-act row-locking deficiencies
         final String selectSql = "SELECT starting_price, current_price, highest_max_bid, "
                 + "bid_increment, start_time, end_time, duration_minutes, "
                 + "status, winning_bidder_id, seller_id, item_type, item_name, description "
@@ -262,15 +265,25 @@ public class BidDAO {
         }
     }
 
+    /**
+     * Terminates an active proxy bidding contract for the targeted user context.
+     * Evaluates state machine configurations to securely manage asset ledger lock releases.
+     *
+     * @param currentUser the bidding user entity removing proxy automation
+     * @param auction     the target auction configuration container
+     * @return {@code true} if deactivation completes successfully, {@code false} if no active model matches parameters
+     * @throws SQLException on database connection integrity failures
+     */
     public boolean cancelAutoBid(User currentUser, Auction auction) throws SQLException {
-        final String checkSql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
-        final String deleteSql = "UPDATE auto_bids SET is_active = 0 WHERE auction_id = ? AND bidder_id = ?";
+        final String checkAutoBidSql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
+        final String checkWinnerSql = "SELECT winning_bidder_id, current_price FROM auctions WHERE id = ?";
+        final String deactivateSql = "UPDATE auto_bids SET is_active = 0 WHERE auction_id = ? AND bidder_id = ?";
 
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
             try {
                 long currentMaxBid = 0;
-                try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
+                try (PreparedStatement ps = conn.prepareStatement(checkAutoBidSql)) {
                     ps.setString(1, auction.getId());
                     ps.setString(2, currentUser.getId());
                     try (ResultSet rs = ps.executeQuery()) {
@@ -282,16 +295,35 @@ public class BidDAO {
                     }
                 }
 
-                autoBidLockService.releaseAllLocks(conn, currentUser, currentMaxBid, auction.getId());
+                boolean isCurrentWinner = false;
+                long currentPrice = 0;
+                try (PreparedStatement ps = conn.prepareStatement(checkWinnerSql)) {
+                    ps.setString(1, auction.getId());
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            String winningBidderId = rs.getString("winning_bidder_id");
+                            currentPrice = rs.getLong("current_price");
+                            isCurrentWinner = currentUser.getId().equals(winningBidderId);
+                        }
+                    }
+                }
 
-                try (PreparedStatement ps = conn.prepareStatement(deleteSql)) {
+                try (PreparedStatement ps = conn.prepareStatement(deactivateSql)) {
                     ps.setString(1, auction.getId());
                     ps.setString(2, currentUser.getId());
                     ps.executeUpdate();
                 }
 
+                if (isCurrentWinner) {
+                    log.warn("[FIX-C1] Deactivated automation for current leading bidder {}. Locked collateral boundary retained.", currentUser.getId());
+                } else {
+                    autoBidLockService.releaseAllLocks(conn, currentUser, currentMaxBid, auction.getId());
+                    log.info("Released non-leading auto-bid structural reserves for user {} on auction {}.", currentUser.getId(), auction.getId());
+                }
+
                 conn.commit();
                 return true;
+
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;
