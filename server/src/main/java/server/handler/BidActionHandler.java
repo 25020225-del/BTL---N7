@@ -18,10 +18,12 @@ import java.util.Map;
 /**
  * Structural endpoint command handler managing inbound transaction routing targeting
  * real-time bid placements and proxy agent lifecycle infrastructure modifications.
+ * Validates baseline financial logic criteria within synchronous snapshot boundaries.
  */
 public class BidActionHandler implements CommandHandler {
 
     private static final Logger log = LoggerFactory.getLogger(BidActionHandler.class);
+    private static final String ERR_BID_007         = "ERR_BID_007";
     private static final String ERR_AUTOBID_FUNDS    = "ERR_BID_010";
     private static final String ERR_AUTOBID_MIN_BID  = "ERR_BID_011";
     private static final String ERR_AUTOBID_CONFLICT = "ERR_BID_012";
@@ -57,6 +59,23 @@ public class BidActionHandler implements CommandHandler {
         }
 
         Auction auction = requireAuction(auctionId);
+
+        final long minRequired;
+        synchronized (AuctionManager.getLockForAuction(auctionId)) {
+            minRequired = (auction.getWinningBidder() == null)
+                    ? auction.getCurrentPrice()
+                    : auction.getCurrentPrice() + auction.getBidIncrement();
+        }
+
+        if (amount < minRequired) {
+            log.warn("[M2-GUARD] Bid rejected early: user={}, auction={}, amount={}, minRequired={}",
+                    currentUser.getUserName(), auctionId, amount, minRequired);
+            client.sendResponse("ERROR", new ErrorPayload(
+                    ERR_BID_007,
+                    "Giá đặt phải ít nhất " + minRequired
+                            + " VNĐ (giá hiện tại + bước giá tối thiểu). Vui lòng thử lại."));
+            return;
+        }
 
         bidderCtrl.placeManualBid(currentUser, auction, amount)
                 .thenAccept(success -> {
@@ -115,9 +134,6 @@ public class BidActionHandler implements CommandHandler {
         }
 
         final long minRequired;
-
-        // Uses a synchronization lock block targeting the dynamic memory layer to isolate state validation boundaries
-        // against simultaneous thread drift execution challenges.
         synchronized (AuctionManager.getLockForAuction(auctionId)) {
             minRequired = auction.getMinAutoBidRequired();
         }
@@ -201,15 +217,12 @@ public class BidActionHandler implements CommandHandler {
                         "Phiên đấu giá '" + auctionId + "' không tồn tại.");
             }
             return auction;
-
         } catch (AuctionExceptions.AuctionBaseException e) {
             throw e;
-
         } catch (java.sql.SQLException e) {
             log.error("Database error resolving auction '{}': {}", auctionId, e.getMessage(), e);
             throw new AuctionExceptions.AuctionClosedException(
                     "Không thể truy xuất phiên đấu giá: " + auctionId);
-
         } catch (Exception e) {
             log.error("Unexpected error resolving auction '{}': {}", auctionId, e.getMessage(), e);
             throw new AuctionExceptions.AuctionClosedException(

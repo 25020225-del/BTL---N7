@@ -22,11 +22,15 @@ import static utils.ConsoleColors.*;
 
 /**
  * Command logic route component managing auction session creation tasks
- * initiated exclusively by active, authenticated store sellers.
+ * initiated exclusively by active, authenticated platform sellers.
+ * Enforces uniform inbound validation schemas prior to triggering external asset storage flows.
  */
 public class AuctionActionHandler implements CommandHandler {
 
     private static final Logger log = LoggerFactory.getLogger(AuctionActionHandler.class);
+    private static final int ITEM_NAME_MAX_LENGTH = 200;
+    private static final int ITEM_NAME_MIN_LENGTH = 3;
+
     private final ObjectMapper mapper = JacksonConfig.mapper();
     private final controller.ServerSellerController sellerCtrl;
 
@@ -56,15 +60,37 @@ public class AuctionActionHandler implements CommandHandler {
             throw new AuctionExceptions.InvalidPayloadException("Dữ liệu phiên đấu giá không hợp lệ.");
         }
 
-        String itemName = auction.getItem().getItemName();
-        String description = auction.getItem().getDescription();
-        String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
-        long startingPrice = auction.getItem().getStartingPrice();
-        long bidIncrement = auction.getBidIncrement();
+        String itemName     = auction.getItem().getItemName();
+        String description  = auction.getItem().getDescription();
+        long startingPrice  = auction.getItem().getStartingPrice();
+        long bidIncrement   = auction.getBidIncrement();
 
-        LocalDateTime now = LocalDateTime.now();
+        if (itemName == null || itemName.isBlank()) {
+            throw new AuctionExceptions.InvalidPayloadException(
+                    "Tên vật phẩm không được để trống.");
+        }
+        if (itemName.length() < ITEM_NAME_MIN_LENGTH) {
+            throw new AuctionExceptions.InvalidPayloadException(
+                    "Tên vật phẩm phải có ít nhất " + ITEM_NAME_MIN_LENGTH + " ký tự.");
+        }
+        if (itemName.length() > ITEM_NAME_MAX_LENGTH) {
+            throw new AuctionExceptions.InvalidPayloadException(
+                    "Tên vật phẩm không được vượt quá " + ITEM_NAME_MAX_LENGTH + " ký tự.");
+        }
+
+        if (startingPrice <= 0) {
+            throw new AuctionExceptions.InvalidPayloadException(
+                    "Giá khởi điểm phải lớn hơn 0 VNĐ.");
+        }
+
+        if (bidIncrement <= 0) {
+            throw new AuctionExceptions.InvalidPayloadException(
+                    "Bước giá (bid increment) phải lớn hơn 0 VNĐ.");
+        }
+
+        LocalDateTime now    = LocalDateTime.now();
         LocalDateTime reqStart = auction.getStartTime();
-        LocalDateTime reqEnd = auction.getEndTime();
+        LocalDateTime reqEnd   = auction.getEndTime();
 
         if (reqStart == null || reqEnd == null) {
             throw new AuctionExceptions.InvalidPayloadException("Định dạng thời gian không hợp lệ.");
@@ -86,7 +112,9 @@ public class AuctionActionHandler implements CommandHandler {
             durationMinutes = MAX_DURATION_MINUTES;
         }
 
-        String itemType = auction.getItem().getType() != null ? auction.getItem().getType() : ItemFactory.TYPE_TANGIBLE;
+        String imageUrl = CloudinaryService.uploadImage(auction.getItem().getFile());
+
+        String itemType  = auction.getItem().getType() != null ? auction.getItem().getType() : ItemFactory.TYPE_TANGIBLE;
         String newItemId = utils.IdGenerator.generateUUIDv7();
         Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
         item.setImageUrl(imageUrl);
@@ -100,7 +128,10 @@ public class AuctionActionHandler implements CommandHandler {
                 newAuction.setStatus(Auction.STATUS_RUNNING);
                 AuctionManager.addAuctionToMonitor(newAuction);
 
-                String alertMsg = "[System]: Seller \"" + authenticatedUser.getName() + "\" has created an auction for \"" + YELLOW + itemName + RESET + "\" - " + GREEN + startingPrice + RESET + " VND";
+                String alertMsg = "[System]: Seller \"" + authenticatedUser.getName()
+                        + "\" has created an auction for \""
+                        + YELLOW + itemName + RESET + "\" - "
+                        + GREEN + startingPrice + RESET + " VND";
                 ClientManager.broadcast("CLI_BROADCAST", alertMsg, client);
 
                 client.sendResponse("CREATE_SUCCESS", "Tạo phiên đấu giá thành công.");
@@ -109,7 +140,8 @@ public class AuctionActionHandler implements CommandHandler {
                 client.sendResponse("CREATE_SUCCESS", "Đã tạo phiên đấu giá, đang chờ Quản trị viên duyệt.");
             }
         } else {
-            client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "Không thể tạo phiên đấu giá do lỗi cơ sở dữ liệu."));
+            client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005",
+                    "Không thể tạo phiên đấu giá do lỗi cơ sở dữ liệu."));
         }
     }
 }
