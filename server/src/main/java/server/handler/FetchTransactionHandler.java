@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Handles requests for fetching bid transaction history for a specific auction.
+ * Command route handler managing read requests for historic bid ledgers matching an auction ID.
  */
 public class FetchTransactionHandler implements CommandHandler {
 

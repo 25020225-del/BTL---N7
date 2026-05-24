@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory;
 import java.sql.*;
 
 /**
- * Manages database connections using HikariCP connection pooling.
- * Automatically detects the test environment to protect the production database.
+ * Centrally manages relational database connections utilizing a HikariCP pool.
+ * Automatically switches schemas and pool capacities based on execution environment profiles.
  */
 public class DatabaseManager {
 
@@ -39,10 +39,6 @@ public class DatabaseManager {
         dataSource = new HikariDataSource(config);
     }
 
-    /**
-     * Detects whether code is currently running inside a test framework
-     * by inspecting the current thread's stack trace for known test runner class prefixes.
-     */
     private static boolean detectTestEnvironment() {
         for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
             String className = element.getClassName();
@@ -55,10 +51,19 @@ public class DatabaseManager {
         return false;
     }
 
+    /**
+     * Retrieves an active connection from the underlying data source pool.
+     *
+     * @return a valid {@link Connection} instance.
+     * @throws SQLException if a database access error occurs.
+     */
     public static Connection getConnection() throws SQLException {
         return dataSource.getConnection();
     }
 
+    /**
+     * Gracefully terminates the connection pool resource provider.
+     */
     public static void closePool() {
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
@@ -66,11 +71,9 @@ public class DatabaseManager {
     }
 
     /**
-     * Creates all required database tables and applies schema migrations idempotently.
-     * Throws {@link IllegalStateException} on failure so the server fails fast
-     * rather than starting with a broken schema.
+     * Performs idempotent relational table provisioning and incremental schema migrations.
      *
-     * @throws IllegalStateException if any critical DDL statement fails.
+     * @throws IllegalStateException if any bootstrapping database mutation encounters a fatal exception.
      */
     public static void initializeDatabase() {
         try (Connection conn = getConnection();
@@ -84,6 +87,7 @@ public class DatabaseManager {
             createWithdrawalTables(stmt);
             applyMigrations(stmt);
             seedDefaultAdmin(conn);
+
             ResultSet rs = conn.getMetaData().getColumns(null, null, "auctions", "item_type");
             if (!rs.next()) {
                 stmt.execute("ALTER TABLE auctions ADD COLUMN item_type VARCHAR(20) DEFAULT 'TANGIBLE'");
@@ -93,20 +97,11 @@ public class DatabaseManager {
             log.info("Database initialized successfully (testEnv={})", IS_TEST_ENV);
 
         } catch (SQLException e) {
-            // Fail fast: a broken schema will cause silent data corruption later.
             throw new IllegalStateException("Critical failure during database initialization", e);
         }
     }
 
-    /**
-     * Creates the withdrawal_requests table and its indexes idempotently.
-     * Called once during server startup via {@link #initializeDatabase()}.
-     *
-     * @param stmt An active {@link Statement} within the initialization connection.
-     * @throws SQLException if any DDL statement fails.
-     */
     private static void createWithdrawalTables(Statement stmt) throws SQLException {
-        // Bảng chính
         stmt.execute(
                 "CREATE TABLE IF NOT EXISTS withdrawal_requests ("
                         + "id             TEXT PRIMARY KEY, "
@@ -124,24 +119,10 @@ public class DatabaseManager {
                         + ");"
         );
 
-        // Indexes tối ưu hóa
-        stmt.execute(
-                "CREATE INDEX IF NOT EXISTS idx_wr_status "
-                        + "ON withdrawal_requests(status);"
-        );
-        stmt.execute(
-                "CREATE INDEX IF NOT EXISTS idx_wr_user_id "
-                        + "ON withdrawal_requests(user_id);"
-        );
-        stmt.execute(
-                "CREATE INDEX IF NOT EXISTS idx_wr_user_status "
-                        + "ON withdrawal_requests(user_id, status);"
-        );
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_wr_status ON withdrawal_requests(status);");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_wr_user_id ON withdrawal_requests(user_id);");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_wr_user_status ON withdrawal_requests(user_id, status);");
     }
-
-    // ─────────────────────────────────────────────────────────────────
-    // Private DDL helpers
-    // ─────────────────────────────────────────────────────────────────
 
     private static void createUsersTables(Statement stmt) throws SQLException {
         stmt.execute(
@@ -233,12 +214,6 @@ public class DatabaseManager {
         );
     }
 
-    /**
-     * Applies additive schema migrations idempotently.
-     * Each ALTER TABLE is wrapped in its own try-catch because SQLite
-     * throws an exception when a column already exists; this is the
-     * standard "IF NOT EXISTS" workaround for SQLite ALTER TABLE.
-     */
     private static void applyMigrations(Statement stmt) throws SQLException {
         runMigration(stmt, "ALTER TABLE users ADD COLUMN is_blocked INTEGER DEFAULT 0;");
         runMigration(stmt, "ALTER TABLE users ADD COLUMN totp_secret TEXT;");
@@ -276,14 +251,10 @@ public class DatabaseManager {
         try {
             stmt.execute(ddl);
         } catch (SQLException ignored) {
-            // Column already exists — safe to ignore.
+            // No operation required if schema mutation already exists
         }
     }
 
-    /**
-     * Seeds the default admin account using a parameterised statement to prevent SQL injection.
-     * Uses INSERT OR IGNORE so re-running this method is always idempotent.
-     */
     private static void seedDefaultAdmin(Connection conn) throws SQLException {
         String hashedPassword = BCrypt.hashpw("123456", BCrypt.gensalt(12));
         String sql = "INSERT OR IGNORE INTO users "

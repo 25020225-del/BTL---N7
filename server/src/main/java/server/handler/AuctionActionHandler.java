@@ -20,7 +20,12 @@ import java.time.LocalDateTime;
 
 import static utils.ConsoleColors.*;
 
+/**
+ * Command logic route component managing auction session creation tasks
+ * initiated exclusively by active, authenticated store sellers.
+ */
 public class AuctionActionHandler implements CommandHandler {
+
     private static final Logger log = LoggerFactory.getLogger(AuctionActionHandler.class);
     private final ObjectMapper mapper = JacksonConfig.mapper();
     private final controller.ServerSellerController sellerCtrl;
@@ -46,8 +51,7 @@ public class AuctionActionHandler implements CommandHandler {
 
         Auction auction;
         try {
-            auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {
-            });
+            auction = mapper.convertValue(data, new com.fasterxml.jackson.core.type.TypeReference<Auction>() {});
         } catch (IllegalArgumentException e) {
             throw new AuctionExceptions.InvalidPayloadException("Dữ liệu phiên đấu giá không hợp lệ.");
         }
@@ -65,17 +69,15 @@ public class AuctionActionHandler implements CommandHandler {
         if (reqStart == null || reqEnd == null) {
             throw new AuctionExceptions.InvalidPayloadException("Định dạng thời gian không hợp lệ.");
         }
-
         if (reqStart.isBefore(now.minusMinutes(5))) {
             throw new AuctionExceptions.InvalidPayloadException("Thời gian bắt đầu không được nằm trong quá khứ.");
         }
-
         if (reqStart.isBefore(now)) {
             reqStart = now;
         }
 
         long durationMinutes = java.time.Duration.between(reqStart, reqEnd).toMinutes();
-        final long MAX_DURATION_MINUTES = 43200; // 30 days
+        final long MAX_DURATION_MINUTES = 43200;
 
         if (durationMinutes <= 0) {
             throw new AuctionExceptions.InvalidPayloadException("Thời lượng đấu giá không hợp lệ (phải lớn hơn 0).");
@@ -84,14 +86,11 @@ public class AuctionActionHandler implements CommandHandler {
             durationMinutes = MAX_DURATION_MINUTES;
         }
 
-        String itemType = auction.getItem().getType() != null
-                ? auction.getItem().getType()
-                : ItemFactory.TYPE_TANGIBLE;
+        String itemType = auction.getItem().getType() != null ? auction.getItem().getType() : ItemFactory.TYPE_TANGIBLE;
         String newItemId = "ITM-" + System.currentTimeMillis();
         Item item = ItemFactory.createItem(itemType, newItemId, itemName, description, startingPrice);
         item.setImageUrl(imageUrl);
 
-        // Forward the creation request to the Seller Controller
         model.user.Seller sellerRole = new model.user.Seller(authenticatedUser);
         Auction newAuction = sellerCtrl.addAuction(sellerRole, item, bidIncrement, reqStart, (int) durationMinutes);
 

@@ -3,28 +3,19 @@ package gui.widget;
 import client.service.AdminService;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 /**
- * A custom UI widget representing an auction item pending administrator approval.
- *
- * <p>Displays the auction item name and provides "Approve" / "Reject" action buttons.
- * Upon clicking either button, the widget is disabled to prevent duplicate submissions.</p>
- *
- * <p><b>FIX (SRP):</b> The original implementation called {@code NetworkService.sendMessage()}
- * directly inside the widget, coupling a UI component to the network layer. Actions now
- * delegate to {@link AdminService}, which is the correct service-layer boundary.</p>
- *
- * <p><b>FIX:</b> Removed the unused {@code import gui.MainApplication} statement.</p>
+ * JavaFX presentation widget representing an auction item pending administrative validation.
+ * Delegates trigger events directly to service layer facades.
  */
 public class AdminAuctionItem extends VBox {
 
     /**
-     * Constructs an AdminAuctionItem widget.
+     * Instantiates an admin auction enforcement card container.
      *
-     * @param auctionId The unique identifier of the pending auction session.
-     * @param itemName  The display name of the item being auctioned.
+     * @param auctionId unique target identity key matching the persistent session row
+     * @param itemName  display metadata title of the product
      */
     public AdminAuctionItem(String auctionId, String itemName) {
         super(10);
@@ -38,16 +29,15 @@ public class AdminAuctionItem extends VBox {
         btnReject.setStyle("-fx-background-color: red;   -fx-text-fill: white;");
 
         btnApprove.setOnAction(e -> {
-            AdminService.approveAuction(auctionId); // FIX: delegated to AdminService
+            AdminService.approveAuction(auctionId);
             this.setDisable(true);
         });
 
         btnReject.setOnAction(e -> {
-            AdminService.rejectAuction(auctionId); // FIX: delegated to AdminService
+            AdminService.rejectAuction(auctionId);
             this.setDisable(true);
         });
 
-        HBox btnGroup = new HBox(10, btnApprove, btnReject);
-        this.getChildren().addAll(lblName, btnGroup);
+        this.getChildren().addAll(lblName, btnApprove, btnReject);
     }
 }

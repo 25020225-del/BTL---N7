@@ -5,67 +5,70 @@ import javafx.scene.Node;
 import javafx.util.Duration;
 
 /**
- * Utility class to handle smooth UI animations and visual effects.
+ * Procedural layout rendering companion engine. Orchestrates graphical calculations,
+ * interpolation modifications, and transition behaviors targeting scene graph active nodes.
  */
 public class AnimateEffect {
 
     /**
-     * Applies a quick flashing fade transition to draw user attention to a specific UI node
-     * (e.g., when a new price update arrives via WebSocket).
+     * Triggers a cyclical sequence of rapid alpha-opacity changes to highlight immediate data pipeline events.
      *
-     * @param node The JavaFX Node to be highlighted.
+     * @param node the graphical scene element receiving attention targeting updates
      */
     public static void highlightText(Node node) {
         FadeTransition ft = new FadeTransition(Duration.millis(150), node);
         ft.setFromValue(1.0);
         ft.setToValue(0.3);
-        ft.setCycleCount(4); // Flash twice (down, up, down, up)
+        ft.setCycleCount(4);
         ft.setAutoReverse(true);
         ft.play();
     }
 
+    /**
+     * Synchronizes structural entry vectors mapping parallel layout translations with progressive alpha modifications.
+     *
+     * @param node the target layout segment entering presentation viewport areas
+     */
     public static void applyFadeAndTranslate(Node node) {
         Duration duration = Duration.millis(600);
 
-        // 1. Cấu hình hiệu ứng Mờ dần (Fade)
         FadeTransition fadeIn = new FadeTransition(duration, node);
-        fadeIn.setFromValue(0.0); // Bắt đầu từ trong suốt
-        fadeIn.setToValue(1.0);   // Hiện rõ hoàn toàn
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
 
-        // 2. Cấu hình hiệu ứng Dịch chuyển (Translate)
         TranslateTransition moveUp = new TranslateTransition(duration, node);
-        moveUp.setFromY(50);      // Xuất phát ở vị trí thấp hơn vị trí gốc 50 pixel
-        moveUp.setToY(0);         // Bay về đúng vị trí chuẩn theo thiết kế FXML
+        moveUp.setFromY(50);
+        moveUp.setToY(0);
 
-        // 🛠️ Mẹo nhỏ: Thêm bộ gia tốc EASE_OUT để lúc gần đích nó "phanh" chậm lại nhìn rất mượt
         fadeIn.setInterpolator(Interpolator.EASE_OUT);
         moveUp.setInterpolator(Interpolator.EASE_OUT);
 
-        // 3. TRUNG TÂM XỬ LÝ: Gom cả 2 vào ParallelTransition để ép chạy SONG SONG
         ParallelTransition parallel = new ParallelTransition(fadeIn, moveUp);
-
-        // Hoặc bạn có thể dùng cách này nếu muốn add sau:
-        // parallel.getChildren().addAll(fadeIn, moveUp);
-
-        // 4. Kích hoạt chạy
         parallel.play();
     }
 
+    /**
+     * Intercepts node interactiveness and restricts interaction paths for a fixed timeline duration.
+     */
     public static void pauseNode(Node node, int timeSecond) {
         node.setDisable(true);
         PauseTransition pauseTransition = new PauseTransition(Duration.seconds(timeSecond));
-        pauseTransition.setOnFinished(event -> {
-            node.setDisable(false);
-        });
+        pauseTransition.setOnFinished(event -> node.setDisable(false));
         pauseTransition.play();
     }
 
+    /**
+     * Modifies rendering node configuration attributes to omit targeted elements from spatial layouts entirely.
+     */
     public static void hideNode(Node node) {
         node.setDisable(true);
         node.setVisible(false);
         node.setManaged(false);
     }
 
+    /**
+     * Reintroduces layout parameters back to active scene graph trees to display dormant components.
+     */
     public static void showNode(Node node) {
         node.setDisable(false);
         node.setVisible(true);

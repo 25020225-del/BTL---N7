@@ -15,25 +15,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Register Controller.
- * 2FA is NO longer configured during registration; users can enable it manually via Settings.
+ * Controller handling user registration workflow requirements. Encapsulates profile text inputs,
+ * verifies client-side password entropy thresholds, and transmits identity registration records.
  */
 public class RegisterController {
-    private static final Logger log =
-            LoggerFactory.getLogger(RegisterController.class);
+    private static final Logger log = LoggerFactory.getLogger(RegisterController.class);
+    private static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{6,20}$";
 
-    @FXML
-    private TextField registerName;
-    @FXML
-    private TextField registerAccountName;
-    @FXML
-    private PasswordField registerPasswordAccount;
-    @FXML
-    private PasswordField confirmPasswordAccount;
-    @FXML
-    private Button registerButton;
-    @FXML
-    private Button changeLoginScene;
+    @FXML private TextField registerName;
+    @FXML private TextField registerAccountName;
+    @FXML private PasswordField registerPasswordAccount;
+    @FXML private PasswordField confirmPasswordAccount;
+    @FXML private Button registerButton;
+    @FXML private Button changeLoginScene;
 
     private NetworkClient networkClient;
 
@@ -41,32 +35,30 @@ public class RegisterController {
         this.networkClient = client;
     }
 
+    /**
+     * Extracts input text elements, evaluates security password constraints via syntax matrices,
+     * and sends registration packets upstream.
+     */
     @FXML
     protected void onRegisterButtonClick() {
-        log.info("Registration process started.");
+        log.info("Registration request transaction sequence initialized.");
         String name = registerName.getText().trim();
         String username = registerAccountName.getText().trim();
         String password = registerPasswordAccount.getText().trim();
-        String confirmPass = confirmPasswordAccount != null
-                ? confirmPasswordAccount.getText().trim() : "";
+        String confirmPass = confirmPasswordAccount != null ? confirmPasswordAccount.getText().trim() : "";
 
         if (name.isEmpty() || username.isEmpty() || password.isEmpty()) {
-            AlertUtils.showWarning(
-                    "Missing Information", "Please fill in all the required fields.");
+            AlertUtils.showWarning("Missing Information", "Please fill in all the required fields.");
             return;
         }
 
         if (confirmPasswordAccount != null && !password.equals(confirmPass)) {
-            AlertUtils.showWarning(
-                    "Password Mismatch", "Passwords do not match. Please verify and try again.");
+            AlertUtils.showWarning("Password Mismatch", "Passwords do not match. Please verify and try again.");
             return;
         }
 
-        String passwordRegex =
-                "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{6,20}$";
-        if (!password.matches(passwordRegex)) {
-            AlertUtils.showWarning(
-                    "Weak Password",
+        if (!password.matches(PASSWORD_REGEX)) {
+            AlertUtils.showWarning("Weak Password",
                     "Password must be 6-20 characters long and include at least "
                             + "one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).");
             return;
@@ -74,15 +66,13 @@ public class RegisterController {
 
         setNetworkClient(NetworkService.get());
         if (networkClient == null) {
-            AlertUtils.showError(
-                    "Network Error", "Unable to connect to the server.");
+            AlertUtils.showError("Network Error", "Unable to connect to the server.");
             return;
         }
 
         registerButton.setDisable(true);
         networkClient.setOnMessageReceived(this::handleServerResponse);
-        networkClient.sendMessage("REGISTER",
-                new User("", username, password, name, "USER"));
+        networkClient.sendMessage("REGISTER", new User("", username, password, name, "USER"));
     }
 
     @FXML
@@ -97,21 +87,18 @@ public class RegisterController {
             String command = response.getCommand();
 
             if ("REGISTER_SUCCESS".equals(command)) {
-                log.info("Registration successful for new user.");
-                AlertUtils.showInfo(
-                        "Registration Successful",
+                log.info("Registration successful for new user identity profile context.");
+                AlertUtils.showInfo("Registration Successful",
                         "Your account has been successfully created!\n"
                                 + "You can activate Two-Factor Authentication (2FA) inside the Settings "
                                 + "dashboard after logging in.");
                 clearFields();
                 MainApplication.setNewScene(MainApplication.rootLogin);
 
-            } else if ("REGISTER_FAIL".equals(command)
-                    || "ERROR".equals(command)) {
+            } else if ("REGISTER_FAIL".equals(command) || "ERROR".equals(command)) {
                 String errorMsg = ErrorParser.parse(response.getData());
-                log.warn("Registration failed: {}", errorMsg);
-                AlertUtils.showError(
-                        "Registration Failed", errorMsg);
+                log.warn("Registration rejected by systemic verification parameters: {}", errorMsg);
+                AlertUtils.showError("Registration Failed", errorMsg);
             }
         });
     }
@@ -120,6 +107,8 @@ public class RegisterController {
         registerName.clear();
         registerAccountName.clear();
         registerPasswordAccount.clear();
-        if (confirmPasswordAccount != null) confirmPasswordAccount.clear();
+        if (confirmPasswordAccount != null) {
+            confirmPasswordAccount.clear();
+        }
     }
 }

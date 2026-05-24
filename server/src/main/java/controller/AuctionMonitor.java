@@ -24,16 +24,15 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A background daemon service that continuously monitors active auctions.
- * It manages real-time expiration in RAM and routinely sweeps the database
- * to clean up any "orphaned" auctions left over from previous server sessions.
+ * Background daemon service monitoring active auctions in real-time.
+ * Manages lifecycle status transitions in memory and performs periodic
+ * database sweeps to reclaim orphaned auction sessions.
  */
 public class AuctionMonitor {
 
     private static final Logger log = LoggerFactory.getLogger(AuctionMonitor.class);
-
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-    private List<Auction> allAuctions;
+    private final List<Auction> allAuctions;
     private final AuctionDAO auctionDAO;
     private final WalletDAO walletDAO;
 
@@ -43,12 +42,8 @@ public class AuctionMonitor {
         this.walletDAO = walletDAO;
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    //  LIFECYCLE
-    // ═══════════════════════════════════════════════════════════════════
-
     /**
-     * Starts the scheduled background monitoring task.
+     * Starts the periodic background monitoring tasks.
      */
     public void startMonitoring() {
         log.info("Auction monitor started.");
@@ -57,24 +52,18 @@ public class AuctionMonitor {
                 processRamAuctions();
                 sweepDatabaseForOrphans();
             } catch (Exception e) {
-                // Broad catch intentional — one cycle failure must not kill the scheduler
                 log.error("Unhandled error during auction monitoring cycle", e);
             }
         }, 0, 10, TimeUnit.SECONDS);
     }
 
     /**
-     * Gracefully shuts down the monitoring daemon.
-     * Named stopMonitoring() to mirror startMonitoring().
+     * Gracefully stops the scheduled monitoring executor pool.
      */
-    public void stopMonitoring() {        // ← FIX 4: Đảm bảo method này tồn tại và public
+    public void stopMonitoring() {
         scheduler.shutdown();
         log.info("Auction monitor shut down.");
     }
-
-    // ═══════════════════════════════════════════════════════════════════
-    //  RAM AUCTION PROCESSING (giữ nguyên, không thay đổi)
-    // ═══════════════════════════════════════════════════════════════════
 
     private void processRamAuctions() {
         for (Auction auction : AuctionManager.getAuctionList()) {
@@ -90,8 +79,7 @@ public class AuctionMonitor {
                     if (now.isBefore(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_RUNNING;
                     }
-                } else if (currentStatus.equals(Auction.STATUS_RUNNING)
-                        || currentStatus.equals(Auction.STATUS_OPEN)) {
+                } else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
                     if (now.isAfter(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_FINISHED;
                         snapshotEndAtDecision = auction.getEndTime();
@@ -109,19 +97,15 @@ public class AuctionMonitor {
                 continue;
             }
 
-            boolean dbSuccess;
             try {
-                if (Auction.STATUS_RUNNING.equals(targetStatus)) {
-                    dbSuccess = tryTransitionToRunning(auction, auctionId);
-                } else {
-                    dbSuccess = tryTransitionToFinished(auction, auctionId,
-                            snapshotEndAtDecision, targetStatus);
-                }
+                boolean dbSuccess = Auction.STATUS_RUNNING.equals(targetStatus)
+                        ? tryTransitionToRunning(auction, auctionId)
+                        : tryTransitionToFinished(auction, auctionId, snapshotEndAtDecision, targetStatus);
 
                 if (dbSuccess) {
                     applyStatusTransitionToRam(auction, auctionId, targetStatus);
                 } else {
-                    log.warn("Optimistic DB update failed for auction {} -> {} (concurrent change).",
+                    log.warn("Optimistic DB update failed for auction {} -> {} due to concurrent modification.",
                             auctionId, targetStatus);
                 }
             } catch (SQLException e) {
@@ -167,8 +151,7 @@ public class AuctionMonitor {
                 return false;
             }
         }
-        return auctionDAO.updateAuctionStatusEndingIfEndTimeMatches(
-                auctionId, targetStatus, snapshotEndAtDecision);
+        return auctionDAO.updateAuctionStatusEndingIfEndTimeMatches(auctionId, targetStatus, snapshotEndAtDecision);
     }
 
     private void applyStatusTransitionToRam(Auction auction, String auctionId, String targetStatus) {
@@ -179,8 +162,7 @@ public class AuctionMonitor {
                 processFinancialSettlement(auction);
             } else {
                 log.info("Auction {} status updated to {}.", auctionId, targetStatus);
-                ClientManager.broadcast("AUCTION_STATUS_CHANGED",
-                        Map.of("auctionId", auctionId, "newStatus", targetStatus), null);
+                ClientManager.broadcast("AUCTION_STATUS_CHANGED", Map.of("auctionId", auctionId, "newStatus", targetStatus), null);
             }
         }
     }
@@ -201,52 +183,31 @@ public class AuctionMonitor {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    //  FINANCIAL SETTLEMENT  ← ĐÂY LÀ VÙNG SỬA LỖI CHÍNH
-    // ═══════════════════════════════════════════════════════════════════
-
-    /**
-     * FIX 1: Đổi TransactionManager.submit() → TransactionManager.submitTask()
-     * FIX 2/3: Các hàm nghiệp vụ settleWinner / refundLosingAutoBidders
-     * được kéo thành private method của chính AuctionMonitor,
-     * KHÔNG đặt trong TransactionManager (vi phạm SRP).
-     * <p>
-     * Toàn bộ khối transaction được bọc trong Callable<Boolean> và
-     * đẩy vào TransactionManager.submitTask() để chạy bất đồng bộ
-     * trên DB-Worker thread pool.
-     */
     private void processFinancialSettlement(Auction auction) {
         Callable<Boolean> settlementTask = () -> {
             String auctionId = auction.getId();
-            String finalStatus = (auction.getWinningBidder() != null)
-                    ? Auction.STATUS_PAID
-                    : Auction.STATUS_CANCELED;
+            String finalStatus = (auction.getWinningBidder() != null) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
 
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
-                    // Phase 1: Atomic status claim — chỉ 1 thread thắng, thread còn lại abort
-                    boolean locked = lockAuctionForSettlement(conn, auctionId, finalStatus);
-                    if (!locked) {
+                    if (!lockAuctionForSettlement(conn, auctionId, finalStatus)) {
                         conn.rollback();
                         return false;
                     }
 
-                    // Phase 2: Thực thi nghiệp vụ tài chính
                     if (auction.getWinningBidder() != null) {
-                        settleWinner(conn, auction, auctionId);       // ← Private method nội bộ
+                        settleWinner(conn, auction, auctionId);
                     }
-                    refundLosingAutoBidders(conn, auction, auctionId); // ← Private method nội bộ
+                    refundLosingAutoBidders(conn, auction, auctionId);
                     deactivateAutoBids(conn, auctionId);
 
                     conn.commit();
 
-                    // Phase 3: Cập nhật RAM sau khi DB đã commit thành công
                     synchronized (AuctionManager.getLockForAuction(auctionId)) {
                         auction.setStatus(finalStatus);
                     }
-                    ClientManager.broadcast("AUCTION_STATUS_CHANGED",
-                            Map.of("auctionId", auctionId, "newStatus", finalStatus), null);
+                    ClientManager.broadcast("AUCTION_STATUS_CHANGED", Map.of("auctionId", auctionId, "newStatus", finalStatus), null);
                     log.info("Financial settlement completed: auction {} → {}", auctionId, finalStatus);
                     return true;
 
@@ -261,16 +222,10 @@ public class AuctionMonitor {
             }
         };
 
-        // ← FIX 1: submitTask() chứ không phải submit()
         TransactionManager.submitTask(settlementTask);
     }
 
-    /**
-     * Atomic claim: chuyển FINISHED → finalStatus chỉ khi status DB vẫn là FINISHED.
-     * Nếu thread khác đã settle trước, executeUpdate() trả về 0 → return false → caller rollback.
-     */
-    private boolean lockAuctionForSettlement(Connection conn, String auctionId,
-                                             String finalStatus) throws SQLException {
+    private boolean lockAuctionForSettlement(Connection conn, String auctionId, String finalStatus) throws SQLException {
         String sql = "UPDATE auctions SET status = ? WHERE id = ? AND status = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, finalStatus);
@@ -284,52 +239,26 @@ public class AuctionMonitor {
         return true;
     }
 
-    /**
-     * FIX 2: settleWinner là private method của AuctionMonitor, không phải TransactionManager.
-     * <p>
-     * Logic:
-     * 1. Khấu trừ finalPrice khỏi locked_balance của người thắng
-     * 2. Hoàn phần dư (maxBid - finalPrice) về balance của người thắng
-     * 3. Cộng finalPrice vào balance của Seller
-     * 4. Ghi lịch sử giao dịch
-     */
-    private void settleWinner(Connection conn, Auction auction,
-                              String auctionId) throws SQLException {
+    private void settleWinner(Connection conn, Auction auction, String auctionId) throws SQLException {
         String now = LocalDateTime.now().toString();
         long finalPrice = auction.getCurrentPrice();
         long lockedAmount = auction.getHighestMaxBid();
         String winnerId = auction.getWinningBidder().getId();
 
-        // Khấu trừ vĩnh viễn số tiền thực tế từ locked_balance
         walletDAO.deductFromLocked(conn, winnerId, finalPrice);
 
-        // Hoàn phần chênh lệch (nếu maxBid > giá chốt)
         long refundAmount = lockedAmount - finalPrice;
         if (refundAmount > 0) {
             walletDAO.unlockBalance(conn, winnerId, refundAmount);
         }
 
-        // Thanh toán cho Seller
         walletDAO.updateBalance(conn, auction.getSeller().getId(), finalPrice);
-        walletDAO.addTransaction(conn,
-                "W-IN-" + UUID.randomUUID(),
-                auction.getSeller().getId(),
-                finalPrice,
-                "Payment received for auction: " + auctionId,
-                now);
+        walletDAO.addTransaction(conn, "W-IN-" + UUID.randomUUID(), auction.getSeller().getId(), finalPrice,
+                "Payment received for auction: " + auctionId, now);
     }
 
-    /**
-     * FIX 3: refundLosingAutoBidders là private method của AuctionMonitor, không phải TransactionManager.
-     * <p>
-     * Hoàn toàn bộ locked_balance cho tất cả auto-bidder KHÔNG phải winner.
-     */
-    private void refundLosingAutoBidders(Connection conn, Auction auction,
-                                         String auctionId) throws SQLException {
-        String winnerId = (auction.getWinningBidder() != null)
-                ? auction.getWinningBidder().getId()
-                : "NONE";
-
+    private void refundLosingAutoBidders(Connection conn, Auction auction, String auctionId) throws SQLException {
+        String winnerId = (auction.getWinningBidder() != null) ? auction.getWinningBidder().getId() : "NONE";
         String sql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, auctionId);
@@ -350,10 +279,6 @@ public class AuctionMonitor {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    //  ORPHAN SWEEP
-    // ═══════════════════════════════════════════════════════════════════
-
     private void sweepDatabaseForOrphans() {
         Callable<Boolean> dbSweepTask = () -> {
             try {
@@ -368,7 +293,6 @@ public class AuctionMonitor {
                 return false;
             }
         };
-
-        TransactionManager.submitTask(dbSweepTask); // ← Cũng dùng submitTask, không phải submit
+        TransactionManager.submitTask(dbSweepTask);
     }
 }

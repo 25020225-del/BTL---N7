@@ -14,8 +14,9 @@ import javafx.scene.transform.Rotate;
 import javafx.util.Duration;
 
 /**
- * Splash Screen mượt mà tối ưu cho JavaFX.
- * Khắc phục triệt để lỗi lệch tâm và giật viền của khối Spinner hình cung.
+ * High-performance application initialization rendering view. Orchestrates structured
+ * parallel entry animations, vector matrix transforms, and sequential transparency fades
+ * to reflect localized bootstrapping phases.
  */
 public class SplashScreen extends StackPane {
 
@@ -24,6 +25,10 @@ public class SplashScreen extends StackPane {
     private final Timeline rotateAnimation;
     private final SequentialTransition textSequenceAnimation;
 
+    /**
+     * Constructs the splash component graph hierarchy, allocates vector boundaries,
+     * and maps synchronized execution paths for structural layout elements.
+     */
     public SplashScreen() {
         setStyle("-fx-background-color: #f8fafc;");
         setPrefSize(800, 600);
@@ -32,9 +37,6 @@ public class SplashScreen extends StackPane {
         mainContainer.setAlignment(Pos.CENTER);
         mainContainer.setMaxWidth(350);
 
-        // ─────────────────────────────────────────────
-        // LOGO & SPINNER LAYERS
-        // ─────────────────────────────────────────────
         StackPane logoContainer = new StackPane();
         logoContainer.setPrefSize(100, 100);
         logoContainer.setMaxSize(100, 100);
@@ -70,9 +72,6 @@ public class SplashScreen extends StackPane {
 
         logoContainer.getChildren().addAll(trackCircle, logoCard, brandLabel, spinnerWrapper);
 
-        // ─────────────────────────────────────────────
-        // TYPOGRAPHY & STEPS
-        // ─────────────────────────────────────────────
         Label systemTitle = new Label("N7 Auction System");
         systemTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: #0f172a;" + FONT_FAMILY);
         systemTitle.setOpacity(0);
@@ -111,10 +110,6 @@ public class SplashScreen extends StackPane {
         mainContainer.getChildren().addAll(logoContainer, systemTitle, stepsWrapper, metaLabel);
         getChildren().add(mainContainer);
 
-        // ─────────────────────────────────────────────
-        // ANIMATION LOGIC
-        // ─────────────────────────────────────────────
-        // Định tâm xoay cứng tuyệt đối tại vị trí (50, 50) tránh lệch trục hình học của Arc
         Rotate rotateTransform = new Rotate(0, 50, 50);
         loadingArc.getTransforms().add(rotateTransform);
 
@@ -124,7 +119,6 @@ public class SplashScreen extends StackPane {
         );
         rotateAnimation.setCycleCount(Animation.INDEFINITE);
 
-        // Hiệu ứng Fade chuỗi cho giao diện văn bản
         SequentialTransition stepSequence = new SequentialTransition();
         for (int i = 0; i < processRows.length; i++) {
             FadeTransition displayRow = new FadeTransition(Duration.millis(350), processRows[i]);
@@ -153,11 +147,17 @@ public class SplashScreen extends StackPane {
         return fade;
     }
 
+    /**
+     * Coordinates and triggers execution of parallel entry layout sequences and vector rotations.
+     */
     public void play() {
         rotateAnimation.play();
         textSequenceAnimation.play();
     }
 
+    /**
+     * Terminates the ongoing rotational frame computation loop running on the graphical component scene tree.
+     */
     public void stopRotation() {
         rotateAnimation.stop();
     }

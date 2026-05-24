@@ -33,61 +33,33 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Controller for the Auction Item Detail View.
- *
- * <p>Manages the lifecycle of the detail screen including:
- * real-time price updates via EventBus, the bid history line chart,
- * manual bid and auto-bid submission, seller-only auction management controls,
- * and the countdown clock synchronized with server time.</p>
- *
- * <p><b>Lifecycle:</b> Always call {@link #dispose()} when navigating away
- * to unsubscribe EventBus listeners and stop the countdown timeline.</p>
+ * Presenter interface binding an active item profile aggregate root onto structural UI components.
+ * Drives chart vector interpolation updates, handles role-based command filtering,
+ * and controls a real-time temporal countdown loop synchronized with system frames.
  */
 public class ItemDetailController {
 
     private static final Logger log = LoggerFactory.getLogger(ItemDetailController.class);
-
-    private static final String DEFAULT_IMAGE_URL =
-            "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
-
+    private static final String DEFAULT_IMAGE_URL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
     private static final int MAX_CHART_POINTS = 20;
 
-    // ── FXML Components ───────────────────────────────────────────────────────
-    @FXML
-    private HBox hbTime;
-    @FXML
-    private ImageView imgLarge;
-    @FXML
-    private Label lblItemType;
-    @FXML
-    private Label lblDetailTitle;
-    @FXML
-    private Label lblStartPrice;
-    @FXML
-    private Label lblCurrentPrice;
-    @FXML
-    private Label lblLeader;
-    @FXML
-    private TextField txtBidAmount;
-    @FXML
-    private Button btnPlaceBid;
-    @FXML
-    private TextArea txtDescription;
-    @FXML
-    private VBox vbBidHandle;
-    @FXML
-    private VBox vbAuctionControl;
-    @FXML
-    private VBox vbAdminControl;
+    @FXML private HBox hbTime;
+    @FXML private ImageView imgLarge;
+    @FXML private Label lblItemType;
+    @FXML private Label lblDetailTitle;
+    @FXML private Label lblStartPrice;
+    @FXML private Label lblCurrentPrice;
+    @FXML private Label lblLeader;
+    @FXML private TextField txtBidAmount;
+    @FXML private Button btnPlaceBid;
+    @FXML private TextArea txtDescription;
+    @FXML private VBox vbBidHandle;
+    @FXML private VBox vbAuctionControl;
+    @FXML private VBox vbAdminControl;
+    @FXML private LineChart<String, Number> bidHistoryChart;
+    @FXML private CategoryAxis xAxisTime;
+    @FXML private NumberAxis yAxisPrice;
 
-    @FXML
-    private LineChart<String, Number> bidHistoryChart;
-    @FXML
-    private CategoryAxis xAxisTime;
-    @FXML
-    private NumberAxis yAxisPrice;
-
-    // ── State ─────────────────────────────────────────────────────────────────
     private final User currentUser;
     private Parent detailView;
 
@@ -102,13 +74,10 @@ public class ItemDetailController {
     private long endTimeMillis;
     private long currentPriceValue = 0L;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
-
     /**
-     * Loads {@code Productdetail.fxml} and wires the controller.
+     * Compiles the explicit detail container window hierarchy and maps security credentials context.
      *
-     * @param currentUser The authenticated user viewing this detail screen.
-     * @throws RuntimeException if the FXML file cannot be loaded.
+     * @param currentUser the authenticated user entity evaluating the target view context
      */
     public ItemDetailController(User currentUser) {
         this.currentUser = currentUser;
@@ -117,39 +86,26 @@ public class ItemDetailController {
         try {
             detailView = loader.load();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load Productdetail.fxml", e);
+            throw new RuntimeException("Fatal error loading component file tree descriptor hierarchy", e);
         }
         hbTime.getChildren().add(lblTimeLeft);
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
-
-    /**
-     * @return The root {@link Parent} node of this controller's FXML layout.
-     */
     public Parent getParent() {
         return detailView;
     }
 
-    /**
-     * Registers the callback to invoke when the user navigates back to the marketplace.
-     *
-     * @param callback The {@link Runnable} to execute on back-navigation.
-     */
     public void setOnReturnToMarketplace(Runnable callback) {
         this.onReturnToMarketplace = callback;
     }
 
     /**
-     * Populates the view with data from the provided {@link Auction} domain object
-     * and starts the countdown clock and EventBus subscriptions.
-     *
-     * @param auction The auction to display.
+     * Binds domain transaction properties onto active structural scene labels.
+     * Initiates temporal counters and establishes contextual subscription protocols.
      */
     public void setAuctionData(Auction auction) {
         this.currentAuctionId = auction.getId();
-        this.endTimeMillis = auction.getEndTime()
-                .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        this.endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
         this.currentPriceValue = auction.getCurrentPrice();
 
         configureRoleVisibility(auction);
@@ -160,11 +116,9 @@ public class ItemDetailController {
     }
 
     /**
-     * Populates the bid history chart from a list of server-side transaction records.
-     *
-     * @param transactionHistory A list of maps each containing {@code bid_amount} and {@code bid_time}.
+     * Formats historic transaction matrix lines back onto the multi-dimensional vector grid chart.
      */
-    public void setTransactionHistoryData(List<Map<String, Object>> transactionHistory) { // FIX: renamed from setTransActionHistoryData
+    public void setTransactionHistoryData(List<Map<String, Object>> transactionHistory) {
         for (Map<String, Object> map : transactionHistory) {
             long amount = ((Number) map.get("bid_amount")).longValue();
             LocalDateTime bidTime = LocalDateTime.parse((String) map.get("bid_time"));
@@ -173,8 +127,8 @@ public class ItemDetailController {
     }
 
     /**
-     * Unsubscribes EventBus listeners and stops the countdown clock.
-     * Must be called when navigating away from this view.
+     * Explicitly detaches listener nodes from the EventBus pipeline maps and terminates
+     * the localized countdown scheduling loops to guarantee garbage collection routines.
      */
     public void dispose() {
         if (priceUpdateListener != null) {
@@ -182,32 +136,21 @@ public class ItemDetailController {
             AuctionEventBus.removeAllListeners(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS);
         }
         lblTimeLeft.stop();
-        log.debug("ItemDetailController disposed for auction: {}", currentAuctionId);
+        log.debug("Unsubscribed telemetry context loops for auction entity: {}", currentAuctionId);
     }
 
-    // ── FXML Initialize ───────────────────────────────────────────────────────
-
-    /**
-     * Called by FXMLLoader. Sets up the price chart and subscribes to real-time price events.
-     */
     @FXML
     public void initialize() {
-        log.debug("ItemDetailController initialized."); // FIX: was System.out.println
+        log.debug("ItemDetailController view configuration loaded into execution space.");
         setupPriceChart();
         registerPriceUpdateListener();
     }
-
-    // ── FXML Event Handlers ───────────────────────────────────────────────────
 
     @FXML
     private void handleBackToMarketplace() {
         if (onReturnToMarketplace != null) onReturnToMarketplace.run();
     }
 
-    /**
-     * Validates the bid amount and sends a bid placement request.
-     * Disables the bid panel for 2 seconds to prevent duplicate submissions.
-     */
     @FXML
     private void handlePlaceBid() {
         AnimateEffect.pauseNode(vbBidHandle, 2);
@@ -254,11 +197,6 @@ public class ItemDetailController {
         handleBackToMarketplace();
     }
 
-    // ── Private Helpers ───────────────────────────────────────────────────────
-
-    /**
-     * Configures the visibility of buyer vs. seller control panels based on ownership.
-     */
     private void configureRoleVisibility(Auction auction) {
         if (currentUser.getRole().equals("Admin")) {
             vbBidHandle.setVisible(false);
@@ -276,12 +214,8 @@ public class ItemDetailController {
         vbAuctionControl.setManaged(isSeller);
     }
 
-    /**
-     * Sets all text-based UI labels from the auction domain object.
-     */
     private void populateTextFields(Auction auction) {
-        String leader = (auction.getWinningBidder() != null)
-                ? auction.getWinningBidder().getUserName() : "None";
+        String leader = (auction.getWinningBidder() != null) ? auction.getWinningBidder().getUserName() : "None";
 
         lblItemType.setText(auction.getItem().getType());
         lblDetailTitle.setText(auction.getItem().getItemName());
@@ -291,9 +225,6 @@ public class ItemDetailController {
         lblLeader.setText(leader);
     }
 
-    /**
-     * Loads the auction item image asynchronously and displays it in the cropped viewport.
-     */
     private void loadAuctionImage(String imageUrl) {
         String resolvedUrl = (imageUrl != null) ? imageUrl : DEFAULT_IMAGE_URL;
         Image image = new Image(resolvedUrl, true);
@@ -304,9 +235,6 @@ public class ItemDetailController {
         });
     }
 
-    /**
-     * Creates the chart series and attaches it to the line chart.
-     */
     private void setupPriceChart() {
         priceSeries = new XYChart.Series<>();
         priceSeries.setName("Bid Price");
@@ -314,9 +242,6 @@ public class ItemDetailController {
         bidHistoryChart.setCreateSymbols(true);
     }
 
-    /**
-     * Subscribes to real-time price updates for the currently viewed auction.
-     */
     private void registerPriceUpdateListener() {
         priceUpdateListener = evt -> {
             @SuppressWarnings("unchecked")
@@ -343,12 +268,13 @@ public class ItemDetailController {
                     (List<Map<String, Object>>) ((NetworkMessage) evt.getNewValue()).getData();
             setTransactionHistoryData(history);
         });
+
         AuctionEventBus.addListener("AUCTION_STATUS_CHANGED", event -> {
             NetworkMessage msg = (NetworkMessage) event.getNewValue();
             Map<String, Object> data = (Map<String, Object>) msg.getData();
             String id = (String) data.get("auctionId");
 
-            if (!id.equals(currentAuctionId)) return;  // dùng currentAuctionId, không phải currentAuction.getId()
+            if (!id.equals(currentAuctionId)) return;
 
             String newStatus = (String) data.get("newStatus");
             Platform.runLater(() -> {
@@ -360,27 +286,20 @@ public class ItemDetailController {
         });
     }
 
-    /**
-     * Updates the price label with an animated transition and adds a new chart data point.
-     */
     private void updateRealTimePrice(long newPrice, String winnerName) {
         long oldPrice = this.currentPriceValue;
         this.currentPriceValue = newPrice;
 
-        gui.process.PriceTweener.animatePriceChange(lblCurrentPrice, oldPrice, newPrice);
+        PriceTweener.animatePriceChange(lblCurrentPrice, oldPrice, newPrice);
         lblLeader.setText(winnerName);
         addPointToChart(newPrice, Convert.longToTimestamp(System.currentTimeMillis()));
-        gui.process.AnimateEffect.highlightText(lblCurrentPrice);
+        AnimateEffect.highlightText(lblCurrentPrice);
     }
 
-    /**
-     * Appends a new data point to the price series, removing the oldest if the limit is exceeded.
-     */
     private void addPointToChart(long price, LocalDateTime time) {
         priceSeries.getData().add(new XYChart.Data<>(time.format(timeFormatter), price));
         if (priceSeries.getData().size() > MAX_CHART_POINTS) {
             priceSeries.getData().removeFirst();
         }
     }
-
 }

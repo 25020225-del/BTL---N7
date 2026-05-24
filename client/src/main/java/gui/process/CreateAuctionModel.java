@@ -1,7 +1,7 @@
 package gui.process;
 
-import gui.MainApplication;
 import javafx.stage.FileChooser;
+import javafx.stage.Window;
 import model.auction.Auction;
 import model.item.Item;
 import model.item.ItemFactory;
@@ -13,37 +13,35 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Core transactional model controller backing the Auction Creation layout form wizard.
- * Handles pure data structure parsing, file boundary constraints, and logic mutations.
- * Enforces loose UI decoupling by bubbling up validation constraints via Exceptions.
+ * Stateless validation and domain factory service supporting the auction creation wizard.
+ * Enforces business rule constraints and asset parsing invariants independently of the
+ * concrete UI event capture lifecycle.
  */
 public class CreateAuctionModel {
 
-    public static final int MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
+    public static final int MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
     /**
-     * Mở FileChooser để người dùng chọn ảnh.
+     * Spawns a localized native file dialog context to resolve an image asset path.
+     * Validates inbound binary payload boundaries prior to ingestion.
      *
-     * @return File đã chọn, hoặc {@code null} nếu hủy.
-     * @throws IllegalArgumentException nếu ảnh vượt quá 10MB.
+     * @param ownerWindow the host window context managing the dialog overlay
+     * @return the selected image file pointer, or {@code null} if the operation was aborted
+     * @throws IllegalArgumentException if the selected asset profile scales past the 10MB threshold
      */
-    public static File selectImageFile() {
+    public static File selectImageFile(Window ownerWindow) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Chọn ảnh sản phẩm");
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Ảnh", "*.png", "*.jpg", "*.jpeg", "*.gif")
         );
 
-        File selectedFile = fileChooser.showOpenDialog(
-                MainApplication.primalStage.getScene().getWindow()
-        );
+        File selectedFile = fileChooser.showOpenDialog(ownerWindow);
 
         if (selectedFile == null) {
-            return null; // Người dùng bấm Cancel
+            return null;
         }
 
-        // REFACTOR: Ném exception thay vì gọi AlertHelper trực tiếp.
-        // Controller sẽ bắt và hiển thị lỗi qua AlertUtils.
         if (selectedFile.length() > MAX_IMAGE_SIZE) {
             throw new IllegalArgumentException(
                     "Ảnh quá nặng. Vui lòng chọn ảnh có dung lượng nhỏ hơn 10MB."
@@ -53,14 +51,18 @@ public class CreateAuctionModel {
     }
 
     /**
-     * Kiểm tra các trường nhập liệu bắt buộc.
+     * Enforces domain structural validation rules upon raw user form input collections.
      *
-     * @throws IllegalArgumentException với message mô tả lỗi cụ thể nếu validation thất bại.
+     * @param name       the descriptive nomenclature of the item
+     * @param desc       the semantic details of the target asset
+     * @param startPrice the starting monetary valuation text string
+     * @param bidInc     the mandated incremental valuation stepping string
+     * @param image      the binary handle representing the validated image file
+     * @throws IllegalArgumentException if fields violate nullable constraints or fail minimum financial baselines
      */
     public static void checkInputInfo(
             String name, String desc, String startPrice, String bidInc, File image
     ) {
-        // Kiểm tra trường trống
         if (name.isEmpty() || desc.isEmpty() || startPrice.isEmpty() || bidInc.isEmpty()) {
             throw new IllegalArgumentException("Vui lòng điền đầy đủ các trường bắt buộc.");
         }
@@ -68,46 +70,43 @@ public class CreateAuctionModel {
             throw new IllegalArgumentException("Vui lòng chọn ảnh cho sản phẩm.");
         }
 
-        // Kiểm tra giá tối thiểu — FIX: "Vui đòng" → "Vui lòng"
-        long price = Long.parseLong(startPrice); // NumberFormatException nếu không hợp lệ
+        long price = Long.parseLong(startPrice);
         if (price < 2000) {
-            throw new IllegalArgumentException(
-                    "Vui lòng đặt mức giá khởi điểm tối thiểu 2.000 VNĐ."
-            );
+            throw new IllegalArgumentException("Vui lòng đặt mức giá khởi điểm tối thiểu 2.000 VNĐ.");
         }
 
         long increment = Long.parseLong(bidInc);
         if (increment < 1000) {
-            // FIX LỖI CHÍNH TẢ GỐC: "Vui đòng" → "Vui lòng"
-            throw new IllegalArgumentException(
-                    "Vui lòng đặt bước giá tối thiểu 1.000 VNĐ."
-            );
+            throw new IllegalArgumentException("Vui lòng đặt bước giá tối thiểu 1.000 VNĐ.");
         }
     }
 
     /**
-     * Kiểm tra và tạo LocalDateTime cho thời điểm bắt đầu đấu giá.
+     * Compiles a localized text representation of temporal values into a system datetime context.
      *
-     * @throws NumberFormatException       nếu giờ/phút không hợp lệ.
-     * @throws java.time.DateTimeException nếu giá trị giờ/phút nằm ngoài phạm vi.
+     * @param date        the target starting date matrix
+     * @param startHour   the target hour indicator string
+     * @param startMinute the target minute indicator string
+     * @return an integrated chronological representation of the start sequence
+     * @throws NumberFormatException if structural parsing of digital segments fails range constraints
      */
-    public static LocalDateTime checkStartTime(
-            LocalDate date, String startHour, String startMinute
-    ) {
+    public static LocalDateTime checkStartTime(LocalDate date, String startHour, String startMinute) {
         if (date == null || startHour == null || startMinute == null
                 || startHour.isEmpty() || startMinute.isEmpty()) {
             throw new NumberFormatException("Vui lòng chọn ngày và giờ bắt đầu.");
         }
         int hour = Integer.parseInt(startHour);
         int minute = Integer.parseInt(startMinute);
-        return date.atTime(hour, minute); // DateTimeException nếu hour/minute sai range
+        return date.atTime(hour, minute);
     }
 
     /**
-     * Kiểm tra và tạo Duration cho thời lượng đấu giá.
+     * Computes the absolute operational timespan duration metrics for the session lifecycle contract.
      *
-     * @throws NumberFormatException    nếu số ngày/giờ không hợp lệ.
-     * @throws IllegalArgumentException nếu tổng thời lượng bằng 0.
+     * @param days  the parameterized absolute day metric text
+     * @param hours the parameterized absolute hour metric text
+     * @return the verified structural duration configuration block
+     * @throws IllegalArgumentException if the processed calculation yields zero temporal delta
      */
     public static Duration checkEndTime(String days, String hours) {
         if (days == null || hours == null || days.trim().isEmpty() || hours.trim().isEmpty()) {
@@ -123,7 +122,7 @@ public class CreateAuctionModel {
     }
 
     /**
-     * Tạo Item từ dữ liệu form và file ảnh.
+     * Translates a raw validated file structure into an immutable system inventory item instance.
      */
     public static Item createItem(String name, String type, String desc, long startPrice, File image)
             throws Exception {
@@ -135,7 +134,7 @@ public class CreateAuctionModel {
     }
 
     /**
-     * Tạo Auction từ Item và các thông số đấu giá.
+     * Assembles a verified concrete auction aggregate root ready for registration.
      */
     public static Auction createAuction(
             Item item, User user, long bidInc,

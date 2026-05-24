@@ -6,18 +6,13 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.*;
 
 /**
- * Manages asynchronous database transaction execution using a ThreadPool worker pattern.
- * Leverages SQLite's WAL mode and HikariCP connection pooling to allow
- * concurrent database operations across different auctions.
+ * Handles asynchronous database transaction tasks executing through bounded worker threads.
+ * Prevents main network execution loop degradation under state persistence constraints.
  */
 public class TransactionManager {
 
     private static final Logger log = LoggerFactory.getLogger(TransactionManager.class);
 
-    /**
-     * Fixed Thread Pool to handle concurrent database tasks.
-     * Size matches the maximum HikariCP connection pool size to prevent connection starvation.
-     */
     private static final ExecutorService executor = Executors.newFixedThreadPool(5, r -> {
         Thread t = new Thread(r, "DB-Worker-Pool");
         t.setDaemon(true);
@@ -25,11 +20,11 @@ public class TransactionManager {
     });
 
     /**
-     * Submits a database task for asynchronous execution and returns a future result.
+     * Enqueues an operation context for asynchronous execution inside the database worker pool.
      *
-     * @param <T>  The type of the result produced by the task.
-     * @param task The logic to be executed by the database worker thread.
-     * @return A {@link CompletableFuture} that completes once a worker thread finishes the task.
+     * @param <T>  the evaluated computational result type
+     * @param task the database process execution script block
+     * @return a {@link CompletableFuture} tracked evaluation result
      */
     public static <T> CompletableFuture<T> submitTask(Callable<T> task) {
         CompletableFuture<T> future = new CompletableFuture<>();
@@ -48,7 +43,7 @@ public class TransactionManager {
     }
 
     /**
-     * Gracefully shuts down the database executor, waiting up to 60 seconds for tasks to finish.
+     * Triggers graceful termination sequence for the background persistence executor pool.
      */
     public static void shutdown() {
         executor.shutdown();

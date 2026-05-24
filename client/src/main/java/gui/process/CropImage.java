@@ -6,37 +6,43 @@ import javafx.scene.image.ImageView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Aspect-ratio preserving viewport mapping utility for graphical nodes.
+ * Computes deterministic scale-to-cover dimensions to guarantee layout containment centering
+ * without structural distortion.
+ */
 public class CropImage {
-    private static Logger log = LoggerFactory.getLogger(CropImage.class);
+    private static final Logger log = LoggerFactory.getLogger(CropImage.class);
 
+    /**
+     * Reconfigures the viewport constraints of an ImageView target to enforce a central-cover clip.
+     *
+     * @param imageView the target layout container receiving the image
+     * @param image     the source binary graphical asset
+     * @param width     the bounded bounding width of the target viewport
+     * @param height    the bounded bounding height of the target viewport
+     */
     public static void cropImage(ImageView imageView, Image image, int width, int height) {
         if (image == null || image.isError()) {
-            log.warn("Image is null or error");
+            log.warn("Image initialization failed or resource is corrupted.");
             return;
         }
 
-        // 1. Cấu hình kích thước khung nhìn cho ImageView
         imageView.setFitWidth(width);
         imageView.setFitHeight(height);
-        imageView.setPreserveRatio(false); // Tắt để vùng cắt (Viewport) lấp đầy khung
+        imageView.setPreserveRatio(false);
 
-        // 2. Lấy kích thước thực tế của ảnh gốc
         double sourceW = image.getWidth();
         double sourceH = image.getHeight();
 
-        // 3. Tính toán tỷ lệ để bao phủ (Cover) khung hình
-        // Chúng ta ép kiểu int sang double ở đây để tính toán chính xác
         double scale = Math.max((double) width / sourceW, (double) height / sourceH);
 
-        // 4. Tính toán kích thước vùng cắt trên ảnh gốc
         double actualCropW = width / scale;
         double actualCropH = height / scale;
 
-        // 5. Xác định tọa độ X, Y để vùng cắt nằm chính giữa ảnh
         double x = (sourceW - actualCropW) / 2.0;
         double y = (sourceH - actualCropH) / 2.0;
 
-        // 6. Áp dụng ảnh và vùng cắt vào ImageView
         imageView.setImage(image);
         imageView.setViewport(new Rectangle2D(x, y, actualCropW, actualCropH));
     }

@@ -9,7 +9,6 @@ import model.auction.Auction;
 import model.item.Item;
 import model.item.TangibleItem;
 import model.user.User;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -24,16 +23,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Stress test suite designed to simulate high-concurrency bidding environments.
+ * Verifies data integrity and the behavior of optimistic locking mechanisms
+ * under heavy thread contention over shared resources.
+ */
 class ConcurrentBiddingTest {
 
     @BeforeAll
     static void initDb() {
         DatabaseManager.initializeDatabase();
-    }
-
-    @AfterAll
-    static void shutdownPool() {
-        //DatabaseManager.closePool();
     }
 
     @Test
@@ -47,7 +46,6 @@ class ConcurrentBiddingTest {
         long initialBalance = 100_000L;
         long bidAmount = 1500L;
 
-        // --- Arrange: Tạo Seller và 10 Bidders ---
         User seller = new User();
         seller.setId("SELLER-" + runId);
         seller.setUserName("seller-" + runId);
@@ -67,7 +65,6 @@ class ConcurrentBiddingTest {
             bidders.add(u);
         }
 
-        // Seed DB trực tiếp
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
 
@@ -96,7 +93,6 @@ class ConcurrentBiddingTest {
 
         assertTrue(auctionDAO.addAuction(auction), "Phải tạo được phiên đấu giá ảo");
 
-        // --- Act: Ép 10 Thread bắn chung 1 mili-giây ---
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(10);
         AtomicInteger successCount = new AtomicInteger(0);
@@ -106,7 +102,8 @@ class ConcurrentBiddingTest {
             final User bidder = bidders.get(i);
             Thread worker = new Thread(() -> {
                 try {
-                    startLatch.await(); // Đợi hiệu lệnh
+                    // Force threads to block until released simultaneously to maximize write contention
+                    startLatch.await();
                     boolean ok = Boolean.TRUE.equals(controller.placeBidOnAuction(bidder, auction, bidAmount, false).get(30, TimeUnit.SECONDS));
                     if (ok) successCount.incrementAndGet();
                 } catch (Exception e) {
@@ -119,16 +116,11 @@ class ConcurrentBiddingTest {
             worker.start();
         }
 
-        startLatch.countDown(); // Khai hỏa
+        startLatch.countDown();
         assertTrue(doneLatch.await(60, TimeUnit.SECONDS), "Deadlock xảy ra: Không phải tất cả 10 thread đều hoàn thành.");
-
-        // Cơ bản: Phải có ít nhất 1 request lọt qua khe cửa hẹp của Optimistic Lock
         assertTrue(successCount.get() >= 1 && successCount.get() <= bidders.size(), "Phải có ít nhất 1 giao dịch thành công.");
 
-        // --- ASSERT: DATA INTEGRITY (QUAN TRỌNG NHẤT) ---
         try (Connection conn = DatabaseManager.getConnection()) {
-
-            // 1. Xác định Vua trò chơi
             String winnerId = null;
             long highestMaxBid = 0;
             try (var ps = conn.prepareStatement("SELECT winning_bidder_id, highest_max_bid FROM auctions WHERE id = ?")) {
@@ -141,7 +133,6 @@ class ConcurrentBiddingTest {
             }
             assertNotNull(winnerId, "Database: Bắt buộc phải chốt được 1 người chiến thắng cuối cùng.");
 
-            // 2. Tra soát đối soát tài chính toàn bộ 10 Bidders
             for (User u : bidders) {
                 try (var ps = conn.prepareStatement("SELECT balance, locked_balance FROM wallets WHERE user_id = ?")) {
                     ps.setString(1, u.getId());
@@ -161,7 +152,6 @@ class ConcurrentBiddingTest {
                 }
             }
 
-            // 3. Đối soát lịch sử giao dịch (Chống tạo khống Transaction)
             try (var ps = conn.prepareStatement("SELECT COUNT(*) FROM bid_transactions WHERE auction_id = ?")) {
                 ps.setString(1, auction.getId());
                 var rs = ps.executeQuery();

@@ -20,15 +20,17 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.Circle?>
+<?import java.lang.String?>
 <TabPane
         fx:id="bidPanelRoot"
         tabClosingPolicy="UNAVAILABLE"
         styleClass="bid-panel"
         xmlns:fx="http://javafx.com/fxml/1"
         xmlns="http://javafx.com/javafx/17"
+        fx:controller="gui.widget.BidPanelController"
 >
     <stylesheets>
-        <String fx:value="/gui/styles/bid-panel.css"/>
+        <String value="@bid-panel.css"/>
     </stylesheets>
 
     <!-- ══════════════════════════════════════════════════════════════════════

@@ -16,6 +16,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+/**
+ * Standard unit tests for {@link AutoBidEngine}.
+ * Validates baseline deterministic scheduling conditions and tie-breaking policies.
+ */
 class AutoBidEngineTest {
 
     static final class CapturingBidderController extends ServerBidderController {
@@ -36,7 +40,6 @@ class AutoBidEngineTest {
 
     @Test
     void autoBidEngine_prefersEarlierRegistrationWhenMaxBidTied() throws Exception {
-        // Arrange
         Item item = new TangibleItem("", "", "", 1000L);
 
         User seller = new User();
@@ -57,8 +60,8 @@ class AutoBidEngineTest {
 
         AutoBid b1 = new AutoBid(u1, 2000L, 50L);
         AutoBid b2 = new AutoBid(u2, 2000L, 50L);
-        b1.setTimeRegistered(LocalDateTime.now().minusSeconds(10)); // earlier
-        b2.setTimeRegistered(LocalDateTime.now().minusSeconds(5));  // later
+        b1.setTimeRegistered(LocalDateTime.now().minusSeconds(10));
+        b2.setTimeRegistered(LocalDateTime.now().minusSeconds(5));
 
         auction.getActiveAutoBids().offer(b2);
         auction.getActiveAutoBids().offer(b1);
@@ -66,10 +69,8 @@ class AutoBidEngineTest {
         CapturingBidderController ctrl = new CapturingBidderController();
         AutoBidEngine.setBidderController(ctrl);
 
-        // Act: Gọi trực tiếp hàm đã được mở quyền package-private
         AutoBidEngine.processNextBot(auction);
 
-        // Assert
         assertNotNull(ctrl.lastBidder.get(), "Engine should submit exactly one bid");
         assertEquals("U1", ctrl.lastBidder.get().getId(), "Earlier-registered bot should win tie on maxBid");
         assertEquals(2000L, ctrl.lastMaxBid.get(), "Tie on maxBid should push to maxBid");

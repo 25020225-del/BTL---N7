@@ -11,6 +11,10 @@ import server.ServerExtension.AuctionManager;
 
 import java.util.Map;
 
+/**
+ * Command route handler managing mutation operations on un-started auctions
+ * owned exclusively by authenticated hosting vendors.
+ */
 public class SellerActionHandler implements CommandHandler {
 
     private final ServerSellerController sellerCtrl;

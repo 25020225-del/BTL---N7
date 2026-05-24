@@ -20,15 +20,18 @@ import utils.JacksonConfig;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
+/**
+ * Base abstract presentation controller for grid-based layout structures.
+ * Manages foundational scene graph mutations, directional keyword query lookups,
+ * and child component spatial distribution filters.
+ */
 public class TableController {
     protected static final Logger log = LoggerFactory.getLogger(TableController.class);
     protected final ObjectMapper mapper = JacksonConfig.mapper();
 
     protected Consumer<Auction> auctionListener;
-
     protected Parent tableView;
 
     @FXML protected HBox searchBarContainer;
@@ -37,13 +40,16 @@ public class TableController {
     @FXML protected Button searchButton;
     @FXML protected HBox fillerBarContainer;
 
+    /**
+     * Instantiates the composite view structure and anchors this controller context to the FXML lifecycle.
+     */
     public TableController() {
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("/gui/TableView.fxml"));
         tableViewLoader.setController(this);
         try {
             tableView = tableViewLoader.load();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Critical failure loading visual grid layout resource hierarchy", e);
         }
     }
 
@@ -62,16 +68,17 @@ public class TableController {
     }
 
     @FXML
-    protected void search() { // FIX: method name cũng nên camelCase nhưng giữ nếu FXML bind "#Search"
+    protected void search() {
         String keyword = searchField.getText();
         for (Node node : mainTilePane.getChildren()) {
             if (node instanceof MinimalItem item) {
                 String itemContent = (String) item.getUserData();
-                // FIX 1: Đổi tên method từ SearchText → matchesFuzzy
-                // FIX 2: Đổi thứ tự tham số: (keyword, content) thay vì (content, keyword)
                 boolean match = Search.matchesFuzzy(keyword, itemContent);
-                if  (match) AnimateEffect.showNode(item);
-                else AnimateEffect.hideNode(item);
+                if (match) {
+                    AnimateEffect.showNode(item);
+                } else {
+                    AnimateEffect.hideNode(item);
+                }
             }
         }
     }
@@ -84,16 +91,21 @@ public class TableController {
         fillerBarContainer.getChildren().clear();
     }
 
+    /**
+     * Filters visibility attributes across the child viewport collections matching criteria tokens.
+     */
     public void searchByProperties(String key, String value) {
-        for  (Node node : mainTilePane.getChildren()) {
-            if(value.trim().equals("")){
+        for (Node node : mainTilePane.getChildren()) {
+            if (value.trim().isEmpty()) {
                 AnimateEffect.showNode(node);
                 continue;
             }
             AnimateEffect.hideNode(node);
             if (node instanceof MinimalItem) {
-                if(!node.getProperties().containsKey(key)) continue;
-                if(((String) node.getProperties().get(key)).equals(value)) AnimateEffect.showNode(node);
+                if (!node.getProperties().containsKey(key)) continue;
+                if (value.equals(node.getProperties().get(key))) {
+                    AnimateEffect.showNode(node);
+                }
             }
         }
     }
@@ -104,24 +116,20 @@ public class TableController {
 
     public void addAllItem(List<MinimalItem> items) {
         mainTilePane.getChildren().clear();
-        for (MinimalItem item : items) {
-            mainTilePane.getChildren().add(item);
-        }
+        mainTilePane.getChildren().addAll(items);
     }
 
     public void deleteAllItem() {
         mainTilePane.getChildren().clear();
     }
 
-
     public void removeItem(String auctionIdToRemove) {
         mainTilePane.getChildren().removeIf(node -> auctionIdToRemove.equals(node.getId()));
     }
 
-
     protected void openItemDetail(Auction auction) {
-        auctionListener.accept(auction);
+        if (auctionListener != null) {
+            auctionListener.accept(auction);
+        }
     }
-
-
 }

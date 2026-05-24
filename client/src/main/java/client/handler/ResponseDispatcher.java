@@ -12,45 +12,25 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Central dispatcher that routes incoming JSON commands from the server
- * to their appropriate dedicated {@link ResponseHandler} implementations.
- *
- * <p>Uses a {@link HashMap} keyed by command string for O(1) dispatch.
- * Unregistered commands are forwarded to a per-connection fallback callback,
- * supporting dynamic flows such as Login and Registration.</p>
- *
- * <p>The dispatcher also serves as a safety net: any unhandled exception
- * from a handler is logged and surfaced to the user as an error alert.</p>
+ * Central dispatcher responsible for routing incoming network commands to their
+ * respective {@link ResponseHandler} implementations.
+ * Maps operational codes in O(1) time complexity and manages application-wide
+ * error boundary fallbacks for unhandled execution failures.
  */
 public class ResponseDispatcher {
 
     private static final Logger log = LoggerFactory.getLogger(ResponseDispatcher.class);
-
     private final Map<String, ResponseHandler> handlers = new HashMap<>();
 
     /**
-     * Constructs the dispatcher and registers all known command-to-handler mappings.
+     * Initializes the dispatcher subsystem and registers all structural message-to-handler mappings.
      */
     public ResponseDispatcher() {
         registerSystemHandlers();
-        registerHandlers();
         registerAuctionHandlers();
         registerPaymentHandlers();
         registerUserHandlers();
         registerAdminHandlers();
-    }
-
-    // ── Handler Registration ──────────────────────────────────────────────────
-
-    /**
-     * Registers all known server commands to their respective handler instances.
-     * Each handler instance is shared across all commands it is responsible for.
-     */
-    private void registerHandlers() {
-        registerSystemHandlers();
-        registerAuctionHandlers();
-        registerPaymentHandlers();
-        registerUserHandlers();
     }
 
     private void registerSystemHandlers() {
@@ -59,18 +39,14 @@ public class ResponseDispatcher {
         handlers.put("KICKED", systemHandler);
         handlers.put("TIME_SYNC_ACK", systemHandler);
         handlers.put("GENERAL_ERROR", systemHandler);
+
         ResponseHandler errorHandler = (message, client) -> {
             if (client.getOnMessageReceived() != null) {
                 Platform.runLater(() -> client.getOnMessageReceived().accept(message));
             } else {
                 String errMsg = ErrorParser.parse(message.getData());
                 log.warn("Server returned ERROR: {}", errMsg);
-                Platform.runLater(() ->
-                        AlertUtils.showError(
-                                "Lỗi từ Server",
-                                errMsg
-                        )
-                );
+                Platform.runLater(() -> AlertUtils.showError("Lỗi từ Server", errMsg));
             }
         };
         handlers.put("ERROR", errorHandler);
@@ -112,43 +88,29 @@ public class ResponseDispatcher {
         handlers.put("DISABLE_2FA_SUCCESS", userHandler);
         handlers.put("CANCEL_2FA_SUCCESS", userHandler);
         handlers.put("UPDATE_TOTP_PREFS_SUCCESS", userHandler);
-
-
     }
 
     private void registerAdminHandlers() {
-        ResponseHandler adminHandler = (message, client) -> {
-            switch (message.getCommand()) {
-                case "FETCH_WITHDRAW_REQUESTS_SUCCESS" ->
-                        AuctionEventBus.fireEvent("FETCH_WITHDRAW_REQUESTS_SUCCESS", message);
-                case "WITHDRAW_ACTION_SUCCESS" -> AuctionEventBus.fireEvent("WITHDRAW_ACTION_SUCCESS", message);
-            }
-        };
+        ResponseHandler adminHandler = (message, client) ->
+                AuctionEventBus.fireEvent(message.getCommand(), message);
+
         handlers.put("FETCH_WITHDRAW_REQUESTS_SUCCESS", adminHandler);
         handlers.put("WITHDRAW_ACTION_SUCCESS", adminHandler);
-        handlers.put("CANCEL_AUCTION_SUCCESS", adminHandler); // THÊM
-        handlers.put("TOGGLE_GOOD_STATUS", adminHandler);     // THÊM — server gửi về tên này
-        handlers.put("TOGGLE_GOOD_SUCCESS", adminHandler);    // THÊM
+        handlers.put("CANCEL_AUCTION_SUCCESS", adminHandler);
+        handlers.put("TOGGLE_GOOD_STATUS", adminHandler);
+        handlers.put("TOGGLE_GOOD_SUCCESS", adminHandler);
     }
 
-    // ── Dispatch ──────────────────────────────────────────────────────────────
-
     /**
-     * Looks up the correct handler for the given message and delegates execution to it.
+     * Intercepts the inbound network message, identifies its registered handler,
+     * and delegates execution flow to the presentation layer.
      *
-     * <p>If no handler is registered, the message is forwarded to the client's
-     * {@code onMessageReceived} callback (if set). This supports ad-hoc flows
-     * like Login/Register that set their own temporary callbacks.</p>
-     *
-     * <p>Any exception thrown by a handler is caught here; it is logged for developers
-     * and displayed as an error alert for end-users.</p>
-     *
-     * @param message The incoming {@link NetworkMessage} to dispatch.
-     * @param client  The active {@link NetworkClient} passed to the handler.
+     * @param message the incoming network data packet to be evaluated
+     * @param client  the active client session infrastructure
      */
     public void dispatch(NetworkMessage message, NetworkClient client) {
         String command = message.getCommand();
-        log.debug("Dispatching command: {}", command); // FIX: was System.out.println(command)
+        log.debug("Dispatching command: {}", command);
 
         ResponseHandler handler = handlers.get(command);
 
@@ -156,7 +118,6 @@ public class ResponseDispatcher {
             try {
                 handler.handle(message, client);
             } catch (Exception e) {
-                // FIX: removed e.printStackTrace() — log.error with stack trace is sufficient
                 log.error("Error handling command \"{}\": {}", command, e.getMessage(), e);
                 Platform.runLater(() ->
                         AlertUtils.showError(
@@ -166,7 +127,6 @@ public class ResponseDispatcher {
                 );
             }
         } else {
-            // Forward unregistered commands to any registered one-off callback (e.g., LoginController)
             if (client.getOnMessageReceived() != null) {
                 Platform.runLater(() -> client.getOnMessageReceived().accept(message));
             } else {

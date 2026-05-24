@@ -13,6 +13,10 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+/**
+ * Unit tests for {@link ServerBidderController}.
+ * Focuses on business rule validations for incoming bids on live auctions.
+ */
 @ExtendWith(MockitoExtension.class)
 class ServerBidderControllerTest {
 
@@ -24,7 +28,6 @@ class ServerBidderControllerTest {
 
     @Test
     void placeBid_OnOwnAuction_ShouldRejectImmediately() throws Exception {
-        // Arrange
         User seller = new User();
         seller.setId("UET-K70-LOC");
 
@@ -32,10 +35,8 @@ class ServerBidderControllerTest {
         auction.setId("AUC-001");
         auction.setSeller(seller);
 
-        // Act: Lộc tự đặt giá vào phiên đấu giá do chính Lộc tạo ra
         CompletableFuture<Boolean> bidResult = bidderController.placeBidOnAuction(seller, auction, 50000L, false);
 
-        // Assert: Tương tác bị từ chối ngay lập tức mà không cần gọi xuống Database
         assertFalse(bidResult.get(), "Hệ thống phải chặn Seller tự bid vào sản phẩm của mình.");
     }
 }

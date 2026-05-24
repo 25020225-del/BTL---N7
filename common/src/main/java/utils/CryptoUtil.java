@@ -12,23 +12,23 @@ import java.security.*;
 import java.util.Base64;
 
 /**
- * Utility class for cryptographic operations.
- * Implements secure RSA-2048 for key exchange and AES-256-GCM for payload encryption.
+ * Cryptographic security core utility provider.
+ * Implements high-performance asymmetric RSA-2048 key-exchanges and symmetric AES-256-GCM payload seals.
  */
 public class CryptoUtil {
-    private static final Logger log = LoggerFactory.getLogger(CryptoUtil.class);
 
+    private static final Logger log = LoggerFactory.getLogger(CryptoUtil.class);
     private static final String RSA = "RSA";
     private static final String AES_ALGO = "AES";
-
-    // GCM (Galois/Counter Mode) with NoPadding prevents ECB vulnerabilities and provides data authenticity
     private static final String AES_CIPHER_ALGO = "AES/GCM/NoPadding";
-
-    private static final int GCM_TAG_LENGTH = 128; // Authentication tag length in bits
-    private static final int GCM_IV_LENGTH = 12;   // Initialization Vector length in bytes (96 bits is optimal for GCM)
+    private static final int GCM_TAG_LENGTH = 128;
+    private static final int GCM_IV_LENGTH = 12;
 
     /**
-     * Generates an RSA-2048 key pair for the server.
+     * Dynamically generates an ephemeral RSA-2048 asymmetric key pair context.
+     *
+     * @return a valid structural {@link KeyPair} instance
+     * @throws RuntimeException if the platform missing default cryptographic provider providers
      */
     public static KeyPair generateRSAKeyPair() {
         try {
@@ -42,7 +42,9 @@ public class CryptoUtil {
     }
 
     /**
-     * Generates a secure AES-256 symmetric key for the client.
+     * Generates a bounded secure symmetric AES-256 key block instance.
+     *
+     * @return a fully populated {@link SecretKey} context
      */
     public static SecretKey generateAESKey() {
         try {
@@ -55,9 +57,6 @@ public class CryptoUtil {
         }
     }
 
-    /**
-     * Encrypts the AES key using the Server's RSA Public Key.
-     */
     public static String encryptAESKeyWithRSA(SecretKey aesKey, PublicKey rsaPublicKey) {
         try {
             Cipher cipher = Cipher.getInstance(RSA);
@@ -70,14 +69,10 @@ public class CryptoUtil {
         }
     }
 
-    /**
-     * Decrypts the AES key using the Server's RSA Private Key.
-     */
     public static SecretKey decryptAESKeyWithRSA(String encryptedAesKeyBase64, PrivateKey rsaPrivateKey) {
         try {
             Cipher cipher = Cipher.getInstance(RSA);
             cipher.init(Cipher.DECRYPT_MODE, rsaPrivateKey);
-            // An IllegalArgumentException may occur if the Base64 string is corrupted or the data is lost.
             byte[] decryptedKey = cipher.doFinal(Base64.getDecoder().decode(encryptedAesKeyBase64));
             return new SecretKeySpec(decryptedKey, 0, decryptedKey.length, AES_ALGO);
         } catch (GeneralSecurityException | IllegalArgumentException e) {
@@ -87,12 +82,14 @@ public class CryptoUtil {
     }
 
     /**
-     * Encrypts the JSON payload using AES-256-GCM.
-     * The randomly generated IV is prepended to the final encrypted byte array.
+     * Cryptographically seals text records utilizing atomized single-use IV vectors.
+     *
+     * @param plainText original serialization message targeted for encryption
+     * @param secretKey shared AES-256 symmetric cipher block key token reference
+     * @return Base64 encoded compound payload text string containing un-encrypted IV header
      */
     public static String encryptAES(String plainText, SecretKey secretKey) {
         try {
-            // Generate a secure random Initialization Vector (IV) for each encryption
             byte[] iv = new byte[GCM_IV_LENGTH];
             SecureRandom random = new SecureRandom();
             random.nextBytes(iv);
@@ -103,7 +100,6 @@ public class CryptoUtil {
 
             byte[] encryptedBytes = cipher.doFinal(plainText.getBytes());
 
-            // Prepend the IV to the encrypted payload so the decryptor can extract it
             byte[] cipherMessage = new byte[GCM_IV_LENGTH + encryptedBytes.length];
             System.arraycopy(iv, 0, cipherMessage, 0, GCM_IV_LENGTH);
             System.arraycopy(encryptedBytes, 0, cipherMessage, GCM_IV_LENGTH, encryptedBytes.length);
@@ -116,19 +112,16 @@ public class CryptoUtil {
     }
 
     /**
-     * Decrypts the JSON payload using AES-256-GCM.
-     * Extracts the IV from the beginning of the byte array before decrypting.
+     * Decrypts a compound byte payload by stripping out structural GCM tracking parameters.
      */
     public static String decryptAES(String encryptedText, SecretKey secretKey) {
         try {
             byte[] cipherMessage = Base64.getDecoder().decode(encryptedText);
 
-            // Extract the IV from the first 12 bytes
             byte[] iv = new byte[GCM_IV_LENGTH];
             System.arraycopy(cipherMessage, 0, iv, 0, GCM_IV_LENGTH);
             GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
 
-            // Extract the actual encrypted payload
             int payloadLength = cipherMessage.length - GCM_IV_LENGTH;
             byte[] encryptedBytes = new byte[payloadLength];
             System.arraycopy(cipherMessage, GCM_IV_LENGTH, encryptedBytes, 0, payloadLength);
@@ -144,7 +137,6 @@ public class CryptoUtil {
         }
     }
 
-    // Reconstruct the PublicKey from a Base64 string (used by the client to read the server's key)
     public static PublicKey getPublicKeyFromBase64(String base64Key) {
         try {
             byte[] keyBytes = Base64.getDecoder().decode(base64Key);

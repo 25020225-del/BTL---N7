@@ -3,27 +3,30 @@ package client.utils;
 import client.network.ErrorPayload;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public class ErrorParser {
+/**
+ * Utility parser designed to unwrap and normalize error payloads received from the server network layer.
+ */
+public final class ErrorParser {
     private static final ObjectMapper mapper = new ObjectMapper();
 
+    private ErrorParser() {
+    }
+
     /**
-     * Extracts and flattens user-friendly error messages from server response payloads.
-     * Safely handles legacy string fallback packages and structural ErrorPayload data models.
+     * Extracts an intelligible error message string from raw polymorphic server response payloads.
      *
-     * @param data Raw untyped network packet data object.
-     * @return Sanitized error string map to be displayed on UI alert prompts.
+     * @param data the raw untyped network packet data object
+     * @return a user-friendly sanitized error string message
      */
     public static String parse(Object data) {
         if (data == null) {
             return "Unknown internal server error.";
         }
 
-        // Fallback boundary: if server returns a raw string message
         if (data instanceof String) {
             return (String) data;
         }
 
-        // Standard boundary: read serialized secure structural ErrorPayload model mapping
         try {
             ErrorPayload payload = mapper.convertValue(data, ErrorPayload.class);
             return payload.getErrorMessage();

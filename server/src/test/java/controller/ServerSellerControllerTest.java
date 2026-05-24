@@ -12,6 +12,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.*;
 
+/**
+ * Unit tests for {@link ServerSellerController}.
+ * Ensures modifying or deleting auctions complies strictly with current auction states.
+ */
 @ExtendWith(MockitoExtension.class)
 class ServerSellerControllerTest {
 
@@ -23,27 +27,22 @@ class ServerSellerControllerTest {
 
     @Test
     void deleteAuction_WhenStatusIsRunning_ShouldDenyDeletion() throws Exception {
-        // Arrange
         User seller = new User();
         seller.setId("UET-K70-KHOA");
 
         Auction auction = new Auction();
         auction.setId("AUC-002");
         auction.setSeller(seller);
-        auction.setStatus(Auction.STATUS_RUNNING); // Cố tình truyền trạng thái đang diễn ra
+        auction.setStatus(Auction.STATUS_RUNNING);
 
-        // Act
         boolean result = sellerController.deleteAuction(seller, auction);
 
-        // Assert
         assertFalse(result, "Không được phép xóa phiên đấu giá đang RUNNING.");
-        // Đảm bảo DAO không bao giờ được gọi đến để ngăn ngừa rác Database
         verify(auctionDAO, never()).updateAuctionStatus(anyString(), anyString());
     }
 
     @Test
     void editAuction_WhenStatusIsFinished_ShouldDenyEdit() throws Exception {
-        // Arrange
         User seller = new User();
         seller.setId("UET-K70-LONG");
 
@@ -52,12 +51,10 @@ class ServerSellerControllerTest {
         auction.setSeller(seller);
         auction.setStatus(Auction.STATUS_FINISHED);
 
-        // Act
         boolean result = sellerController.editAuction(
                 seller, auction, "Tên mới", "Mô tả mới", 2000L, null, null
         );
 
-        // Assert
         assertFalse(result, "Không được phép sửa phiên đấu giá đã FINISHED.");
         verify(auctionDAO, never()).updateAuction(any(), anyString(), anyString(), anyLong(), any(), any(), anyString());
     }

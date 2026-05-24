@@ -22,21 +22,17 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Login Controller.
- * Handles two scenarios: standard login and two-factor authentication (REQUIRE_2FA).
+ * Headless orchestration controller managing user authentication domains.
+ * Directs raw state form collection, maps asymmetric dynamic multi-stage security
+ * challenges, and encapsulates transactional tokens safely upon verification.
  */
 public class LoginController {
-    private static final Logger log =
-            LoggerFactory.getLogger(LoginController.class);
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
 
-    @FXML
-    private Circle myava1;
-    @FXML
-    private TextField loginAccountName;
-    @FXML
-    private PasswordField loginPasswordAccount;
-    @FXML
-    private Button loginButton;
+    @FXML private Circle myava1;
+    @FXML private TextField loginAccountName;
+    @FXML private PasswordField loginPasswordAccount;
+    @FXML private Button loginButton;
 
     private NetworkClient networkClient;
     private final ObjectMapper mapper = JacksonConfig.mapper();
@@ -45,22 +41,23 @@ public class LoginController {
         this.networkClient = client;
     }
 
+    /**
+     * Extracts structural security claims from text controls and triggers
+     * an upstream authentication request across the active network channel.
+     */
     @FXML
     protected void onMainViewButtonClick() {
         String username = loginAccountName.getText().trim();
         String password = loginPasswordAccount.getText().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
-            AlertUtils.showWarning(
-                    "Missing Information",
-                    "Please enter your Username and Password!");
+            AlertUtils.showWarning("Missing Information", "Please enter your Username and Password!");
             return;
         }
 
         setNetworkClient(NetworkService.get());
         if (networkClient == null) {
-            AlertUtils.showError(
-                    "Network Error", "Unable to connect to the server.");
+            AlertUtils.showError("Network Error", "Unable to connect to the server.");
             return;
         }
 
@@ -68,8 +65,7 @@ public class LoginController {
         loginButton.setText("LOGGING IN...");
 
         networkClient.setOnMessageReceived(this::handleServerResponse);
-        networkClient.sendMessage("LOGIN",
-                new User("", username, password, ""));
+        networkClient.sendMessage("LOGIN", new User("", username, password, ""));
     }
 
     @FXML
@@ -78,8 +74,6 @@ public class LoginController {
         loginPasswordAccount.clear();
         MainApplication.setNewScene(MainApplication.rootRegister);
     }
-
-    // ── Response handler ─────────────────────────────────────────────
 
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
@@ -96,17 +90,13 @@ public class LoginController {
                 case "LOGIN_FAIL", "ERROR" -> {
                     String err = ErrorParser.parse(response.getData());
                     log.warn("Login failed: {}", err);
-                    AlertUtils.showError(
-                            "Login Failed", err);
+                    AlertUtils.showError("Login Failed", err);
                 }
                 default -> log.warn("Unknown command during login: {}", command);
             }
         });
     }
 
-    /**
-     * Server requires 2FA authentication — displays the OTP input dialog.
-     */
     private void handleRequire2FA() {
         log.info("Server requires 2FA. Showing OTP dialog...");
 
@@ -120,32 +110,22 @@ public class LoginController {
                 otpText -> {
                     try {
                         int code = Integer.parseInt(otpText.trim());
-                        // Maintain callback; server will return VERIFY_2FA_SUCCESS or ERROR
-                        networkClient.sendMessage("VERIFY_2FA",
-                                Map.of("code", code));
+                        networkClient.sendMessage("VERIFY_2FA", Map.of("code", code));
                         loginButton.setDisable(true);
                         loginButton.setText("VERIFYING...");
                     } catch (NumberFormatException e) {
-                        // FIX: Unlock the button if the user enters a non-numeric value
                         loginButton.setDisable(false);
                         loginButton.setText("LOGIN");
-
-                        AlertUtils.showWarning(
-                                "Invalid OTP",
-                                "The OTP must be a 6-digit number. Please try again.");
+                        AlertUtils.showWarning("Invalid OTP", "The OTP must be a 6-digit number. Please try again.");
                     }
                 },
                 () -> {
-                    // User clicked Cancel — do not send anything, reset UI states
                     loginButton.setDisable(false);
                     loginButton.setText("LOGIN");
                 }
         );
     }
 
-    /**
-     * Successfully logged in (triggered by either LOGIN_SUCCESS or VERIFY_2FA_SUCCESS).
-     */
     private void handleLoginSuccess(NetworkMessage response) {
         try {
             User loggedInUser = mapper.convertValue(response.getData(), User.class);
@@ -153,8 +133,7 @@ public class LoginController {
             loginAccountName.clear();
             loginPasswordAccount.clear();
 
-            networkClient.setOnMessageReceived(null); // ← FIX: unregister trước khi rời scene
-
+            networkClient.setOnMessageReceived(null);
             MainController.start(loggedInUser);
         } catch (Exception e) {
             log.error("Error processing LOGIN_SUCCESS: {}", e.getMessage(), e);

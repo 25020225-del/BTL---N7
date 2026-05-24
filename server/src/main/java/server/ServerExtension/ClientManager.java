@@ -4,68 +4,113 @@ import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ClientHandler;
+import service.BroadcastManager;
 
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import static utils.ConsoleColors.BLUE;
 import static utils.ConsoleColors.RESET;
 
 /**
- * Manages all active client connections and coordinates communication across the server.
+ * Central connection registry orchestrating state mapping, real-time messaging,
+ * and topic-based Pub/Sub lifecycles for active WebSocket sessions.
  */
 public class ClientManager {
 
     private static final Logger log = LoggerFactory.getLogger(ClientManager.class);
-
     private static final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
-    private static final int MAX_BROADCASTPOOL_SIZE = 200;
-    private static final ExecutorService broadcastPool =
-            Executors.newFixedThreadPool(MAX_BROADCASTPOOL_SIZE);
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // CLIENT REGISTRY
-    // ─────────────────────────────────────────────────────────────────────────
+    private static final ConcurrentHashMap<ClientHandler, Set<String>> clientSubscriptions = new ConcurrentHashMap<>();
 
     public static void addClient(ClientHandler clientHandler) {
         clients.add(clientHandler);
+        log.debug("Client added to registry: {}. Total: {}", clientHandler.getClientName(), clients.size());
     }
-
-    public static void removeClient(ClientHandler clientHandler) {
-        clients.remove(clientHandler);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // BROADCAST
-    // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Gửi plain-text chat đến tất cả client (ngoại trừ sender).
+     * Evicts a client session from the registry and issues automatic multi-topic un-registrations
+     * to eliminate connection references and safeguard memory boundaries.
+     *
+     * @param clientHandler targeted active session handler instance
      */
+    public static void removeClient(ClientHandler clientHandler) {
+        clients.remove(clientHandler);
+        unsubscribeAll(clientHandler);
+        log.debug("Client removed from registry: {}. Total: {}", clientHandler.getClientName(), clients.size());
+    }
+
+    /**
+     * Encapsulates connection references inside a structured auction publisher channel topic.
+     *
+     * @param auctionId unique targeting room identity string
+     * @param client    subscribing request driver context
+     */
+    public static void subscribeToAuction(String auctionId, ClientHandler client) {
+        BroadcastManager.subscribe(auctionId, client);
+        clientSubscriptions
+                .computeIfAbsent(client, k -> ConcurrentHashMap.newKeySet())
+                .add(auctionId);
+        log.debug("Client '{}' subscribed to auction topic '{}'.", client.getClientName(), auctionId);
+    }
+
+    /**
+     * Explicitly detaches a client context session from a single active auction room topic.
+     */
+    public static void unsubscribeFromAuction(String auctionId, ClientHandler client) {
+        BroadcastManager.unsubscribe(auctionId, client);
+        Set<String> subs = clientSubscriptions.get(client);
+        if (subs != null) {
+            subs.remove(auctionId);
+            if (subs.isEmpty()) {
+                clientSubscriptions.remove(client);
+            }
+        }
+        log.debug("Client '{}' unsubscribed from auction topic '{}'.", client.getClientName(), auctionId);
+    }
+
+    /**
+     * Flushes entire subscription references bound to an identity handler session instance.
+     */
+    public static void unsubscribeAll(ClientHandler client) {
+        Set<String> subscriptions = clientSubscriptions.remove(client);
+        if (subscriptions == null || subscriptions.isEmpty()) return;
+
+        for (String auctionId : subscriptions) {
+            BroadcastManager.unsubscribe(auctionId, client);
+        }
+        log.debug("Client '{}' fully unsubscribed from {} auction topic(s) on disconnect.", client.getClientName(), subscriptions.size());
+    }
+
+    /**
+     * Forwards serialized JSON payload packages into low-level batched, debounced dispatch pipelines.
+     *
+     * @param auctionId   target context routing index key
+     * @param jsonPayload atomic optimized messaging string block
+     */
+    public static void publishAuctionUpdate(String auctionId, String jsonPayload) {
+        BroadcastManager.queueUpdate(auctionId, jsonPayload);
+    }
+
     public static void broadcast(String message, ClientHandler sender) {
         for (ClientHandler client : clients) {
             if (client != sender) {
-                broadcastPool.submit(() -> {
+                BroadcastManager.dispatchDirect(client, () -> {
                     try {
                         client.sendMessage(message);
                     } catch (Exception e) {
-                        log.error("Error when broadcasting to {}: {}", client.getClientName(), e.getMessage());
+                        log.error("Error broadcasting to {}: {}", client.getClientName(), e.getMessage());
                     }
                 });
             }
         }
     }
 
-    /**
-     * Gửi NetworkMessage (command + data) đến tất cả client (ngoại trừ sender).
-     */
     public static void broadcast(String command, Object data, ClientHandler sender) {
         for (ClientHandler client : clients) {
             if (client != sender) {
-                broadcastPool.submit(() -> {
+                BroadcastManager.dispatchDirect(client, () -> {
                     try {
                         client.sendResponse(command, data);
                     } catch (Exception e) {
@@ -76,13 +121,6 @@ public class ClientManager {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // TARGETED MESSAGING
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Gửi private message từ Admin đến một client theo username.
-     */
     public static void privateMsg(String receiver, String message) {
         receiver = receiver.trim();
         for (ClientHandler client : clients) {
@@ -95,15 +133,17 @@ public class ClientManager {
     }
 
     /**
-     * Gửi một response có mục tiêu đến một user cụ thể theo userId.
-     * Thread-safe: dùng broadcastPool để không block DB Worker Thread.
-     * Silent-miss policy: bỏ qua nếu user offline.
+     * Issues an isolated, un-batched direct transport notification message toward a targeted identity context.
+     *
+     * @param userId  unique destination target user identity
+     * @param command remote action execution directive route header
+     * @param data    un-serialized transport state payload element
      */
     public static void sendToUser(String userId, String command, Object data) {
         for (ClientHandler client : clients) {
             User user = client.getUser();
             if (user != null && user.getId().equals(userId)) {
-                broadcastPool.submit(() -> {
+                BroadcastManager.dispatchDirect(client, () -> {
                     try {
                         client.sendResponse(command, data);
                         log.debug("Push notification sent to user {}: command={}", userId, command);
@@ -118,42 +158,29 @@ public class ClientManager {
     }
 
     /**
-     * Cập nhật trạng thái khóa trực tiếp trên đối tượng User đang sống trong RAM,
-     * đảm bảo guard isBlocked() có hiệu lực ngay lập tức mà không cần reconnect.
+     * Forces real-time in-memory status role modifications over active clients to intercept malicious requests instantly.
      */
     public static void updateBlockStatusInMemory(String userId, boolean isBlocked) {
         for (ClientHandler client : clients) {
             User user = client.getUser();
             if (user != null && user.getId().equals(userId)) {
                 if (isBlocked) {
-                    // Gán "BLOCKED" để isBlocked() trả về true ngay lập tức.
                     user.setRole("BLOCKED");
                     log.info("[BLOCK] In-memory role updated to BLOCKED for user '{}'.", userId);
                 } else {
-                    // Khi mở khóa, khôi phục về "USER"
                     user.setRole("USER");
                     log.info("[UNBLOCK] In-memory role restored to USER for user '{}'.", userId);
                 }
-                return; // Một user chỉ có thể có 1 phiên đăng nhập đồng thời.
+                return;
             }
         }
-        // Không tìm thấy = user đang offline → không cần cập nhật RAM.
         log.debug("[BLOCK] User '{}' is offline — in-memory update skipped.", userId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ADMIN CONSOLE COMMANDS
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * [FIX] Kick client theo username.
-     * Sửa lỗi: dùng client.forceDisconnect() thay vì client.getSocket().close()
-     * (ClientHandler không expose getSocket()).
-     */
     public static void kickTarget(String target, String reason) {
         for (ClientHandler client : clients) {
             if (target.equals(client.getClientName())) {
-                client.forceDisconnect(reason); // forceDisconnect gửi KICKED rồi đóng kết nối
+                client.forceDisconnect(reason);
                 log.info("kickTarget: User '{}' has been kicked. Reason: {}", target, reason);
                 return;
             }
@@ -161,14 +188,7 @@ public class ClientManager {
         log.warn("kickTarget: User '{}' not found.", target);
     }
 
-    /**
-     * [NEW] Kick client theo số thứ tự trong danh sách (dùng cho lệnh /kickn).
-     *
-     * @param index  Vị trí (1-based) trong danh sách client.
-     * @param reason Lý do kick.
-     */
     public static void kickTargetByNumber(int index, String reason) {
-        // Chuyển sang 0-based index
         int zeroBasedIndex = index - 1;
         if (zeroBasedIndex < 0 || zeroBasedIndex >= clients.size()) {
             log.warn("kickTargetByNumber: Index {} out of range (total clients: {}).", index, clients.size());
@@ -180,9 +200,6 @@ public class ClientManager {
         log.info("kickTargetByNumber: Client #{} ('{}') kicked. Reason: {}", index, target.getClientName(), reason);
     }
 
-    /**
-     * [NEW] In ra console danh sách tất cả client đang kết nối (dùng cho lệnh /clist).
-     */
     public static void getClientList() {
         if (clients.isEmpty()) {
             System.out.println("[System]: No clients connected.");
@@ -193,18 +210,11 @@ public class ClientManager {
             ClientHandler client = clients.get(i);
             User user = client.getUser();
             String identity = (user != null) ? user.getUserName() : "(not logged in)";
-            System.out.printf("  [%d] Name: %-20s | Identity: %s%n",
-                    i + 1, client.getClientName(), identity);
+            System.out.printf("  [%d] Name: %-20s | Identity: %s%n", i + 1, client.getClientName(), identity);
         }
         System.out.println("==========================================");
     }
 
-    /**
-     * [NEW] Redirect một client cụ thể đến một URL (dùng cho lệnh /redirect).
-     *
-     * @param target Username của client cần redirect.
-     * @param url    URL đích.
-     */
     public static void redirectClient(String target, String url) {
         for (ClientHandler client : clients) {
             if (target.equals(client.getClientName())) {
@@ -214,29 +224,16 @@ public class ClientManager {
             }
         }
         log.warn("redirectClient: User '{}' not found.", target);
-        System.out.println("[System]: User \"" + target + "\" not found for redirect.");
+        System.out.println("[System]: User \\\"\" + target + \"\\\" not found for redirect.");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // LIFECYCLE
-    // ─────────────────────────────────────────────────────────────────────────
-
     /**
-     * [NEW] Gracefully shuts down the broadcast thread pool.
-     * Gọi trong Shutdown Hook của MultiThreadedServer.
+     * Executes resource termination sequences across structural core broadcasting dependencies.
      */
     public static void shutdown() {
-        log.info("ClientManager: Shutting down broadcast pool...");
-        broadcastPool.shutdown();
-        try {
-            if (!broadcastPool.awaitTermination(5, TimeUnit.SECONDS)) {
-                broadcastPool.shutdownNow();
-                log.warn("ClientManager: Broadcast pool forced shutdown after timeout.");
-            }
-        } catch (InterruptedException e) {
-            broadcastPool.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
-        log.info("ClientManager: Broadcast pool shut down.");
+        log.info("ClientManager: Delegating shutdown to BroadcastManager...");
+        BroadcastManager.shutdown();
+        clientSubscriptions.clear();
+        log.info("ClientManager: Shutdown complete.");
     }
 }

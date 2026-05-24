@@ -7,10 +7,8 @@ import org.mockito.MockedStatic;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit Tests cho UserService.
- * <p>
- * SAU KHI REFACTOR:
- * - LogOut() → logout() (Java camelCase — đây là lý do compile error)
+ * Unit test suite validating outbound session operation contexts for {@link UserService}.
+ * Protects runtime registration message frameworks against side-effect command execution drops.
  */
 @DisplayName("UserService — Network Command Tests")
 class UserServiceTest {
@@ -19,10 +17,8 @@ class UserServiceTest {
     @DisplayName("logout() phải gửi command LOGOUT (FIX: was LogOut())")
     void logout_shouldSendLogoutCommand() {
         try (MockedStatic<NetworkService> mockedNetwork = mockStatic(NetworkService.class)) {
-            // Act — dùng tên mới logout() (không phải LogOut())
             UserService.logout();
 
-            // Assert
             mockedNetwork.verify(
                     () -> NetworkService.sendMessage("LOGOUT", ""),
                     times(1)
@@ -36,13 +32,10 @@ class UserServiceTest {
         try (MockedStatic<NetworkService> mockedNetwork = mockStatic(NetworkService.class)) {
             UserService.logout();
 
-            // Tổng cộng chỉ 1 lần gọi sendMessage — không có side effect nào khác
             mockedNetwork.verify(
-                    () -> NetworkService.sendMessage(any(), any()),
+                    () -> NetworkService.sendMessage(anyString(), anyString()),
                     times(1)
             );
         }
     }
 }
-
-

@@ -1,5 +1,8 @@
 package network;
 
+/**
+ * Immutable structural payload tracking operational failure details across remote network boundaries.
+ */
 public class ErrorPayload {
     private String errorCode;
     private String errorMessage;
@@ -12,7 +15,6 @@ public class ErrorPayload {
         this.errorMessage = errorMessage;
     }
 
-    // Getters and Setters
     public String getErrorCode() {
         return errorCode;
     }
