@@ -16,9 +16,6 @@ import server.ServerExtension.ClientManager;
 import service.AutoBidEngine;
 import utils.JacksonConfig;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -39,11 +36,37 @@ public class ServerBidderController {
         this.bidDAO = bidDAO;
     }
 
+    /**
+     * Entry point for manual client bids. Enforces non-bypassable structural wall-clock escrow holds.
+     *
+     * @param currentUser the authenticated user placing the bid
+     * @param auction     the target auction instance
+     * @param newMaxBid   the maximum currency offer submitted
+     * @return a completable future resolving to true upon a successful database commit
+     */
+    public CompletableFuture<Boolean> placeManualBid(User currentUser, Auction auction, long newMaxBid) {
+        return placeBidOnAuction(currentUser, auction, newMaxBid, false);
+    }
+
+    /**
+     * Entry point for internal proxy engine transactions. Leverages pre-allocated escrow balances
+     * established during structural profile setup configurations.
+     *
+     * @param botUser   the underlying user account tracking the automation agent
+     * @param auction   the target active auction context
+     * @param newMaxBid the validated max expenditure threshold
+     * @return a completable future resolving to true upon a successful transaction commit
+     */
+    public CompletableFuture<Boolean> placeBidOnAuctionFromBot(User botUser, Auction auction, long newMaxBid) {
+        return placeBidOnAuction(botUser, auction, newMaxBid, true);
+    }
+
+    /**
+     * Shared core execution routine tracking persistence coordination frameworks.
+     */
     public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, long newMaxBid, boolean isBot) {
         if (currentUser.isBlocked()) {
             log.warn("[BLOCK-INTERCEPT] placeBidOnAuction denied: user '{}' (id={}) is BLOCKED.", currentUser.getUserName(), currentUser.getId());
-
-            // Avoid blasting socket notifications to locked out backend server automated test engines/bots
             if (!isBot) {
                 ClientManager.sendToUser(currentUser.getId(), "ERROR", new ErrorPayload(ERR_CODE_BLOCKED, MSG_ACCOUNT_BLOCKED));
             }
@@ -70,7 +93,7 @@ public class ServerBidderController {
             String finalStatus = "CONFLICT";
             BidDAO.BidCommitResult commitResult = null;
 
-            try (Connection conn = DatabaseManager.getConnection()) {
+            try (java.sql.Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
                     commitResult = bidDAO.executeBidTransactionSourceOfTruth(conn, auction.getId(), currentUser, newMaxBid, isBot);
@@ -83,12 +106,12 @@ public class ServerBidderController {
                 } catch (BidDAO.InsufficientFundsException e) {
                     conn.rollback();
                     finalStatus = "INSUFFICIENT_FUNDS";
-                } catch (SQLException e) {
+                } catch (java.sql.SQLException e) {
                     conn.rollback();
                     finalStatus = "SQL_ERROR";
                     log.error("SQL error placing bid for auction {}: {}", auction.getId(), e.getMessage(), e);
                 }
-            } catch (SQLException e) {
+            } catch (java.sql.SQLException e) {
                 finalStatus = "SQL_ERROR";
                 log.error("DB connection error placing bid: {}", e.getMessage(), e);
             }
@@ -122,7 +145,7 @@ public class ServerBidderController {
                             update.put("auctionId", auction.getId());
                             update.put("newPrice", auction.getCurrentPrice());
                             update.put("winnerName", currentUser.getUserName());
-                            update.put("newEndTime", auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                            update.put("newEndTime", auction.getEndTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
 
                             try {
                                 ObjectMapper mapper = JacksonConfig.mapper();
@@ -170,7 +193,7 @@ public class ServerBidderController {
             boolean saved;
             try {
                 saved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
-            } catch (SQLException e) {
+            } catch (java.sql.SQLException e) {
                 log.error("Failed to persist auto-bid for user {} on auction {}: {}", currentUser.getUserName(), auction.getId(), e.getMessage(), e);
                 return false;
             }
@@ -207,7 +230,7 @@ public class ServerBidderController {
                     return true;
                 }
                 return false;
-            } catch (SQLException e) {
+            } catch (java.sql.SQLException e) {
                 log.error("Failed to cancel auto-bid for user {} on auction {}: {}", currentUser.getUserName(), auction.getId(), e.getMessage(), e);
                 return false;
             }

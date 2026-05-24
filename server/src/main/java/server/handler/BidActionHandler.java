@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
 
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,10 +56,9 @@ public class BidActionHandler implements CommandHandler {
             throw new AuctionExceptions.InvalidPayloadException("Số tiền đặt giá không hợp lệ.");
         }
 
-        boolean isBot = bidData.containsKey("isAutoBid") && (boolean) bidData.get("isAutoBid");
         Auction auction = requireAuction(auctionId);
 
-        bidderCtrl.placeBidOnAuction(currentUser, auction, amount, isBot)
+        bidderCtrl.placeManualBid(currentUser, auction, amount)
                 .thenAccept(success -> {
                     if (success) {
                         client.sendResponse("BID_SUCCESS", "Đặt giá thành công!");
@@ -118,8 +116,8 @@ public class BidActionHandler implements CommandHandler {
 
         final long minRequired;
 
-        // Acquired lock targets the static dynamic memory map layer to prevent state drift metrics calculation leaks
-        // while foreign asynchronous inbound user frames challenge identical resource targets concurrently.
+        // Uses a synchronization lock block targeting the dynamic memory layer to isolate state validation boundaries
+        // against simultaneous thread drift execution challenges.
         synchronized (AuctionManager.getLockForAuction(auctionId)) {
             minRequired = auction.getMinAutoBidRequired();
         }
@@ -207,7 +205,7 @@ public class BidActionHandler implements CommandHandler {
         } catch (AuctionExceptions.AuctionBaseException e) {
             throw e;
 
-        } catch (SQLException e) {
+        } catch (java.sql.SQLException e) {
             log.error("Database error resolving auction '{}': {}", auctionId, e.getMessage(), e);
             throw new AuctionExceptions.AuctionClosedException(
                     "Không thể truy xuất phiên đấu giá: " + auctionId);
