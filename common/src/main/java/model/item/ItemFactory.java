@@ -4,32 +4,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Factory class responsible for creating generalized categories of Items.
- * Implements the Factory Method Design Pattern to promote loose coupling
- * and adhere to the Open/Closed Principle.
+ * Factory coordinator leveraging polymorphic instantiation to decouple
+ * product categories from core messaging infrastructure controllers.
  */
 public class ItemFactory {
-    private static Logger log = LoggerFactory.getLogger(ItemFactory.class);
 
-    /**
-     * Constants representing the broad item categories.
-     */
+    private static final Logger log = LoggerFactory.getLogger(ItemFactory.class);
+
     public static final String TYPE_TANGIBLE = "TANGIBLE";
     public static final String TYPE_DIGITAL = "DIGITAL";
     public static final String TYPE_SERVICE = "SERVICE";
 
     /**
-     * Creates an Item instance based on the specified generalized type.
+     * Factory method instantiating specialized subclasses of {@link Item} matched by unique string route switches.
      *
-     * @param type          The broad category of the item (e.g., "TANGIBLE").
-     * @param id            The unique identifier for the new item.
-     * @param itemName      The name of the item.
-     * @param description   A brief description of the item.
-     * @param startingPrice The initial bidding price.
-     * @return A specific subclass of Item corresponding to the requested type.
+     * @param type          the broad architectural category route tracking string
+     * @param id            assigned distinct asset key constraint
+     * @param itemName      catalog reference metadata title
+     * @param description   contextual documentation features summary
+     * @param startingPrice base open valuation bounds
+     * @return concrete bounded item subtype model package
      */
     public static Item createItem(String type, String id, String itemName, String description, long startingPrice) {
-        // Fallback to a general physical item if the type is not provided
         if (type == null || type.trim().isEmpty()) {
             log.warn("Item type is null. Defaulting to TangibleItem.");
             return new TangibleItem(id, itemName, description, startingPrice);

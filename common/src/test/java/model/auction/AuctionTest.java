@@ -11,6 +11,10 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Standard baseline unit tests for structural {@link Auction} behaviors.
+ * Verifies price-increment thresholds, tie-breaking bounds, and transactional bid processing.
+ */
 class AuctionTest {
 
     private Auction auction;
@@ -35,15 +39,7 @@ class AuctionTest {
 
         item = new TangibleItem("ITEM-1", "Vintage Watch", "", 1000L);
 
-        // Create an auction starting now and ending in 10 minutes
-        auction = new Auction(
-                "AUC-1",
-                item,
-                seller,
-                50L, // bidIncrement
-                LocalDateTime.now().minusMinutes(1), // started 1 min ago
-                LocalDateTime.now().plusMinutes(9)    // ends in 9 mins
-        );
+        auction = new Auction("AUC-1", item, seller, 50L, LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusMinutes(9));
         auction.setStatus(Auction.STATUS_RUNNING);
     }
 
@@ -71,35 +67,25 @@ class AuctionTest {
     @Test
     @DisplayName("Should correctly outbid existing winner")
     void testOutbidExistingWinner() {
-        // First bid by Bidder1
         Auction.BidResult firstResult = auction.calculateBidResult(bidder1, 1500L);
         auction.applyBidResult(bidder1, firstResult);
 
-        // Second bid by Bidder2
         long bidAmount = 1600L;
         Auction.BidResult secondResult = auction.calculateBidResult(bidder2, bidAmount);
 
         assertNotNull(secondResult);
         assertEquals(bidder2, secondResult.newWinner);
         assertEquals(1600L, secondResult.newHighestMaxBid);
-        // Current price should be (previous highest max bid + increment) = 1500 + 50 = 1550
         assertEquals(1550L, secondResult.newCurrentPrice);
     }
 
     @Test
     @DisplayName("Should return null for bid lower than current price + increment")
     void testInsufficientOutbid() {
-        // First bid by Bidder1
         Auction.BidResult firstResult = auction.calculateBidResult(bidder1, 1500L);
         auction.applyBidResult(bidder1, firstResult);
 
-        // Current price is 1000, increment is 50. Min required is 1050.
-        // But Bidder1 has a max bid of 1500.
-        // If Bidder2 bids 1200, they are outbidding the CURRENT price (1000) but NOT the max bid (1500).
-        // However, the rule says: minRequiredBid = currentPrice + bidIncrement.
-        // So 1200 is technically a "valid" attempt to raise the price.
-
-        long bidAmount = 1020L; // Lower than currentPrice (1000) + increment (50)
+        long bidAmount = 1020L;
         Auction.BidResult secondResult = auction.calculateBidResult(bidder2, bidAmount);
 
         assertNull(secondResult, "Result should be null for bid below currentPrice + increment");
@@ -108,34 +94,24 @@ class AuctionTest {
     @Test
     @DisplayName("Should extend end time when bid is placed within last minute (Anti-sniping)")
     void testAntiSniping() {
-        // Set end time to 30 seconds from now
         LocalDateTime nearEnd = LocalDateTime.now().plusSeconds(30);
         auction.setEndTime(nearEnd);
 
-        // Place a valid bid
         Auction.BidResult result = auction.calculateBidResult(bidder1, 2000L);
         assertNotNull(result);
 
-        // Anti-sniping in Auction.calculateBidResult(): newEndTime = oldEndTime.plusMinutes(2) (hard-capped by maxEndTime)
         assertEquals(nearEnd.plusMinutes(2), result.newEndTime, "End time should be exactly 2 minutes later than previous end time");
     }
 
     @Test
     @DisplayName("Should produce consistent bid results when calculated from the same snapshot (Concurrent Bid)")
     void testConcurrentBidCalculation() {
-        // Simulate a scenario where two bidders bid the same amount simultaneously
-        // based on the same current price.
-
-        // Bidder 1 bids 1500
         Auction.BidResult result1 = auction.calculateBidResult(bidder1, 1500L);
-
-        // Bidder 2 also bids 1500 at the same time (before result1 is applied)
         Auction.BidResult result2 = auction.calculateBidResult(bidder2, 1500L);
 
         assertNotNull(result1);
         assertNotNull(result2);
 
-        // From the same snapshot (no winner yet), each bidder becomes the provisional winner of their own calculation.
         assertEquals(bidder1, result1.newWinner);
         assertEquals(bidder2, result2.newWinner);
         assertEquals(1000L, result1.newCurrentPrice);
@@ -143,7 +119,6 @@ class AuctionTest {
         assertEquals(1500L, result1.newHighestMaxBid);
         assertEquals(1500L, result2.newHighestMaxBid);
 
-        // Once one result is applied, recalculating with the same bid amount should reflect the updated auction state.
         auction.applyBidResult(bidder1, result1);
 
         Auction.BidResult afterApply = auction.calculateBidResult(bidder2, 1500L);

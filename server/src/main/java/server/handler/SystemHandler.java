@@ -7,20 +7,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Handles foundational system-level commands that are not tied
- * to business logic (e.g., PING checks, Network Time Synchronization).
+ * Command route handler managing baseline, non-business infrastructure packets
+ * such as diagnostic heartbeats and distributed server clock synchronization.
  */
 public class SystemHandler implements CommandHandler {
+
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
         String command = message.getCommand();
 
         if ("PING".equals(command)) {
-            // Heartbeat check response
             client.sendResponse("PONG", "Request accepted");
 
         } else if ("TIME_SYNC".equals(command)) {
-            // Process Network Time Protocol (NTP) style synchronization request
             long clientSendTime = ((Number) message.getData()).longValue();
             long serverTime = System.currentTimeMillis();
 

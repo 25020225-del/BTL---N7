@@ -16,9 +16,13 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
 
+/**
+ * Integration service managing financial order lifecycles via PayPal REST APIs.
+ * Handles server-to-server OAuth2 authentication, intent registration, and payment captures.
+ */
 public class PayPalService {
-    private static final Logger log = LoggerFactory.getLogger(PayPalService.class);
 
+    private static final Logger log = LoggerFactory.getLogger(PayPalService.class);
     private final String clientId;
     private final String secret;
     private final String baseUrl;
@@ -31,17 +35,12 @@ public class PayPalService {
         this.secret = dotenv.get("PAYPAL_SECRET");
         this.baseUrl = dotenv.get("PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com");
 
-        //Set httpClient with timeout to avoid server thread suspension when there's network error
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         this.mapper = JacksonConfig.mapper();
-        ;
     }
 
-    /**
-     * OAuth2 Authentication Protocol: Exchange the Client ID and Secret for a one-time Access Token.
-     */
     private String getAccessToken() throws Exception {
         String auth = clientId + ":" + secret;
         String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
@@ -64,16 +63,16 @@ public class PayPalService {
     }
 
     /**
-     * Create a new trade (Order) based on the amount in VND
+     * Initializes a transactional payment intent order based on a specified fiat currency bounds.
      *
-     * @return String[]: [0] = Order ID, [1] = Payment URL.
+     * @param amountVND baseline volume quantity evaluated under Vietnamese Dong metrics
+     * @return a composite array containing the generated Order ID at index 0 and approval Href link at index 1
+     * @throws Exception if serialization or remote socket processing drops
      */
     public String[] createOrder(long amountVND) throws Exception {
-        // Assumed exchange rate | TODO: add dynamic foreign exchange rate API)
         double amountUSD = amountVND / 25000.0;
         String token = getAccessToken();
 
-        // Create a complex JSON structure for a PayPal order using Jackson
         ObjectNode requestBody = mapper.createObjectNode();
         requestBody.put("intent", "CAPTURE");
 
@@ -103,7 +102,6 @@ public class PayPalService {
         String orderId = jsonResponse.get("id").asText();
         String approvalLink = "";
 
-        // Browse through the list of links to find URLs with "rel" = "approve"
         ArrayNode links = (ArrayNode) jsonResponse.get("links");
         for (JsonNode link : links) {
             if ("approve".equals(link.get("rel").asText())) {
@@ -116,7 +114,11 @@ public class PayPalService {
     }
 
     /**
-     * Confirm completion and process payment (Capture) after the client confirms payment in the browser.
+     * Finalizes and securely locks funds for an authorized transaction block sequence.
+     *
+     * @param orderId the tracking intent token code verified by the client browser redirect
+     * @return true if status changes successfully transit into a COMPLETED state
+     * @throws Exception on platform communication error states
      */
     public boolean captureOrder(String orderId) throws Exception {
         String token = getAccessToken();
@@ -141,8 +143,11 @@ public class PayPalService {
     }
 
     /**
-     * Lấy trạng thái hiện tại của Order từ PayPal.
-     * Trạng thái trả về thường là: "CREATED", "APPROVED" (đã đồng ý trên web), "COMPLETED".
+     * Extracts processing status markers tied to an active order reference tracking token.
+     *
+     * @param orderId active identifier token code targeted for verification queries
+     * @return state descriptor string expressions (e.g., CREATED, APPROVED, COMPLETED)
+     * @throws Exception if network connections drop
      */
     public String getOrderStatus(String orderId) throws Exception {
         String token = getAccessToken();
@@ -161,11 +166,11 @@ public class PayPalService {
     }
 
     /**
-     * Queries the PayPal API to retrieve the actual captured amount and converts it to VND.
+     * Inspects target execution manifests to recalculate and back-convert confirmed currency values into VND.
      *
-     * @param orderId The PayPal Order ID to verify.
-     * @return The actual captured amount in VND, or 0 if verification fails.
-     * @throws Exception If a network or JSON parsing error occurs.
+     * @param orderId authenticated identifier token code requiring ledger audit inspections
+     * @return total evaluated currency volume converted back to baseline integer metrics
+     * @throws Exception if JSON schema mismatches intercept parsing loops
      */
     public long getCapturedAmountVND(String orderId) throws Exception {
         String token = getAccessToken();
@@ -181,12 +186,9 @@ public class PayPalService {
             JsonNode jsonResponse = mapper.readTree(response.body());
             JsonNode purchaseUnits = jsonResponse.get("purchase_units");
 
-            // Extract the amount from the PayPal JSON payload
             if (purchaseUnits != null && purchaseUnits.isArray() && !purchaseUnits.isEmpty()) {
                 String valueStr = purchaseUnits.get(0).get("amount").get("value").asText();
                 double amountUSD = Double.parseDouble(valueStr);
-
-                // Convert back to VND (Using the same 25000.0 exchange rate as createOrder)
                 return (long) (amountUSD * 25000.0);
             }
         }

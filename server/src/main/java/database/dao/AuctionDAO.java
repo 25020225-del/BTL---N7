@@ -16,8 +16,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Data Access Object handles persistence operations and state synchronization
+ * pipelines for auction entities.
+ */
 public class AuctionDAO {
 
+    /**
+     * Retrieves all auctions assigned to a specific seller ID.
+     *
+     * @param sellerId unique identifier of the target host.
+     * @return a list of serialized maps containing auction properties.
+     * @throws Exception if a database operation fails.
+     */
     public List<Map<String, Object>> getAuctionsBySeller(String sellerId) throws Exception {
         String sql = "SELECT id, item_name, description, starting_price, current_price, " +
                 "end_time, image_url, seller_id, status, bid_increment, item_type FROM auctions WHERE seller_id = ?";
@@ -45,6 +56,13 @@ public class AuctionDAO {
         return result;
     }
 
+    /**
+     * Fetches a fully hydrated Auction aggregate model by its unique identifier.
+     *
+     * @param auctionId unique database primary key string.
+     * @return fully populated {@link Auction} domain object, or null if not found.
+     * @throws SQLException if retrieval fails.
+     */
     public Auction getAuctionById(String auctionId) throws SQLException {
         String sql = "SELECT * FROM auctions WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -55,7 +73,7 @@ public class AuctionDAO {
                     Auction auction = new Auction();
                     auction.setId(rs.getString("id"));
 
-                    model.item.Item item = ItemFactory.createItem(
+                    Item item = ItemFactory.createItem(
                             rs.getString("item_type"),
                             "ITM-" + System.currentTimeMillis(),
                             rs.getString("item_name"),
@@ -66,7 +84,6 @@ public class AuctionDAO {
                     auction.setItem(item);
 
                     User seller = new User();
-                    // Cần khởi tạo hoặc inject AuctionDAO trước đó
                     seller.setId(rs.getString("seller_id"));
                     auction.setSeller(seller);
 
@@ -91,6 +108,13 @@ public class AuctionDAO {
         return null;
     }
 
+    /**
+     * Persists a newly created auction instance into the repository schema.
+     *
+     * @param auction un-persisted target domain configuration.
+     * @return true if row update succeeds.
+     * @throws SQLException on database transaction failures.
+     */
     public boolean addAuction(Auction auction) throws SQLException {
         String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url, winning_bidder_id, highest_max_bid, item_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseManager.getConnection();
@@ -152,7 +176,7 @@ public class AuctionDAO {
                 while (rs.next()) {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", rs.getString("id"));
-                    map.put("itemName", rs.getString("item_name")); // Match frontend expectations
+                    map.put("itemName", rs.getString("item_name"));
                     map.put("description", rs.getString("description"));
                     map.put("startingPrice", rs.getLong("starting_price"));
                     map.put("currentPrice", rs.getLong("current_price"));
@@ -173,60 +197,35 @@ public class AuctionDAO {
         String sql = "UPDATE auctions SET status = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setString(1, status);
             pstmt.setString(2, auctionId);
-
             return pstmt.executeUpdate() > 0;
         }
     }
 
-    /**
-     * Optimistic transition OPEN → WAITING_FOR_BID.
-     */
     public boolean updateAuctionStatusOpenToWaiting(String auctionId) throws SQLException {
         String sql = "UPDATE auctions SET status = ? WHERE id = ? AND status = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setString(1, Auction.STATUS_WAITING_FOR_BID);
             pstmt.setString(2, auctionId);
             pstmt.setString(3, Auction.STATUS_OPEN);
-
             return pstmt.executeUpdate() > 0;
         }
     }
 
-    /**
-     * Terminal status update (PAID/CANCELED) with optimistic locking on {@code end_time}.
-     * Fails when anti-sniping or another writer changed {@code end_time} since the RAM snapshot was taken.
-     */
-    public boolean updateAuctionStatusEndingIfEndTimeMatches(
-            String auctionId,
-            String newStatus,
-            LocalDateTime expectedEndTimeInDb) throws SQLException {
-
+    public boolean updateAuctionStatusEndingIfEndTimeMatches(String auctionId, String newStatus, LocalDateTime expectedEndTimeInDb) throws SQLException {
         String sql = "UPDATE auctions SET status = ? WHERE id = ? AND end_time = ? AND status = ?";
-
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setString(1, newStatus);
             pstmt.setString(2, auctionId);
             pstmt.setString(3, expectedEndTimeInDb.toString());
-            pstmt.setString(4, Auction.STATUS_RUNNING); // Chỉ check RUNNING
-
+            pstmt.setString(4, Auction.STATUS_RUNNING);
             return pstmt.executeUpdate() > 0;
         }
     }
 
-    /**
-     * Retrieves the scheduled start and end times for a specific auction.
-     *
-     * @param auctionId The unique identifier of the auction.
-     * @return An array of LocalDateTime where index 0 is start_time and index 1 is end_time.
-     * @throws SQLException if a database access error occurs.
-     */
     public LocalDateTime[] getAuctionTimes(String auctionId) throws SQLException {
         String sql = "SELECT start_time, end_time FROM auctions WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -245,73 +244,48 @@ public class AuctionDAO {
         return null;
     }
 
-    /**
-     * Updates the approval status and timing of an auction.
-     *
-     * @param auctionId The unique identifier of the auction.
-     * @param status    The new status.
-     * @param startTime The updated start time.
-     * @param endTime   The updated end time.
-     * @return true if the update was successful.
-     * @throws SQLException if a database access error occurs.
-     */
     public boolean updateApprovalStatus(String auctionId, String status, LocalDateTime startTime, LocalDateTime endTime) throws SQLException {
         String sql = "UPDATE auctions SET status = ?, start_time = ?, end_time = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setString(1, status);
             pstmt.setString(2, startTime.toString());
             pstmt.setString(3, endTime.toString());
             pstmt.setString(4, auctionId);
-
             return pstmt.executeUpdate() > 0;
         }
     }
 
     /**
-     * Sweeps the database for auctions that have expired while the server was offline
-     * or those that were not properly transitioned in RAM.
-     * [ARCHITECT FIX]: Implemented State-As-Outbox Pattern to recover crashed settlements.
+     * Recovers stuck database records and outboxed state histories from un-synchronized crashes.
+     *
+     * @return list of recovered {@link Auction} aggregates requiring financial settlements.
+     * @throws SQLException if batch execution queries fail.
      */
     public List<Auction> sweepOrphanAuctions() throws SQLException {
         List<Auction> pendingSettlementAuctions = new ArrayList<>();
         String now = LocalDateTime.now().toString();
 
         try (Connection conn = DatabaseManager.getConnection()) {
-
-            // ── Bước 1: RUNNING có end_time đã qua → FINISHED ─────────────────
-            String selectExpiredSql =
-                    "SELECT id FROM auctions "
-                            + "WHERE status = 'RUNNING' AND end_time IS NOT NULL AND end_time < ?";
-            String updateExpiredSql =
-                    "UPDATE auctions SET status = ? "
-                            + "WHERE id = ? AND status = 'RUNNING' AND end_time IS NOT NULL";
+            String selectExpiredSql = "SELECT id FROM auctions WHERE status = 'RUNNING' AND end_time IS NOT NULL AND end_time < ?";
+            String updateExpiredSql = "UPDATE auctions SET status = ? WHERE id = ? AND status = 'RUNNING' AND end_time IS NOT NULL";
 
             try (PreparedStatement selectStmt = conn.prepareStatement(selectExpiredSql);
                  PreparedStatement updateStmt = conn.prepareStatement(updateExpiredSql)) {
-
                 selectStmt.setString(1, now);
                 try (ResultSet rs = selectStmt.executeQuery()) {
                     while (rs.next()) {
                         String id = rs.getString("id");
                         updateStmt.setString(1, Auction.STATUS_FINISHED);
                         updateStmt.setString(2, id);
-                        if (updateStmt.executeUpdate() > 0) {
-                            System.out.println("[Sweep] Closed orphaned RUNNING auction: " + id + " → FINISHED");
-                        }
+                        updateStmt.executeUpdate();
                     }
                 }
             }
 
-            // ── Bước 2: Thu thập FINISHED bị kẹt để thanh toán lại ────────────
-            String stuckSql =
-                    "SELECT id, current_price, highest_max_bid, seller_id, winning_bidder_id "
-                            + "FROM auctions WHERE status = 'FINISHED'";
-
+            String stuckSql = "SELECT id, current_price, highest_max_bid, seller_id, winning_bidder_id FROM auctions WHERE status = 'FINISHED'";
             try (PreparedStatement stuckStmt = conn.prepareStatement(stuckSql);
                  ResultSet rs = stuckStmt.executeQuery()) {
-
                 while (rs.next()) {
                     Auction auction = new Auction();
                     auction.setId(rs.getString("id"));
@@ -332,27 +306,21 @@ public class AuctionDAO {
                 }
             }
 
-            // ── Bước 3: OPEN có start_time đã qua → WAITING_FOR_BID ───────────
             String startSql = "SELECT id FROM auctions WHERE status = 'OPEN' AND start_time <= ?";
             String updateStartSql = "UPDATE auctions SET status = ? WHERE id = ? AND status = 'OPEN'";
-
             try (PreparedStatement startStmt = conn.prepareStatement(startSql);
                  PreparedStatement updateStartStmt = conn.prepareStatement(updateStartSql)) {
-
                 startStmt.setString(1, now);
                 try (ResultSet rs = startStmt.executeQuery()) {
                     while (rs.next()) {
                         String id = rs.getString("id");
                         updateStartStmt.setString(1, Auction.STATUS_WAITING_FOR_BID);
                         updateStartStmt.setString(2, id);
-                        if (updateStartStmt.executeUpdate() > 0) {
-                            System.out.println("[Sweep] Opened orphaned auction to WAITING_FOR_BID: " + id);
-                        }
+                        updateStartStmt.executeUpdate();
                     }
                 }
             }
         }
-
         return pendingSettlementAuctions;
     }
 

@@ -1,11 +1,10 @@
 package model.item;
 
 /**
- * Represents a physical, tangible item in the auction system.
- * Examples include electronics, vehicles, clothing, or physical artwork.
- * Future extensions could include properties like weight, dimensions, and shipping methods.
+ * Concrete domain entity representing a physical inventory asset or material property item.
  */
 public class TangibleItem extends Item {
+
     public TangibleItem(String id, String itemName, String description, long startingPrice) {
         super(id, itemName, description, startingPrice);
         this.setType(ItemFactory.TYPE_TANGIBLE);

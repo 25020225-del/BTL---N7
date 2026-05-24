@@ -1,13 +1,13 @@
 package gui.widget;
 
-import client.network.NetworkService;
+import client.service.AdminService;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 /**
- * A custom UI widget representing a user for administrator management.
+ * JavaFX presentation widget representing a user account management profile card.
+ * Triggers atomic structural administrative enforcement commands down to service bounds.
  */
 public class AdminUserItem extends VBox {
 
@@ -23,19 +23,18 @@ public class AdminUserItem extends VBox {
             btnAction = new Button("Unblock");
             btnAction.setStyle("-fx-background-color: green; -fx-text-fill: white;");
             btnAction.setOnAction(e -> {
-                NetworkService.sendMessage("UNBLOCK_USER", id);
+                AdminService.unblockUser(id);
                 this.setDisable(true);
             });
         } else {
             btnAction = new Button("Block");
             btnAction.setStyle("-fx-background-color: red; -fx-text-fill: white;");
             btnAction.setOnAction(e -> {
-                NetworkService.sendMessage("BLOCK_USER", id);
+                AdminService.blockUser(id);
                 this.setDisable(true);
             });
         }
 
-        HBox infoBox = new HBox(20, lblUser, lblRole);
-        this.getChildren().addAll(infoBox, btnAction);
+        this.getChildren().addAll(lblUser, lblRole, btnAction);
     }
 }

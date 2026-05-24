@@ -14,26 +14,22 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 /**
- * A utility class for generating Quick Response (QR) codes.
- * This class utilizes the Google ZXing library to encode text data into a 2D barcode
- * and converts it directly into a JavaFX {@link Image} for UI rendering.
+ * Encapsulates transactional utility routines targeting matrix-to-bitmap transformations.
+ * Bridges external structural QR encoding architectures directly with the presentation layer asset models.
  */
 public final class QRCodeHelper {
     private static final Logger log = LoggerFactory.getLogger(QRCodeHelper.class);
 
-    /**
-     * Private constructor to prevent instantiation of this utility class.
-     */
     private QRCodeHelper() {
     }
 
     /**
-     * Generates a JavaFX Image containing a QR code representing the provided text.
+     * Synthesizes an uncompressed visual asset containing a two-dimensional matrix-encoded data payload.
      *
-     * @param text   The content or data (e.g., URL, secret key) to encode into the QR code.
-     * @param width  The desired width of the generated QR code image in pixels.
-     * @param height The desired height of the generated QR code image in pixels.
-     * @return A JavaFX {@link Image} object displaying the QR code, or {@code null} if an error occurs during encoding.
+     * @param text   the core canonical data payload string to translate into matrix coordinates
+     * @param width  the bounded dimension defining the target layout width allocation
+     * @param height the bounded dimension defining the target layout height allocation
+     * @return a stateful image context displaying the formatted matrix data, or {@code null} if generation fails
      */
     public static Image generateQRCodeImage(String text, int width, int height) {
         try {
@@ -44,7 +40,7 @@ public final class QRCodeHelper {
                     EncodeHintType.MARGIN, 4
             );
 
-            BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height);
+            BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, height, hints);
 
             WritableImage image = new WritableImage(width, height);
             PixelWriter pixelWriter = image.getPixelWriter();
@@ -59,7 +55,7 @@ public final class QRCodeHelper {
             return image;
 
         } catch (Exception e) {
-            log.error("QR code creation failed: {}", e.getMessage());
+            log.error("Structural mapping to 2D matrix layout failed: {}", e.getMessage());
             return null;
         }
     }

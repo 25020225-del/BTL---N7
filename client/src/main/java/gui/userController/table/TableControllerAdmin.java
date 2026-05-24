@@ -10,25 +10,28 @@ import gui.widget.item.WithdrawRequestItem;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import model.auction.Auction;
-import model.item.Item;
-import model.item.ItemFactory;
-import model.user.User;
 import network.NetworkMessage;
 
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Authoritative system grid view controller. Specializes in handling infrastructure events,
+ * administrative data structures mapping, and financial ledger settlement interactions.
+ */
 public class TableControllerAdmin extends TableController {
 
     public void addNewUser(AdminUserItem userItem) {
         mainTilePane.getChildren().addFirst(userItem);
     }
 
+    /**
+     * Binds specialized enterprise telemetry listeners to coordinate safe,
+     * cross-thread UI mutations based on administrative incoming frames.
+     */
     @FXML
     protected void initialize() {
-        AuctionEventBus.addListener("FETCH_AUCTIONS_SUCCESS", event -> {
+        AuctionEventBus.addListener(AuctionEventBus.FETCH_AUCTIONS_SUCCESS, event -> {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> data =
                     (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
@@ -37,7 +40,8 @@ public class TableControllerAdmin extends TableController {
                 data.forEach(map -> addNewItem(buildMinimalItem(map)));
             });
         });
-        AuctionEventBus.addListener("FETCH_USERS_SUCCESS", event -> {
+
+        AuctionEventBus.addListener(AuctionEventBus.FETCH_USERS_SUCCESS, event -> {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> users =
                     (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
@@ -46,25 +50,31 @@ public class TableControllerAdmin extends TableController {
                 users.forEach(data -> mainTilePane.getChildren().add(buildUserItem(data)));
             });
         });
+
         AuctionEventBus.addListener("FETCH_WITHDRAW_REQUESTS_SUCCESS", event -> {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> requests =
                     (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
 
             Platform.runLater(() -> {
-                deleteAllItem(); // clear panel hiện tại
+                deleteAllItem();
                 for (Map<String, Object> req : requests) {
                     mainTilePane.getChildren().add(
                             new WithdrawRequestItem(req, command -> {
                                 String[] parts = command.split(":", 2);
-                                String action = parts[0], id = parts[1];
-                                if ("APPROVE".equals(action)) AdminService.approveWithdraw(id);
-                                else AdminService.rejectWithdraw(id);
+                                String action = parts[0];
+                                String id = parts[1];
+                                if ("APPROVE".equals(action)) {
+                                    AdminService.approveWithdraw(id);
+                                } else {
+                                    AdminService.rejectWithdraw(id);
+                                }
                             })
                     );
                 }
             });
         });
+
         AuctionEventBus.addListener("WITHDRAW_ACTION_SUCCESS", event -> {
             @SuppressWarnings("unchecked")
             Map<String, Object> result =
@@ -73,7 +83,7 @@ public class TableControllerAdmin extends TableController {
 
             Platform.runLater(() -> {
                 AlertUtils.showInfo("Success", msg);
-                AdminService.fetchWithdrawRequests(); // tự reload lại danh sách
+                AdminService.fetchWithdrawRequests();
             });
         });
     }
@@ -89,15 +99,9 @@ public class TableControllerAdmin extends TableController {
         MinimalUser userItem = new MinimalUser(id, username, name, role, isBlocked, isGood);
         userItem.setCommand(command -> {
             switch (command) {
-                case "BLOCK_USER" ->{
-                    AdminService.blockUser(id);
-                }
-                case "UNBLOCK_USER" ->{
-                    AdminService.unblockUser(id);
-                }
-                case "TOGGLE_GOOD_STATUS" ->{
-                    AdminService.toggleGoodStatus(id);
-                }
+                case "BLOCK_USER" -> AdminService.blockUser(id);
+                case "UNBLOCK_USER" -> AdminService.unblockUser(id);
+                case "TOGGLE_GOOD_STATUS" -> AdminService.toggleGoodStatus(id);
             }
         });
         return userItem;
@@ -111,14 +115,13 @@ public class TableControllerAdmin extends TableController {
 
         Auction auction = Auction.buildAuctionFromMap(map);
 
-        MinimalItemAdmin item = new MinimalItemAdmin(id, name, status, price );
+        MinimalItemAdmin item = new MinimalItemAdmin(id, name, status, price);
         item.addAdminOptions(id, command -> {
             switch (command) {
                 case "APPROVE_AUCTION" -> AdminService.approveAuction(id);
                 case "REJECT_AUCTION" -> AdminService.rejectAuction(id);
-                case "SHOW_AUCTION" ->  openItemDetail(auction);
-                case "CANCEL_AUCTION" ->  AdminService.cancelAuction(id);
-
+                case "SHOW_AUCTION" -> openItemDetail(auction);
+                case "CANCEL_AUCTION" -> AdminService.cancelAuction(id);
             }
         });
         return item;

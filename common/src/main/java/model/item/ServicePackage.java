@@ -1,11 +1,10 @@
 package model.item;
 
 /**
- * Represents a service or experience in the auction system.
- * Examples include event tickets, travel vouchers, or consulting sessions.
- * Future extensions could include validity periods or service locations.
+ * Concrete domain entity representing a contractual service agreement or experiential token package.
  */
 public class ServicePackage extends Item {
+
     public ServicePackage(String id, String itemName, String description, long startingPrice) {
         super(id, itemName, description, startingPrice);
         this.setType(ItemFactory.TYPE_SERVICE);

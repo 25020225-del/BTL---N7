@@ -10,17 +10,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The central command router for the server application.
- * This class implements the Command Pattern by maintaining a registry of {@link CommandHandler}
- * implementations. It decodes incoming {@link NetworkMessage} objects and dispatches them
- * to the appropriate handler based on the command string.
+ * Core command routing matrix implementation utilizing the Command structural design pattern.
+ * Decentralizes global ingress socket traffic directly into contextual सिंगल handlers.
  */
 public class CommandDispatcher {
-    private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
+    private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
     private final Map<String, CommandHandler> handlers = new HashMap<>();
 
-    // Dependencies for DI
     private final database.dao.UserDAO userDAO;
     private final database.dao.AuctionDAO auctionDAO;
     private final database.dao.BidDAO bidDAO;
@@ -30,9 +27,6 @@ public class CommandDispatcher {
     private final controller.ServerPaymentController paymentCtrl;
     private final database.dao.WithdrawalDAO withdrawalDAO;
 
-    /**
-     * Constructs a new CommandDispatcher and initializes the handler registry with dependencies.
-     */
     public CommandDispatcher(
             database.dao.UserDAO userDAO,
             database.dao.AuctionDAO auctionDAO,
@@ -55,20 +49,14 @@ public class CommandDispatcher {
         registerHandlers();
     }
 
-    /**
-     * Registers all available command handlers into the dispatcher.
-     */
     private void registerHandlers() {
-
         service.AdminAuctionService adminAuctionService = new service.AdminAuctionService(auctionDAO, walletDAO);
 
-        // Register System level functions (Ping, Time Sync)
         SystemHandler sysHandler = new SystemHandler();
         handlers.put("PING", sysHandler);
         handlers.put("TIME_SYNC", sysHandler);
 
-        // Register Authentication and Session management
-        AuthHandler authHandler = new AuthHandler(); // AuthHandler uses client.getUserController()
+        AuthHandler authHandler = new AuthHandler();
         handlers.put("LOGIN", authHandler);
         handlers.put("REGISTER", authHandler);
         handlers.put("LOGOUT", authHandler);
@@ -80,28 +68,22 @@ public class CommandDispatcher {
         handlers.put("DISABLE_2FA", authHandler);
         handlers.put("UPDATE_TOTP_PREFS", authHandler);
 
-        // Register Auction creation and management
         AuctionActionHandler auctionHandler = new AuctionActionHandler(sellerCtrl);
         handlers.put("CREATE_AUCTION", auctionHandler);
 
-        // Register Financial/Payment processing
         PaymentHandler paymentHandler = new PaymentHandler(paymentCtrl, totpService, walletDAO);
         handlers.put("CREATE_DEPOSIT", paymentHandler);
         handlers.put("CONFIRM_DEPOSIT", paymentHandler);
         handlers.put("FETCH_WALLET", paymentHandler);
         handlers.put("REQUEST_WITHDRAW", paymentHandler);
 
-        // Register Data Fetching operations
         FetchAuctionsHandler fetchHandler = new FetchAuctionsHandler(auctionDAO);
         handlers.put("FETCH_AUCTIONS", fetchHandler);
         handlers.put("FETCH_PENDING_AUCTIONS", fetchHandler);
         handlers.put("FETCH_MY_AUCTIONS", fetchHandler);
 
-
-        // Register Admin operations
         controller.ServerAdminController adminCtrl = new controller.ServerAdminController(userDAO, auctionDAO, walletDAO, withdrawalDAO);
-        AdminActionHandler adminHandler =
-                new AdminActionHandler(auctionDAO, userDAO, adminCtrl, adminAuctionService);
+        AdminActionHandler adminHandler = new AdminActionHandler(auctionDAO, userDAO, adminCtrl, adminAuctionService);
         handlers.put("APPROVE_AUCTION", adminHandler);
         handlers.put("REJECT_AUCTION", adminHandler);
         handlers.put("FETCH_USERS", adminHandler);
@@ -109,7 +91,6 @@ public class CommandDispatcher {
         handlers.put("UNBLOCK_USER", adminHandler);
         handlers.put("TOGGLE_GOOD_STATUS", adminHandler);
 
-        // Register Bidding operations
         BidActionHandler bidHandler = new BidActionHandler(new controller.ServerBidderController(bidDAO), auctionDAO);
         handlers.put("PLACE_BID", bidHandler);
         handlers.put("SETUP_AUTOBID", bidHandler);
@@ -117,7 +98,6 @@ public class CommandDispatcher {
         FetchTransactionHandler fetchTransactionHandler = new FetchTransactionHandler(bidDAO);
         handlers.put("FETCH_TRANSACTIONS", fetchTransactionHandler);
 
-        // Register Seller operations
         SellerActionHandler sellerHandler = new SellerActionHandler(sellerCtrl, auctionDAO);
         handlers.put("EDIT_AUCTION", sellerHandler);
         handlers.put("DELETE_AUCTION", sellerHandler);
@@ -125,22 +105,18 @@ public class CommandDispatcher {
         handlers.put("FETCH_WITHDRAW_REQUESTS", adminHandler);
         handlers.put("APPROVE_WITHDRAW", adminHandler);
         handlers.put("REJECT_WITHDRAW", adminHandler);
-
         handlers.put("CANCEL_AUCTION", adminHandler);
 
         AuctionRoomHandler roomHandler = new AuctionRoomHandler();
         handlers.put("JOIN_AUCTION", roomHandler);
         handlers.put("LEAVE_AUCTION", roomHandler);
-
     }
 
     /**
-     * Routes an incoming network message to its associated handler.
-     * If the command is recognized, the handler's logic is executed; otherwise,
-     * an error response is sent back to the client.
+     * Decodes and directs structural transport envelopes into their designated runtime handlers.
      *
-     * @param message The incoming network message containing the command and data.
-     * @param client  The client handler session that sent the message.
+     * @param message inbound transport packet element
+     * @param client  target context session channel source
      */
     public void dispatch(NetworkMessage message, ClientHandler client) {
         String command = message.getCommand();
@@ -148,24 +124,19 @@ public class CommandDispatcher {
 
         if (handler != null) {
             try {
-                // Thực thi logic nghiệp vụ
                 handler.handle(message, client);
 
             } catch (AuctionExceptions.AuctionBaseException baseEx) {
-                // BẮT LỖI NGHIỆP VỤ: Đã lường trước, trả về mã lỗi chuẩn
                 log.warn("Business logic violation [{}]: {}", baseEx.getErrorCode(), baseEx.getMessage());
                 network.ErrorPayload errorData = new network.ErrorPayload(baseEx.getErrorCode(), baseEx.getMessage());
                 client.sendResponse("ERROR", errorData);
 
             } catch (com.fasterxml.jackson.core.JsonProcessingException jsonEx) {
-                // BẮT LỖI PARSE JSON CỦA JACKSON
                 log.warn("Invalid JSON format from {}: {}", client.getClientName(), jsonEx.getMessage());
                 network.ErrorPayload errorData = new network.ErrorPayload("ERR_PAYLOAD_001", "Dữ liệu gửi lên không đúng định dạng.");
                 client.sendResponse("ERROR", errorData);
 
             } catch (Exception e) {
-                // BẮT LỖI HỆ THỐNG NGHIÊM TRỌNG (NullPointer, DB Connection chết...)
-                // Lúc này KHÔNG được gửi chi tiết lỗi cho Client để bảo mật, nhưng PHẢI log đỏ rực ra Console kèm StackTrace.
                 log.error("CRITICAL FATAL ERROR executing command {}: ", command, e);
                 network.ErrorPayload errorData = new network.ErrorPayload("ERR_SYS_500", "Lỗi hệ thống máy chủ nội bộ. Vui lòng thử lại sau.");
                 client.sendResponse("ERROR", errorData);

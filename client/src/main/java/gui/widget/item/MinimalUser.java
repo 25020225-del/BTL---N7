@@ -8,8 +8,8 @@ import javafx.scene.layout.HBox;
 import java.util.function.Consumer;
 
 /**
- * A custom widget card for displaying a user account in the admin panel,
- * with inline Block/Unblock and Set Good/Remove Good action buttons.
+ * Administrative identity representation capsule. Embeds active status control directives,
+ * authoritative state mutation routing hooks, and temporary input throttle boundaries.
  */
 public class MinimalUser extends MinimalItem {
 
@@ -21,18 +21,20 @@ public class MinimalUser extends MinimalItem {
     private final Button btnSetAtGood = new Button();
 
     /**
-     * Constructs a MinimalUser card widget.
+     * Allocates an administrative user profile component and filters interactive
+     * action components depending on privilege hierarchy parameters.
      *
-     * @param id        The user's unique identifier.
-     * @param username  The user's login username.
-     * @param name      The user's display name.
-     * @param role      The user's role (e.g., "USER", "ADMIN").
-     * @param isBlocked Whether the user account is currently blocked.
-     * @param isGood    Whether the user has a "Good" status reputation.
+     * @param id        the absolute server-side identifier of the target actor
+     * @param username  the canonical lookup account name signature
+     * @param name      the descriptive identity string of the individual
+     * @param role      the systemic security context or authorization claim level
+     * @param isBlocked the foundational constraint indicator specifying account lock states
+     * @param isGood    the premium programmatic indicator specifying behavioral status modifiers
      */
     public MinimalUser(String id, String username, String name, String role, boolean isBlocked, boolean isGood) {
         super(id);
-        if(role.trim().equals("Admin")){
+
+        if ("Admin".equalsIgnoreCase(role.trim())) {
             btnSetAtGood.setDisable(true);
             btnSetAtGood.setVisible(false);
             btnAction.setDisable(true);
@@ -55,8 +57,8 @@ public class MinimalUser extends MinimalItem {
             if (onActionCommand == null) return;
 
             String command = isCurrentlyBlocked ? "UNBLOCK_USER" : "BLOCK_USER";
-
             onActionCommand.accept(command);
+
             isCurrentlyBlocked = !isCurrentlyBlocked;
             applyBlockButtonState(isCurrentlyBlocked);
             AnimateEffect.pauseNode(btnAction, 2);
@@ -76,19 +78,14 @@ public class MinimalUser extends MinimalItem {
     }
 
     /**
-     * Sets the action handler invoked when the user clicks the action buttons.
+     * Registers the structural command relay callback handling actor privilege changes.
      *
-     * @param command A Consumer that accepts the action command string.
+     * @param command the execution context mapping functionally to remote server actions
      */
     public void setCommand(Consumer<String> command) {
         this.onActionCommand = command;
     }
 
-    // Private Helpers
-
-    /**
-     * Updates the block button's label and color to reflect the intended next action.
-     */
     private void applyBlockButtonState(boolean currentlyBlocked) {
         if (currentlyBlocked) {
             btnAction.setText("Unblock");
@@ -99,9 +96,6 @@ public class MinimalUser extends MinimalItem {
         }
     }
 
-    /**
-     * Updates the Good status button's label and color to reflect the intended next action.
-     */
     private void applyGoodButtonState(boolean currentlyGood) {
         if (currentlyGood) {
             btnSetAtGood.setText("Remove Good");

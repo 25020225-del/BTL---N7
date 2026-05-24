@@ -1,53 +1,36 @@
 package model.base;
 
 /**
- * Abstract base class for all domain entities within the system.
- * It provides a common structure for uniquely identifying objects using a string-based ID,
- * and mandates a standardized way to retrieve entity information.
+ * Abstract base component providing a common structure for structural domain entity identification.
  */
 public abstract class Entity {
 
     private String id;
 
-    /**
-     * Default constructor.
-     */
     public Entity() {
     }
 
     /**
-     * Constructs an Entity with a specified unique identifier.
+     * Initializes an entity instance with a unique identifier.
      *
-     * @param id The unique ID to be assigned to this entity.
+     * @param id the unique character string constraint identification key
      */
     public Entity(String id) {
         this.id = id;
     }
 
-    /**
-     * Retrieves the unique identifier of this entity.
-     *
-     * @return The entity's ID.
-     */
     public String getId() {
         return id;
     }
 
-    /**
-     * Sets or updates the unique identifier for this entity.
-     *
-     * @param id The new unique ID.
-     */
     public void setId(String id) {
         this.id = id;
     }
 
     /**
-     * Generates a formatted string containing the core details of the entity.
-     * Subclasses must implement this method to provide specific information
-     * relevant to their context.
+     * Generates a structural text overview block mapping key internal attributes.
      *
-     * @return A summary string of the entity's details.
+     * @return a serialized profile summary string representation
      */
     public abstract String getInfo();
 }

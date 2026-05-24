@@ -6,7 +6,12 @@ import server.ServerExtension.ClientManager;
 
 import java.util.Map;
 
+/**
+ * Command route mapping component handling client registry interactions
+ * for channel pub-sub switching commands inside real-time auction rooms.
+ */
 public class AuctionRoomHandler implements CommandHandler {
+
     @Override
     public void handle(NetworkMessage message, ClientHandler client) {
         @SuppressWarnings("unchecked")

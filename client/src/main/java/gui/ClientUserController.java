@@ -34,49 +34,42 @@ import utils.JacksonConfig;
 import java.io.IOException;
 
 /**
- * The unified primary controller for standard users.
- * This single controller manages both buying (Bidding) and selling (Auction Creation)
- * capabilities, acting as the main dashboard for the application.
+ * Core customer portal dashboard workspace orchestrator. Implements full-duplex workspace navigation loops,
+ * maps structural presentation lifecycle models, and isolates standard commerce interfaces
+ * including marketplace catalogs, asset creators, and financial ledgers.
  */
 public class ClientUserController {
     private static final Logger log = LoggerFactory.getLogger(ClientUserController.class);
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
-    private Parent mainView;
-    private CreateAuctionController createAuctionController;
+    private final Parent mainView;
+    private final CreateAuctionController createAuctionController;
+    private final Parent accountView;
+    private final Parent settingsView;
+    private final WalletController walletView;
+    private final TableControllerUser tableView;
+    private final User currentUser;
+
+    @FXML private VBox mainDock;
+    @FXML private VBox mainViewController;
+    @FXML private Label accName;
+    @FXML private Label accUsername;
+
+    private final IconButton accountBtn;
+    private final IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private final IconButton marketplaceBtn = new IconButton("mdi2s-storefront-outline", "Marketplace", "Marketplace", "special-button");
+    private final IconButton myAuctionsBtn = new IconButton("mdi2s-storefront-outline", "My Auctions", "My Auctions", "special-button");
+    private final IconButton createAuctionBtn = new IconButton("mdi2a-archive-plus-outline", "Sell Item", "Create Auction", "special-button");
+    private final IconButton walletBtn = new IconButton("mdi2w-wallet-bifold-outline", "Wallet", "Wallet", "special-button");
+    private final IconButton settingsBtn = new IconButton("mdi2c-cog", "Settings", "Settings", "special-button");
+
     private ItemDetailController currentDetailController;
-    private Parent accountView;
-    private Parent settingsView;
-
-    private WalletController walletView;
-    private TableControllerUser tableView;
-
-    private User currentUser;
-
-    @FXML
-    private VBox mainDock;
-    @FXML
-    private VBox mainViewController;
-
-
-    @FXML
-    private Label accName;
-    @FXML
-    private Label accUsername;
-
-    private IconButton accountBtn;
-    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
-    private IconButton marketplaceBtn = new IconButton("mdi2s-storefront-outline", "Marketplace", "Marketplace", "special-button");
-    private IconButton myAuctionsBtn = new IconButton("mdi2s-storefront-outline", "My Auctions", "My Auctions", "special-button");
-    private IconButton createAuctionBtn = new IconButton("mdi2a-archive-plus-outline", "Sell Item", "Create Auction", "special-button");
-    private IconButton walletBtn = new IconButton("mdi2w-wallet-bifold-outline", "Wallet", "Wallet", "special-button");
-    private IconButton settingsBtn = new IconButton("mdi2c-cog", "Settings", "Settings", "special-button");
 
     /**
-     * Initializes the Unified User Controller and loads all required FXML layouts.
+     * Initializes structural composite workspaces and registers structural view model hierarchies.
      *
-     * @param user The currently authenticated user instance.
-     * @throws IOException If FXML files cannot be loaded.
+     * @param user the validated system interactive commerce profile actor reference
+     * @throws IOException if local file parsing routes break down on layout loading
      */
     public ClientUserController(User user) throws IOException {
         this.currentUser = user;
@@ -87,14 +80,11 @@ public class ClientUserController {
         mainView = mainLoader.load();
 
         createAuctionController = new CreateAuctionController();
-
-        // [KIẾN TRÚC MỚI] Khởi tạo Custom Control WalletController
         walletView = new WalletController();
-        // [FIX] Cập nhật tên hàm thành setOnReturnAction cho đúng chuẩn bên WalletController
         walletView.setOnReturnAction(() -> marketplaceBtn.fire());
 
         tableView = new TableControllerUser();
-        tableView.setOnAuctionListener((auction) -> openItemDetail(auction));
+        tableView.setOnAuctionListener(this::openItemDetail);
 
         FXMLLoader accountLoader = new FXMLLoader(getClass().getResource("AccountView.fxml"));
         accountLoader.setController(this);
@@ -116,15 +106,8 @@ public class ClientUserController {
         Region region = new Region();
         VBox.setVgrow(region, Priority.ALWAYS);
         mainDock.getChildren().addAll(
-                toggleList,
-                marketplaceBtn,
-                myAuctionsBtn,
-                createAuctionBtn,
-                walletBtn,
-                separator,
-                region,
-                settingsBtn,
-                accountBtn
+                toggleList, marketplaceBtn, myAuctionsBtn, createAuctionBtn, walletBtn,
+                separator, region, settingsBtn, accountBtn
         );
 
         toggleList.setUserData(true);
@@ -155,8 +138,6 @@ public class ClientUserController {
             mainViewController.getChildren().add(createAuctionController);
         });
 
-        // [FIX TRỌNG TÂM] Vì walletView giờ đã extends VBox nên nó CHÍNH LÀ một Node.
-        // Chỉ cần add thẳng walletView vào mainViewController, không gọi .getParent() nữa.
         walletBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(walletView);
@@ -166,11 +147,13 @@ public class ClientUserController {
         settingsBtn.setOnAction(event -> {
             mainViewController.getChildren().clear();
             mainViewController.getChildren().add(settingsView);
-            ((SettingsController) settingsView)
-                    .initialize();
+            ((SettingsController) settingsView).initialize();
         });
     }
 
+    /**
+     * Dismisses deep view nodes and routes screen graph containers back onto the primary marketplace view.
+     */
     @FXML
     public void handleBackToMarketplace() {
         if (currentDetailController != null) {
@@ -182,7 +165,10 @@ public class ClientUserController {
         AuctionService.fetchAuctions();
     }
 
-
+    /**
+     * Invalidates local telemetry caches, executes remote session tear down commands,
+     * and returns app state back onto the login display framework.
+     */
     @FXML
     public void handleSignOut() {
         log.info("User \"{}\" is signing out.", currentUser.getName());
@@ -191,7 +177,6 @@ public class ClientUserController {
         currentDetailController = null;
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
-
 
     private void openItemDetail(Auction auction) {
         if (currentDetailController != null) {
@@ -202,34 +187,34 @@ public class ClientUserController {
         detailController.setAuctionData(auction);
         currentDetailController = detailController;
         AuctionService.fetchTransactions(auction.getId());
-        detailController.setOnReturnToMarketplace(() -> {
-            marketplaceBtn.fire();
-        });
+        detailController.setOnReturnToMarketplace(() -> marketplaceBtn.fire());
+
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(detailController.getParent());
     }
 
+    /**
+     * Binds general system aggregate event interceptors and hooks runtime polling commands.
+     */
     public void start() {
         setMainDock();
         AuctionService.fetchAuctions();
 
-        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, evt -> {
-            Platform.runLater(() -> AlertUtils.showInfo("Success", evt.getNewValue().toString()));
-        });
+        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, evt ->
+                Platform.runLater(() -> AlertUtils.showInfo("Success", evt.getNewValue().toString()))
+        );
 
-        AuctionEventBus.addListener(AuctionEventBus.DEPOSIT_SUCCESS, evt -> {
-            Platform.runLater(() -> AlertUtils.showInfo("Deposit Success", evt.getNewValue().toString()));
-        });
+        AuctionEventBus.addListener(AuctionEventBus.DEPOSIT_SUCCESS, evt ->
+                Platform.runLater(() -> AlertUtils.showInfo("Deposit Success", evt.getNewValue().toString()))
+        );
 
         AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR, evt -> {
             String msg = evt.getNewValue() != null ? evt.getNewValue().toString() : "An unknown error occurred.";
             Platform.runLater(() -> AlertUtils.showError("System Error", msg));
         });
 
-        AuctionEventBus.addListener(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED, evt -> {
-            Platform.runLater(() -> {
-                AlertUtils.showInfo("Payment in process", "Payment gate has been opened.");
-            });
-        });
+        AuctionEventBus.addListener(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED, evt ->
+                Platform.runLater(() -> AlertUtils.showInfo("Payment in process", "Payment gate has been opened."))
+        );
     }
 }

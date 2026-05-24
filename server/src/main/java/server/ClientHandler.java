@@ -18,75 +18,27 @@ import java.util.Base64;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Handles individual client WebSocket connections.
- * <p>
- * This class is responsible for managing the lifecycle of a single client's session, including:
- * <ul>
- *     <li>Executing the RSA-AES hybrid cryptographic handshake for secure communication.</li>
- *     <li>Decrypting incoming payloads and routing them via the {@link CommandDispatcher}.</li>
- *     <li>Encrypting outgoing {@link NetworkMessage} responses and sending them non-blockingly.</li>
- *     <li>Managing connection state and graceful disconnections.</li>
- * </ul>
- * Because it operates on a WebSocket architecture (NIO), it is purely event-driven and
- * does not monopolize a dedicated thread.
+ * Stateful connection handler governing the lifecycle of individual client WebSocket sessions.
+ * Manages hybrid RSA-AES cryptographic handshakes, packet decryption, and dispatching pipelines.
  */
 public class ClientHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
+    private static final AtomicInteger clientCounter = new AtomicInteger(0);
 
     private final WebSocket conn;
-    private static final AtomicInteger clientCounter = new AtomicInteger(0);
-    private String clientName = "#Guest" + clientCounter.getAndIncrement();
-    private User user;
-
-    // ── 2FA session state ─────────────────────────────────────────────
-    /**
-     * User đã qua bước verify password nhưng CHƯA qua 2FA.
-     * Chỉ tồn tại trong khoảng thời gian chờ VERIFY_2FA.
-     */
-    private User pendingUser;
-
-    /**
-     * Secret TOTP tạm thời trong luồng SETUP, chưa được lưu DB.
-     * Xoá ngay sau khi CONFIRM_SETUP_2FA thành công hay thất bại.
-     */
-    private String pendingTotpSecret;
-
-    public User getPendingUser() {
-        return pendingUser;
-    }
-
-    public void setPendingUser(User user) {
-        this.pendingUser = user;
-    }
-
-    public String getPendingTotpSecret() {
-        return pendingTotpSecret;
-    }
-
-    public void setPendingTotpSecret(String s) {
-        this.pendingTotpSecret = s;
-    }
-
     private final UserController userController;
     private final CommandDispatcher dispatcher;
-
-    // Ignore unknown JSON properties for robust parsing
     private final ObjectMapper mapper = JacksonConfig.mapper();
 
+    private String clientName = "#Guest" + clientCounter.getAndIncrement();
+    private User user;
+    private User pendingUser;
+    private String pendingTotpSecret;
     private SecretKey sharedAesKey;
     private KeyPair rsaKeyPair;
-
-    // Security state flag
     private boolean isAesKeyEstablished = false;
 
-    /**
-     * Constructs a new ClientHandler bound to a specific WebSocket connection.
-     *
-     * @param conn           The active WebSocket connection.
-     * @param userController The controller handling user authentication and data.
-     * @param dispatcher     The central command dispatcher for routing messages.
-     */
     public ClientHandler(WebSocket conn, UserController userController, CommandDispatcher dispatcher) {
         this.conn = conn;
         this.userController = userController;
@@ -94,8 +46,8 @@ public class ClientHandler {
     }
 
     /**
-     * Initiates the security handshake immediately after the WebSocket connection opens.
-     * Generates an ephemeral RSA key pair and sends the public key to the client.
+     * Executes the initial step of the cryptographic handshake by generating
+     * an ephemeral RSA KeyPair and exporting the Public Key encoded in Base64.
      */
     public void startHandshake() {
         try {
@@ -108,16 +60,12 @@ public class ClientHandler {
     }
 
     /**
-     * Processes raw text frames received from the WebSocket.
-     * <p>
-     * If the AES key is not yet established, it assumes the payload is the RSA-encrypted AES key.
-     * Once secured, it decrypts AES payloads, parses them into JSON {@link NetworkMessage} objects,
-     * and delegates execution to the {@link CommandDispatcher}.
+     * Ingress packet pipeline entry-point. Resolves security key exchanges if unestablished,
+     * or decrypts incoming AES frames and dispatches unmarshalled messages.
      *
-     * @param message The raw, encrypted text payload from the client.
+     * @param message encrypted raw incoming text frame from remote socket
      */
     public void processIncomingMessage(String message) {
-        // Phase 1: Security Handshake
         if (!isAesKeyEstablished) {
             try {
                 sharedAesKey = CryptoUtil.decryptAESKeyWithRSA(message, rsaKeyPair.getPrivate());
@@ -130,13 +78,11 @@ public class ClientHandler {
             return;
         }
 
-        // Phase 2: Standard Command Processing
         try {
             String jsonMessage = CryptoUtil.decryptAES(message, sharedAesKey);
             log.debug("Decrypted JSON from Client: {}", jsonMessage);
 
             NetworkMessage netMsg = mapper.readValue(jsonMessage, NetworkMessage.class);
-
             if (netMsg.getCommand() == null) {
                 log.warn("\"{}\" sent a null command.", clientName);
                 sendResponse("ERROR", "Command cannot be null");
@@ -152,21 +98,18 @@ public class ClientHandler {
     }
 
     /**
-     * Encrypts and transmits a response back to the client.
+     * Serializes and cryptographically seals a transport message before piping down the socket.
      *
-     * @param command The action command (e.g., "LOGIN_SUCCESS", "UPDATE_AUCTION_PRICE").
-     * @param data    The associated data payload to be serialized into JSON.
+     * @param command outbound execution header route key descriptor
+     * @param data    un-serialized outbound payload metadata object
      */
     public void sendResponse(String command, Object data) {
         try {
-            // Abort if connection is dead or insecure
             if (conn == null || !conn.isOpen() || !isAesKeyEstablished) return;
 
             NetworkMessage responseMsg = new NetworkMessage(command, data);
             String jsonOutput = mapper.writeValueAsString(responseMsg);
             String encryptedPayload = CryptoUtil.encryptAES(jsonOutput, sharedAesKey);
-
-            // WebSocket conn.send() is inherently non-blocking and thread-safe
             conn.send(encryptedPayload);
 
         } catch (Exception e) {
@@ -178,18 +121,12 @@ public class ClientHandler {
         return clientCounter.getAndIncrement();
     }
 
-
-    /**
-     * Sends a plain text chat message to the client.
-     *
-     * @param message The chat content.
-     */
     public void sendMessage(String message) {
         sendResponse("CHAT", message);
     }
 
     /**
-     * Gracefully terminates the connection and removes the client from the active registry.
+     * Gracefully evicts connection resources from system mapping and unbinds socket parameters.
      */
     public void closeConnection() {
         ClientManager.removeClient(this);
@@ -200,47 +137,29 @@ public class ClientHandler {
     }
 
     /**
-     * Forcibly disconnects the client, sending an explanatory message before closure.
-     * Used primarily by administrators.
+     * Forcibly drops connection vectors after transmitting specific violation descriptions.
      *
-     * @param reason The reason for the kick.
+     * @param reason explanatory eviction description message
      */
     public void forceDisconnect(String reason) {
         sendResponse("KICKED", reason);
         if (conn != null && conn.isOpen()) {
-            conn.closeConnection(1000, reason); // Code 1000: Normal Closure
+            conn.closeConnection(1000, reason);
         }
         closeConnection();
     }
 
-    /**
-     * Instructs the client's GUI to open a specific web URL.
-     *
-     * @param url The target website.
-     */
     public void redirectToWebsite(String url) {
         sendResponse("REDIRECT", url);
     }
 
-    // === GETTERS & SETTERS ===
-
-    public String getClientName() {
-        return clientName;
-    }
-
-    public void setClientName(String clientName) {
-        this.clientName = clientName;
-    }
-
-    public UserController getUserController() {
-        return userController;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
+    public User getPendingUser() { return pendingUser; }
+    public void setPendingUser(User user) { this.pendingUser = user; }
+    public String getPendingTotpSecret() { return pendingTotpSecret; }
+    public void setPendingTotpSecret(String s) { this.pendingTotpSecret = s; }
+    public String getClientName() { return clientName; }
+    public void setClientName(String clientName) { this.clientName = clientName; }
+    public UserController getUserController() { return userController; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 }

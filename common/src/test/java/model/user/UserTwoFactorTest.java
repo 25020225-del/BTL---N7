@@ -6,6 +6,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Lifecycle state machine unit tests for user two-factor authentication (2FA).
+ * Validates state transition invariants, strict permission guards, and legacy backward-compatibility pathways.
+ */
 @DisplayName("User — 2FA State Machine Tests")
 class UserTwoFactorTest {
 
@@ -16,8 +20,6 @@ class UserTwoFactorTest {
         user = new User("U-1", "testuser", "pass", "Test User", "BUYER");
     }
 
-    // ── 1. Trạng thái mặc định ────────────────────────────────────────
-
     @Test
     @DisplayName("Mặc định: twoFactorStatus = DISABLED, 2 cờ = false")
     void defaultState_shouldBeDisabledAndFlagsOff() {
@@ -27,8 +29,6 @@ class UserTwoFactorTest {
         assertEquals(User.TwoFactorStatus.DISABLED, user.getTwoFactorStatus());
     }
 
-    // ── 2. Chuyển sang ENABLED ────────────────────────────────────────
-
     @Test
     @DisplayName("Set ENABLED: is2FAEnabled() = true")
     void setEnabled_shouldMakeIs2FAEnabledTrue() {
@@ -36,21 +36,16 @@ class UserTwoFactorTest {
         assertTrue(user.is2FAEnabled());
     }
 
-    // ── 3. Bất biến: DISABLE reset 2 cờ ─────────────────────────────
-
     @Test
     @DisplayName("Set DISABLED sau ENABLED: 2 cờ bị reset về false")
     void setDisabled_shouldResetBothFlags() {
-        // Dùng Raw setter để bypass guard (giả lập đọc từ DB)
         user.setTwoFactorStatus(User.TwoFactorStatus.ENABLED);
         user.setTotpLoginEnabledRaw(true);
         user.setTotpPaymentEnabledRaw(true);
 
-        // Verify flags are set
         assertTrue(user.isTotpLoginEnabled());
         assertTrue(user.isTotpPaymentEnabled());
 
-        // Now disable
         user.setTwoFactorStatus(User.TwoFactorStatus.DISABLED);
 
         assertFalse(user.isTotpLoginEnabled(), "LoginEnabled phải bị reset khi DISABLED");
@@ -70,12 +65,9 @@ class UserTwoFactorTest {
         assertFalse(user.isTotpPaymentEnabled());
     }
 
-    // ── 4. Guard của setTotpLoginEnabled / setTotpPaymentEnabled ─────
-
     @Test
     @DisplayName("setTotpLoginEnabled(true) khi chưa có totpSecret → IllegalStateException")
     void setTotpLoginEnabled_withoutSecret_shouldThrow() {
-        // totpSecret vẫn null (chưa set)
         assertThrows(IllegalStateException.class,
                 () -> user.setTotpLoginEnabled(true),
                 "Phải throw khi totpSecret chưa được xác nhận");
@@ -94,20 +86,15 @@ class UserTwoFactorTest {
         assertDoesNotThrow(() -> user.setTotpLoginEnabled(false));
     }
 
-    // ── 5. Raw setters bypass guard (dùng trong DAO) ─────────────────
-
     @Test
     @DisplayName("setTotpLoginEnabledRaw() bypass guard, set thẳng giá trị")
     void rawSetter_shouldBypassGuard() {
-        // Không set totpSecret, không set ENABLED — nhưng Raw không throw
         assertDoesNotThrow(() -> user.setTotpLoginEnabledRaw(true));
         assertTrue(user.isTotpLoginEnabled());
 
         assertDoesNotThrow(() -> user.setTotpPaymentEnabledRaw(true));
         assertTrue(user.isTotpPaymentEnabled());
     }
-
-    // ── 6. set2FAEnabled (deprecated backward-compat) ────────────────
 
     @Test
     @DisplayName("set2FAEnabled(true) tương đương setTwoFactorStatus(ENABLED)")
@@ -127,8 +114,6 @@ class UserTwoFactorTest {
         assertEquals(User.TwoFactorStatus.DISABLED, user.getTwoFactorStatus());
         assertFalse(user.is2FAEnabled());
     }
-
-    // ── 7. setTwoFactorStatus(null) → không throw, fallback DISABLED ─
 
     @Test
     @DisplayName("setTwoFactorStatus(null) → DISABLED (không NullPointerException)")

@@ -3,18 +3,17 @@ package gui;
 import java.awt.*;
 
 /**
- * A launcher class for the JavaFX application.
- * It serves as the primary entry point to configure dynamic UI scaling based on
- * the user's screen resolution before starting the main JavaFX application loop.
+ * Primary runtime bootstrap entry point for the JavaFX application.
+ * Evaluates host hardware display bounds to compute deterministic environment
+ * scaling transformations prior to initializing the primary presentation engine loop.
  */
 public class Launcher {
 
     /**
-     * Calculates the appropriate UI scaling factor based on the current screen's height.
-     * The calculation uses a baseline height of 720 pixels and applies a 0.6 multiplier
-     * to determine the final scale ratio.
+     * Computes the proportional UI scaling vector matching the host display height
+     * against a normalized 720p baseline calibration.
      *
-     * @return The calculated scaling factor as a double.
+     * @return the computed geometric scaling modifier factor
      */
     public static double getWindowsScale() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -23,11 +22,10 @@ public class Launcher {
     }
 
     /**
-     * The main entry point of the application.
-     * It sets the JavaFX system properties for UI scaling on Windows and GTK environments
-     * before delegating the execution to the main application class.
+     * Enforces explicit native window system scale attributes and hooks execution into
+     * the core application layout manager.
      *
-     * @param args Command-line arguments passed to the application.
+     * @param args execution framework runtime override parameters
      */
     public static void main(String[] args) {
         System.setProperty("glass.win.uiScale", getWindowsScale() + "");

@@ -12,18 +12,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Utility class responsible for discovering the server's public address and
- * establishing the appropriate network connection.
+ * Utility orchestrator responsible for compiling structural configuration parameters,
+ * resolving remote infrastructure discovery API targets, and selecting connection paths.
  */
 public class ServerDiscovery {
     private static final Logger log = LoggerFactory.getLogger(ServerDiscovery.class);
 
-    /**
-     * Fetches the server's dynamic IP and Port from a remote JSONBin storage.
-     *
-     * @param binId The JSONBin ID containing the server address.
-     * @return A String array containing the IP at index 0 and Port at index 1, or null if failed.
-     */
     private static String[] getServerAddress(String binId) {
         try {
             URL url = new URL("https://api.jsonbin.io/v3/b/" + binId);
@@ -53,21 +47,21 @@ public class ServerDiscovery {
                 return new String[]{ip, port};
             }
         } catch (Exception e) {
-            log.error("API Data Retrieval failed: {}", e.getMessage());
+            log.error("Infrastructure lookup from central directory failed: {}", e.getMessage());
         }
         return null;
     }
 
     /**
-     * Constructs the correct WebSocket URL based on the environment and establishes a connection.
-     * Automatically enforces WSS (WebSocket Secure) for remote connections.
+     * Evaluates dynamic infrastructure lookup endpoints, resolves encryption routing protocols,
+     * and executes structural initialization contracts for the communication layer.
      *
-     * @param properties Application properties containing fallback values and API keys.
-     * @return An initialized NetworkClient instance.
+     * @param properties application configuration runtime parameters
+     * @return an activated, authenticated network client wrapper context
      */
     public static NetworkClient establishConnection(Properties properties) {
         String binID = properties.getProperty("binID");
-        log.info("Fetching server address...");
+        log.info("Requesting remote directory resolution for endpoint target...");
 
         String[] serverInfo = getServerAddress(binID);
         String serverURL;
@@ -76,42 +70,37 @@ public class ServerDiscovery {
         if (serverInfo != null && serverInfo.length == 2) {
             serverURL = serverInfo[0];
             port = Integer.parseInt(serverInfo[1]);
-            log.info("Successfully retrieved server address.");
+            log.info("Dynamic infrastructure verification completed successfully.");
         } else {
-            log.warn("Could not get remote address. Switching to Localhost");
+            log.warn("Remote address compilation failed. Reverting pipeline to fallback loop.");
             serverURL = properties.getProperty("fallbackServerURL", "localhost");
             port = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
         }
 
-        log.debug("Target server address: {}:{}", serverURL, port);
+        log.debug("Target transport address resolved: {}:{}", serverURL, port);
 
-        // SECURE CONNECTION ROUTING:
-        // Automatically determine if the connection is local or remote.
         boolean isLocal = serverURL.equals("localhost") || serverURL.equals("127.0.0.1");
-
-        // Enforce secure WebSocket (wss://) for any external domain/IP.
         String protocol = isLocal ? "ws://" : "wss://";
         String fullUrl = protocol + serverURL + ":" + port;
 
         NetworkClient client = new NetworkClient(fullUrl);
+        client.connect();
 
-        // Fallback mechanism if the main remote connection fails
         if (!client.isConnected() && !isLocal) {
-            log.warn("Online server is unreachable. Using localhost...");
+            log.warn("Primary deployment endpoint is unreachable. Initiating secondary localhost fallback loop.");
 
             String fallbackURL = properties.getProperty("fallbackServerURL", "localhost");
             int fallbackPort = Integer.parseInt(properties.getProperty("fallbackServerPort", "6969"));
-
-            // Local fallback uses standard ws://
             String fallbackFullUrl = "ws://" + fallbackURL + ":" + fallbackPort;
-            log.info("Connecting to fallback: {}", fallbackFullUrl);
+            log.info("Binding transport to localized container: {}", fallbackFullUrl);
 
             client = new NetworkClient(fallbackFullUrl);
+            client.connect();
         }
 
         if (!client.isConnected()) {
-            log.warn("All connection attempts failed.");
-            log.info("Opening offline application...");
+            log.error("Fatal: All localized and remote connection pipelines failed verification framework.");
+            log.info("Initializing offline sandbox application state...");
         }
 
         return client;

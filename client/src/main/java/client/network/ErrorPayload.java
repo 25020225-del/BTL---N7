@@ -1,5 +1,9 @@
 package client.network;
 
+/**
+ * Data Transfer Object (DTO) representing the canonical wire format for error payloads
+ * received from the remote server within the client-side network subsystem.
+ */
 public class ErrorPayload {
     private String errorCode;
     private String errorMessage;

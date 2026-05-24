@@ -7,60 +7,47 @@ import org.slf4j.LoggerFactory;
 import java.net.URLEncoder;
 
 /**
- * Service responsible for managing Time-based One-Time Password (TOTP) security.
- * It provides functionality for generating unique secret keys, constructing
- * QR code URLs for authenticator apps (like Google Authenticator), and
- * verifying time-sensitive tokens.
+ * Core security service layer managing Time-based One-Time Password (TOTP) protocols.
+ * Generates cryptographic key secrets, builds application configurations, and validates tokens.
  */
 public class TOTPService {
-    private static final Logger log = LoggerFactory.getLogger(TOTPService.class);
 
-    /**
-     * Internal library instance used for core TOTP logic and key generation.
-     */
+    private static final Logger log = LoggerFactory.getLogger(TOTPService.class);
     private final GoogleAuthenticator gAuth = new GoogleAuthenticator();
 
     /**
-     * Generates a new Base32 encoded secret key.
-     * This key should be stored securely in the database and shared with the user
-     * during the 2FA setup process.
+     * Generates an isolated cryptographically secure Base32 encoded identity secret key.
      *
-     * @return A randomly generated secret key string.
+     * @return randomized alphanumeric secret key credentials
      */
     public String createSecretKey() {
         return gAuth.createCredentials().getKey();
     }
 
     /**
-     * Constructs a standard {@code otpauth://} URI used to generate QR codes.
-     * This URI follows the Google Authenticator Key URI format, allowing users
-     * to easily scan and add the account to their 2FA application.
+     * Constructs a compliant otpauth URI scheme block required for dynamic QR app profile imports.
      *
-     * @param username  The name of the user account to be displayed in the app.
-     * @param secretKey The user's unique secret key.
-     * @return A formatted OTP authentication URI.
+     * @param username  alphanumeric login handle context descriptor
+     * @param secretKey confirmed identity secure secret key reference
+     * @return fully compiled canonical identification schema string
      */
     public String getQRUrl(String username, String secretKey) {
         try {
             String issuer = "AuctionSystem-N7";
-            // Ensure the username is properly URL-encoded to handle special characters
             String encodedUsername = URLEncoder.encode(username, "UTF-8").replace("+", "%20");
             return "otpauth://totp/" + issuer + ":" + encodedUsername + "?secret=" + secretKey + "&issuer=" + issuer;
         } catch (Exception e) {
             log.warn("URL Encoding failed: {}", e.getMessage());
-            e.printStackTrace();
-            // Fallback to a basic URI if encoding fails
             return "otpauth://totp/AuctionSystem-N7:" + username + "?secret=" + secretKey + "&issuer=AuctionSystem-N7";
         }
     }
 
     /**
-     * Verifies a 6-digit TOTP code provided by the user against their secret key.
-     * The verification accounts for time drift based on the default window of the library.
+     * Evaluates a provided 6-digit numeric token against active time window metrics.
      *
-     * @param secretKey The secret key associated with the user account.
-     * @param code      The 6-digit integer code provided by the user.
-     * @return {@code true} if the code is valid for the current time window; {@code false} otherwise.
+     * @param secretKey account security holding secret key reference
+     * @param code      the 6-digit structural verification code requested for assertion
+     * @return true if parameters successfully pass standard drift tolerance checks
      */
     public boolean verifyCode(String secretKey, int code) {
         return gAuth.authorize(secretKey, code);

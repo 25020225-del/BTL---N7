@@ -9,27 +9,32 @@ import java.text.NumberFormat;
 import java.util.Locale;
 
 /**
- * Tiện ích tạo hiệu ứng số nhảy mượt mà cho JavaFX.
- * Áp dụng thuật toán Cubic Ease-Out để số nhảy nhanh ở đầu và chậm dần về đích.
+ * Dynamic numerical interpolation engine for JavaFX presentation elements.
+ * Generates perceptual motion transformations targeting fast financial state mutations.
  */
 public class PriceTweener {
 
     private static final NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
 
+    /**
+     * Orchestrates a localized frame translation to smooth step-valued price modifications.
+     * Enforces execution to stick strictly to the primary application UI rendering thread context.
+     *
+     * @param priceLabel the visual rendering component host containing the numeric string
+     * @param oldPrice   the initial base scalar value state
+     * @param newPrice   the terminal target scalar value state
+     */
     public static void animatePriceChange(Label priceLabel, long oldPrice, long newPrice) {
-        // Bắt buộc phải chạy trên JavaFX Application Thread
         if (!Platform.isFxApplicationThread()) {
             Platform.runLater(() -> animatePriceChange(priceLabel, oldPrice, newPrice));
             return;
         }
 
-        // 1. Dọn dẹp: Nếu có một hiệu ứng cũ đang chạy dở (do giá cập nhật liên tục), ta ép dừng nó lại
         if (priceLabel.getProperties().containsKey("priceTransition")) {
             Transition oldTransition = (Transition) priceLabel.getProperties().get("priceTransition");
             oldTransition.stop();
         }
 
-        // 2. Tạo Transition mới với thời gian 250ms (Nhỉnh hơn 200ms của Server một chút để lấp đầy độ trễ)
         Transition transition = new Transition() {
             {
                 setCycleDuration(Duration.millis(250));
@@ -37,23 +42,21 @@ public class PriceTweener {
 
             @Override
             protected void interpolate(double frac) {
-                // Sử dụng hàm Cubic Ease-Out: 1 - (1 - x)^3
-                // Giúp con số thay đổi tự nhiên hơn là chạy tuyến tính (Linear)
+                // Non-linear cubic ease-out transformation: f(x) = 1 - (1 - x)^3.
+                // Enforces a high initial velocity that dampens towards the destination terminal bounds.
                 double easeOutFrac = 1 - Math.pow(1 - frac, 3);
 
                 long currentValue = (long) (oldPrice + (newPrice - oldPrice) * easeOutFrac);
                 priceLabel.setText(formatter.format(currentValue) + " đ");
 
-                // Đổi màu Label sang đỏ/xanh chớp nháy nhẹ nếu muốn thêm kịch tính (Tùy chọn)
                 if (frac < 0.5) {
-                    priceLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;"); // Đỏ khi đang nảy số
+                    priceLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
                 } else {
-                    priceLabel.setStyle("-fx-text-fill: #2c3e50; -fx-font-weight: bold;"); // Đen/Xanh đậm khi chốt
+                    priceLabel.setStyle("-fx-text-fill: #2c3e50; -fx-font-weight: bold;");
                 }
             }
         };
 
-        // 3. Gắn Transition vào Label để dễ dàng quản lý vòng đời
         priceLabel.getProperties().put("priceTransition", transition);
         transition.play();
     }

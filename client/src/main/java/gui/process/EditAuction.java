@@ -7,7 +7,18 @@ import javafx.scene.layout.GridPane;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Modal presentation wizard for mutating active auction metadata fields.
+ * Encapsulates dynamic form generation, UI layout constraints, and client-side payload translation.
+ */
 public class EditAuction {
+
+    /**
+     * Spawns a modal transaction block allowing users to dispatch updated informational claims
+     * regarding an active auction sequence.
+     *
+     * @param currentAuctionId the unique identity token of the target domain entity
+     */
     public static void edit(String currentAuctionId) {
         Dialog<Map<String, String>> dialog = new Dialog<>();
         dialog.setTitle("Edit Auction");

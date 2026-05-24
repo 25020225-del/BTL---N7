@@ -1,41 +1,28 @@
 package model.user;
 
 /**
- * Represents a system administrator with elevated privileges within the auction platform.
- * Administrators are responsible for overseeing the system, approving or rejecting
- * pending auctions, and managing user activities.
+ * Specialized identity aggregate representing an administrative overseer profile.
+ * Possesses privileges for resource modification, pipeline approvals, and enforcement controls.
  */
 public class Admin extends User {
 
     /**
-     * Constructs a new Admin with the specified credentials and personal information.
-     * The role is automatically set to "Admin".
-     *
-     * @param id       The unique identifier for the administrator.
-     * @param userName The login username.
-     * @param password The encrypted password.
-     * @param name     The real name or display name of the administrator.
+     * Core constructor mapping complete structural credential components.
      */
     public Admin(String id, String userName, String password, String name) {
         super(id, userName, password, name, "Admin");
     }
 
     /**
-     * Constructs an Admin by elevating an existing standard {@link User} object.
-     * Extracts the core credentials from the provided user and forces the role to "Admin".
+     * Identity elevation constructor wrapping an active baseline client profile.
+     * Forces standard operational boundaries into privileged administrative settings.
      *
-     * @param admin The existing User object to be elevated to an administrator.
+     * @param admin baseline active profile container instance to evaluate
      */
     public Admin(User admin) {
         super(admin.getId(), admin.getUserName(), admin.getPassword(), admin.getName(), "Admin");
     }
 
-    /**
-     * Generates a formatted summary string specifically identifying this user
-     * as a System Administrator.
-     *
-     * @return A string containing the admin tag, ID, and display name.
-     */
     @Override
     public String getInfo() {
         return "[Admin] ID: " + this.getId()

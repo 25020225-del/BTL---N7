@@ -3,24 +3,25 @@ package gui.widget;
 import javafx.scene.control.Button;
 import javafx.scene.control.Tooltip;
 import org.kordamp.ikonli.javafx.FontIcon;
-
-import static utils.ConsoleColors.RED;
-import static utils.ConsoleColors.RESET;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * A custom JavaFX {@link Button} that seamlessly integrates a scalable {@link FontIcon}
- * from the Ikonli library. This widget simplifies the creation of standard UI buttons
- * with built-in icons, text labels, tooltips, and predefined CSS styling.
+ * Custom graphical button wrapper integrating scalable vector typography glyphs.
+ * Simplifies presentation layout declaration by combining icon resolution,
+ * contextual tooltips, and declarative styling classes.
  */
 public class IconButton extends Button {
 
+    private static final Logger log = LoggerFactory.getLogger(IconButton.class);
+    private static final String FALLBACK_ICON = "mdi2c-crosshairs-question";
+
     /**
-     * Constructs an IconButton with standard default styling.
+     * Constructs an IconButton with standard default styling rules.
      *
-     * @param iconName    The literal string identifier for the Ikonli icon (e.g., "mdi2a-account").
-     * @param text        The text label to be displayed on the button.
-     * @param tooltipText The descriptive text shown when hovering over the button.
-     *                    If {@code null} or empty, no tooltip is assigned.
+     * @param iconName    the literal string identifier for the target vector icon
+     * @param text        the descriptive text label to display on the button
+     * @param tooltipText the explanatory text block shown when hovering over the element bounds
      */
     public IconButton(String iconName, String text, String tooltipText) {
         super(text);
@@ -32,12 +33,7 @@ public class IconButton extends Button {
     }
 
     /**
-     * Constructs an IconButton with an additional, specific CSS class for custom styling.
-     *
-     * @param iconName        The literal string identifier for the Ikonli icon.
-     * @param text            The text label to be displayed on the button.
-     * @param tooltipText     The descriptive text shown when hovering over the button.
-     * @param classIconButton The name of the additional CSS style class to apply to this button.
+     * Constructs an IconButton reinforced with an additional custom CSS style class identifier.
      */
     public IconButton(String iconName, String text, String tooltipText, String classIconButton) {
         this(iconName, text, tooltipText);
@@ -45,20 +41,18 @@ public class IconButton extends Button {
     }
 
     /**
-     * Resolves and sets the graphic icon for this button using the Ikonli library.
-     * If the provided icon name is invalid or cannot be found, a fallback icon
-     * ("mdi2c-crosshairs-question") is automatically applied to prevent UI layout breaking.
+     * Resolves and binds a vector icon onto the component's graphical node space.
+     * Automatically applies a diagnostic fallback glyph if the targeted asset identifier cannot be resolved.
      *
-     * @param iconName The literal string identifier for the target icon.
+     * @param iconName the unique literal mapping key within the icon provider registry
      */
     public void setIcon(String iconName) {
         FontIcon fontIcon = new FontIcon();
         try {
             fontIcon.setIconLiteral(iconName);
         } catch (Exception e) {
-            System.out.println("[Error]: " + RED + "Could not find icon: " + iconName + RESET);
-            // Fallback icon when the specified literal is incorrect
-            fontIcon.setIconLiteral("mdi2c-crosshairs-question");
+            log.error("Failed to resolve visual asset identifier: '{}'. Applying fallback diagnostic glyph.", iconName);
+            fontIcon.setIconLiteral(FALLBACK_ICON);
         }
         fontIcon.setIconSize(30);
         this.setGraphic(fontIcon);

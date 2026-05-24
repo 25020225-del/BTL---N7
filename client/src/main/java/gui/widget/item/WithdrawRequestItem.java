@@ -12,8 +12,21 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 
+/**
+ * Presentation component representing a financial ledger payout request node.
+ * Binds unstructured data schemas onto uniform visualization elements and
+ * wraps decision signaling pathways into tokenized command contracts.
+ */
 public class WithdrawRequestItem extends VBox {
 
+    /**
+     * Constructs a withdrawal resolution container card. Extracts property parameters
+     * from the raw data transport matrix matching strict wire key identities.
+     *
+     * @param data     the data transfer mapping block containing the keys: {@code id}, {@code username},
+     * {@code amount}, {@code payoutMethod}, and optionally {@code payoutDetails}
+     * @param onAction the transactional event relay consumer enforcing a tokenized {@code ACTION:ID} string contract
+     */
     public WithdrawRequestItem(Map<String, Object> data, Consumer<String> onAction) {
         String requestId = (String) data.get("id");
         String username = (String) data.get("username");
@@ -21,8 +34,7 @@ public class WithdrawRequestItem extends VBox {
         String method = (String) data.get("payoutMethod");
         String details = (String) data.getOrDefault("payoutDetails", "—");
 
-        String formatted = NumberFormat.getNumberInstance(new Locale("vi", "VN"))
-                .format(amount) + " VND";
+        String formatted = NumberFormat.getNumberInstance(new Locale("vi", "VN")).format(amount) + " VND";
 
         Label lblUser = new Label("Người dùng: " + username);
         Label lblAmount = new Label("Số tiền: " + formatted);
@@ -41,10 +53,9 @@ public class WithdrawRequestItem extends VBox {
         HBox buttons = new HBox(10, btnApprove, btnReject);
         buttons.setAlignment(Pos.CENTER_RIGHT);
 
-        setSpacing(6);
-        setPadding(new Insets(12));
-        setStyle("-fx-background-color: white; -fx-background-radius: 8; "
-                + "-fx-border-color: #ddd; -fx-border-radius: 8;");
-        getChildren().addAll(lblUser, lblAmount, lblMethod, lblDetails, buttons);
+        this.setSpacing(6);
+        this.setPadding(new Insets(12));
+        this.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #ddd; -fx-border-radius: 8;");
+        this.getChildren().addAll(lblUser, lblAmount, lblMethod, lblDetails, buttons);
     }
 }

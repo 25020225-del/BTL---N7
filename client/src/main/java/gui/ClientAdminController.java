@@ -29,83 +29,73 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+/**
+ * High-privilege workstation workspace supervisor. Coordinates administrative node routing,
+ * structural system telemetry listeners configuration, and cross-thread layout synchronization
+ * for authoritative platform management.
+ */
 public class ClientAdminController {
     private static final Logger log = LoggerFactory.getLogger(ClientAdminController.class);
 
-    private Parent mainView;
+    private final Parent mainView;
+    private final SettingsController settingsView;
+    private final TableControllerAdmin tableView;
+    private final User currentUser;
 
-    // ✅ Dùng đúng kiểu: SettingsController (extends VBox, tự load FXML của nó)
-    private SettingsController settingsView;
+    @FXML private VBox mainDock;
+    @FXML private VBox mainViewController;
 
-    @FXML
-    private VBox mainDock;
-    @FXML
-    private VBox mainViewController;
-
-    private TableControllerAdmin tableView;
-    private User currentUser; // ✅ Lưu user để truyền vào SettingsController
     private ItemDetailController currentDetailController;
 
-    private IconButton account;
-    private IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
-    private IconButton accountList = new IconButton("mdi2a-account-box-multiple-outline", "Accounts", "Manage Accounts", "special-button");
-    private IconButton pendingItemList = new IconButton("mdi2a-archive-settings-outline", "Pending Auction", "Pending Auction", "special-button");
-    private IconButton runningItemList = new IconButton("mdi2a-archive-settings-outline", "Running Auction", "Running Auction", "special-button");
-    private IconButton withdrawList = new IconButton("mdi2c-cash-refund", "Withdrawals", "Withdraw Requests", "special-button");
+    private final IconButton account;
+    private final IconButton toggleList = new IconButton("mdi2m-menu", "List", "List", "special-button");
+    private final IconButton accountList = new IconButton("mdi2a-account-box-multiple-outline", "Accounts", "Manage Accounts", "special-button");
+    private final IconButton pendingItemList = new IconButton("mdi2a-archive-settings-outline", "Pending Auction", "Pending Auction", "special-button");
+    private final IconButton runningItemList = new IconButton("mdi2a-archive-settings-outline", "Running Auction", "Running Auction", "special-button");
+    private final IconButton withdrawList = new IconButton("mdi2c-cash-refund", "Withdrawals", "Withdraw Requests", "special-button");
 
+    /**
+     * Mounts the administrative structural composition tree and maps authoritative credentials context.
+     *
+     * @param user the authenticated administrator account anchor reference
+     * @throws IOException if visual asset hierarchy compilation parameters break down
+     */
     public ClientAdminController(User user) throws IOException {
         this.currentUser = user;
         this.account = new IconButton("mdi2a-account", "Admin: " + user.getName(), "Account", "special-button");
 
-        // ── 1. Load MainView.fxml (đúng như cũ, không thay đổi) ──────────
         FXMLLoader mainViewLoader = new FXMLLoader(getClass().getResource("MainView.fxml"));
         mainViewLoader.setController(this);
         mainView = mainViewLoader.load();
 
-        // ── 2. Load TableView ─────────────────────────────────────────────
         tableView = new TableControllerAdmin();
-        tableView.setOnAuctionListener((auction) -> openItemDetail(auction));
+        tableView.setOnAuctionListener(this::openItemDetail);
 
-        // ── 3. ✅ Tạo SettingsController đúng cách ─────────────────────
-        //    SettingsController extends VBox và tự xử lý:
-        //      loader.setRoot(this) + loader.setController(this) + loader.load()
-        //    => Không cần (và không được) load SettingsView.fxml ở đây nữa.
         settingsView = new SettingsController(user);
-
-        // ── 4. Kết nối callback từ Settings về Admin Dashboard ────────────
         settingsView.setOnBackToMarketplace(this::handleBackToMarketplaceInternal);
         settingsView.setOnSignOut(this::handleSignOutInternal);
 
-        // ── 5. Hiển thị màn hình chính ────────────────────────────────────
         MainApplication.setNewScene(mainView);
     }
 
-    /**
-     * Cấu hình sidebar navigation dock.
-     */
     private void setMainDock() {
         Region region = new Region();
         Separator separator = new Separator();
         VBox.setVgrow(region, Priority.ALWAYS);
         mainDock.getChildren().addAll(
-                toggleList,
-                accountList,
-                pendingItemList,
-                runningItemList,
-                withdrawList,
-                separator,
-                region,
-                account);
+                toggleList, accountList, pendingItemList, runningItemList, withdrawList,
+                separator, region, account
+        );
 
         toggleList.setUserData(true);
         toggleList.setOnAction(event -> {
+            boolean collapsed = (boolean) toggleList.getUserData();
             for (Node k : mainDock.getChildren()) {
                 if (k instanceof Button b) {
-                    boolean collapsed = (boolean) toggleList.getUserData();
                     b.setContentDisplay(collapsed ? ContentDisplay.GRAPHIC_ONLY : ContentDisplay.LEFT);
                 }
             }
-            toggleList.setUserData(!((boolean) toggleList.getUserData()));
+            toggleList.setUserData(!collapsed);
         });
 
         pendingItemList.setOnAction(event -> {
@@ -126,10 +116,7 @@ public class ClientAdminController {
             AdminService.fetchUsers();
         });
 
-        // ✅ settingsView là một Node (VBox) hợp lệ, add trực tiếp được
-        account.setOnAction(event -> {
-            mainViewController.getChildren().setAll(settingsView);
-        });
+        account.setOnAction(event -> mainViewController.getChildren().setAll(settingsView));
 
         withdrawList.setOnAction(event -> {
             mainViewController.getChildren().setAll(tableView.getParent());
@@ -147,24 +134,16 @@ public class ClientAdminController {
         detailController.setAuctionData(auction);
         currentDetailController = detailController;
         AuctionService.fetchTransactions(auction.getId());
-        detailController.setOnReturnToMarketplace(() -> {
-            handleBackToMarketplaceInternal();
-        });
+        detailController.setOnReturnToMarketplace(this::handleBackToMarketplaceInternal);
+
         mainViewController.getChildren().clear();
         mainViewController.getChildren().add(detailController.getParent());
     }
 
-    /**
-     * Callback được SettingsController gọi khi user bấm "Back to Marketplace".
-     * Đây là logic thực sự — không cần @FXML vì không bind từ MainView.fxml.
-     */
     private void handleBackToMarketplaceInternal() {
         pendingItemList.fire();
     }
 
-    /**
-     * Callback được SettingsController gọi khi user bấm "Đăng xuất".
-     */
     private void handleSignOutInternal() {
         RemoveEventBus.forUser();
         RemoveEventBus.forAdmin();
@@ -173,11 +152,8 @@ public class ClientAdminController {
         MainApplication.setNewScene(MainApplication.rootLogin);
     }
 
-    // ── Giữ lại @FXML handlers cho MainView.fxml ──────────────────────────
-
     @FXML
     private void handleBackToMarketplace() {
-        // Được bind từ MainView.fxml nếu có nút nào dùng onAction="#handleBackToMarketplace"
         handleBackToMarketplaceInternal();
     }
 
@@ -200,24 +176,22 @@ public class ClientAdminController {
 
     private void setMainViewController() {
         AuctionEventBus.addListener("ADMIN_ACTION_SUCCESS", event ->
-                Platform.runLater(() ->
-                        AlertUtils.showInfo("Success", (String) event.getNewValue())
-                )
+                Platform.runLater(() -> AlertUtils.showInfo("Success", (String) event.getNewValue()))
         );
-        AuctionEventBus.addListener(AuctionEventBus.ADMIN_ACTION_SUCCESS, event -> {
-            Platform.runLater(() -> {
-                AlertUtils.showInfo("Success", event.getNewValue().toString());
-                AuctionService.fetchAuctions(); // refresh lại danh sách
-            });
-        });
-
-        AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR, event -> {
-            Platform.runLater(() ->
-                    AlertUtils.showError("Error", event.getNewValue().toString())
-            );
-        });
+        AuctionEventBus.addListener(AuctionEventBus.ADMIN_ACTION_SUCCESS, event ->
+                Platform.runLater(() -> {
+                    AlertUtils.showInfo("Success", event.getNewValue().toString());
+                    AuctionService.fetchAuctions();
+                })
+        );
+        AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR, event ->
+                Platform.runLater(() -> AlertUtils.showError("Error", event.getNewValue().toString()))
+        );
     }
 
+    /**
+     * Activates the component network registration frames and aggregates the layout view models.
+     */
     public void start() {
         setMainDock();
         setMainViewController();
