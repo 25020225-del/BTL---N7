@@ -26,8 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Background daemon service monitoring active auctions in real-time.
- * Manages chronological state transitions across volatile regions and executes
- * transactional settlements over completed bidding pools.
+ * Manages chronological state transitions and executes transactional settlements over completed bidding pools.
  */
 public class AuctionMonitor {
 
@@ -77,21 +76,15 @@ public class AuctionMonitor {
                 LocalDateTime now = LocalDateTime.now();
 
                 if (currentStatus.equals(Auction.STATUS_OPEN) && now.isAfter(auction.getStartTime())) {
-                    // [BUG-3 FIX] Phiên OPEN mới tạo có endTime = null (chờ bid đầu tiên).
-                    // Bỏ qua, không cần chuyển sang RUNNING — đây là trách nhiệm của bid đầu tiên.
                     if (auction.getEndTime() != null && now.isBefore(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_RUNNING;
                     }
                 } else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
-                    // endTime luôn non-null khi RUNNING (được set bởi bid đầu tiên)
                     if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_FINISHED;
                         snapshotEndAtDecision = auction.getEndTime();
                     }
                 } else if (currentStatus.equals(Auction.STATUS_WAITING_FOR_BID)) {
-                    // [BUG-3 FIX] Phiên WAITING_FOR_BID có endTime = null cho đến bid đầu tiên.
-                    // PHẢI kiểm tra null trước khi gọi isAfter() — không có null guard thì NPE
-                    // sẽ crash toàn bộ ScheduledExecutorService thread.
                     if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_CANCELED;
                         snapshotEndAtDecision = auction.getEndTime();
@@ -130,7 +123,6 @@ public class AuctionMonitor {
                 return false;
             }
             LocalDateTime now = LocalDateTime.now();
-            // [BUG-3 FIX] endTime có thể null nếu phiên OPEN chưa có bid. Guard thêm.
             if (!now.isAfter(auction.getStartTime())
                     || auction.getEndTime() == null
                     || !now.isBefore(auction.getEndTime())) {
@@ -282,15 +274,6 @@ public class AuctionMonitor {
                 "Payment for winning auction: " + auctionId, now);
     }
 
-    /**
-     * Hoàn tiền locked_balance cho các autobidder thua cuộc.
-     *
-     * [BUG-4 FIX] Câu SQL gốc thiếu điều kiện "AND is_active = 1", dẫn đến việc
-     * query cả những auto_bid đã bị cancel (is_active = 0). Những user này đã được
-     * unlockBalance khi cancel, nếu chạy lại unlockBalance lần nữa sẽ làm
-     * locked_balance âm — double-refund nghiêm trọng về tài chính.
-     * Thêm "AND is_active = 1" để chỉ xử lý những autobid vẫn còn active.
-     */
     private void refundLosingAutoBidders(Connection conn, Auction auction, String auctionId) throws SQLException {
         String winnerId = (auction.getWinningBidder() != null) ? auction.getWinningBidder().getId() : "NONE";
 

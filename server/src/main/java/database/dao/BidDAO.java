@@ -36,17 +36,23 @@ public class BidDAO {
     }
 
     /**
-     * Immutable value capsule encapsulating the verified transactional mutation mutations
+     * Immutable value capsule encapsulating the verified transactional state mutations
      * computed following a successful database bid commit sequence.
+     *
+     * FIX #7 (MEDIUM): newCurrentPrice and newHighestMaxBid were incorrectly typed as
+     * {@code double} even though the constructor accepted {@code long}. This caused
+     * precision loss on large monetary values (e.g., 999_999_999 VNĐ silently becomes
+     * 1_000_000_000.0 due to IEEE-754 rounding). Fields are now {@code long} throughout.
      */
     public static final class BidCommitResult {
         public final String auctionId;
-        public final double newCurrentPrice;
-        public final double newHighestMaxBid;
+        public final long newCurrentPrice;      // FIX #7: was double
+        public final long newHighestMaxBid;     // FIX #7: was double
         public final String newWinnerId;
         public final LocalDateTime newEndTime;
 
-        public BidCommitResult(String auctionId, long newCurrentPrice, long newHighestMaxBid, String newWinnerId, LocalDateTime newEndTime) {
+        public BidCommitResult(String auctionId, long newCurrentPrice, long newHighestMaxBid,
+                               String newWinnerId, LocalDateTime newEndTime) {
             this.auctionId = auctionId;
             this.newCurrentPrice = newCurrentPrice;
             this.newHighestMaxBid = newHighestMaxBid;
@@ -243,57 +249,62 @@ public class BidDAO {
             }
         }
 
-        return new BidCommitResult(auctionId, result.newCurrentPrice, result.newHighestMaxBid, result.newWinner != null ? result.newWinner.getId() : null, result.newEndTime);
+        return new BidCommitResult(auctionId, result.newCurrentPrice, result.newHighestMaxBid,
+                result.newWinner != null ? result.newWinner.getId() : null, result.newEndTime);
     }
 
     /**
-     * Provisions or updates a proxy-bidding contract rule mapping for an authenticated participant.
-     * Enforces liquidity delta locking on the active wallet context.
+     * Persists or updates an auto-bid record within the transaction managed by the caller.
      *
-     * @param currentUser the actor registering proxy automation properties
-     * @param auction     the target auction configuration model
-     * @param maxBid      the absolute expenditure upper bound matrix allowed
-     * @param increment   the incremental step valuation modifier applied on counter-bids
-     * @return true if the automation ruleset is securely persisted, false if wallet liquidity drops below limits
-     * @throws SQLException on relational database communication breakdowns
+     * <p>This method performs no commit, rollback, or connection lifecycle management.
+     * The caller is responsible for opening the connection, setting {@code autoCommit=false},
+     * and committing or rolling back after all related operations (including
+     * {@link model.auction.Auction#registerAutoBid}) have completed atomically.
+     *
+     * @param conn        the active, caller-owned database connection with autoCommit disabled
+     * @param currentUser the bidder submitting the auto-bid
+     * @param auction     the target auction aggregate
+     * @param maxBid      the maximum amount the bidder authorises the engine to bid
+     * @param increment   the step size per automated bid round
+     * @return {@code true} if the record was upserted successfully
+     * @throws SQLException                              on any database access error
+     * @throws AutoBidLockService.InsufficientFundsException if the wallet cannot cover the required lock delta
      */
-    public boolean saveAutoBid(User currentUser, Auction auction, long maxBid, long increment) throws SQLException {
-        final String checkSql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
-        final String upsertSql = "INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment_amount, is_active) VALUES (?, ?, ?, ?, ?, 1)";
+    public boolean saveAutoBid(Connection conn, User currentUser, Auction auction,
+                               long maxBid, long increment)
+            throws SQLException, AutoBidLockService.InsufficientFundsException {
 
-        try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                long oldMaxBid = 0;
-                try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
-                    ps.setString(1, auction.getId());
-                    ps.setString(2, currentUser.getId());
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) oldMaxBid = rs.getLong("max_bid");
-                    }
+        final String checkSql =
+                "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
+        final String upsertSql =
+                "INSERT OR REPLACE INTO auto_bids "
+                        + "(id, auction_id, bidder_id, max_bid, increment_amount, is_active) "
+                        + "VALUES (?, ?, ?, ?, ?, 1)";
+
+        long oldMaxBid = 0L;
+        try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
+            ps.setString(1, auction.getId());
+            ps.setString(2, currentUser.getId());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    oldMaxBid = rs.getLong("max_bid");
                 }
-
-                autoBidLockService.applyLockDifference(conn, currentUser, oldMaxBid, maxBid, auction.getId());
-
-                try (PreparedStatement ps = conn.prepareStatement(upsertSql)) {
-                    ps.setString(1, "AB-" + java.util.UUID.randomUUID());
-                    ps.setString(2, auction.getId());
-                    ps.setString(3, currentUser.getId());
-                    ps.setLong(4, maxBid);
-                    ps.setLong(5, increment);
-                    ps.executeUpdate();
-                }
-
-                conn.commit();
-                return true;
-            } catch (AutoBidLockService.InsufficientFundsException e) {
-                conn.rollback();
-                return false;
-            } catch (SQLException e) {
-                conn.rollback();
-                throw e;
             }
         }
+
+        // May throw InsufficientFundsException — caller must catch and rollback
+        autoBidLockService.applyLockDifference(conn, currentUser, oldMaxBid, maxBid, auction.getId());
+
+        try (PreparedStatement ps = conn.prepareStatement(upsertSql)) {
+            ps.setString(1, "AB-" + java.util.UUID.randomUUID());
+            ps.setString(2, auction.getId());
+            ps.setString(3, currentUser.getId());
+            ps.setLong(4, maxBid);
+            ps.setLong(5, increment);
+            ps.executeUpdate();
+        }
+
+        return true;
     }
 
     /**
