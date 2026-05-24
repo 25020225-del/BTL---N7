@@ -1,7 +1,9 @@
 package gui.userController.table;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gui.process.AnimateEffect;
 import gui.process.Search;
+import gui.widget.Selector;
 import gui.widget.item.MinimalItem;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -18,6 +20,7 @@ import utils.JacksonConfig;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class TableController {
@@ -28,14 +31,11 @@ public class TableController {
 
     protected Parent tableView;
 
-    @FXML
-    protected HBox searchBarContainer;
-    @FXML
-    protected TilePane mainTilePane;
-    @FXML
-    protected TextField searchField;
-    @FXML
-    protected Button searchButton;
+    @FXML protected HBox searchBarContainer;
+    @FXML protected TilePane mainTilePane;
+    @FXML protected TextField searchField;
+    @FXML protected Button searchButton;
+    @FXML protected HBox fillerBarContainer;
 
     public TableController() {
         FXMLLoader tableViewLoader = new FXMLLoader(getClass().getResource("/gui/TableView.fxml"));
@@ -70,8 +70,30 @@ public class TableController {
                 // FIX 1: Đổi tên method từ SearchText → matchesFuzzy
                 // FIX 2: Đổi thứ tự tham số: (keyword, content) thay vì (content, keyword)
                 boolean match = Search.matchesFuzzy(keyword, itemContent);
-                item.setVisible(match);
-                item.setManaged(match);
+                if  (match) AnimateEffect.showNode(item);
+                else AnimateEffect.hideNode(item);
+            }
+        }
+    }
+
+    public void addSelector(Selector selector) {
+        fillerBarContainer.getChildren().add(selector);
+    }
+
+    public void removeAllSelectors() {
+        fillerBarContainer.getChildren().clear();
+    }
+
+    public void searchByProperties(String key, String value) {
+        for  (Node node : mainTilePane.getChildren()) {
+            if(value.trim().equals("")){
+                AnimateEffect.showNode(node);
+                continue;
+            }
+            AnimateEffect.hideNode(node);
+            if (node instanceof MinimalItem) {
+                if(!node.getProperties().containsKey(key)) continue;
+                if(((String) node.getProperties().get(key)).equals(value)) AnimateEffect.showNode(node);
             }
         }
     }

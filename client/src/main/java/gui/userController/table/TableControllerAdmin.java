@@ -37,20 +37,15 @@ public class TableControllerAdmin extends TableController {
                 data.forEach(map -> addNewItem(buildMinimalItem(map)));
             });
         });
-
         AuctionEventBus.addListener("FETCH_USERS_SUCCESS", event -> {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> users =
                     (List<Map<String, Object>>) ((NetworkMessage) event.getNewValue()).getData();
             Platform.runLater(() -> {
-                // FIX LỖI 1: Đổi deleteAllAuctions() → deleteAllAuction()
-                // (tên method trong lớp cha TableController là deleteAllAuction — không có 's')
-                // HOẶC: Đổi tên trong TableController thành deleteAllAuctions() cho nhất quán
-                deleteAllItem();  // ✅ FIX: gọi đúng tên method của lớp cha
+                deleteAllItem();
                 users.forEach(data -> mainTilePane.getChildren().add(buildUserItem(data)));
             });
         });
-        // Lắng nghe danh sách yêu cầu rút tiền
         AuctionEventBus.addListener("FETCH_WITHDRAW_REQUESTS_SUCCESS", event -> {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> requests =
@@ -70,8 +65,6 @@ public class TableControllerAdmin extends TableController {
                 }
             });
         });
-
-// Lắng nghe kết quả Approve/Reject
         AuctionEventBus.addListener("WITHDRAW_ACTION_SUCCESS", event -> {
             @SuppressWarnings("unchecked")
             Map<String, Object> result =
@@ -79,7 +72,7 @@ public class TableControllerAdmin extends TableController {
             String msg = (String) result.get("message");
 
             Platform.runLater(() -> {
-                AlertUtils.showInfo("Thành công", msg);
+                AlertUtils.showInfo("Success", msg);
                 AdminService.fetchWithdrawRequests(); // tự reload lại danh sách
             });
         });
@@ -91,59 +84,41 @@ public class TableControllerAdmin extends TableController {
         String name = (String) data.get("name");
         String role = (String) data.get("role");
         boolean isBlocked = (boolean) data.get("is_blocked");
+        boolean isGood = (boolean) data.get("is_good");
 
-        MinimalUser userItem = new MinimalUser(id, username, name, role, isBlocked);
+        MinimalUser userItem = new MinimalUser(id, username, name, role, isBlocked, isGood);
         userItem.setCommand(command -> {
-            if ("BLOCK_USER".equals(command)) {
-                AdminService.blockUser(id);
-            } else if ("UNBLOCK_USER".equals(command)) {
-                AdminService.unblockUser(id);
+            switch (command) {
+                case "BLOCK_USER" ->{
+                    AdminService.blockUser(id);
+                }
+                case "UNBLOCK_USER" ->{
+                    AdminService.unblockUser(id);
+                }
+                case "TOGGLE_GOOD_STATUS" ->{
+                    AdminService.toggleGoodStatus(id);
+                }
             }
         });
         return userItem;
     }
 
-    protected Auction auctionFromMap(Map<String, Object> map) {
-        Auction auction = new Auction();
-        auction.setId((String) map.get("id"));
-
-        Item item = ItemFactory.createItem(
-                ItemFactory.TYPE_TANGIBLE,
-                "ITM-" + map.get("id"),
-                (String) map.get("itemName"),
-                (String) map.get("description"),
-                ((Number) map.get("startingPrice")).longValue()
-        );
-        item.setImageUrl((String) map.get("imageUrl"));
-        auction.setItem(item);
-
-        User seller = new User();
-        seller.setId((String) map.get("sellerId"));
-        auction.setSeller(seller);
-
-        auction.setCurrentPrice(((Number) map.get("currentPrice")).longValue());
-        auction.setEndTime(
-                Instant.ofEpochMilli(((Number) map.get("endTime")).longValue())
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDateTime()
-        );
-        return auction;
-    }
-
     protected MinimalItemAdmin buildMinimalItem(Map<String, Object> map) {
         String id = (String) map.get("id");
         String name = (String) map.get("itemName");
+        String status = (String) map.get("status");
+        long price = ((Number) map.get("currentPrice")).longValue();
 
-        Auction auction = auctionFromMap(map);
+        Auction auction = Auction.buildAuctionFromMap(map);
 
-        MinimalItemAdmin item = new MinimalItemAdmin(id, name, "");
+        MinimalItemAdmin item = new MinimalItemAdmin(id, name, status, price );
         item.addAdminOptions(id, command -> {
             switch (command) {
                 case "APPROVE_AUCTION" -> AdminService.approveAuction(id);
                 case "REJECT_AUCTION" -> AdminService.rejectAuction(id);
-                case "SHOW_AUCTION" -> {
-                    openItemDetail(auction);
-                }
+                case "SHOW_AUCTION" ->  openItemDetail(auction);
+                case "CANCEL_AUCTION" ->  AdminService.cancelAuction(id);
+
             }
         });
         return item;

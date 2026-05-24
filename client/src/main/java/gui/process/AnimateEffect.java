@@ -59,4 +59,16 @@ public class AnimateEffect {
         });
         pauseTransition.play();
     }
+
+    public static void hideNode(Node node) {
+        node.setDisable(true);
+        node.setVisible(false);
+        node.setManaged(false);
+    }
+
+    public static void showNode(Node node) {
+        node.setDisable(false);
+        node.setVisible(true);
+        node.setManaged(true);
+    }
 }

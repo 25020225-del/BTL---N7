@@ -126,6 +126,9 @@ public class ResponseDispatcher {
         };
         handlers.put("FETCH_WITHDRAW_REQUESTS_SUCCESS", adminHandler);
         handlers.put("WITHDRAW_ACTION_SUCCESS", adminHandler);
+        handlers.put("CANCEL_AUCTION_SUCCESS", adminHandler); // THÊM
+        handlers.put("TOGGLE_GOOD_STATUS", adminHandler);     // THÊM — server gửi về tên này
+        handlers.put("TOGGLE_GOOD_SUCCESS", adminHandler);    // THÊM
     }
 
     // ── Dispatch ──────────────────────────────────────────────────────────────

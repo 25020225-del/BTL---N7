@@ -22,6 +22,7 @@ public class MinimalItemUser extends MinimalItem {
     public MinimalItemUser(String id, String imageUrl, String nameString, String itemType, String priceString, long dateString) {
         super(id);
         this.setUserData(id + nameString + priceString + dateString);
+        this.getProperties().put("itemType", itemType);
 
         imageView = new ImageView();
 
@@ -54,24 +55,6 @@ public class MinimalItemUser extends MinimalItem {
                 countdownClock,
                 auctionButton
         );
-    }
-
-    /**
-     * Adds seller-specific management options (Edit/Delete) to this item.
-     * These options are presented via a right-click context menu.
-     */
-    public void addSellerOptions(Consumer<String> onEdit, Consumer<String> onDelete) {
-        ContextMenu contextMenu = new ContextMenu();
-
-        MenuItem editItem = new MenuItem("Edit Auction");
-        editItem.setOnAction(e -> onEdit.accept(this.getId()));
-
-        MenuItem deleteItem = new MenuItem("Delete Auction");
-        deleteItem.setStyle("-fx-text-fill: red;");
-        deleteItem.setOnAction(e -> onDelete.accept(this.getId()));
-
-        contextMenu.getItems().addAll(editItem, deleteItem);
-        this.setOnContextMenuRequested(e -> contextMenu.show(this, e.getScreenX(), e.getScreenY()));
     }
 
     /**
