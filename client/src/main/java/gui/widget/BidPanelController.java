@@ -203,6 +203,14 @@ public class BidPanelController {
     @FXML
     private void handlePlaceBid() {
         if (currentAuction == null) return;
+
+        long endTimeMillis = currentAuction.getEndTime()
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant().toEpochMilli();
+        if (System.currentTimeMillis() > endTimeMillis) {
+            showError(lblManualError, "Phiên đấu giá đã kết thúc. Vui lòng làm mới danh sách.");
+            return;
+        }
         clearError(lblManualError);
 
         long bidAmount = parseAmount(txtBidAmount.getText());

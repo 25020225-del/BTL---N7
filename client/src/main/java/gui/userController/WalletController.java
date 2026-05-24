@@ -405,16 +405,16 @@ public class WalletController extends VBox {
      */
     @SuppressWarnings("unchecked")
     private long resolveAmountFromEvent(Object eventData) {
-        if (pendingDepositAmount > 0) {
-            try {
-                NetworkMessage msg = (NetworkMessage) eventData;
-                Map<String, Object> data = (Map<String, Object>) msg.getData();
-                if (data.containsKey("amount")) {
-                    return Long.parseLong(data.get("amount").toString());
-                }
-            } catch (Exception ignored) { /* fall through to default */ }
+        try {
+            NetworkMessage msg = (NetworkMessage) eventData;
+            Map<String, Object> data = (Map<String, Object>) msg.getData();
+            if (data.containsKey("amount")) {
+                return Long.parseLong(data.get("amount").toString());
+            }
+        } catch (Exception e) {
+            log.warn("Could not parse amount from event, falling back to cached value: {}", e.getMessage());
         }
-        return (long) pendingDepositAmount;
+        return pendingDepositAmount;
     }
 
     /**
