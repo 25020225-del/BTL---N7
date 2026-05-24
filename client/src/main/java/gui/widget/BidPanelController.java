@@ -128,8 +128,18 @@ public class BidPanelController {
     private void triggerSaveAutoBidWorkflow() {
         lblAutoError.setText("");
         long maxBid = parseAmount(txtAutoMax.getText());
-        long increment = parseAmount(txtAutoIncrement.getPromptText().contains("Bước giá") ?
-                String.valueOf(auction.getBidIncrement()) : txtAutoIncrement.getText());
+
+        // [BUG-1 FIX] Code cũ kiểm tra getPromptText().contains("Bước giá") — nhưng
+        // promptText LUÔN chứa "Bước giá phiên: ..." (được set trong syncAuctionState),
+        // nên điều kiện ternary luôn trả về true và fallback về auction.getBidIncrement(),
+        // bỏ qua hoàn toàn giá trị người dùng nhập vào.
+        //
+        // Fix: đọc getText() trực tiếp. Nếu trống (isBlank) → fallback về
+        // auction.getBidIncrement(). Nếu có nội dung → parse giá trị người dùng.
+        String incrementText = txtAutoIncrement.getText();
+        long increment = incrementText.isBlank()
+                ? auction.getBidIncrement()
+                : parseAmount(incrementText);
 
         if (maxBid <= auction.getCurrentPrice()) {
             lblAutoError.setText("Giá tối đa phải lớn hơn giá hiện tại (" + formatAmount(auction.getCurrentPrice()) + " VNĐ)");
@@ -195,6 +205,11 @@ public class BidPanelController {
         }
     }
 
+    private String extractErrorCode(Map<?, ?> errorMap) {
+        Object code = errorMap.get("errorCode");
+        return (code != null) ? code.toString() : null;
+    }
+
     private void setupNumericInput(TextField field) {
         field.textProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal.matches("[\\d,]*")) {
@@ -214,15 +229,5 @@ public class BidPanelController {
 
     private String formatAmount(long amount) {
         return String.format("%,d", amount);
-    }
-
-    private String extractErrorCode(Map<?, ?> errorMap) {
-        if (errorMap.containsKey("errorCode")) return errorMap.get("errorCode").toString();
-        Object rawPayload = errorMap.get("data");
-        if (rawPayload instanceof Map) {
-            Object code = ((Map<?, ?>) rawPayload).get("errorCode");
-            if (code != null) return code.toString();
-        }
-        return null;
     }
 }

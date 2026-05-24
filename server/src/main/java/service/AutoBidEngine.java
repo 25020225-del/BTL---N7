@@ -123,12 +123,24 @@ public class AutoBidEngine {
         }
 
         final AutoBid winnerBot = top1;
-        log.info("Bot of {} mathematically won. Submitting ASYNC transaction.", winnerBot.getBidder().getUserName());
+        // [BUG-2 FIX] Trước đây truyền winnerBot.getMaxBid() vào placeBidOnAuctionFromBot,
+        // dẫn đến dual-calculation: Engine tính finalPrice theo Vickrey logic (dùng
+        // top1ActualIncrement = max(auctionIncrement, bot.increment)), nhưng DB lại tính
+        // lại price độc lập từ newMaxBid=maxBid dùng auctionIncrement chuẩn. Khi
+        // top1.getIncrement() > auction.getBidIncrement(), hai kết quả lệch nhau → audit
+        // trail sai, DB là nguồn truth không đồng bộ với Engine.
+        //
+        // Fix: truyền chính xác finalPrice đã được Engine tính (Vickrey proxy price) vào
+        // controller. DB nhận finalPrice làm newMaxBid → commit đúng mức giá, không
+        // tính lại độc lập → eliminates dual-calculation hoàn toàn.
+        final long computedFinalPrice = finalPrice;
+        log.info("Bot of {} mathematically won at Vickrey price={}. Submitting ASYNC transaction.",
+                winnerBot.getBidder().getUserName(), computedFinalPrice);
 
         try {
-            // Refers exclusively to the trusted internal entry point. The absolute ceiling collateral
-            // reserve was already locked at proxy registration time, ensuring safety from escrow bypasses.
-            bidderCtrl.placeBidOnAuctionFromBot(winnerBot.getBidder(), auction, winnerBot.getMaxBid())
+            // [BUG-2 FIX] Truyền computedFinalPrice thay vì winnerBot.getMaxBid().
+            // Engine là nguồn tính giá, DB là nguồn commit — nhất quán, không dual-calc.
+            bidderCtrl.placeBidOnAuctionFromBot(winnerBot.getBidder(), auction, computedFinalPrice)
                     .handle((success, ex) -> {
                         try {
                             if (ex != null) {

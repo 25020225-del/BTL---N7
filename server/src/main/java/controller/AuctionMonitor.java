@@ -77,16 +77,22 @@ public class AuctionMonitor {
                 LocalDateTime now = LocalDateTime.now();
 
                 if (currentStatus.equals(Auction.STATUS_OPEN) && now.isAfter(auction.getStartTime())) {
-                    if (now.isBefore(auction.getEndTime())) {
+                    // [BUG-3 FIX] Phiên OPEN mới tạo có endTime = null (chờ bid đầu tiên).
+                    // Bỏ qua, không cần chuyển sang RUNNING — đây là trách nhiệm của bid đầu tiên.
+                    if (auction.getEndTime() != null && now.isBefore(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_RUNNING;
                     }
                 } else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
-                    if (now.isAfter(auction.getEndTime())) {
+                    // endTime luôn non-null khi RUNNING (được set bởi bid đầu tiên)
+                    if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_FINISHED;
                         snapshotEndAtDecision = auction.getEndTime();
                     }
                 } else if (currentStatus.equals(Auction.STATUS_WAITING_FOR_BID)) {
-                    if (now.isAfter(auction.getEndTime())) {
+                    // [BUG-3 FIX] Phiên WAITING_FOR_BID có endTime = null cho đến bid đầu tiên.
+                    // PHẢI kiểm tra null trước khi gọi isAfter() — không có null guard thì NPE
+                    // sẽ crash toàn bộ ScheduledExecutorService thread.
+                    if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_CANCELED;
                         snapshotEndAtDecision = auction.getEndTime();
                     }
@@ -124,7 +130,10 @@ public class AuctionMonitor {
                 return false;
             }
             LocalDateTime now = LocalDateTime.now();
-            if (!now.isAfter(auction.getStartTime()) || !now.isBefore(auction.getEndTime())) {
+            // [BUG-3 FIX] endTime có thể null nếu phiên OPEN chưa có bid. Guard thêm.
+            if (!now.isAfter(auction.getStartTime())
+                    || auction.getEndTime() == null
+                    || !now.isBefore(auction.getEndTime())) {
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
             }
@@ -273,15 +282,29 @@ public class AuctionMonitor {
                 "Payment for winning auction: " + auctionId, now);
     }
 
+    /**
+     * Hoàn tiền locked_balance cho các autobidder thua cuộc.
+     *
+     * [BUG-4 FIX] Câu SQL gốc thiếu điều kiện "AND is_active = 1", dẫn đến việc
+     * query cả những auto_bid đã bị cancel (is_active = 0). Những user này đã được
+     * unlockBalance khi cancel, nếu chạy lại unlockBalance lần nữa sẽ làm
+     * locked_balance âm — double-refund nghiêm trọng về tài chính.
+     * Thêm "AND is_active = 1" để chỉ xử lý những autobid vẫn còn active.
+     */
     private void refundLosingAutoBidders(Connection conn, Auction auction, String auctionId) throws SQLException {
         String winnerId = (auction.getWinningBidder() != null) ? auction.getWinningBidder().getId() : "NONE";
-        String sql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ?";
+
+        String sql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ? AND is_active = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, auctionId);
             ps.setString(2, winnerId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    walletDAO.unlockBalance(conn, rs.getString("bidder_id"), rs.getLong("max_bid"));
+                    String loserId = rs.getString("bidder_id");
+                    long lockedAmount = rs.getLong("max_bid");
+                    walletDAO.unlockBalance(conn, loserId, lockedAmount);
+                    log.debug("Refunded {} VNĐ locked balance to losing autobidder {} for auction {}",
+                            lockedAmount, loserId, auctionId);
                 }
             }
         }
