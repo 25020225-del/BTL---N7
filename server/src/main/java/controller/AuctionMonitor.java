@@ -4,6 +4,7 @@ import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.AuctionDAO;
 import database.dao.WalletDAO;
+import exception.AuctionExceptions;
 import model.auction.Auction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,8 +26,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Background daemon service monitoring active auctions in real-time.
- * Manages lifecycle status transitions in memory and performs periodic
- * database sweeps to reclaim orphaned auction sessions.
+ * Manages chronological state transitions across volatile regions and executes
+ * transactional settlements over completed bidding pools.
  */
 public class AuctionMonitor {
 
@@ -43,26 +44,26 @@ public class AuctionMonitor {
     }
 
     /**
-     * Starts the periodic background monitoring tasks.
+     * Spawns the main runtime pooling block driving cron evaluation over memory tables.
      */
     public void startMonitoring() {
-        log.info("Auction monitor started.");
+        log.info("Auction monitor daemon initiated.");
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 processRamAuctions();
                 sweepDatabaseForOrphans();
             } catch (Exception e) {
-                log.error("Unhandled error during auction monitoring cycle", e);
+                log.error("Unhandled exception intercepted inside auction monitoring heartbeat loop", e);
             }
         }, 0, 10, TimeUnit.SECONDS);
     }
 
     /**
-     * Gracefully stops the scheduled monitoring executor pool.
+     * Shuts down chronological calculation frameworks safely.
      */
     public void stopMonitoring() {
         scheduler.shutdown();
-        log.info("Auction monitor shut down.");
+        log.info("Auction monitor daemon terminated successfully.");
     }
 
     private void processRamAuctions() {
@@ -141,12 +142,12 @@ public class AuctionMonitor {
             }
             LocalDateTime now = LocalDateTime.now();
             if (now.isBefore(auction.getEndTime())) {
-                log.debug("Skipping close for {}: still before end time (anti-sniping race)", auctionId);
+                log.debug("Skipping close for {}: anti-sniping execution guard active.", auctionId);
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
             }
             if (auction.getEndTime().isAfter(snapshotEndAtDecision)) {
-                log.debug("Skipping close for {}: end time was extended since decision snapshot", auctionId);
+                log.debug("Skipping close for {}: end time extended during snapshot resolution.", auctionId);
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
             }
@@ -158,10 +159,10 @@ public class AuctionMonitor {
         synchronized (AuctionManager.getLockForAuction(auctionId)) {
             auction.setStatus(targetStatus);
             if (Auction.STATUS_FINISHED.equals(targetStatus)) {
-                log.info("Auction {} finished. Starting financial settlement...", auctionId);
+                log.info("Auction {} transitioned to terminal state. Dispatching clearing transactions...", auctionId);
                 processFinancialSettlement(auction);
             } else {
-                log.info("Auction {} status updated to {}.", auctionId, targetStatus);
+                log.info("Auction {} status mapped onto state: {}.", auctionId, targetStatus);
                 ClientManager.broadcast("AUCTION_STATUS_CHANGED", Map.of("auctionId", auctionId, "newStatus", targetStatus), null);
             }
         }
@@ -178,7 +179,7 @@ public class AuctionMonitor {
                 allAuctions.remove(auction);
                 AuctionManager.removeAuctionLock(auctionId);
                 ClientManager.broadcast("REMOVE_AUCTION", auctionId, null);
-                log.info("Auction {} removed from RAM monitor.", auctionId);
+                log.info("Auction {} evacuated from memory caches.", auctionId);
             }
         }
     }
@@ -208,16 +209,22 @@ public class AuctionMonitor {
                         auction.setStatus(finalStatus);
                     }
                     ClientManager.broadcast("AUCTION_STATUS_CHANGED", Map.of("auctionId", auctionId, "newStatus", finalStatus), null);
-                    log.info("Financial settlement completed: auction {} → {}", auctionId, finalStatus);
+                    log.info("Financial settlement cleared: auction {} converted to {}", auctionId, finalStatus);
                     return true;
+
+                } catch (AuctionExceptions.InsufficientFundsException e) {
+                    conn.rollback();
+                    log.error("[CRITICAL][C1] Clearing transaction aborted for auction {}: winner {} exhibits liquidity drop under race. Settlement rolled back.",
+                            auctionId, auction.getWinningBidder().getId(), e);
+                    return false;
 
                 } catch (SQLException e) {
                     conn.rollback();
-                    log.error("SQL error during financial settlement for auction {}", auctionId, e);
+                    log.error("SQL boundary crash during settlement calculations for auction {}", auctionId, e);
                     return false;
                 }
             } catch (SQLException e) {
-                log.error("DB connection error during settlement for auction {}", auction.getId(), e);
+                log.error("Connection pool dropped handling settlement operations for asset {}", auction.getId(), e);
                 return false;
             }
         };
@@ -232,7 +239,7 @@ public class AuctionMonitor {
             ps.setString(2, auctionId);
             ps.setString(3, Auction.STATUS_FINISHED);
             if (ps.executeUpdate() == 0) {
-                log.warn("Settlement race detected: auction {} already settled by another thread.", auctionId);
+                log.warn("Settlement collision: auction {} already cleared on parallel execution frame.", auctionId);
                 return false;
             }
         }
@@ -245,16 +252,25 @@ public class AuctionMonitor {
         long lockedAmount = auction.getHighestMaxBid();
         String winnerId = auction.getWinningBidder().getId();
 
-        walletDAO.deductFromLocked(conn, winnerId, finalPrice);
+        boolean deducted = walletDAO.deductFromLocked(conn, winnerId, finalPrice);
+        if (!deducted) {
+            throw new AuctionExceptions.InsufficientFundsException(
+                    String.format("[C1] Collateral assertion failure for winner=%s, asset=%s. Balance bounds violated under data race context.", winnerId, auctionId));
+        }
 
         long refundAmount = lockedAmount - finalPrice;
         if (refundAmount > 0) {
             walletDAO.unlockBalance(conn, winnerId, refundAmount);
+            walletDAO.addTransaction(conn, "W-REF-" + UUID.randomUUID(), winnerId, refundAmount,
+                    "Refund of excess locked amount for auction: " + auctionId, now);
         }
 
         walletDAO.updateBalance(conn, auction.getSeller().getId(), finalPrice);
         walletDAO.addTransaction(conn, "W-IN-" + UUID.randomUUID(), auction.getSeller().getId(), finalPrice,
                 "Payment received for auction: " + auctionId, now);
+
+        walletDAO.addTransaction(conn, "W-PAY-" + UUID.randomUUID(), winnerId, -finalPrice,
+                "Payment for winning auction: " + auctionId, now);
     }
 
     private void refundLosingAutoBidders(Connection conn, Auction auction, String auctionId) throws SQLException {

@@ -16,8 +16,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Controller executing financial processing states. Ensures database wallet accounting rules
- * conform to strict isolation properties when issuing atomic digital asset mutations.
+ * Controller executing core financial processing states. Ensures database wallet accounting rules
+ * conform to strict ACID isolation properties when issuing atomic digital asset mutations.
  */
 public class ServerPaymentController {
 
@@ -30,6 +30,16 @@ public class ServerPaymentController {
         this.withdrawalDAO = withdrawalDAO;
     }
 
+    /**
+     * Commits a successful outbound deposit transaction into the persistent storage subsystem.
+     * Enforces tight double-spending bars by mapping the external gateway transaction token
+     * onto a database unique structural alternate key constraint.
+     *
+     * @param user           the authenticated user receiving funds
+     * @param payPalOrderId  the authoritative transaction identifier returned from the payment gateway
+     * @param verifiedAmount the verified absolute currency overhead allocated to the wallet
+     * @return a future resolving to {@code true} on a successful database commit, {@code false} otherwise
+     */
     public CompletableFuture<Boolean> processDepositSuccess(User user, String payPalOrderId, long verifiedAmount) {
         Callable<Boolean> depositTask = () -> {
             if (verifiedAmount <= 0) return false;
@@ -40,7 +50,6 @@ public class ServerPaymentController {
                     String now = LocalDateTime.now().toString();
                     walletDAO.updateBalance(conn, user.getId(), verifiedAmount);
 
-                    // Uses payPalOrderId directly as transaction alternate key to enforce constraint level double-spending bars.
                     walletDAO.addTransaction(conn, "DEP-" + payPalOrderId, user.getId(), verifiedAmount,
                             "Deposit via PayPal (Order ID: " + payPalOrderId + ")", now);
 
@@ -59,7 +68,19 @@ public class ServerPaymentController {
         return TransactionManager.submitTask(depositTask);
     }
 
-    public CompletableFuture<String> createWithdrawalRequest(User user, long amount, String payoutMethod, String payoutDetails) {
+    /**
+     * Initializes a multi-stage database withdrawal reservation request.
+     * Enforces an atomic balance transform operation to guarantee ledger liquidity integrity
+     * before provisioning the auditing request tracking structure.
+     *
+     * @param user         the identity profile actor requesting fund extraction
+     * @param amount       the absolute monetary amount targeted for withdrawal
+     * @param payoutMethod the system designation for the downstream clearing network channel
+     * @param payoutDetails the absolute parameters containing downstream routing metadata values
+     * @return a future resolving to a token string descriptive of the transaction boundary terminal status
+     */
+    public CompletableFuture<String> createWithdrawalRequest(User user, long amount,
+                                                             String payoutMethod, String payoutDetails) {
         if (amount <= 0) {
             return CompletableFuture.completedFuture("INVALID_AMOUNT");
         }
@@ -71,35 +92,30 @@ public class ServerPaymentController {
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
                 try {
-                    if (!walletDAO.deductBalance(conn, user.getId(), amount)) {
+                    if (!walletDAO.lockBalance(conn, user.getId(), amount)) {
                         conn.rollback();
+                        log.warn("[WITHDRAW] Insufficient balance for user {} (amount={})", user.getUserName(), amount);
                         return "INSUFFICIENT_FUNDS";
                     }
 
-                    String lockSql = "UPDATE wallets SET locked_balance = locked_balance + ? WHERE user_id = ?";
-                    try (java.sql.PreparedStatement ps = conn.prepareStatement(lockSql)) {
-                        ps.setLong(1, amount);
-                        ps.setString(2, user.getId());
-                        if (ps.executeUpdate() == 0) {
-                            conn.rollback();
-                            return "DB_ERROR";
-                        }
-                    }
-
-                    if (!withdrawalDAO.createRequest(conn, requestId, user.getId(), amount, payoutMethod, payoutDetails, now)) {
+                    if (!withdrawalDAO.createRequest(conn, requestId, user.getId(), amount,
+                            payoutMethod, payoutDetails, now)) {
                         conn.rollback();
                         return "DB_ERROR";
                     }
 
-                    walletDAO.addTransaction(conn, "WD-LOCK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
-                            user.getId(), -amount, "Withdrawal request pending Admin approval (Request ID: " + requestId + ")", now);
+                    walletDAO.addTransaction(conn,
+                            "WD-LOCK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
+                            user.getId(), -amount,
+                            "Withdrawal request pending Admin approval (Request ID: " + requestId + ")", now);
 
                     conn.commit();
                     return "SUCCESS";
 
                 } catch (SQLException e) {
                     conn.rollback();
-                    log.error("[WITHDRAW] SQL error creating request for user {}: {}", user.getUserName(), e.getMessage(), e);
+                    log.error("[WITHDRAW] SQL error creating request for user {}: {}",
+                            user.getUserName(), e.getMessage(), e);
                     return "DB_ERROR";
                 }
             } catch (SQLException e) {

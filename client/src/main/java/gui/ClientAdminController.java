@@ -162,18 +162,6 @@ public class ClientAdminController {
         handleSignOutInternal();
     }
 
-    @FXML
-    private void handleManageUsers(ActionEvent event) {
-        try {
-            Parent userView = FXMLLoader.load(getClass().getResource("/gui/UsersManagement.fxml"));
-            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            stage.setScene(new Scene(userView));
-            stage.show();
-        } catch (IOException e) {
-            log.error("Cannot load UsersManagement.fxml", e);
-        }
-    }
-
     private void setMainViewController() {
         AuctionEventBus.addListener("ADMIN_ACTION_SUCCESS", event ->
                 Platform.runLater(() -> AlertUtils.showInfo("Success", (String) event.getNewValue()))

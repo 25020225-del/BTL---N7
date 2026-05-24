@@ -15,7 +15,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Core matching service coordinating and executing real-time automated proxy bidding agents.
- * Processes target requests concurrently via prioritized timestamp queues to enforce strict execution equity.
+ * Processes target requests concurrently via prioritized timestamp queues to enforce strict
+ * execution equity.
  */
 public class AutoBidEngine {
 
@@ -125,9 +126,10 @@ public class AutoBidEngine {
         log.info("Bot of {} mathematically won. Submitting ASYNC transaction.", winnerBot.getBidder().getUserName());
 
         try {
-            bidderCtrl.placeBidOnAuction(winnerBot.getBidder(), auction, winnerBot.getMaxBid(), true)
+            // Refers exclusively to the trusted internal entry point. The absolute ceiling collateral
+            // reserve was already locked at proxy registration time, ensuring safety from escrow bypasses.
+            bidderCtrl.placeBidOnAuctionFromBot(winnerBot.getBidder(), auction, winnerBot.getMaxBid())
                     .handle((success, ex) -> {
-                        // Defends state tracking maps against memory locking deadlocks if the background executor throws thread rejections
                         try {
                             if (ex != null) {
                                 log.error("Bot Engine execution failed for user {}: {}", winnerBot.getBidder().getUserName(), ex.getMessage());
@@ -145,7 +147,7 @@ public class AutoBidEngine {
                                 botPool.submit(() -> processNextBot(auction));
                             }
                         } catch (Exception poolEx) {
-                            log.error("Critical fail inside async callback (e.g., Thread Pool full), forcing lock release: {}", poolEx.getMessage());
+                            log.error("Critical fail inside async callback, forcing lock release: {}", poolEx.getMessage());
                             isScanning.set(false);
                         }
                         return null;

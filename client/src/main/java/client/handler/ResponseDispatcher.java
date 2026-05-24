@@ -59,11 +59,14 @@ public class ResponseDispatcher {
         handlers.put("CHAT", auctionHandler);
         handlers.put("UPDATE_AUCTION_PRICE", auctionHandler);
         handlers.put("AUCTION_STATUS_CHANGED", auctionHandler);
+        handlers.put("BID_SUCCESS", auctionHandler);
+        handlers.put("AUTOBID_SETUP_SUCCESS", auctionHandler);
+        handlers.put("AUTOBID_ACTIVE", auctionHandler);
     }
 
     private void registerPaymentHandlers() {
         ClientPaymentHandler paymentHandler = new ClientPaymentHandler();
-        handlers.put("PAYMENT_REDIRECT", paymentHandler);
+        handlers.put("PAYMENT_CONFIRM_REQUIRED", paymentHandler);
         handlers.put("DEPOSIT_SUCCESS", paymentHandler);
         handlers.put("REQUIRE_TOTP_PAYMENT", paymentHandler);
         handlers.put("INVALID_TOTP", paymentHandler);

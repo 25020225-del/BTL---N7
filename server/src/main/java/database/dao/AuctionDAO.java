@@ -75,7 +75,7 @@ public class AuctionDAO {
 
                     Item item = ItemFactory.createItem(
                             rs.getString("item_type"),
-                            "ITM-" + System.currentTimeMillis(),
+                            "ITM-" + rs.getString("id"),
                             rs.getString("item_name"),
                             rs.getString("description"),
                             rs.getLong("starting_price")

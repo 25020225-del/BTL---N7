@@ -2,6 +2,7 @@ package server;
 
 import controller.AuctionMonitor;
 import controller.UserController;
+import database.DatabaseManager;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
@@ -225,6 +226,7 @@ public class MultiThreadedServer {
                 log.error("Interrupted while stopping WebSocket server during shutdown", e);
                 Thread.currentThread().interrupt();
             }
+            DatabaseManager.closePool();
         }));
 
         Scanner scanner = new Scanner(System.in);

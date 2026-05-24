@@ -65,7 +65,6 @@ class AutoBidEngineAdvancedTest {
         AtomicBoolean isScan = scans.get(auctionId);
         int waitTime = 0;
 
-        // Polls the state map periodically to account for async assertion execution latencies
         while (isScan != null && isScan.get() && waitTime < 3000) {
             Thread.sleep(50);
             waitTime += 50;
@@ -90,13 +89,13 @@ class AutoBidEngineAdvancedTest {
         auction.getActiveAutoBids().offer(b2);
         auction.getActiveAutoBids().offer(b3);
 
-        when(mockBidderCtrl.placeBidOnAuction(any(User.class), eq(auction), anyLong(), anyBoolean()))
+        when(mockBidderCtrl.placeBidOnAuctionFromBot(any(User.class), eq(auction), anyLong()))
                 .thenReturn(CompletableFuture.completedFuture(true));
 
         AutoBidEngine.triggerBotScan(auction);
 
         verify(mockBidderCtrl, timeout(3000).times(1))
-                .placeBidOnAuction(any(User.class), eq(auction), anyLong(), eq(true));
+                .placeBidOnAuctionFromBot(any(User.class), eq(auction), anyLong());
 
         waitForLockRelease(auction.getId());
         ConcurrentHashMap<String, AtomicBoolean> scans =
@@ -118,7 +117,7 @@ class AutoBidEngineAdvancedTest {
         CompletableFuture<Boolean> failedFuture = new CompletableFuture<>();
         failedFuture.completeExceptionally(new RuntimeException("Simulated Database Crash"));
 
-        when(mockBidderCtrl.placeBidOnAuction(any(User.class), eq(auction), anyLong(), anyBoolean()))
+        when(mockBidderCtrl.placeBidOnAuctionFromBot(any(User.class), eq(auction), anyLong()))
                 .thenReturn(failedFuture);
 
         AutoBidEngine.triggerBotScan(auction);

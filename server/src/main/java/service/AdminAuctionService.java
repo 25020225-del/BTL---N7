@@ -23,8 +23,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Service handling administrative lifecycle events for auctions.
- * Ensures multi-user financial holding unlocks execute inside single atomic database transactions.
+ * Service orchestrating authoritative administrative lifecycle operations for active auctions.
+ * Guarantees cross-user financial escrow holds liquidation within a single atomic database transaction context.
  */
 public class AdminAuctionService {
 
@@ -45,11 +45,11 @@ public class AdminAuctionService {
     }
 
     /**
-     * Forcibly terminates an active auction session and rollbacks all associated user funding holds.
-     * Guaranteed atomic via transaction-level rollback guards.
+     * Forcibly liquidates an active auction instance, voids security states, and restores
+     * exact financial collateral guarantees back to manual and proxy participant ledgers.
      *
-     * @param auctionId unique identifier of the targeted auction room
-     * @return a {@link CancelResult} describing the precise completion state
+     * @param auctionId unique system identifier matching the target resource aggregate
+     * @return a concrete {@link CancelResult} documenting the explicit completion boundary status
      */
     public CancelResult cancelAuctionAndRefund(String auctionId) {
         log.info("[CANCEL] Admin initiated cancel for auction: {}", auctionId);
@@ -73,41 +73,55 @@ public class AdminAuctionService {
                 int updatedRows = markAuctionAsCancelled(conn, auctionId);
                 if (updatedRows == 0) {
                     conn.rollback();
-                    log.warn("[CANCEL] Auction {} is not in a cancellable state (status={})", auctionId, snapshot.currentStatus);
+                    log.warn("[CANCEL] Auction {} is not in a cancellable state (status={})",
+                            auctionId, snapshot.currentStatus);
                     return CancelResult.NOT_CANCELLABLE;
                 }
                 log.info("[CANCEL] Auction {} status → CANCELLED (was: {})", auctionId, snapshot.currentStatus);
 
                 if (snapshot.winnerUserId != null && snapshot.highestMaxBid > 0) {
-                    boolean winnerHasAutoBid = checkWinnerHasActiveAutoBid(conn, auctionId, snapshot.winnerUserId);
+                    long autoBidMaxBid = fetchWinnerAutoBidMaxBid(conn, auctionId, snapshot.winnerUserId);
 
-                    if (!winnerHasAutoBid) {
+                    if (autoBidMaxBid <= 0) {
                         refundManualWinner(conn, auctionId, snapshot.winnerUserId, snapshot.highestMaxBid);
-                        log.info("[CANCEL] Manual winner {} refunded {} VND for auction {}", snapshot.winnerUserId, snapshot.highestMaxBid, auctionId);
+                        log.info("[CANCEL] Pure-manual winner {} refunded {} VND for auction {}",
+                                snapshot.winnerUserId, snapshot.highestMaxBid, auctionId);
                     } else {
-                        log.debug("[CANCEL] Winner {} is AutoBid user — skip manual unlock, will be covered by AutoBid sweep.", snapshot.winnerUserId);
+                        long manualExtra = snapshot.highestMaxBid - autoBidMaxBid;
+                        if (manualExtra > 0) {
+                            refundManualWinner(conn, auctionId, snapshot.winnerUserId, manualExtra);
+                            log.info("[CANCEL] Winner {} has BOTH AutoBid (maxBid={}) and manual bids "
+                                            + "(highestMaxBid={}). Refunding manual extra {} VND now.",
+                                    snapshot.winnerUserId, autoBidMaxBid, snapshot.highestMaxBid, manualExtra);
+                        } else {
+                            log.debug("[CANCEL] Winner {} AutoBid max_bid ({}) covers full highestMaxBid ({}).",
+                                    snapshot.winnerUserId, autoBidMaxBid, snapshot.highestMaxBid);
+                        }
                     }
                 } else {
                     log.info("[CANCEL] Auction {} had no winning bidder — skipping manual refund.", auctionId);
                 }
 
                 List<AutoBidRecord> activeBids = fetchAllActiveAutoBids(conn, auctionId);
-                log.info("[CANCEL] Found {} active AutoBid user(s) to refund for auction {}", activeBids.size(), auctionId);
+                log.info("[CANCEL] Found {} active AutoBid user(s) to refund for auction {}",
+                        activeBids.size(), auctionId);
 
                 for (AutoBidRecord record : activeBids) {
                     if (record.maxBid <= 0) {
-                        log.warn("[CANCEL] Skipping zero-amount AutoBid for user {} on auction {}", record.userId, auctionId);
+                        log.warn("[CANCEL] Skipping zero-amount AutoBid for user {} on auction {}",
+                                record.userId, auctionId);
                         continue;
                     }
-
                     refundAutoBidUser(conn, auctionId, record.userId, record.maxBid);
-                    log.info("[CANCEL] AutoBid user {} refunded {} VND for auction {}", record.userId, record.maxBid, auctionId);
+                    log.info("[CANCEL] AutoBid user {} refunded {} VND for auction {}",
+                            record.userId, record.maxBid, auctionId);
                 }
 
                 deactivateAllAutoBids(conn, auctionId);
                 conn.commit();
 
-                log.info("[CANCEL] ✅ Auction {} fully cancelled and all {} user(s) refunded. COMMIT OK.", auctionId, activeBids.size());
+                log.info("[CANCEL] ✅ Auction {} fully cancelled and all {} user(s) refunded. COMMIT OK.",
+                        auctionId, activeBids.size());
                 syncRamAfterSuccessfulCancel(auctionId, ramAuction);
 
                 return CancelResult.SUCCESS;
@@ -135,9 +149,9 @@ public class AdminAuctionService {
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return null;
                 AuctionSnapshot snap = new AuctionSnapshot();
-                snap.currentStatus = rs.getString("status");
-                snap.winnerUserId = rs.getString("winning_bidder_id");
-                snap.highestMaxBid = rs.getLong("highest_max_bid");
+                snap.currentStatus  = rs.getString("status");
+                snap.winnerUserId   = rs.getString("winning_bidder_id");
+                snap.highestMaxBid  = rs.getLong("highest_max_bid");
                 return snap;
             }
         }
@@ -155,21 +169,22 @@ public class AdminAuctionService {
         }
     }
 
-    private boolean checkWinnerHasActiveAutoBid(Connection conn, String auctionId, String winnerUserId) throws SQLException {
-        final String sql = "SELECT 1 FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
+    private long fetchWinnerAutoBidMaxBid(Connection conn, String auctionId, String winnerUserId) throws SQLException {
+        final String sql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, auctionId);
             ps.setString(2, winnerUserId);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+                return rs.next() ? rs.getLong("max_bid") : 0L;
             }
         }
     }
 
-    private void refundManualWinner(Connection conn, String auctionId, String winnerUserId, long highestMaxBid) throws SQLException {
+    private void refundManualWinner(Connection conn, String auctionId, String winnerUserId, long amount) throws SQLException {
         String now = LocalDateTime.now().toString();
-        walletDAO.unlockBalance(conn, winnerUserId, highestMaxBid);
-        walletDAO.addTransaction(conn, "CANCEL-REFUND-WIN-" + UUID.randomUUID(), winnerUserId, highestMaxBid,
+        walletDAO.unlockBalance(conn, winnerUserId, amount);
+        walletDAO.addTransaction(conn, "CANCEL-REFUND-WIN-" + UUID.randomUUID(),
+                winnerUserId, amount,
                 "Refund: auction CANCELLED by Admin — manual bid reserve released for auction: " + auctionId, now);
     }
 
@@ -187,14 +202,15 @@ public class AdminAuctionService {
                     records.add(rec);
                 }
             }
-        } // ResultSet explicitly closed here to safely clear SQLite statement references before downstream updates
+        }
         return records;
     }
 
     private void refundAutoBidUser(Connection conn, String auctionId, String userId, long maxBid) throws SQLException {
         String now = LocalDateTime.now().toString();
         walletDAO.unlockBalance(conn, userId, maxBid);
-        walletDAO.addTransaction(conn, "CANCEL-REFUND-AB-" + UUID.randomUUID(), userId, maxBid,
+        walletDAO.addTransaction(conn, "CANCEL-REFUND-AB-" + UUID.randomUUID(),
+                userId, maxBid,
                 "Refund: auction CANCELLED by Admin — auto-bid reserve released for auction: " + auctionId, now);
     }
 
@@ -219,28 +235,30 @@ public class AdminAuctionService {
 
         ClientManager.broadcast("AUCTION_CANCELLED", Map.of(
                 "auctionId", auctionId,
-                "message", "Phiên đấu giá đã bị Admin hủy. Tiền đặt giá sẽ được hoàn lại."
+                "message",   "Phiên đấu giá đã bị Admin hủy. Tiền đặt giá sẽ được hoàn lại."
         ), null);
     }
 
     private void safeRollback(Connection conn, String auctionId, SQLException originalError) {
-        log.error("[CANCEL] ❌ SQL error during cancel for auction {}. Initiating ROLLBACK. Cause: {}", auctionId, originalError.getMessage(), originalError);
+        log.error("[CANCEL] ❌ SQL error during cancel for auction {}. Initiating ROLLBACK. Cause: {}",
+                auctionId, originalError.getMessage(), originalError);
         try {
             conn.rollback();
             log.warn("[CANCEL] ROLLBACK successful for auction {}. No financial data was mutated.", auctionId);
         } catch (SQLException rollbackEx) {
-            log.error("[CANCEL] ☠ CRITICAL: ROLLBACK FAILED for auction {}! Manual DB inspection required! RollbackError: {}", auctionId, rollbackEx.getMessage(), rollbackEx);
+            log.error("[CANCEL] ☠ CRITICAL: ROLLBACK FAILED for auction {}! Manual DB inspection required! "
+                    + "RollbackError: {}", auctionId, rollbackEx.getMessage(), rollbackEx);
         }
     }
 
     private static final class AuctionSnapshot {
         String currentStatus;
         String winnerUserId;
-        long highestMaxBid;
+        long   highestMaxBid;
     }
 
     private static final class AutoBidRecord {
         String userId;
-        long maxBid;
+        long   maxBid;
     }
 }

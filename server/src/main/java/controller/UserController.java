@@ -38,7 +38,7 @@ public class UserController {
     public String register(String userName, String password, String name, String role) {
         try (Connection conn = DatabaseManager.getConnection()) {
             String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
-            String userId = "U-" + System.currentTimeMillis();
+            String userId = utils.IdGenerator.generateUUIDv7();
             userDAO.createUserAndWallet(conn, userId, userName, hashedPassword, name, role);
             return "SUCCESS";
         } catch (SQLException e) {
