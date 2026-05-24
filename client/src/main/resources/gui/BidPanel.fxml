@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!--
-  BidPanel.fxml
-  Root component: a TabPane with two tabs —
-    • Tab 1: Manual Bid (single TextField + Button)
-    • Tab 2: Auto-Bid   (maxBudget, increment, toggle Button, status Label + signal dot)
+  FILE: client/src/main/resources/gui/widget/BidPanel.fxml
 
-  Loaded programmatically by BidPanelController via FXMLLoader.
-  The controller is set on the loader instance, NOT via fx:controller attribute,
-  so the same FXML can be embedded multiple times without class-path collisions.
-
-  Suggested embedding in Productdetail.fxml:
-      <fx:include source="/gui/widget/BidPanel.fxml" fx:id="bidPanel"/>
-  then in ItemDetailController:
-      BidPanelController bpc = (BidPanelController) loader.getNamespace().get("bidPanelController");
-      bpc.init(auction, currentUser);
+  CHANGES vs previous version:
+    • txtBidAmount     → txtManualBid     (matches @FXML field in BidPanelController)
+    • circleStatus     → dotBotStatus     (matches @FXML field)
+    • txtMaxBudget     → txtAutoMax       (matches @FXML field)
+    • txtIncrement     → txtAutoIncrement (matches @FXML field)
+    • lblAutoBidError  → lblAutoError     (matches @FXML field)
+    • Single btnToggleAutoBid replaced by btnSaveAuto + btnCancelAuto:
+        - btnCancelAuto starts hidden (managed=false); syncAuctionState() toggles visibility.
+        - Visibility is controlled programmatically — no onAction in FXML for cancel.
+    • lblManualError and lblAutoError start invisible/unmanaged; shown only on validation failure.
 -->
+
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.Circle?>
 <?import java.lang.String?>
+
 <TabPane
-        fx:id="bidPanelRoot"
+        fx:id="tabPane"
         tabClosingPolicy="UNAVAILABLE"
         styleClass="bid-panel"
         xmlns:fx="http://javafx.com/fxml/1"
@@ -43,21 +43,25 @@
                     <Insets top="16" right="16" bottom="16" left="16"/>
                 </padding>
 
-                <!-- Hint label -->
+                <!-- Minimum-bid hint — prompt text updated by syncAuctionState() -->
                 <Label fx:id="lblMinBidHint"
                        text="Giá tối thiểu: —"
                        styleClass="hint-label"/>
 
                 <!-- Bid amount input -->
                 <HBox spacing="8" alignment="CENTER_LEFT">
-                    <TextField fx:id="txtBidAmount"
+                    <!--
+                        fx:id FIXED: was "txtBidAmount", must match
+                        @FXML private TextField txtManualBid in BidPanelController
+                    -->
+                    <TextField fx:id="txtManualBid"
                                promptText="Nhập số tiền (VNĐ)"
                                styleClass="bid-input"
                                HBox.hgrow="ALWAYS"/>
                     <Label text="VNĐ" styleClass="unit-label"/>
                 </HBox>
 
-                <!-- Validation message (hidden until error) -->
+                <!-- Validation message — hidden until showManualError() is called -->
                 <Label fx:id="lblManualError"
                        text=""
                        styleClass="error-label"
@@ -68,7 +72,6 @@
                 <!-- Place Bid button -->
                 <Button fx:id="btnPlaceBid"
                         text="Đặt Giá"
-                        onAction="#handlePlaceBid"
                         styleClass="primary-button"
                         maxWidth="Infinity"/>
             </VBox>
@@ -85,10 +88,13 @@
                     <Insets top="16" right="16" bottom="16" left="16"/>
                 </padding>
 
-                <!-- Status row: signal dot + text label -->
+                <!-- Status row: signal dot + label -->
                 <HBox spacing="8" alignment="CENTER_LEFT">
-                    <!-- Signal dot: grey = off, green = active, orange = pending -->
-                    <Circle fx:id="circleStatus"
+                    <!--
+                        fx:id FIXED: was "circleStatus", must match
+                        @FXML private Circle dotBotStatus in BidPanelController
+                    -->
+                    <Circle fx:id="dotBotStatus"
                             radius="7"
                             styleClass="status-dot-inactive"/>
                     <Label fx:id="lblAutoBidStatus"
@@ -102,7 +108,11 @@
                 <VBox spacing="4">
                     <Label text="Ngân sách tối đa (VNĐ)" styleClass="field-label"/>
                     <HBox spacing="8" alignment="CENTER_LEFT">
-                        <TextField fx:id="txtMaxBudget"
+                        <!--
+                            fx:id FIXED: was "txtMaxBudget", must match
+                            @FXML private TextField txtAutoMax in BidPanelController
+                        -->
+                        <TextField fx:id="txtAutoMax"
                                    promptText="Ví dụ: 5,000,000"
                                    styleClass="bid-input"
                                    HBox.hgrow="ALWAYS"/>
@@ -114,7 +124,11 @@
                 <VBox spacing="4">
                     <Label text="Bước tăng mỗi lần (VNĐ)" styleClass="field-label"/>
                     <HBox spacing="8" alignment="CENTER_LEFT">
-                        <TextField fx:id="txtIncrement"
+                        <!--
+                            fx:id FIXED: was "txtIncrement", must match
+                            @FXML private TextField txtAutoIncrement in BidPanelController
+                        -->
+                        <TextField fx:id="txtAutoIncrement"
                                    promptText="Ví dụ: 100,000"
                                    styleClass="bid-input"
                                    HBox.hgrow="ALWAYS"/>
@@ -122,22 +136,42 @@
                     </HBox>
                 </VBox>
 
-                <!-- Validation message (hidden until error) -->
-                <Label fx:id="lblAutoBidError"
+                <!-- Validation message — hidden until showAutoError() is called -->
+                <!--
+                    fx:id FIXED: was "lblAutoBidError", must match
+                    @FXML private Label lblAutoError in BidPanelController
+                -->
+                <Label fx:id="lblAutoError"
                        text=""
                        styleClass="error-label"
                        wrapText="true"
                        visible="false"
                        managed="false"/>
 
-                <!-- Activate / Cancel toggle button -->
-                <Button fx:id="btnToggleAutoBid"
+                <!--
+                    STRUCTURAL FIX: replaced single toggle button with two explicit buttons.
+
+                    Previous single "btnToggleAutoBid" required the controller to swap its
+                    label text and handler on every state change — fragile and hard to style.
+
+                    Now:
+                      • btnSaveAuto   — visible when no auto-bid is active   (default)
+                      • btnCancelAuto — visible when an active auto-bid exists (starts hidden)
+                    syncAuctionState() flips visibility/managed on each auction update.
+                -->
+                <Button fx:id="btnSaveAuto"
                         text="Kích hoạt AutoBid"
-                        onAction="#handleToggleAutoBid"
                         styleClass="primary-button"
                         maxWidth="Infinity"/>
 
-                <!-- Footer info -->
+                <Button fx:id="btnCancelAuto"
+                        text="Huỷ AutoBid"
+                        styleClass="danger-button"
+                        maxWidth="Infinity"
+                        visible="false"
+                        managed="false"/>
+
+                <!-- Footer hint -->
                 <Label text="Hệ thống sẽ tự động đặt giá thay bạn, tối đa đến ngưỡng trên."
                        styleClass="footer-hint"
                        wrapText="true"/>

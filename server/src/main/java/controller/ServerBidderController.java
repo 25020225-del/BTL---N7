@@ -14,8 +14,11 @@ import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 import service.AutoBidEngine;
+import service.AutoBidLockService;
 import utils.JacksonConfig;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -36,34 +39,14 @@ public class ServerBidderController {
         this.bidDAO = bidDAO;
     }
 
-    /**
-     * Entry point for manual client bids. Enforces non-bypassable structural wall-clock escrow holds.
-     *
-     * @param currentUser the authenticated user placing the bid
-     * @param auction     the target auction instance
-     * @param newMaxBid   the maximum currency offer submitted
-     * @return a completable future resolving to true upon a successful database commit
-     */
     public CompletableFuture<Boolean> placeManualBid(User currentUser, Auction auction, long newMaxBid) {
         return placeBidOnAuction(currentUser, auction, newMaxBid, false);
     }
 
-    /**
-     * Entry point for internal proxy engine transactions. Leverages pre-allocated escrow balances
-     * established during structural profile setup configurations.
-     *
-     * @param botUser   the underlying user account tracking the automation agent
-     * @param auction   the target active auction context
-     * @param newMaxBid the validated max expenditure threshold
-     * @return a completable future resolving to true upon a successful transaction commit
-     */
     public CompletableFuture<Boolean> placeBidOnAuctionFromBot(User botUser, Auction auction, long newMaxBid) {
         return placeBidOnAuction(botUser, auction, newMaxBid, true);
     }
 
-    /**
-     * Shared core execution routine tracking persistence coordination frameworks.
-     */
     public CompletableFuture<Boolean> placeBidOnAuction(User currentUser, Auction auction, long newMaxBid, boolean isBot) {
         if (currentUser.isBlocked()) {
             log.warn("[BLOCK-INTERCEPT] placeBidOnAuction denied: user '{}' (id={}) is BLOCKED.", currentUser.getUserName(), currentUser.getId());
@@ -123,10 +106,15 @@ public class ServerBidderController {
                         User winner = committed.newWinnerId != null ? new User() : null;
                         if (winner != null) winner.setId(committed.newWinnerId);
 
+                        /*
+                         * FIX #7 (MEDIUM): The unsafe (long) casts of committed.newHighestMaxBid and
+                         * committed.newCurrentPrice have been removed. Both are now correctly typed as
+                         * long in BidCommitResult, so no cast is necessary.
+                         */
                         auction.applyBidResult(currentUser, new Auction.BidResult(
                                 winner,
-                                (long) committed.newHighestMaxBid,
-                                (long) committed.newCurrentPrice,
+                                committed.newHighestMaxBid,
+                                committed.newCurrentPrice,
                                 committed.newEndTime,
                                 Auction.STATUS_WAITING_FOR_BID.equals(auction.getStatus())
                         ));
@@ -178,10 +166,28 @@ public class ServerBidderController {
                 });
     }
 
-    public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction, long maxBid, long increment) {
+    /**
+     * Registers an auto-bid for the given user on the specified auction.
+     *
+     * <p>The database upsert (via {@link BidDAO#saveAutoBid}) and the in-memory
+     * registration (via {@link model.auction.Auction#registerAutoBid}) are wrapped
+     * inside a single database transaction. If the in-memory step fails the
+     * connection is rolled back before the method returns, preventing orphaned
+     * wallet locks.
+     *
+     * @param currentUser the authenticated bidder
+     * @param auction     the live auction aggregate
+     * @param maxBid      the maximum amount the bidder authorises
+     * @param increment   the per-round bid step
+     * @return a {@link CompletableFuture} resolving to {@code true} on full success
+     */
+    public CompletableFuture<Boolean> setupAutoBid(User currentUser, Auction auction,
+                                                   long maxBid, long increment) {
         if (currentUser.isBlocked()) {
-            log.warn("[BLOCK-INTERCEPT] setupAutoBid denied: user '{}' (id={}) is BLOCKED.", currentUser.getUserName(), currentUser.getId());
-            ClientManager.sendToUser(currentUser.getId(), "ERROR", new ErrorPayload(ERR_CODE_BLOCKED, MSG_ACCOUNT_BLOCKED));
+            log.warn("[BLOCK-INTERCEPT] setupAutoBid denied: user '{}' (id={}) is BLOCKED.",
+                    currentUser.getUserName(), currentUser.getId());
+            ClientManager.sendToUser(currentUser.getId(), "ERROR",
+                    new ErrorPayload(ERR_CODE_BLOCKED, MSG_ACCOUNT_BLOCKED));
             return CompletableFuture.completedFuture(false);
         }
 
@@ -190,23 +196,41 @@ public class ServerBidderController {
         }
 
         Callable<Boolean> task = () -> {
-            boolean saved;
-            try {
-                saved = bidDAO.saveAutoBid(currentUser, auction, maxBid, increment);
-            } catch (java.sql.SQLException e) {
-                log.error("Failed to persist auto-bid for user {} on auction {}: {}", currentUser.getUserName(), auction.getId(), e.getMessage(), e);
-                return false;
-            }
+            try (Connection conn = DatabaseManager.getConnection()) {
+                conn.setAutoCommit(false);
+                try {
+                    // Step 1 — persist to DB (wallet lock applied inside, same conn)
+                    bidDAO.saveAutoBid(conn, currentUser, auction, maxBid, increment);
 
-            if (saved) {
-                synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                    if (auction.registerAutoBid(currentUser, maxBid, increment)) {
-                        log.info("Auto-bid registered in RAM: user={}, auction={}, maxBid={}", currentUser.getUserName(), auction.getId(), maxBid);
-                        return true;
+                    // Step 2 — register in RAM; must succeed before we commit
+                    boolean registered;
+                    synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                        registered = auction.registerAutoBid(currentUser, maxBid, increment);
                     }
+
+                    if (!registered) {
+                        // In-memory guard rejected the bid (e.g. auction ended mid-flight)
+                        conn.rollback();
+                        log.warn("[AutoBid] registerAutoBid rejected for user={} auction={} — rolling back.",
+                                currentUser.getUserName(), auction.getId());
+                        return false;
+                    }
+
+                    conn.commit();
+                    log.info("[AutoBid] Committed: user={}, auction={}, maxBid={}",
+                            currentUser.getUserName(), auction.getId(), maxBid);
+                    return true;
+
+                } catch (AutoBidLockService.InsufficientFundsException e) {
+                    conn.rollback();
+                    log.warn("[AutoBid] Insufficient funds for user={} auction={}: {}",
+                            currentUser.getUserName(), auction.getId(), e.getMessage());
+                    return false;
+                } catch (SQLException e) {
+                    conn.rollback();
+                    throw e;
                 }
             }
-            return false;
         };
 
         return TransactionManager.submitTask(task)
@@ -215,7 +239,8 @@ public class ServerBidderController {
                     return success;
                 })
                 .exceptionally(ex -> {
-                    log.error("Uncaught error during setupAutoBid for auction {}: {}", auction.getId(), ex.getMessage(), ex);
+                    log.error("[AutoBid] Uncaught error for auction {}: {}",
+                            auction.getId(), ex.getMessage(), ex);
                     return false;
                 });
     }

@@ -11,29 +11,68 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Core matching service coordinating and executing real-time automated proxy bidding agents.
- * Processes target requests concurrently via prioritized timestamp queues to enforce strict
- * execution equity.
+ * Core matching engine coordinating and executing real-time automated proxy bidding agents.
+ * Processes target requests concurrently via prioritized timestamp queues to enforce execution equity.
  */
 public class AutoBidEngine {
 
     private static final Logger log = LoggerFactory.getLogger(AutoBidEngine.class);
-    private static final int MAX_BOTPOOL_SIZE = 50;
-    private static final ExecutorService botPool = Executors.newFixedThreadPool(MAX_BOTPOOL_SIZE);
+
+    /**
+     * FIX #2 (CRITICAL): The previous implementation used a single static
+     * {@code Executors.newFixedThreadPool(50)} pool shared across ALL auction sessions.
+     * Under high concurrency (many simultaneous auctions + anti-sniping extensions), all 50
+     * threads could be saturated by a single burst, causing complete thread starvation for other
+     * auctions and a systemic processing halt.
+     *
+     * <p>Resolution: Replaced with a {@link ThreadPoolExecutor} backed by a
+     * {@link SynchronousQueue} (identical to {@code newCachedThreadPool}), but with:
+     * <ul>
+     *   <li>corePoolSize = 0 → no idle threads held permanently</li>
+     *   <li>maximumPoolSize = unbounded (Integer.MAX_VALUE) → no starvation ceiling</li>
+     *   <li>keepAliveTime = 30s → idle threads are reclaimed quickly</li>
+     * </ul>
+     * The existing {@link #activeScans} ConcurrentHashMap with per-auction {@link AtomicBoolean}
+     * already guarantees at most ONE thread is active per auction at any given time, so the
+     * unbounded maximum does not create an uncontrolled thread explosion in practice.
+     * Each auction's bot evaluation chain is serialized by design.
+     */
+    private static final ExecutorService botPool = new ThreadPoolExecutor(
+            0,
+            Integer.MAX_VALUE,
+            30L, TimeUnit.SECONDS,
+            new SynchronousQueue<>(),
+            r -> {
+                Thread t = new Thread(r, "BotPool-Worker");
+                t.setDaemon(true);
+                return t;
+            }
+    );
+
     private static final ConcurrentHashMap<String, AtomicBoolean> activeScans = new ConcurrentHashMap<>();
     private static ServerBidderController bidderCtrl;
 
+    /**
+     * Injects the global server-side bidder controller dependency.
+     *
+     * @param ctrl the controller instance handling core automated bid placements
+     */
     public static void setBidderController(ServerBidderController ctrl) {
         bidderCtrl = ctrl;
     }
 
     /**
-     * Registers a non-blocking evaluate query probe sweep over a designated auction room context.
+     * Registers a non-blocking evaluation query probe sweep over a designated auction room context.
+     * The per-auction {@link AtomicBoolean} guard in {@link #activeScans} ensures at most one
+     * evaluation thread is active per auction at any time, regardless of the pool size.
      *
-     * @param auction targeted runtime instance to scan for proxy agent triggers
+     * @param auction the targeted runtime instance to scan for proxy agent triggers
      */
     public static void triggerBotScan(Auction auction) {
         AtomicBoolean isScanning = activeScans.computeIfAbsent(auction.getId(), k -> new AtomicBoolean(false));
@@ -123,12 +162,13 @@ public class AutoBidEngine {
         }
 
         final AutoBid winnerBot = top1;
-        log.info("Bot of {} mathematically won. Submitting ASYNC transaction.", winnerBot.getBidder().getUserName());
+        final long computedFinalPrice = finalPrice;
+
+        log.info("Bot of {} mathematically won at Vickrey price={}. Submitting ASYNC transaction.",
+                winnerBot.getBidder().getUserName(), computedFinalPrice);
 
         try {
-            // Refers exclusively to the trusted internal entry point. The absolute ceiling collateral
-            // reserve was already locked at proxy registration time, ensuring safety from escrow bypasses.
-            bidderCtrl.placeBidOnAuctionFromBot(winnerBot.getBidder(), auction, winnerBot.getMaxBid())
+            bidderCtrl.placeBidOnAuctionFromBot(winnerBot.getBidder(), auction, computedFinalPrice)
                     .handle((success, ex) -> {
                         try {
                             if (ex != null) {

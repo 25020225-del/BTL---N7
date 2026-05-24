@@ -26,8 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Background daemon service monitoring active auctions in real-time.
- * Manages chronological state transitions across volatile regions and executes
- * transactional settlements over completed bidding pools.
+ * Manages chronological state transitions and executes transactional settlements over completed bidding pools.
  */
 public class AuctionMonitor {
 
@@ -77,16 +76,16 @@ public class AuctionMonitor {
                 LocalDateTime now = LocalDateTime.now();
 
                 if (currentStatus.equals(Auction.STATUS_OPEN) && now.isAfter(auction.getStartTime())) {
-                    if (now.isBefore(auction.getEndTime())) {
+                    if (auction.getEndTime() != null && now.isBefore(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_RUNNING;
                     }
                 } else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
-                    if (now.isAfter(auction.getEndTime())) {
+                    if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_FINISHED;
                         snapshotEndAtDecision = auction.getEndTime();
                     }
                 } else if (currentStatus.equals(Auction.STATUS_WAITING_FOR_BID)) {
-                    if (now.isAfter(auction.getEndTime())) {
+                    if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_CANCELED;
                         snapshotEndAtDecision = auction.getEndTime();
                     }
@@ -124,7 +123,9 @@ public class AuctionMonitor {
                 return false;
             }
             LocalDateTime now = LocalDateTime.now();
-            if (!now.isAfter(auction.getStartTime()) || !now.isBefore(auction.getEndTime())) {
+            if (!now.isAfter(auction.getStartTime())
+                    || auction.getEndTime() == null
+                    || !now.isBefore(auction.getEndTime())) {
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
             }
@@ -275,13 +276,18 @@ public class AuctionMonitor {
 
     private void refundLosingAutoBidders(Connection conn, Auction auction, String auctionId) throws SQLException {
         String winnerId = (auction.getWinningBidder() != null) ? auction.getWinningBidder().getId() : "NONE";
-        String sql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ?";
+
+        String sql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ? AND is_active = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, auctionId);
             ps.setString(2, winnerId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    walletDAO.unlockBalance(conn, rs.getString("bidder_id"), rs.getLong("max_bid"));
+                    String loserId = rs.getString("bidder_id");
+                    long lockedAmount = rs.getLong("max_bid");
+                    walletDAO.unlockBalance(conn, loserId, lockedAmount);
+                    log.debug("Refunded {} VNĐ locked balance to losing autobidder {} for auction {}",
+                            lockedAmount, loserId, auctionId);
                 }
             }
         }

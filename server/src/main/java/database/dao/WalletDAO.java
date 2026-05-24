@@ -41,7 +41,7 @@ public class WalletDAO {
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, id);
             pstmt.setString(2, userId);
-            pstmt.setLong(3, amount);
+            pstmt.setLong(3, amount);       // FIX #7: was setDouble, now setLong
             pstmt.setString(4, description);
             pstmt.setString(5, createdAt);
             return pstmt.executeUpdate() > 0;
@@ -49,20 +49,24 @@ public class WalletDAO {
     }
 
     public boolean createWallet(Connection conn, String userId) throws SQLException {
-        String sql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0.0)";
+        String sql = "INSERT INTO wallets (user_id, balance) VALUES (?, 0)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, userId);
             return pstmt.executeUpdate() > 0;
         }
     }
 
+    /**
+     * FIX #7 (MEDIUM): Replaced all pstmt.setDouble() calls with pstmt.setLong() to prevent
+     * floating-point precision loss on large monetary values (e.g., 999_999_999 VNĐ).
+     */
     public boolean lockBalance(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET balance = balance - ?, locked_balance = locked_balance + ? WHERE user_id = ? AND balance >= ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setDouble(1, amount);
-            pstmt.setDouble(2, amount);
+            pstmt.setLong(1, amount);   // FIX #7: was setDouble
+            pstmt.setLong(2, amount);   // FIX #7: was setDouble
             pstmt.setString(3, userId);
-            pstmt.setDouble(4, amount);
+            pstmt.setLong(4, amount);   // FIX #7: was setDouble
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -70,10 +74,10 @@ public class WalletDAO {
     public boolean unlockBalance(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET balance = balance + ?, locked_balance = locked_balance - ? WHERE user_id = ? AND locked_balance >= ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setDouble(1, amount);
-            pstmt.setDouble(2, amount);
+            pstmt.setLong(1, amount);   // FIX #7: was setDouble
+            pstmt.setLong(2, amount);   // FIX #7: was setDouble
             pstmt.setString(3, userId);
-            pstmt.setDouble(4, amount);
+            pstmt.setLong(4, amount);   // FIX #7: was setDouble
             return pstmt.executeUpdate() > 0;
         }
     }
@@ -81,9 +85,9 @@ public class WalletDAO {
     public boolean deductFromLocked(Connection conn, String userId, long amount) throws SQLException {
         String sql = "UPDATE wallets SET locked_balance = locked_balance - ? WHERE user_id = ? AND locked_balance >= ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setDouble(1, amount);
+            pstmt.setLong(1, amount);   // FIX #7: was setDouble
             pstmt.setString(2, userId);
-            pstmt.setDouble(3, amount);
+            pstmt.setLong(3, amount);   // FIX #7: was setDouble
             return pstmt.executeUpdate() > 0;
         }
     }

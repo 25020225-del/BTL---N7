@@ -4,6 +4,7 @@ import client.handler.AuctionEventBus;
 import client.service.AdminService;
 import client.service.AuctionService;
 import gui.process.*;
+import gui.widget.BidPanelController;
 import gui.widget.CountdownClock;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -31,6 +32,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Presenter interface binding an active item profile aggregate root onto structural UI components.
@@ -40,9 +42,11 @@ import java.util.Map;
 public class ItemDetailController {
 
     private static final Logger log = LoggerFactory.getLogger(ItemDetailController.class);
-    private static final String DEFAULT_IMAGE_URL = "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
+    private static final String DEFAULT_IMAGE_URL =
+            "https://res.cloudinary.com/de1isjzur/image/upload/v1777703968/iapj7jtzllkfggb0hvxf.jpg";
     private static final int MAX_CHART_POINTS = 20;
 
+    @FXML private VBox bidPanelContainer;
     @FXML private HBox hbTime;
     @FXML private ImageView imgLarge;
     @FXML private Label lblItemType;
@@ -50,10 +54,7 @@ public class ItemDetailController {
     @FXML private Label lblStartPrice;
     @FXML private Label lblCurrentPrice;
     @FXML private Label lblLeader;
-    @FXML private TextField txtBidAmount;
-    @FXML private Button btnPlaceBid;
     @FXML private TextArea txtDescription;
-    @FXML private VBox vbBidHandle;
     @FXML private VBox vbAuctionControl;
     @FXML private VBox vbAdminControl;
     @FXML private LineChart<String, Number> bidHistoryChart;
@@ -69,6 +70,8 @@ public class ItemDetailController {
 
     private Runnable onReturnToMarketplace;
     private PropertyChangeListener priceUpdateListener;
+
+    private BidPanelController bidPanel;
 
     private String currentAuctionId;
     private long endTimeMillis;
@@ -91,81 +94,18 @@ public class ItemDetailController {
         hbTime.getChildren().add(lblTimeLeft);
     }
 
-    public Parent getParent() {
-        return detailView;
-    }
-
-    public void setOnReturnToMarketplace(Runnable callback) {
-        this.onReturnToMarketplace = callback;
-    }
-
     /**
-     * Binds domain transaction properties onto active structural scene labels.
-     * Initiates temporal counters and establishes contextual subscription protocols.
+     * Handles the legacy inline "Đặt Giá" button click.
+     *
+     * <p><b>Bug fix:</b> the previous implementation only checked {@code bidAmount > 0},
+     * allowing bids below the auction minimum to reach the server where they would be
+     * rejected at a higher cost (network round-trip, unnecessary lock attempt).
+     * This patch adds the same {@code minRequired} guard that {@link BidPanelController} uses.
+     *
+     * @deprecated The legacy form will be removed in Phase 2 of the migration
+     *             (see class-level Javadoc). Prefer {@link BidPanelController}.
      */
-    public void setAuctionData(Auction auction) {
-        this.currentAuctionId = auction.getId();
-        this.endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        this.currentPriceValue = auction.getCurrentPrice();
 
-        configureRoleVisibility(auction);
-        populateTextFields(auction);
-        loadAuctionImage(auction.getItem().getImageUrl());
-        addPointToChart(auction.getItem().getStartingPrice(), LocalDateTime.now());
-        lblTimeLeft.start(endTimeMillis);
-    }
-
-    /**
-     * Formats historic transaction matrix lines back onto the multi-dimensional vector grid chart.
-     */
-    public void setTransactionHistoryData(List<Map<String, Object>> transactionHistory) {
-        for (Map<String, Object> map : transactionHistory) {
-            long amount = ((Number) map.get("bid_amount")).longValue();
-            LocalDateTime bidTime = LocalDateTime.parse((String) map.get("bid_time"));
-            addPointToChart(amount, bidTime);
-        }
-    }
-
-    /**
-     * Explicitly detaches listener nodes from the EventBus pipeline maps and terminates
-     * the localized countdown scheduling loops to guarantee garbage collection routines.
-     */
-    public void dispose() {
-        if (priceUpdateListener != null) {
-            AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
-            AuctionEventBus.removeAllListeners(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS);
-        }
-        lblTimeLeft.stop();
-        log.debug("Unsubscribed telemetry context loops for auction entity: {}", currentAuctionId);
-    }
-
-    @FXML
-    public void initialize() {
-        log.debug("ItemDetailController view configuration loaded into execution space.");
-        setupPriceChart();
-        registerPriceUpdateListener();
-    }
-
-    @FXML
-    private void handleBackToMarketplace() {
-        if (onReturnToMarketplace != null) onReturnToMarketplace.run();
-    }
-
-    @FXML
-    private void handlePlaceBid() {
-        AnimateEffect.pauseNode(vbBidHandle, 2);
-        String rawAmount = txtBidAmount.getText().replace(",", "").trim();
-        try {
-            long bidAmount = Long.parseLong(rawAmount);
-            if (bidAmount <= 0) {
-                AlertUtils.showError("Validation Error", "Bid amount must be greater than 0.");
-                return;
-            }
-            AuctionService.placeBid(currentAuctionId, bidAmount);
-        } catch (NumberFormatException e) {
-            AlertUtils.showError("Validation Error", "Invalid amount format.");
-        }
-    }
 
     @FXML
     private void handleEditAuction() {
@@ -197,25 +137,37 @@ public class ItemDetailController {
         handleBackToMarketplace();
     }
 
+    private void handleBackToMarketplace() {
+        if (onReturnToMarketplace != null) {
+            onReturnToMarketplace.run();
+        }
+    }
+
     private void configureRoleVisibility(Auction auction) {
         if (currentUser.getRole().equals("Admin")) {
-            vbBidHandle.setVisible(false);
+            bidPanelContainer.setVisible(false);
+            bidPanelContainer.setManaged(false);
             vbAuctionControl.setVisible(false);
-            vbBidHandle.setManaged(false);
             vbAuctionControl.setManaged(false);
             return;
         }
+
         vbAdminControl.setVisible(false);
         vbAdminControl.setManaged(false);
+
         boolean isSeller = auction.getSeller().getId().equals(currentUser.getId());
-        vbBidHandle.setVisible(!isSeller);
-        vbBidHandle.setManaged(!isSeller);
+
+        // bidPanelContainer chứa BidPanelController widget — ẩn nếu là seller
+        bidPanelContainer.setVisible(!isSeller);
+        bidPanelContainer.setManaged(!isSeller);
+
         vbAuctionControl.setVisible(isSeller);
         vbAuctionControl.setManaged(isSeller);
     }
 
     private void populateTextFields(Auction auction) {
-        String leader = (auction.getWinningBidder() != null) ? auction.getWinningBidder().getUserName() : "None";
+        String leader = (auction.getWinningBidder() != null)
+                ? auction.getWinningBidder().getUserName() : "None";
 
         lblItemType.setText(auction.getItem().getType());
         lblDetailTitle.setText(auction.getItem().getItemName());
@@ -239,67 +191,120 @@ public class ItemDetailController {
         priceSeries = new XYChart.Series<>();
         priceSeries.setName("Bid Price");
         bidHistoryChart.getData().add(priceSeries);
-        bidHistoryChart.setCreateSymbols(true);
     }
 
-    private void registerPriceUpdateListener() {
-        priceUpdateListener = evt -> {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = (Map<String, Object>) evt.getNewValue();
-            String auctionId = (String) data.get("auctionId");
+    /**
+     * Populates the view with auction data, starts the countdown clock,
+     * and registers the real-time price-update listener on the event bus.
+     *
+     * @param auction the auction aggregate root to display
+     */
+    public void setAuctionData(Auction auction) {
+        this.currentAuctionId = auction.getId();
+        this.currentPriceValue = auction.getCurrentPrice();
 
-            if (this.currentAuctionId != null && this.currentAuctionId.equals(auctionId)) {
-                long newPrice = ((Number) data.get("newPrice")).longValue();
-                String winnerName = (String) data.get("winnerName");
-                long newEndTime = ((Number) data.get("newEndTime")).longValue();
+        populateTextFields(auction);
+        configureRoleVisibility(auction);
+        loadAuctionImage(auction.getItem().getImageUrl());
+        setupPriceChart();
 
-                endTimeMillis = newEndTime;
-                lblTimeLeft.start(endTimeMillis);
+        // Start countdown timer if the auction has an end time
+        LocalDateTime endTime = auction.getEndTime();
+        if (endTime != null) {
+            endTimeMillis = endTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            lblTimeLeft.start(endTimeMillis);
+        }
+        boolean isBidder = !currentUser.getRole().equals("Admin")
+                && !auction.getSeller().getId().equals(currentUser.getId());
 
-                Platform.runLater(() -> updateRealTimePrice(newPrice, winnerName));
+        if (isBidder) {
+            try {
+                // Gọi hàm load tĩnh từ BidPanelController để tạo giao diện đấu giá mới
+                bidPanel = BidPanelController.load(auction, currentUser);
+
+                // Đẩy toàn bộ giao diện của Widget mới vào chiếc hộp trống bidPanelContainer trên UI
+                bidPanelContainer.getChildren().setAll(bidPanel.getRoot());
+            } catch (IOException e) {
+                log.error("[ItemDetail] Failed to load BidPanel widget for auction {}: {}",
+                        auction.getId(), e.getMessage(), e);
             }
-        };
+        }
 
-        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
-
-        AuctionEventBus.addListener(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS, evt -> {
+        // Register a listener that filters updates to this specific auction only
+        priceUpdateListener = event -> {
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> history =
-                    (List<Map<String, Object>>) ((NetworkMessage) evt.getNewValue()).getData();
-            setTransactionHistoryData(history);
-        });
+            Map<String, Object> data = (Map<String, Object>) event.getNewValue();
+            if (data == null) {
+                return;
+            }
+            String updatedId = (String) data.get("auctionId");
+            if (!currentAuctionId.equals(updatedId)) {
+                return;
+            }
 
-        AuctionEventBus.addListener("AUCTION_STATUS_CHANGED", event -> {
-            NetworkMessage msg = (NetworkMessage) event.getNewValue();
-            Map<String, Object> data = (Map<String, Object>) msg.getData();
-            String id = (String) data.get("auctionId");
+            long newPrice = ((Number) data.get("newPrice")).longValue();
+            String winnerName = (String) data.get("winnerName");
+            Object newEndTimeObj = data.get("newEndTime");
 
-            if (!id.equals(currentAuctionId)) return;
-
-            String newStatus = (String) data.get("newStatus");
             Platform.runLater(() -> {
-                if ("FINISHED".equals(newStatus) || "PAID".equals(newStatus) || "CANCELED".equals(newStatus)) {
-                    vbBidHandle.setVisible(false);
-                    vbBidHandle.setManaged(false);
+                currentPriceValue = newPrice;
+                lblCurrentPrice.setText(String.format("%,d VND", newPrice));
+                if (winnerName != null) {
+                    lblLeader.setText(winnerName);
+                }
+                if (newEndTimeObj != null) {
+                    long newEnd = ((Number) newEndTimeObj).longValue();
+                    endTimeMillis = newEnd;
+                    lblTimeLeft.start(newEnd);
+                }
+                // Append a point to the bid history chart (keep at most MAX_CHART_POINTS)
+                if (priceSeries != null) {
+                    String timestamp = LocalDateTime.now().format(timeFormatter);
+                    priceSeries.getData().add(
+                            new XYChart.Data<>(timestamp, newPrice));
+                    if (priceSeries.getData().size() > MAX_CHART_POINTS) {
+                        priceSeries.getData().remove(0);
+                    }
                 }
             });
-        });
+        };
+        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+        log.debug("[ItemDetail] Loaded auction {} and registered price listener.", currentAuctionId);
     }
 
-    private void updateRealTimePrice(long newPrice, String winnerName) {
-        long oldPrice = this.currentPriceValue;
-        this.currentPriceValue = newPrice;
-
-        PriceTweener.animatePriceChange(lblCurrentPrice, oldPrice, newPrice);
-        lblLeader.setText(winnerName);
-        addPointToChart(newPrice, Convert.longToTimestamp(System.currentTimeMillis()));
-        AnimateEffect.highlightText(lblCurrentPrice);
-    }
-
-    private void addPointToChart(long price, LocalDateTime time) {
-        priceSeries.getData().add(new XYChart.Data<>(time.format(timeFormatter), price));
-        if (priceSeries.getData().size() > MAX_CHART_POINTS) {
-            priceSeries.getData().removeFirst();
+    /**
+     * Removes the real-time price-update listener from the event bus and stops the countdown clock.
+     * Must be called before this controller is discarded to prevent memory leaks.
+     */
+    public void dispose() {
+        if (priceUpdateListener != null) {
+            AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+            priceUpdateListener = null;
+            log.debug("[ItemDetail] Removed price listener for auction {}.", currentAuctionId);
         }
+        lblTimeLeft.stop();
+        if (bidPanel != null) {
+            bidPanel.destroy(); // Gọi hàm hủy bên trong Widget mới
+            bidPanel = null;
+        }
+    }
+
+    /**
+     * Returns the root JavaFX node of this controller's view, for embedding in a parent layout.
+     *
+     * @return the root {@link Parent} node
+     */
+    public Parent getParent() {
+        return detailView;
+    }
+
+    /** @deprecated Use {@link #getParent()} instead. */
+    @Deprecated
+    public Parent getView() {
+        return detailView;
+    }
+
+    public void setOnReturnToMarketplace(Runnable callback) {
+        this.onReturnToMarketplace = callback;
     }
 }
