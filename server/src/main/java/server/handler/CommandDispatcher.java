@@ -128,6 +128,10 @@ public class CommandDispatcher {
 
         handlers.put("CANCEL_AUCTION", adminHandler);
 
+        AuctionRoomHandler roomHandler = new AuctionRoomHandler();
+        handlers.put("JOIN_AUCTION", roomHandler);
+        handlers.put("LEAVE_AUCTION", roomHandler);
+
     }
 
     /**

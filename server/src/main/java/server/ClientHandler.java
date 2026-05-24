@@ -15,6 +15,7 @@ import utils.JacksonConfig;
 import javax.crypto.SecretKey;
 import java.security.KeyPair;
 import java.util.Base64;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Handles individual client WebSocket connections.
@@ -34,8 +35,8 @@ public class ClientHandler {
     private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
 
     private final WebSocket conn;
-    private static int cNC = 0;
-    private String clientName = "#Guest" + (cNC++);
+    private static final AtomicInteger clientCounter = new AtomicInteger(0);
+    private String clientName = "#Guest" + clientCounter.getAndIncrement();
     private User user;
 
     // ── 2FA session state ─────────────────────────────────────────────
@@ -173,6 +174,11 @@ public class ClientHandler {
         }
     }
 
+    public static int nextClientNumber() {
+        return clientCounter.getAndIncrement();
+    }
+
+
     /**
      * Sends a plain text chat message to the client.
      *
@@ -236,13 +242,5 @@ public class ClientHandler {
 
     public void setUser(User user) {
         this.user = user;
-    }
-
-    public static int getcNC() {
-        return cNC;
-    }
-
-    public static void incrementcNC() {
-        cNC++;
     }
 }

@@ -414,11 +414,6 @@ public class UserDAO {
             user.setRole("BLOCKED");
         }
 
-        // ── Handle blocked users ─────────────────────────────────────
-        if (rs.getInt("is_blocked") == 1) {
-            user.setRole("BLOCKED");
-        }
-
         return user;
     }
 }

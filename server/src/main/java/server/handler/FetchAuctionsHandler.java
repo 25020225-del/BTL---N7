@@ -5,7 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ClientHandler;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -68,11 +71,15 @@ public class FetchAuctionsHandler implements CommandHandler {
             // Transform the end_time into a remaining seconds format for the client-side countdown
             LocalDateTime now = LocalDateTime.now();
             for (Map<String, Object> map : auctionList) {
-                String endTimeStr = (String) map.get("end_time");
-                if (endTimeStr != null) {
-                    LocalDateTime end = LocalDateTime.parse(endTimeStr);
-                    long secondsRemaining = java.time.Duration.between(now, end).getSeconds();
-                    map.put("secondsRemaining", Math.max(0, secondsRemaining));
+                Object endTimeObj = map.get("endTime"); // epoch millis
+                if (endTimeObj instanceof Number n) {
+                    LocalDateTime end = Instant.ofEpochMilli(n.longValue())
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime();
+                    long secs = Duration.between(LocalDateTime.now(), end).getSeconds();
+                    map.put("secondsRemaining", Math.max(0, secs));
+                } else {
+                    map.put("secondsRemaining", 0L); // WAITING_FOR_BID: endTime null
                 }
             }
 

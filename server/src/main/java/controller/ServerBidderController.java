@@ -6,17 +6,21 @@ package controller;
 //           setupAutoBid(). Không thay đổi bất kỳ logic nào bên dưới guard.
 // ════════════════════════════════════════════════════════════════════════════
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import database.DatabaseManager;
 import database.TransactionManager;
 import database.dao.BidDAO;
 import model.auction.Auction;
 import model.user.User;
 import network.ErrorPayload;
+import network.NetworkMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 import service.AutoBidEngine;
+import utils.JacksonConfig;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -239,11 +243,20 @@ public class ServerBidderController {
                             update.put("newEndTime", auction.getEndTime()
                                     .atZone(ZoneId.systemDefault())
                                     .toInstant().toEpochMilli());
-                            ClientManager.broadcast("UPDATE_AUCTION_PRICE", update, null);
 
-                            if (!isBot) {
-                                AutoBidEngine.triggerBotScan(auction);
+                            try {
+                                ObjectMapper mapper = JacksonConfig.mapper();
+                                String jsonPayload = mapper.writeValueAsString(
+                                        new NetworkMessage("UPDATE_AUCTION_PRICE", update));
+                                ClientManager.publishAuctionUpdate(auction.getId(), jsonPayload);
+                            } catch (JsonProcessingException e) {
+                                log.error("Failed to serialize UPDATE_AUCTION_PRICE for auction {}: {}",
+                                        auction.getId(), e.getMessage());
+                                // Fallback: broadcast thông thường không có debounce
+                                ClientManager.broadcast("UPDATE_AUCTION_PRICE", update, null);
                             }
+
+                            if (!isBot) AutoBidEngine.triggerBotScan(auction);
                             return true;
                         }
                         case "NOT_RUNNING" -> {

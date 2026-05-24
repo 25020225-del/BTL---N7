@@ -167,8 +167,7 @@ public class AuthHandler implements CommandHandler {
         client.setUser(null);
         client.setPendingUser(null);
         client.setPendingTotpSecret(null);
-        client.setClientName("#Guest" + ClientHandler.getcNC());
-        ClientHandler.incrementcNC();
+        client.setClientName("#Guest" + ClientHandler.nextClientNumber());
         log.info("{} signed out.", oldName);
     }
 
