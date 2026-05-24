@@ -17,8 +17,9 @@ import java.util.Map;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
- * Domain model aggregate representing an active auction room session lifecycle.
- * Coordinates real-time price updates, infinite anti-sniping increments, and proxy bidding queues.
+ * Domain model aggregate root representing the state machine of an active auction room session.
+ * Coordinates real-time price mutations, executes multi-agent anti-sniping chronographic extensions,
+ * and maintains prioritized processing queues for proxy-bidding subsystems.
  */
 public class Auction extends Entity {
 
@@ -54,7 +55,7 @@ public class Auction extends Entity {
     }
 
     /**
-     * Fully hydrates an auction cluster configuration mapping initialization state fields.
+     * Fully hydrates a structural auction aggregate state machine configuration mapping.
      */
     public Auction(String id, Item item, User seller,
                    long bidIncrement,
@@ -76,7 +77,7 @@ public class Auction extends Entity {
     }
 
     /**
-     * @deprecated Use 7-parameter constructor to explicitly supply structural original duration bounds.
+     * @deprecated Use 7-parameter constructor to explicitly pass structural original duration bounds.
      */
     @Deprecated
     public Auction(String id, Item item, User seller,
@@ -89,9 +90,7 @@ public class Auction extends Entity {
     }
 
     /**
-     * Factory method initializing a deferred-clock auction session pending initial activation triggers.
-     *
-     * @return initialized Auction entity wrapped in a pending or open validation lifecycle state
+     * Factory assembly routine initializing a deferred-clock auction session pending activation triggers.
      */
     public static Auction createNewAuction(Item item, User seller,
                                            long bidIncrement,
@@ -103,6 +102,9 @@ public class Auction extends Entity {
         return newAuction;
     }
 
+    /**
+     * Hydrates a concrete structural instance mapping directly from a database payload frame.
+     */
     public static Auction buildAuctionFromMap(Map<String, Object> map) {
         Auction auction = new Auction();
         auction.setId((String) map.get("id"));
@@ -129,6 +131,9 @@ public class Auction extends Entity {
         return auction;
     }
 
+    /**
+     * Value capsule encapsulating the structural parameters computed from a provisional pricing challenge.
+     */
     public static class BidResult {
         public final User newWinner;
         public final long newHighestMaxBid;
@@ -148,11 +153,11 @@ public class Auction extends Entity {
     }
 
     /**
-     * Evaluates an incoming pricing challenge parameter context without mutating current in-memory field parameters.
+     * Evaluates an inbound transaction price challenge against invariant rules without mutating internal states.
      *
-     * @param bidder    the user profile initiating the evaluation assertion
-     * @param newMaxBid top monetary threshold bound offered down the channel
-     * @return calculated immutable {@link BidResult} snapshot parameters, or null if requirements break constraints
+     * @param bidder    the actor profile context dispatching the price challenge
+     * @param newMaxBid the maximum monetary absolute overhead cap ceiling offered
+     * @return calculated immutable {@link BidResult} snapshot metrics, or null if boundaries violate domain constraints
      */
     public BidResult calculateBidResult(User bidder, long newMaxBid) {
         boolean isWaiting = STATUS_WAITING_FOR_BID.equals(status);
@@ -221,12 +226,11 @@ public class Auction extends Entity {
     }
 
     /**
-     * Commits a pre-calculated evaluation record into internal state boundaries.
-     * Transitions life-cycle flags automatically if transaction scopes represent structural triggers.
+     * Commits a pre-verified evaluation state token into internal aggregate attributes boundaries.
      *
-     * @param bidder the authenticated entity launching the validated bid
-     * @param result pre-calculated structural value parameters statement
-     * @return newly generated persistent transaction record
+     * @param bidder the user entity binding the finalized price modification
+     * @param result the validated structural transaction values statements container
+     * @return newly appended historical ledger transaction instance record
      */
     public BidTransaction applyBidResult(User bidder, BidResult result) {
         this.winningBidder = result.newWinner;
@@ -245,7 +249,7 @@ public class Auction extends Entity {
     }
 
     /**
-     * Evaluates clock boundaries to safely transit running states into terminal finished structures.
+     * Evaluates clock indicators to transition active processing states into terminal finished fields safely.
      */
     public void closeAuctionIfTimeIsUp() {
         if (endTime == null) {
@@ -257,7 +261,7 @@ public class Auction extends Entity {
     }
 
     /**
-     * Erases and reverts the state effects of a failed in-memory transaction block execution context.
+     * Rolls back and invalidates state side-effects caused by a failed downstream database ledger commit sequence.
      */
     public void revertLastBid(User previousWinner, long previousHighestMaxBid,
                               LocalDateTime previousEndTime, String previousStatus,
@@ -278,22 +282,38 @@ public class Auction extends Entity {
     }
 
     /**
-     * Enqueues an automated proxy bot agent configuration parameter structure into the prioritizing queue.
+     * Registers and enqueues an automated proxy bot configuration rule to the priority pipeline.
+     * Enforces strict minimum liquidity alignment constraints to prevent orphaned lock states.
+     *
+     * @param bidder        the actor initializing automated system agency properties
+     * @param maxBid        the explicit spending upper bound threshold mandated by the caller
+     * @param userIncrement the per-step reactive modification margin added to counter-bids
+     * @return true if configuration parameters satisfy activation boundaries, false otherwise
      */
     public boolean registerAutoBid(User bidder, long maxBid, long userIncrement) {
         boolean isActive = STATUS_RUNNING.equals(status) || STATUS_WAITING_FOR_BID.equals(status);
         if (!isActive) {
             return false;
         }
-        if (maxBid <= currentPrice) {
+
+        long minRequired = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
+        if (maxBid < minRequired) {
             return false;
         }
+
         activeAutoBids.offer(new AutoBid(bidder, maxBid, userIncrement));
         return true;
     }
 
     /**
-     * @deprecated Use atomic decoupled pipelines via {@link #calculateBidResult} and {@link #applyBidResult}
+     * Computes the dynamic absolute lower-bound threshold matrix required to activate proxy engine handlers.
+     */
+    public long getMinAutoBidRequired() {
+        return (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
+    }
+
+    /**
+     * @deprecated Use thread-safe decoupled workflows via {@link #calculateBidResult} and {@link #applyBidResult}
      */
     @Deprecated
     public BidTransaction placeBid(User bidder, long newMaxBid) {
