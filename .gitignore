@@ -55,4 +55,4 @@ dependency-reduced-pom.xml
 *secret.properties
 .env
 checkstyle.cache
-.txt
+*.txt
