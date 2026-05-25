@@ -70,7 +70,9 @@ public class PayPalService {
      * @throws Exception if serialization or remote socket processing drops
      */
     public String[] createOrder(long amountVND) throws Exception {
-        double amountUSD = amountVND / 25000.0;
+        double amountUSD = ExchangeRateService.getInstance().vndToUsd(amountVND);
+        log.info("Creating order: {} VND → {:.2f} USD (rate: {:.2f})",
+                amountVND, amountUSD, ExchangeRateService.getInstance().getUsdToVndRate());
         String token = getAccessToken();
 
         ObjectNode requestBody = mapper.createObjectNode();
@@ -189,7 +191,10 @@ public class PayPalService {
             if (purchaseUnits != null && purchaseUnits.isArray() && !purchaseUnits.isEmpty()) {
                 String valueStr = purchaseUnits.get(0).get("amount").get("value").asText();
                 double amountUSD = Double.parseDouble(valueStr);
-                return (long) (amountUSD * 25000.0);
+                long amountVND = ExchangeRateService.getInstance().usdToVnd(amountUSD);
+                log.info("Captured: {:.2f} USD -> {} VND (live rate: {:.2f})",
+                        amountUSD, amountVND, ExchangeRateService.getInstance().getUsdToVndRate());
+                return amountVND;
             }
         }
 
