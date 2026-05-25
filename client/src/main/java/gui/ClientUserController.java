@@ -31,7 +31,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import utils.JacksonConfig;
 
+import java.beans.PropertyChangeListener;
 import java.io.IOException;
+
+import static client.handler.ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED;
 
 /**
  * Core customer portal dashboard workspace orchestrator. Implements full-duplex workspace navigation loops,
@@ -49,6 +52,11 @@ public class ClientUserController {
     private final WalletController walletView;
     private final TableControllerUser tableView;
     private final User currentUser;
+
+    private PropertyChangeListener errorListener;
+    private PropertyChangeListener auctionCreatedListener;
+    private PropertyChangeListener depositListener;
+    private PropertyChangeListener paymentListener;
 
     @FXML private VBox mainDock;
     @FXML private VBox mainViewController;
@@ -171,6 +179,7 @@ public class ClientUserController {
      */
     @FXML
     public void handleSignOut() {
+        unregisterListeners();
         log.info("User \"{}\" is signing out.", currentUser.getName());
         UserService.logout();
         RemoveEventBus.forUser();
@@ -199,22 +208,36 @@ public class ClientUserController {
     public void start() {
         setMainDock();
         AuctionService.fetchAuctions();
-
-        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, evt ->
-                Platform.runLater(() -> AlertUtils.showInfo("Success", evt.getNewValue().toString()))
-        );
-
-        AuctionEventBus.addListener(AuctionEventBus.DEPOSIT_SUCCESS, evt ->
-                Platform.runLater(() -> AlertUtils.showInfo("Deposit Success", evt.getNewValue().toString()))
-        );
-
-        AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR, evt -> {
-            String msg = evt.getNewValue() != null ? evt.getNewValue().toString() : "An unknown error occurred.";
-            Platform.runLater(() -> AlertUtils.showError("System Error", msg));
-        });
-
-        AuctionEventBus.addListener(ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED, evt ->
-                Platform.runLater(() -> AlertUtils.showInfo("Payment in process", "Payment gate has been opened."))
-        );
+        registerListeners();
     }
+
+    private void registerListeners() {
+        // Xóa cũ trước khi đăng ký mới (phòng trường hợp start() gọi lại)
+        unregisterListeners();
+
+        auctionCreatedListener = evt ->
+                Platform.runLater(() -> AlertUtils.showInfo("Success", evt.getNewValue().toString()));
+
+        depositListener = evt ->
+                Platform.runLater(() -> AlertUtils.showInfo("Deposit Success", evt.getNewValue().toString()));
+
+        errorListener = evt -> {
+            String msg = evt.getNewValue() != null ? evt.getNewValue().toString() : "Unknown error";
+            Platform.runLater(() -> AlertUtils.showError("System Error", msg));
+        };
+        paymentListener = evt ->
+                Platform.runLater(() -> AlertUtils.showInfo("Payment in process", "Payment gate has been opened."));
+
+        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED,   auctionCreatedListener);
+        AuctionEventBus.addListener(AuctionEventBus.DEPOSIT_SUCCESS,    depositListener);
+        AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR,      errorListener);
+        AuctionEventBus.addListener(PAYMENT_CONFIRM_REQUIRED,           paymentListener);
+    }
+    public void unregisterListeners() {
+        AuctionEventBus.removeListener(AuctionEventBus.AUCTION_CREATED,  auctionCreatedListener);
+        AuctionEventBus.removeListener(AuctionEventBus.DEPOSIT_SUCCESS,   depositListener);
+        AuctionEventBus.removeListener(AuctionEventBus.GENERAL_ERROR,     errorListener);
+        AuctionEventBus.removeListener(PAYMENT_CONFIRM_REQUIRED,          paymentListener);
+    }
+
 }
