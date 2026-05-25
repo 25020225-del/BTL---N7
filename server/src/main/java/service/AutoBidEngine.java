@@ -56,7 +56,7 @@ public class AutoBidEngine {
     );
 
     private static final ConcurrentHashMap<String, AtomicBoolean> activeScans = new ConcurrentHashMap<>();
-    private static ServerBidderController bidderCtrl;
+    private static volatile ServerBidderController bidderCtrl;
 
     /**
      * Injects the global server-side bidder controller dependency.

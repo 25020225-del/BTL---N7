@@ -56,12 +56,7 @@ public class BidActionHandler implements CommandHandler {
         Map<String, Object> bidData = castPayload(data, "Cấu trúc dữ liệu đặt giá bị sai.");
 
         String auctionId = (String) bidData.get("auctionId");
-        long amount;
-        try {
-            amount = Long.parseLong(bidData.get("bidAmount").toString());
-        } catch (NumberFormatException | NullPointerException e) {
-            throw new AuctionExceptions.InvalidPayloadException("Số tiền đặt giá không hợp lệ.");
-        }
+        long amount = parseAmountVND(bidData.get("bidAmount"), "Số tiền đặt giá không hợp lệ.");
 
         Auction auction = requireAuction(auctionId);
 
@@ -108,15 +103,8 @@ public class BidActionHandler implements CommandHandler {
             throw new AuctionExceptions.InvalidPayloadException("Thiếu trường auctionId.");
         }
 
-        long maxBid;
-        long increment;
-        try {
-            maxBid    = Long.parseLong(payload.get("maxBid").toString());
-            increment = Long.parseLong(payload.get("increment").toString());
-        } catch (NumberFormatException | NullPointerException e) {
-            throw new AuctionExceptions.InvalidPayloadException(
-                    "maxBid và increment phải là số nguyên dương.");
-        }
+        long maxBid = parseAmountVND(payload.get("maxBid"), "maxBid phải là số nguyên dương.");
+        long increment = parseAmountVND(payload.get("increment"), "increment phải là số nguyên dương.");
 
         if (maxBid < 0) {
             throw new AuctionExceptions.InvalidPayloadException("maxBid không được âm.");
@@ -306,5 +294,28 @@ public class BidActionHandler implements CommandHandler {
         resp.put("increment", increment);
         resp.put("isActive",  isActive);
         return resp;
+    }
+
+    /**
+     * Safely parses decimal/float strings or numeric objects into long values without
+     * throwing generic NumberFormatException.
+     */
+    private long parseAmountVND(Object amountObj, String errorMessage) throws AuctionExceptions.InvalidPayloadException {
+        if (amountObj == null) {
+            throw new AuctionExceptions.InvalidPayloadException(errorMessage);
+        }
+        try {
+            double parsedDouble = Double.parseDouble(amountObj.toString().trim());
+            if (Double.isNaN(parsedDouble) || Double.isInfinite(parsedDouble)) {
+                throw new AuctionExceptions.InvalidPayloadException(errorMessage);
+            }
+            long amount = (long) parsedDouble;
+            if (amount < 0) {
+                throw new AuctionExceptions.InvalidPayloadException(errorMessage);
+            }
+            return amount;
+        } catch (NumberFormatException e) {
+            throw new AuctionExceptions.InvalidPayloadException(errorMessage);
+        }
     }
 }
