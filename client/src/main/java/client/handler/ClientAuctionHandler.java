@@ -32,6 +32,16 @@ public class ClientAuctionHandler implements ResponseHandler {
             case "BID_SUCCESS" -> {
                 AuctionEventBus.fireEvent(AuctionEventBus.BID_SUCCESS, message.getData());
             }
+            case "OUTBID" -> {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> outbidData = (Map<String, Object>) message.getData();
+                String auctionId = outbidData != null ? (String) outbidData.get("auctionId") : "unknown";
+                long   newPrice  = outbidData != null
+                        ? ((Number) outbidData.get("newPrice")).longValue() : 0L;
+                log.info("[Auction] OUTBID received: auction={}, newPrice={}", auctionId, newPrice);
+                AuctionEventBus.fireEvent(AuctionEventBus.OUTBID, outbidData);
+                gui.process.OutbidToast.show(auctionId, newPrice);
+            }
             case "AUCTION_STATUS_CHANGED" -> {
                 Map<String, Object> statusData = (Map<String, Object>) message.getData();
                 log.info("[Auction] Status changed: {}", statusData);

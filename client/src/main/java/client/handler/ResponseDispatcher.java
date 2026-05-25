@@ -62,6 +62,7 @@ public class ResponseDispatcher {
         handlers.put("BID_SUCCESS", auctionHandler);
         handlers.put("AUTOBID_SETUP_SUCCESS", auctionHandler);
         handlers.put("AUTOBID_ACTIVE", auctionHandler);
+        handlers.put("OUTBID", auctionHandler);
     }
 
     private void registerPaymentHandlers() {

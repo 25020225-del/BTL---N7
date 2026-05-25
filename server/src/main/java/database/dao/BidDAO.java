@@ -181,7 +181,17 @@ public class BidDAO {
                 if (winningBidderId != null && !wasPreviousWinnerBot) {
                     walletDAO.unlockBalance(conn, winningBidderId, previousHighestMaxBid);
                     walletDAO.addTransaction(conn, "W-UNL-" + java.util.UUID.randomUUID(), winningBidderId, previousHighestMaxBid, "Unlock outbid reserve for auction: " + auctionId, now);
+                    server.ServerExtension.ClientManager.sendToUser(
+                            winningBidderId,
+                            "OUTBID",
+                            java.util.Map.of(
+                                    "auctionId", auctionId,
+                                    "newPrice",  result.newCurrentPrice
+                            )
+                    );
+
                 }
+
                 if (!isBot) {
                     if (!walletDAO.lockBalance(conn, currentUser.getId(), newMaxBid)) {
                         throw new InsufficientFundsException("Số dư không đủ để đặt giá.");
