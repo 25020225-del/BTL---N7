@@ -1,23 +1,84 @@
-# BTL---N7
+# 🔨 Hệ Thống Đấu Giá Trực Tuyến Thời Gian Thực (Online Auction System)
 
-Bài tập lớn môn lập trình nâng cao của nhóm 7: Phát triển hệ thống đấu giá trực tuyến
-
-Thành viên nhóm:
-
-+ Client:
-    - Ngô Vũ Đình Khoa.(25020225) : Thiết kế.
-    - Khúc Ngọc Minh.(25020264): Thiết kế.
-+ Server:
-    - Cao Dương Lễ.(25020232): Database + Logic.
-    - Nguyễn Quang Mạnh. (25020256): Mạng + Logic.
+> **Môn học:** Lập Trình Nâng Cao (LTNC) - Trường Đại học Công nghệ, ĐHQGHN
+> **Nhóm thực hiện:** Team N7
+> **Hạn cuối dự án:** 23:59 ngày 31/05/2026
 
 ---
-SƠ ĐỒ UML
 
-![alternative text](https://www.plantuml.com/plantuml/png/hLfVS-Es4N_Nfy3aPb9TUxfaccGcwLmzaINUMRN-E19zdaodSmEJQmar1IWWQ9zplUSyznDq-j2NjfyWUUX3Fibzam8aQ7Eb1Vt7vmUJnEx-iBjOB9OhVfiRhasnpZg_ORrUZmq-_FolWgr-_QzSiQNWYgNYmoy_IKVhvET2RhZcQvO92UPg0qnfir8DGfBnFEyReyLfOM2KABaGFmBxlC6IhtYgBeLSiZEUvT2WQ5N8D55QWcPVRuEoTnrc__PvShui6GSgKvgTh8I1ajBNMbrMWqz-F_WY-khpIa3f5BGV_-BBBx_vAkgyRu1lB21VGW3-oSklNtxpih-BD8Y6Nmxx5idwxOzt_hFCH_t1OVzLz0SscGsZyO9zng9fF8f7qU9-IBNUdqnK2bdEFcMHDC88o3_njl3Jt6YU6E-_adpbQFxl2LiOxTP1fDTZlsClNWmqS0DxUrwY-xILMc4qUJpg4imeHS8NIgGiTyE4rBjQtVSDUNccFCBxZhjuKuvpq9GXXHsVyZNGb2ChkakH9BzMsSreZvqg-ymb4_ahfGBUSafvPMbQ1VsivV90QThvnzuPn18qYAq8tcaqWYUs8WJdltNkkSfeIKSW9F4AaP8bmVDHauRZRL-agOiuSdayrSk5gCvT1F82iYo8xAaO6LCzyltCwQTh8KDpbiJxHnkUYqW_8mDhCldOSNhFff0dMcoCKB91J5LncW4hZotBTQH5qjofNfPlDbfTy6nXk2bosbAdaLUPff5EgEQddU2aWY7lYUrXFxoncG11T0AdqitXB9hk8P4mHvjLVUHB4Wopj5eO34fjWY6fpGFM8ZoFEED9U39FRvlncP3cVhE-XfL8CWXDwiaVqSeYSJ62vdkN6sv4yhuMNyJz-7ZnvYYQ3aVJLxSppYpdxLppu-dqJd0lHzFHuY0Qta73_kWEN8F-T12Dxu8tj6nnWx5N9IUNYHfZFZNdvQKnxZTPKcWDqbJvPuUw4iiLv6R2tzhylqi-5Ub89XhM5g51zUVCfP3IgbizxUQs7EUq7XkhX6T3RY0MQs0WKtTjqaLkNbYqM7EPyp8mzfmA1tPSwQjjpdvXbENUOuxr0lnZQ4AVYjrTO4CL2KvdDDa7krk9PvNhwys6PiDFJKmdMIVXO0BkkdzDOZMLawlkI4bFgYvqmXqqme74G0oL78rqq0mT4Wfnj6BjD-ACWa8C198FI8jqqen94WfpL1SwQRKS9C4312sx0ucgC2THQbeeLiWTuVtbDmM1YyWKGgk-2xzBMaxZeCwemjraF04xitUntoKxe4ccSl2RQtJcm4RvyQPB8MfOMcj0-vsEWNVmUnM-XbnbDzcXUx_p2NkElTjDWgVbXKoT_RKgf0dc8sF_vOQlDtJ2mLCZlSDSFZlHBaSRfMM7XBO6sh3UkX20frOIhG4NrswWe1fK97Y_LVIBVv_bMmTEHE6pKFkopdsaGk0Tt2iKMjJs0F_ugndEuNT9tksPsrFl60l8ToGUPg6YulrZkbs3sJIUpyRZQFxGFjT0IQELEu7h3fUFmWaNyeP8bhpUIfTagJYkxIPHUYo6j-QbW2prcH8rcMY6VfAuVRh5v_ebbqgdcBSUzJ91_aJ9Cw7NOVQ1Mf-gVVNsHRLpzwvdcEDkrdvXZ9BNrEfnbvwik5p2M2s5N2GWcmXJC5Q5yq4cG1eccq_ReIMaC89duaVe7i_7p-QGgq8di5_8D0Cg415s5ptTi3-fs9MS8oCiMtBU9TXAAruBkAJv_9csuawf1UWBq5RHZP8vr1fC8C_v4dPaaWouBXSefqAhdFZMkCeSr-qnund34T2oBe_sz8I7FKWioCToDj7w3RWpjr0YWUVnB3vQLFVCABDnzsIJQCNpLUtBOC_2RvExTs2TXjKwOGd2cChuwhKYaC7g5tcUflwsRFYLxqd15wJs0X9IOH2MVy0cFH0yXGmCKF11-zq9IjXFLxqpIM5xPIc5SZ35nX_yb8o_1BKh-w7jolbkuxNLfKZ3RBpnBAOukweMtRDM3pkS6luAYV4uS_YXWDpS0dwcT093j0P8W32psl2xGVX-XwT4QcTfMSlUpMaSYmoEk8IovH9pw_xRp-p75Y3JA3wPpG_PfsmHpLz7ymTM8Jv1MPY1qi0MLxar0HSaE0iZ3onKSWw6vUw23dejf3dHme1cgZ3eB3uxSmNP77XgYK8sQBDJ5nyJ6tsMiYulg1gGUR46_GBdr3scfB-TGmBY8bHB8olgL2QaeNzriRD9I4oWk9njJzaDQKT8ozGJQoKgktSEbCobQHchQjzIXp6U2wsCJ_Q9Mg-vJ7USp59kUAkVQXsVjdFHbb0lNODI5TgVdaOSMXMYanzQZGbXJwZu21zDYio8UALTlANEbQ5Dl4XMa1OPfD5RI0gZT7tcvfwWAIblt_ve-cOqf1Y6oe2yO6bvQK7uqs8sTIY7qVSjNEFPe3-EPtRplubdXz6KOYrRELMO7vGrYTvZIVcOjo1RPvd5bKmW7MqeDY5DW-T8QKDmRPSp1NgaagBlqFgM5Qzkt60mWnQRb1lOBooY4N9VSPsYtHmqySz_SM5KdlX6IJ3zDDNWVmscfrfp8RkrS9ZjL2kU9Zo_pYh8-M6vZHONtC0aN-BAAYoXOQqkmAUmEyvoBfBpc6jh-brdiQmLjbk7xbsGzw-cnVeKT5T84ouFaSBjvqZxQT5-nfIXcam7H3Oi5S0l9EqXstuwqQaHcTcjJ7k6PY5AeqA6tYZg5n2VucYkwhKMi-0pnx-IX59r-7WYtX1L3lvyT0LP8DrV-xeRgEf4dbGWQ29KBwP2MtgiJk0q5mQwmT1oPy0fps729L-6ChnNRhZ_nhwvKr5zOvIpW30HSM-r0seLFaPnvqgwqI1QsBBiE1wD7_CvbJ_5SWTbH8Q-gAfyrtY_H7vxfTGoSmtn5KXhC3TAiwLxt5tlf8pz1TYhEOIhG4XyDp_MMJW9-UBBlr0CL0eehuT-4vueAOp2ItwVitpx2CeoVn_up09FsqNIE8JhSj-pMakw18FQ8FgEcT_DdIiE8DlWk6xeX7ZeO1sjNJGiGOAs8XM_6slwEE3d4v4kmRpaYVkXAA01Pg9LgDjmfKZrGFOWIE7NjW_eHIT2YZNFWf-qKA6IWJR8XUIxsKfTbfpTyl_pydzyjO5RyLtrhp8elwNCMpzIc4UBA6wb3rkeh-PHwpSBtqVZyUoaXM5_V1pH2uXC87ySSLut4DaJEJ5jNin42bEtUzt9fUGplw_3EVICUm7t3xE7bccc3-miPGZKBzzuTHwJVVj7H-FHe1-FPbFtCUly-mUctlvcmo9fzDLkVz-ICf7mjczQ7CH6kqWlxocc8wv16gQLCkNvVmjFNKdSmbOtHb6jfJQWtT71DjUt54nxm_OHLRPly5wMdVjkfUrJgZT_eoegg9gl0BuHvil_GF5XKQGljCbvkdIkjt1qetVC2vciwFn3E-AXSJoFncNiBWv6Hww264qFelaeTfyJtG_ASX-kFlpo3y7CXv__gIpKuOUV_yUC7ViFxupgoiVrkzYBlpr_Jlpkr6a4kkNfzRQZlpClfBn1GBMpKw0ne_z2krDTAZHNLgC1bnBGW3-QqHZ-CNnxcXBJ_RjcJj60QosY0TT7t44f5N7_F8ys-CbzbDSSyf_CEPZ9Xr_-BjWF1PVCOltaVWVRg5oKFloCzPTB3SlAULHpGtcZG_JVMZfsCwfeC02XJIP-_RTavzPKmxhzF5U9A9N9dtQsCrkljzLsw-n62C5Kvh9MZWuom36WrpY_EXYYMUTsEhw3NXBy2kEeQ59mLdl-VBlzrVaMP5gii_y3)
+## 📝 1. Giới thiệu Bài toán & Phạm vi Hệ thống
+Hệ thống Đấu giá Trực tuyến là một nền tảng thời gian thực cho phép người dùng đăng ký, đăng nhập bảo mật bằng 2FA, nạp tiền vào ví điện tử và tham gia đấu giá các sản phẩm đa dạng.
+
+Hệ thống được phát triển theo kiến trúc **Client-Server đa luồng (Multi-threaded Socket)**, tối ưu hóa tương tác thời gian thực bằng mô hình truyền nhận thông điệp tùy biến, đảm bảo đồng bộ hóa trạng thái giữa tất cả các Client khi có sự thay đổi về giá đấu hoặc thời gian còn lại của phiên.
+
+### Các thực thể và nghiệp vụ chính:
+*   **Người bán (Seller):** Tạo phiên đấu giá, thiết lập giá khởi điểm, giá mua đứt (nếu có), bước giá tối thiểu và thời gian kết thúc phiên.
+*   **Người mua (Bidder):** Nạp/rút tiền, đặt giá thủ công, kích hoạt cơ chế Đấu giá tự động (Auto-bid), theo dõi danh sách phiên đấu giá thời gian thực.
+*   **Quản trị viên (Admin):** Phê duyệt phiên đấu giá mới, quản lý tài khoản người dùng và giám sát lịch sử giao dịch dòng tiền.
+
 ---
-Hướng dẫn cài đặt.
 
-- Bước 1. Cài bản java 25.0.2 về.
+## 💻 2. Yêu cầu Cài đặt Môi trường
+Để biên dịch và chạy dự án này, máy tính của bạn cần cài đặt sẵn:
+*   **Java Development Kit (JDK):** Version 25 trở lên.
+*   **Apache Maven:** Version 3.8+ (dùng để quản lý dependency và build).
+*   **Hệ cơ sở dữ liệu:** SQLite (Tệp cơ sở dữ liệu tích hợp sẵn tại `auction_system.db`).
+*   **Hệ điều hành tương thích:** Windows, macOS, Linux.
 
-  
+---
+
+## 📁 3. Sơ đồ cấu trúc thư mục Dự án
+Dự án được tổ chức theo mô hình Maven đa module rõ ràng:
+
+```text
+BTL---N7/
+├── pom.xml                  # File POM cấu hình chung và quản lý thư viện cha
+├── auction_system.db        # Tệp cơ sở dữ liệu SQLite
+├── common/                  # Module chứa tài nguyên dùng chung cho cả Client & Server
+│   ├── pom.xml
+│   └── src/main/java/
+│       ├── model/           # Các đối tượng nghiệp vụ (User, Wallet, Auction, Item, Transaction...)
+│       └── network/         # Các lớp thông điệp truyền tải qua Socket (NetworkMessage)
+├── server/                  # Module Socket Server xử lý luồng dữ liệu & logic nghiệp vụ
+│   ├── pom.xml
+│   └── src/main/java/
+│       ├── controller/      # Điều phối nghiệp vụ (Đấu giá, Ví tiền, Tài khoản)
+│       ├── database/        # Kết nối DB (DatabaseManager) & Quản lý giao dịch (TransactionManager)
+│       ├── service/         # Các động cơ cốt lõi (AutoBidEngine, TOTP-2FA, Cloudinary)
+│       └── server/          # MultiThreadedServer & bộ các ClientHandler xử lý lệnh Socket
+└── client/                  # Module Desktop Client tương tác người dùng
+    ├── pom.xml
+    └── src/
+        ├── java/
+        │   ├── client/      # Xử lý kết nối Socket & Event Bus đồng bộ UI (NetworkClient)
+        │   └── gui/         # Các Controller JavaFX quản lý giao diện
+        └── resources/gui/   # Giao diện FXML & tệp styling CSS tối tân
+```
+## 🚀 4. Hướng dẫn Khởi chạy Hệ thống qua dòng lệnh
+**Bước 1:** Build dự án bằng Maven
+Mở terminal tại thư mục gốc BTL---N7 và chạy lệnh:
+```text
+mvn clean package -DskipTests
+```
+**Bước 2:** Khởi chạy Socket Server
+```text
+java -jar server/target/server-1.0-SNAPSHOT.jar
+```
+Hệ thống sẽ tự động khởi tạo cơ sở dữ liệu SQLite auction_system.db nếu chưa tồn tại, chuẩn bị các luồng socket nhận kết nối.
+
+**Bước 3:** Khởi chạy Desktop Client (Mở nhiều terminal để giả lập nhiều người chơi)
+
+```text
+java -jar client/target/client-1.0-SNAPSHOT.jar
+```
+## ✨ 5. Các Tính năng Cốt lõi đã Hoàn thiện
+### 🔐 A. Xác thực & Bảo mật (Auth & 2FA)
+* **Mã hóa mật khẩu:** Sử dụng thuật toán BCrypt băm mật khẩu kèm muối (salt) ngẫu nhiên, chống tấn công bảng băm ngược.
+* **Mã xác thực hai yếu tố (2FA):** Tạo mã QR dùng ứng dụng quét mã (Google Authenticator) để cấp mã OTP thời gian thực (TOTPService), bảo mật tuyệt đối tài khoản.
+### 💳 B. Ví tài chính & Giao dịch 
+* **Quản lý Số dư Kép:** Gồm balance (số dư khả dụng) và locked_balance (số tiền bị tạm khóa khi đang dẫn đầu một phiên đấu giá).
+* **Giao dịch an toàn:** Hệ thống tự động khóa tiền của người đấu giá cao nhất hiện tại. Nếu có người khác trả giá cao hơn, hệ thống ngay lập tức hoàn trả tiền bị tạm khóa về ví người cũ và khóa tiền của người mới theo thời gian thực thông qua cơ chế TransactionManager bảo toàn dữ liệu.
+### 🔨 C. Động cơ Đấu giá (Bidding & Auto-Bid Engine)
+* **Đấu giá thủ công:** Người dùng đặt giá lớn hơn giá hiện tại cộng với bước giá tối thiểu.
+* **Động cơ Tự động Đấu giá (Auto-Bid Engine):** Người dùng cài đặt mức giá tối đa sẵn sàng trả. Hệ thống sẽ tự động đặt giá tăng dần một cách thông minh bất cứ khi nào có đối thủ vượt mặt, cho đến khi chạm hạn mức tối đa của họ.
+* **Chống tranh chấp ghi dữ liệu đồng thời (Optimistic Locking):** Áp dụng cơ chế so sánh phiên bản (versioning) trong SQLite để phát hiện và ngăn chặn xung đột khi nhiều người dùng cùng bắn phá lệnh thầu ở cùng một mili-giây.
