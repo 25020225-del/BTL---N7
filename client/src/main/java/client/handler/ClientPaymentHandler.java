@@ -12,6 +12,7 @@ public class ClientPaymentHandler implements ResponseHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ClientPaymentHandler.class);
 
+    public static final String PAYMENT_REDIRECT = "PAYMENT_REDIRECT";
     public static final String PAYMENT_CONFIRM_REQUIRED = "PAYMENT_CONFIRM_REQUIRED";
     public static final String REQUIRE_TOTP_PAYMENT = "REQUIRE_TOTP_PAYMENT";
     public static final String INVALID_TOTP = "INVALID_TOTP";
@@ -25,6 +26,7 @@ public class ClientPaymentHandler implements ResponseHandler {
         log.info("Payment event received: {}", command);
 
         switch (command) {
+            case "PAYMENT_REDIRECT" -> AuctionEventBus.fireEvent(PAYMENT_REDIRECT, message.getData());
             case "PAYMENT_CONFIRM_REQUIRED" -> AuctionEventBus.fireEvent(PAYMENT_CONFIRM_REQUIRED, message.getData());
             case "DEPOSIT_SUCCESS" -> AuctionEventBus.fireEvent(AuctionEventBus.DEPOSIT_SUCCESS, message.getData());
             case "REQUIRE_TOTP_PAYMENT", "INVALID_TOTP" -> AuctionEventBus.fireEvent(command, message);

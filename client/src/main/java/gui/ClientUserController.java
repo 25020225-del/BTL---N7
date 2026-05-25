@@ -33,6 +33,7 @@ import utils.JacksonConfig;
 
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
+import java.util.Map;
 
 import static client.handler.ClientPaymentHandler.PAYMENT_CONFIRM_REQUIRED;
 
@@ -57,6 +58,7 @@ public class ClientUserController {
     private PropertyChangeListener auctionCreatedListener;
     private PropertyChangeListener depositListener;
     private PropertyChangeListener paymentListener;
+    private PropertyChangeListener paymentRedirectListener;
 
     @FXML private VBox mainDock;
     @FXML private VBox mainViewController;
@@ -227,17 +229,33 @@ public class ClientUserController {
         };
         paymentListener = evt ->
                 Platform.runLater(() -> AlertUtils.showInfo("Payment in process", "Payment gate has been opened."));
+        paymentRedirectListener = evt -> {
+            if (evt.getNewValue() instanceof Map<?, ?> data) {
+                String url = (String) data.get("url");
+                if (url != null && !url.isBlank()) {
+                    Platform.runLater(() -> {
+                        try {
+                            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+                        } catch (Exception e) {
+                            log.error("Cannot open PayPal link: {}", e.getMessage());
+                        }
+                    });
+                }
+            }
+        };
 
-        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED,   auctionCreatedListener);
-        AuctionEventBus.addListener(AuctionEventBus.DEPOSIT_SUCCESS,    depositListener);
-        AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR,      errorListener);
-        AuctionEventBus.addListener(PAYMENT_CONFIRM_REQUIRED,           paymentListener);
+        AuctionEventBus.addListener("PAYMENT_REDIRECT", paymentRedirectListener);
+        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, auctionCreatedListener);
+        AuctionEventBus.addListener(AuctionEventBus.DEPOSIT_SUCCESS, depositListener);
+        AuctionEventBus.addListener(AuctionEventBus.GENERAL_ERROR, errorListener);
+        AuctionEventBus.addListener(PAYMENT_CONFIRM_REQUIRED, paymentListener);
     }
     public void unregisterListeners() {
-        AuctionEventBus.removeListener(AuctionEventBus.AUCTION_CREATED,  auctionCreatedListener);
-        AuctionEventBus.removeListener(AuctionEventBus.DEPOSIT_SUCCESS,   depositListener);
-        AuctionEventBus.removeListener(AuctionEventBus.GENERAL_ERROR,     errorListener);
-        AuctionEventBus.removeListener(PAYMENT_CONFIRM_REQUIRED,          paymentListener);
+        AuctionEventBus.removeListener("PAYMENT_REDIRECT", paymentRedirectListener);
+        AuctionEventBus.removeListener(AuctionEventBus.AUCTION_CREATED, auctionCreatedListener);
+        AuctionEventBus.removeListener(AuctionEventBus.DEPOSIT_SUCCESS, depositListener);
+        AuctionEventBus.removeListener(AuctionEventBus.GENERAL_ERROR, errorListener);
+        AuctionEventBus.removeListener(PAYMENT_CONFIRM_REQUIRED, paymentListener);
     }
 
 }

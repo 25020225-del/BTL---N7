@@ -71,8 +71,11 @@ public class PayPalService {
      */
     public String[] createOrder(long amountVND) throws Exception {
         double amountUSD = ExchangeRateService.getInstance().vndToUsd(amountVND);
-        log.info("Creating order: {} VND → {:.2f} USD (rate: {:.2f})",
-                amountVND, amountUSD, ExchangeRateService.getInstance().getUsdToVndRate());
+        double currentRate = ExchangeRateService.getInstance().getUsdToVndRate();
+        log.info("Creating order: {} VND → {} USD (rate: {})",
+                amountVND,
+                String.format(java.util.Locale.US, "%.2f", amountUSD),
+                String.format(java.util.Locale.US, "%.2f", currentRate));
         String token = getAccessToken();
 
         ObjectNode requestBody = mapper.createObjectNode();
