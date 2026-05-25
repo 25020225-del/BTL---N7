@@ -185,7 +185,7 @@ public class BidDAO {
                     walletDAO.addTransaction(conn, "W-LCK-" + java.util.UUID.randomUUID(), currentUser.getId(), -extraAmount, "Lock incremental bid raise for auction: " + auctionId, now);
                 }
             } else {
-                if (winningBidderId != null && !previousWinnerHasActiveBot) {
+                if (winningBidderId != null) {
                     shouldUnlockPreviousWinner = true;
                 }
 
@@ -256,6 +256,14 @@ public class BidDAO {
         if (shouldUnlockPreviousWinner) {
             walletDAO.unlockBalance(conn, winningBidderId, previousHighestMaxBid);
             walletDAO.addTransaction(conn, "W-UNL-" + java.util.UUID.randomUUID(), winningBidderId, previousHighestMaxBid, "Unlock outbid reserve for auction: " + auctionId, now);
+            if (previousWinnerHasActiveBot) {
+                String deactivateSql = "UPDATE auto_bids SET is_active = 0 WHERE auction_id = ? AND bidder_id = ?";
+                try (PreparedStatement ps = conn.prepareStatement(deactivateSql)) {
+                    ps.setString(1, auctionId);
+                    ps.setString(2, winningBidderId);
+                    ps.executeUpdate();
+                }
+            }
             server.ServerExtension.ClientManager.sendToUser(
                     winningBidderId,
                     "OUTBID",
