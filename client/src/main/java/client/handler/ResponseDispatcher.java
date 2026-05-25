@@ -67,6 +67,7 @@ public class ResponseDispatcher {
 
     private void registerPaymentHandlers() {
         ClientPaymentHandler paymentHandler = new ClientPaymentHandler();
+        handlers.put("PAYMENT_REDIRECT", paymentHandler);
         handlers.put("PAYMENT_CONFIRM_REQUIRED", paymentHandler);
         handlers.put("DEPOSIT_SUCCESS", paymentHandler);
         handlers.put("REQUIRE_TOTP_PAYMENT", paymentHandler);
