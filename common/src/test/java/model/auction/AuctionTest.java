@@ -126,4 +126,19 @@ class AuctionTest {
         assertEquals(bidder1, afterApply.newWinner, "Equal max bid should not dethrone the current winner");
         assertEquals(1500L, afterApply.newCurrentPrice, "Price should rise to the current highest max bid");
     }
+
+    @Test
+    @DisplayName("Should raise price to exact bid amount for manual bids")
+    void testManualBidExactPriceRaise() {
+        // First manual bid: 1500L
+        Auction.BidResult firstResult = auction.calculateBidResult(bidder1, 1500L, true);
+        assertNotNull(firstResult);
+        assertEquals(1500L, firstResult.newCurrentPrice, "First manual bid price should be exactly 1500");
+        auction.applyBidResult(bidder1, firstResult);
+
+        // Second manual bid: 1600L
+        Auction.BidResult secondResult = auction.calculateBidResult(bidder2, 1600L, true);
+        assertNotNull(secondResult);
+        assertEquals(1600L, secondResult.newCurrentPrice, "Second manual bid price should be exactly 1600");
+    }
 }

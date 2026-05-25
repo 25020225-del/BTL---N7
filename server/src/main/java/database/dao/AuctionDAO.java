@@ -101,6 +101,7 @@ public class AuctionDAO {
                     auction.setCurrentPrice(rs.getLong("current_price"));
                     auction.setHighestMaxBid(rs.getLong("highest_max_bid"));
                     auction.setBidIncrement(rs.getLong("bid_increment"));
+                    auction.setDurationMinutes(rs.getInt("duration_minutes"));
                     String startTimeStr = rs.getString("start_time");
                     if (startTimeStr != null && !startTimeStr.trim().isEmpty()) {
                         auction.setStartTime(LocalDateTime.parse(startTimeStr));
@@ -277,8 +278,8 @@ public class AuctionDAO {
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, status);
-            pstmt.setString(2, startTime.toString());
-            pstmt.setString(3, endTime.toString());
+            pstmt.setString(2, startTime != null ? startTime.toString() : null);
+            pstmt.setString(3, endTime != null ? endTime.toString() : null);
             pstmt.setString(4, auctionId);
             return pstmt.executeUpdate() > 0;
         }

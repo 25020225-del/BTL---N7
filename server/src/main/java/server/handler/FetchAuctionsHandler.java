@@ -35,7 +35,7 @@ public class FetchAuctionsHandler implements CommandHandler {
             List<Map<String, Object>> auctionList = new ArrayList<>();
 
             if ("FETCH_AUCTIONS".equals(command)) {
-                auctionList = auctionDAO.getAuctionsByStatus("RUNNING", "OPEN");
+                auctionList = auctionDAO.getAuctionsByStatus("RUNNING", "OPEN", "WAITING_FOR_BID");
 
             } else if ("FETCH_MY_AUCTIONS".equals(command)) {
                 if (client.getUser() == null) {

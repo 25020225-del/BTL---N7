@@ -102,20 +102,17 @@ public class ServerAdminController {
 
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime newStart = times[0];
-            LocalDateTime newEnd = times[1];
-
-            if (newStart == null || !newStart.isAfter(now)) {
-                long durationMinutes = (newStart != null && newEnd != null)
-                        ? java.time.Duration.between(newStart, newEnd).toMinutes()
-                        : 60L;
+            if (newStart == null || newStart.isBefore(now)) {
                 newStart = now;
-                newEnd = now.plusMinutes(durationMinutes);
-                log.info("Auction {} approved: recalculated start time to NOW.", auctionId);
             }
 
-            boolean dbSuccess = auctionDAO.updateApprovalStatus(auctionId, Auction.STATUS_OPEN, newStart, newEnd);
+            String approvedStatus = newStart.isAfter(now) ? Auction.STATUS_OPEN : Auction.STATUS_WAITING_FOR_BID;
+
+            // We set endTime = null so the duration starts only when the first bid is placed!
+            boolean dbSuccess = auctionDAO.updateApprovalStatus(auctionId, approvedStatus, newStart, null);
             if (dbSuccess) {
-                log.info("Admin {} approved auction {}.", admin.getUserName(), auctionId);
+                log.info("Admin {} approved auction {}. Status set to {}, start time to {}.",
+                        admin.getUserName(), auctionId, approvedStatus, newStart);
                 Auction approvedAuction = auctionDAO.getAuctionById(auctionId);
                 if (approvedAuction != null) {
                     AuctionManager.addAuctionToMonitor(approvedAuction);

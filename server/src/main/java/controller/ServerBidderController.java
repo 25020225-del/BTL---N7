@@ -66,7 +66,9 @@ public class ServerBidderController {
             long expectedMaxBid;
 
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                if (!Auction.STATUS_RUNNING.equals(auction.getStatus())) {
+                boolean isActive = Auction.STATUS_RUNNING.equals(auction.getStatus())
+                        || Auction.STATUS_WAITING_FOR_BID.equals(auction.getStatus());
+                if (!isActive) {
                     return "NOT_RUNNING";
                 }
                 expectedPrice = auction.getCurrentPrice();

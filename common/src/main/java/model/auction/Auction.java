@@ -180,6 +180,10 @@ public class Auction extends Entity {
      * @return calculated immutable {@link BidResult} snapshot metrics, or null if boundaries violate domain constraints
      */
     public BidResult calculateBidResult(User bidder, long newMaxBid) {
+        return calculateBidResult(bidder, newMaxBid, false);
+    }
+
+    public BidResult calculateBidResult(User bidder, long newMaxBid, boolean isManual) {
         boolean isWaiting = STATUS_WAITING_FOR_BID.equals(status);
         boolean isRunning = STATUS_RUNNING.equals(status);
 
@@ -202,28 +206,52 @@ public class Auction extends Entity {
         long nextHighestMaxBid = highestMaxBid;
         long nextCurrentPrice = currentPrice;
 
-        if (winningBidder == null) {
-            nextCurrentPrice = item.getStartingPrice();
-            nextHighestMaxBid = newMaxBid;
-            nextWinner = bidder;
-
-        } else if (bidder.getId().equals(winningBidder.getId())) {
-            if (newMaxBid > highestMaxBid) {
-                nextHighestMaxBid = newMaxBid;
-            }
-
-        } else {
-            if (newMaxBid > highestMaxBid) {
-                nextCurrentPrice = highestMaxBid + bidIncrement;
-                if (nextCurrentPrice > newMaxBid) {
-                    nextCurrentPrice = newMaxBid;
-                }
+        if (isManual) {
+            if (winningBidder == null) {
+                nextCurrentPrice = newMaxBid;
                 nextHighestMaxBid = newMaxBid;
                 nextWinner = bidder;
+            } else if (bidder.getId().equals(winningBidder.getId())) {
+                if (newMaxBid > highestMaxBid) {
+                    nextHighestMaxBid = newMaxBid;
+                    nextCurrentPrice = newMaxBid;
+                }
             } else {
-                nextCurrentPrice = newMaxBid + bidIncrement;
-                if (nextCurrentPrice > highestMaxBid) {
-                    nextCurrentPrice = highestMaxBid;
+                if (newMaxBid > highestMaxBid) {
+                    nextCurrentPrice = newMaxBid;
+                    nextHighestMaxBid = newMaxBid;
+                    nextWinner = bidder;
+                } else {
+                    nextCurrentPrice = newMaxBid + bidIncrement;
+                    if (nextCurrentPrice > highestMaxBid) {
+                        nextCurrentPrice = highestMaxBid;
+                    }
+                }
+            }
+        } else {
+            if (winningBidder == null) {
+                nextCurrentPrice = item.getStartingPrice();
+                nextHighestMaxBid = newMaxBid;
+                nextWinner = bidder;
+
+            } else if (bidder.getId().equals(winningBidder.getId())) {
+                if (newMaxBid > highestMaxBid) {
+                    nextHighestMaxBid = newMaxBid;
+                }
+
+            } else {
+                if (newMaxBid > highestMaxBid) {
+                    nextCurrentPrice = highestMaxBid + bidIncrement;
+                    if (nextCurrentPrice > newMaxBid) {
+                        nextCurrentPrice = newMaxBid;
+                    }
+                    nextHighestMaxBid = newMaxBid;
+                    nextWinner = bidder;
+                } else {
+                    nextCurrentPrice = newMaxBid + bidIncrement;
+                    if (nextCurrentPrice > highestMaxBid) {
+                        nextCurrentPrice = highestMaxBid;
+                    }
                 }
             }
         }

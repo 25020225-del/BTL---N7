@@ -103,10 +103,14 @@ public class AuctionMonitor {
                     // OPEN → RUNNING: only when start time has passed AND endTime is set and still in the future.
                     // endTime may be null for seller.isGood() auctions awaiting first bid (WAITING_FOR_BID path
                     // is handled below).  We only attempt RUNNING transition when endTime is non-null.
-                    if (now.isAfter(auction.getStartTime())
-                            && auction.getEndTime() != null
-                            && now.isBefore(auction.getEndTime())) {
-                        targetStatus = Auction.STATUS_RUNNING;
+                    if (now.isAfter(auction.getStartTime())) {
+                        if (auction.getEndTime() != null) {
+                            if (now.isBefore(auction.getEndTime())) {
+                                targetStatus = Auction.STATUS_RUNNING;
+                            }
+                        } else {
+                            targetStatus = Auction.STATUS_WAITING_FOR_BID;
+                        }
                     }
 
                 } else if (currentStatus.equals(Auction.STATUS_RUNNING)) {
@@ -140,7 +144,9 @@ public class AuctionMonitor {
             try {
                 boolean dbSuccess = Auction.STATUS_RUNNING.equals(targetStatus)
                         ? tryTransitionToRunning(auction, auctionId)
-                        : tryTransitionToFinished(auction, auctionId, snapshotEndAtDecision, targetStatus);
+                        : (Auction.STATUS_WAITING_FOR_BID.equals(targetStatus)
+                                ? tryTransitionToWaiting(auction, auctionId)
+                                : tryTransitionToFinished(auction, auctionId, snapshotEndAtDecision, targetStatus));
 
                 if (dbSuccess) {
                     applyStatusTransitionToRam(auction, auctionId, targetStatus);
@@ -173,6 +179,21 @@ public class AuctionMonitor {
             }
         }
         return auctionDAO.updateAuctionStatusOpenToRunning(auctionId);
+    }
+
+    private boolean tryTransitionToWaiting(Auction auction, String auctionId) throws SQLException {
+        synchronized (AuctionManager.getLockForAuction(auctionId)) {
+            if (!auction.getStatus().equals(Auction.STATUS_OPEN)) {
+                finalizeRamCleanupIfTerminal(auction, auctionId);
+                return false;
+            }
+            LocalDateTime now = LocalDateTime.now();
+            if (!now.isAfter(auction.getStartTime()) || auction.getEndTime() != null) {
+                finalizeRamCleanupIfTerminal(auction, auctionId);
+                return false;
+            }
+        }
+        return auctionDAO.updateAuctionStatusOpenToWaiting(auctionId);
     }
 
     private boolean tryTransitionToFinished(Auction auction, String auctionId,

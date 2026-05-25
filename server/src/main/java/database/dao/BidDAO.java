@@ -162,7 +162,7 @@ public class BidDAO {
             auctionSnapshot.setWinningBidder(winner);
         }
 
-        Auction.BidResult result = auctionSnapshot.calculateBidResult(currentUser, newMaxBid);
+        Auction.BidResult result = auctionSnapshot.calculateBidResult(currentUser, newMaxBid, !isBot);
         if (result == null) return null;
 
         String now = LocalDateTime.now().toString();
