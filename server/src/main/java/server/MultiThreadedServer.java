@@ -220,6 +220,9 @@ public class MultiThreadedServer {
             log.info("Server has been shutdown.");
             monitor.stopMonitoring();
             scheduler.shutdown();
+            if (commandDispatcher != null) {
+                commandDispatcher.shutdown();
+            }
             ClientManager.shutdown();
             try {
                 wsServer.stop();

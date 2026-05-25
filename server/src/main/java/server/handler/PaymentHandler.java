@@ -29,10 +29,18 @@ public class PaymentHandler implements CommandHandler {
     private static final Logger log = LoggerFactory.getLogger(PaymentHandler.class);
     private static final long DEPOSIT_EXPIRATION_MS = 15 * 60 * 1000L;
     private static final long TOTP_REPLAY_WINDOW_MS = 90_000L;
+    private static final long MAX_TRANSACTION_LIMIT = 100_000_000L; // 100 Million VND limit
 
     public static final Map<String, DepositInfo> pendingDeposits = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ConcurrentHashMap<Integer, Long>> usedTotpCodes = new ConcurrentHashMap<>();
-    private final ScheduledExecutorService cleanupScheduler = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService cleanupScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "PaymentCleanup-Worker");
+        t.setDaemon(true);
+        return t;
+    });
+
+    // Virtual Thread Executor for decoupling I/O socket writes from DB pool worker threads
+    private static final java.util.concurrent.ExecutorService networkExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     private final PayPalService payPalService;
     private final ServerPaymentController paymentController;
@@ -45,6 +53,51 @@ public class PaymentHandler implements CommandHandler {
         this.totpService = totpService;
         this.walletDAO = walletDAO;
         startCleanupTask();
+    }
+
+    /**
+     * Safely parses monetary values and handles double/float casting from JSON requests,
+     * while enforcing maximum trade value limits.
+     */
+    private long parseAmountVND(Object amountObj) throws AuctionExceptions.InvalidPayloadException {
+        if (amountObj == null) {
+            throw new AuctionExceptions.InvalidPayloadException("Số tiền không được để trống.");
+        }
+        try {
+            double parsedDouble = Double.parseDouble(amountObj.toString().trim());
+            if (Double.isNaN(parsedDouble) || Double.isInfinite(parsedDouble)) {
+                throw new AuctionExceptions.InvalidPayloadException("Số tiền không hợp lệ.");
+            }
+            long amount = (long) parsedDouble;
+            if (amount <= 0) {
+                throw new AuctionExceptions.InvalidPayloadException("Số tiền phải lớn hơn 0 VND.");
+            }
+            if (amount > MAX_TRANSACTION_LIMIT) {
+                throw new AuctionExceptions.InvalidPayloadException(
+                        String.format("Số tiền giao dịch vượt quá hạn mức tối đa cho phép (%,d VND).", MAX_TRANSACTION_LIMIT)
+                );
+            }
+            return amount;
+        } catch (NumberFormatException e) {
+            throw new AuctionExceptions.InvalidPayloadException("Số tiền giao dịch phải là định dạng số hợp lệ.");
+        }
+    }
+
+    /**
+     * Gracefully shuts down the cleanup daemon scheduler and virtual thread pools to prevent thread leaks.
+     */
+    public void shutdown() {
+        log.info("Shutting down PaymentHandler clean-up task and virtual thread executors...");
+        try {
+            cleanupScheduler.shutdown();
+            if (!cleanupScheduler.awaitTermination(3, TimeUnit.SECONDS)) {
+                cleanupScheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            cleanupScheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        networkExecutor.shutdown();
     }
 
     @Override
@@ -75,7 +128,6 @@ public class PaymentHandler implements CommandHandler {
 
         try {
             Map<String, Object> map = (Map<String, Object>) data;
-            amountVND = Long.parseLong(map.get("amount").toString());
             payoutMethod = (String) map.get("payoutMethod");
             payoutDetails = (String) map.get("payoutDetails");
 
@@ -83,13 +135,13 @@ public class PaymentHandler implements CommandHandler {
             if (codeObj != null && !codeObj.toString().isBlank()) {
                 totpCode = codeObj.toString().trim();
             }
-        } catch (ClassCastException | NullPointerException | NumberFormatException e) {
+
+            // Safely parse the monetary amount with float support and limit constraints
+            amountVND = parseAmountVND(map.get("amount"));
+        } catch (ClassCastException | NullPointerException e) {
             throw new AuctionExceptions.InvalidPayloadException("Dữ liệu yêu cầu rút tiền không đúng định dạng. Vui lòng kiểm tra lại amount, payoutMethod và payoutDetails.");
         }
 
-        if (amountVND <= 0) {
-            throw new AuctionExceptions.InvalidPayloadException("Số tiền rút phải lớn hơn 0.");
-        }
         if (payoutMethod == null || payoutMethod.isBlank()) {
             throw new AuctionExceptions.InvalidPayloadException("Phương thức nhận tiền không được để trống.");
         }
@@ -141,8 +193,9 @@ public class PaymentHandler implements CommandHandler {
         final String finalMethod = payoutMethod;
         final String finalDetails = payoutDetails;
 
+        // Perform async DB request and execute networking callbacks in isolated Virtual Threads
         paymentController.createWithdrawalRequest(currentUser, finalAmount, finalMethod, finalDetails)
-                .thenAccept(result -> {
+                .thenAcceptAsync(result -> {
                     switch (result) {
                         case "SUCCESS" -> {
                             client.sendResponse("WITHDRAW_REQUEST_SUCCESS", Map.of(
@@ -155,7 +208,7 @@ public class PaymentHandler implements CommandHandler {
                         case "INVALID_AMOUNT" -> client.sendResponse("ERROR", new ErrorPayload("ERR_PAY_011", "Số tiền rút không hợp lệ (phải lớn hơn 0)."));
                         default -> client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "Lỗi hệ thống khi tạo yêu cầu rút tiền. Vui lòng thử lại hoặc liên hệ Admin."));
                     }
-                }).exceptionally(ex -> {
+                }, networkExecutor).exceptionally(ex -> {
                     log.error("[WITHDRAW] Unexpected error in async chain for user {}: {}", currentUser.getUserName(), ex.getMessage(), ex);
                     client.sendResponse("ERROR", new ErrorPayload("ERR_SYS_500", "Lỗi đứt gãy luồng xử lý bất đồng bộ. Vui lòng thử lại."));
                     return null;
@@ -168,7 +221,13 @@ public class PaymentHandler implements CommandHandler {
 
         // 90-second window accounts for maximum network latencies and standard clock skew tolerances
         userCodes.entrySet().removeIf(entry -> now - entry.getValue() > TOTP_REPLAY_WINDOW_MS);
-        return userCodes.putIfAbsent(code, now) != null;
+        boolean isReplay = userCodes.putIfAbsent(code, now) != null;
+        
+        // Prevent Memory Leak: Evict empty maps from the outer structure
+        if (userCodes.isEmpty()) {
+            usedTotpCodes.remove(userId);
+        }
+        return isReplay;
     }
 
     @SuppressWarnings("unchecked")
@@ -179,20 +238,18 @@ public class PaymentHandler implements CommandHandler {
         try {
             if (data instanceof Map) {
                 Map<String, Object> map = (Map<String, Object>) data;
-                amountVND = Long.parseLong(map.get("amount").toString());
+                amountVND = parseAmountVND(map.get("amount"));
                 Object codeObj = map.get("totpCode");
                 if (codeObj != null && !codeObj.toString().isBlank()) {
                     totpCode = codeObj.toString().trim();
                 }
             } else {
-                amountVND = Long.parseLong(data.toString());
+                amountVND = parseAmountVND(data);
             }
+        } catch (AuctionExceptions.InvalidPayloadException e) {
+            throw e;
         } catch (Exception e) {
             throw new AuctionExceptions.InvalidPayloadException("Định dạng tiền tệ không hợp lệ.");
-        }
-
-        if (amountVND <= 0) {
-            throw new AuctionExceptions.InvalidPayloadException("Số tiền nạp phải lớn hơn 0.");
         }
 
         if (currentUser.isTotpPaymentEnabled()) {
@@ -246,6 +303,9 @@ public class PaymentHandler implements CommandHandler {
     }
 
     private void handleConfirmDeposit(Object data, ClientHandler client, User currentUser) throws Exception {
+        if (data == null || data.toString().trim().isBlank()) {
+            throw new AuctionExceptions.InvalidPayloadException("Mã đơn hàng nạp tiền không hợp lệ (trống).");
+        }
         String orderId = data.toString().trim();
         DepositInfo depositInfo = pendingDeposits.get(orderId);
 
@@ -267,7 +327,7 @@ public class PaymentHandler implements CommandHandler {
             if (isCaptured) {
                 long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
                 paymentController.processDepositSuccess(depositInfo.getUser(), orderId, verifiedAmount)
-                        .thenAccept(dbSuccess -> {
+                        .thenAcceptAsync(dbSuccess -> {
                             if (dbSuccess) {
                                 pendingDeposits.remove(orderId);
                                 client.sendResponse("DEPOSIT_SUCCESS", "Thanh toán thành công. Số dư đã được cập nhật.");
@@ -275,7 +335,7 @@ public class PaymentHandler implements CommandHandler {
                                 depositInfo.getIsProcessing().set(false);
                                 client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "Xác thực thành công nhưng lỗi lưu database. Xin liên hệ Admin."));
                             }
-                        }).exceptionally(ex -> {
+                        }, networkExecutor).exceptionally(ex -> {
                             depositInfo.getIsProcessing().set(false);
                             client.sendResponse("ERROR", new ErrorPayload("ERR_SYS_500", "Lỗi đứt gãy luồng xử lý bất đồng bộ."));
                             return null;
@@ -317,14 +377,14 @@ public class PaymentHandler implements CommandHandler {
                             if (isCaptured) {
                                 long verifiedAmount = payPalService.getCapturedAmountVND(orderId);
                                 paymentController.processDepositSuccess(info.getUser(), orderId, verifiedAmount)
-                                        .thenAccept(dbSuccess -> {
+                                        .thenAcceptAsync(dbSuccess -> {
                                             if (dbSuccess) {
                                                 pendingDeposits.remove(orderId);
                                                 info.getClient().sendResponse("DEPOSIT_SUCCESS", "Automatic payment successful. Balance updated.");
                                             } else {
                                                 info.getIsProcessing().set(false);
                                             }
-                                        });
+                                        }, networkExecutor);
                             } else {
                                 info.getIsProcessing().set(false);
                             }
