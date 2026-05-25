@@ -9,6 +9,7 @@ import model.user.User.TwoFactorStatus;
 import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.PasswordResetService;
 import service.TOTPService;
 
 import java.sql.Connection;
@@ -26,9 +27,13 @@ public class UserController {
     private final TOTPService totpService;
     private final UserDAO userDAO;
 
-    public UserController(UserDAO userDAO, TOTPService totpService) {
+    private final PasswordResetService passwordResetService;
+
+    public UserController(UserDAO userDAO, TOTPService totpService,
+                          PasswordResetService passwordResetService) {
         this.userDAO = userDAO;
         this.totpService = totpService;
+        this.passwordResetService = passwordResetService;
     }
 
     public TOTPService getTotpService() {
@@ -149,6 +154,98 @@ public class UserController {
         } catch (SQLException e) {
             log.error("DB error updating TOTP prefs for userId={}", userId, e);
             return "Lỗi hệ thống. Vui lòng thử lại sau.";
+        }
+    }
+
+    /**
+     * Step 1 of the password reset flow: verify TOTP ownership.
+     *
+     * <p>Finds the account by username, confirms the user has TOTP enabled,
+     * then validates the supplied 6-digit code against their stored secret.
+     * On success, mints a single-use 5-minute reset token.</p>
+     *
+     * @param identifier the username of the account to reset
+     * @param totpCode   the 6-digit TOTP code from the Authenticator app
+     * @return a short-lived reset token, or {@code null} if verification fails
+     * @throws java.sql.SQLException if a database lookup fails
+     */
+    public String verifyTotpForReset(String identifier, int totpCode) throws java.sql.SQLException {
+        User user = userDAO.findUserByUsername(identifier);
+
+        if (user == null) {
+            log.warn("[RESET] Account not found for identifier: {}", identifier);
+            return null;
+        }
+
+        if (!user.is2FAEnabled()) {
+            log.warn("[RESET] Account '{}' does not have TOTP enabled — cannot use this flow.", identifier);
+            return null;
+        }
+
+        String secret = user.getTotpSecret();
+        if (secret == null) {
+            log.error("[RESET] TOTP enabled but secret is null for userId={}", user.getId());
+            return null;
+        }
+
+        if (!totpService.verifyCode(secret, totpCode)) {
+            log.warn("[RESET] Invalid TOTP code for account: {}", identifier);
+            return null;
+        }
+
+        String resetToken = passwordResetService.createResetToken(user.getId());
+        log.info("[RESET] TOTP verified. Reset token issued for userId={}", user.getId());
+        return resetToken;
+    }
+
+    /**
+     * Step 2 of the password reset flow: set the new password.
+     *
+     * <p>Consumes the single-use reset token obtained from {@link #verifyTotpForReset},
+     * applies server-side password policy checks, hashes with BCrypt, and persists.</p>
+     *
+     * <p><strong>Password policy enforced here:</strong>
+     * <ul>
+     *   <li>Minimum 8 characters</li>
+     *   <li>At least one uppercase letter</li>
+     *   <li>At least one digit</li>
+     *   <li>At least one special character from: {@code !@#$%^&*()_+-=[]{}|;':",.<>?/}</li>
+     * </ul>
+     * </p>
+     *
+     * @param resetToken  the single-use token returned by {@link #verifyTotpForReset}
+     * @param newPassword the plain-text new password (will be hashed internally)
+     * @return {@code null} on success, or a Vietnamese error message string on failure
+     */
+    public String resetPassword(String resetToken, String newPassword) {
+        String userId = passwordResetService.consumeToken(resetToken);
+        if (userId == null) {
+            return "Mã xác nhận không hợp lệ hoặc đã hết hạn (5 phút). Vui lòng thực hiện lại từ đầu.";
+        }
+        if (newPassword == null || newPassword.length() < 8) {
+            return "Mật khẩu mới phải có ít nhất 8 ký tự.";
+        }
+        if (!newPassword.matches(".*[A-Z].*")) {
+            return "Mật khẩu mới phải chứa ít nhất 1 chữ hoa (A-Z).";
+        }
+        if (!newPassword.matches(".*[0-9].*")) {
+            return "Mật khẩu mới phải chứa ít nhất 1 chữ số (0-9).";
+        }
+        if (!newPassword.matches(".*[!@#$%^&*()_+\\-=\\[\\]{}|;':\",./<>?].*")) {
+            return "Mật khẩu mới phải chứa ít nhất 1 ký tự đặc biệt (!@#$%^&*...).";
+        }
+        try {
+            String hashed = BCrypt.hashpw(newPassword, BCrypt.gensalt(12));
+            boolean ok = userDAO.updatePassword(userId, hashed);
+            if (!ok) {
+                log.error("[RESET] DB update returned 0 rows for userId={}", userId);
+                return "Lỗi cơ sở dữ liệu khi cập nhật mật khẩu. Vui lòng thử lại.";
+            }
+            log.info("[RESET] Password successfully reset for userId={}", userId);
+            return null; 
+        } catch (java.sql.SQLException e) {
+            log.error("[RESET] SQLException updating password for userId={}: {}", userId, e.getMessage(), e);
+            return "Lỗi hệ thống máy chủ. Vui lòng thử lại sau.";
         }
     }
 }

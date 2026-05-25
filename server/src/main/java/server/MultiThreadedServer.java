@@ -197,7 +197,8 @@ public class MultiThreadedServer {
         database.dao.WithdrawalDAO withdrawalDAO = new database.dao.WithdrawalDAO();
         service.TOTPService totpService = new service.TOTPService();
 
-        userController = new UserController(userDAO, totpService);
+        service.PasswordResetService passwordResetService = new service.PasswordResetService();
+        userController = new UserController(userDAO, totpService, passwordResetService);
         controller.ServerSellerController sellerCtrl = new controller.ServerSellerController(auctionDAO);
         controller.ServerPaymentController paymentCtrl = new controller.ServerPaymentController(walletDAO, withdrawalDAO);
         controller.ServerBidderController bidderCtrl = new controller.ServerBidderController(bidDAO);
