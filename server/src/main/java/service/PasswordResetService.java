@@ -95,4 +95,20 @@ public class PasswordResetService {
         tokenStore.entrySet().removeIf(e -> e.getValue().isExpired());
         log.debug("[RESET] Expired token purge complete. Active tokens: {}", tokenStore.size());
     }
+
+    /**
+     * Gracefully terminates the background cleaner scheduler executor.
+     */
+    public void shutdown() {
+        cleaner.shutdown();
+        try {
+            if (!cleaner.awaitTermination(5, TimeUnit.SECONDS)) {
+                cleaner.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            cleaner.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        log.info("[RESET] PasswordResetService background cleaner executor shutdown complete.");
+    }
 }
