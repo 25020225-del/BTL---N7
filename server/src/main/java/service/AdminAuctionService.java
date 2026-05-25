@@ -80,24 +80,12 @@ public class AdminAuctionService {
                 log.info("[CANCEL] Auction {} status → CANCELLED (was: {})", auctionId, snapshot.currentStatus);
 
                 if (snapshot.winnerUserId != null && snapshot.highestMaxBid > 0) {
-                    long autoBidMaxBid = fetchWinnerAutoBidMaxBid(conn, auctionId, snapshot.winnerUserId);
+                    long winnerBotMaxBid = fetchWinnerAutoBidMaxBid(conn, auctionId, snapshot.winnerUserId);
+                    long totalWinnerRefund = Math.max(snapshot.highestMaxBid, winnerBotMaxBid);
 
-                    if (autoBidMaxBid <= 0) {
-                        refundManualWinner(conn, auctionId, snapshot.winnerUserId, snapshot.highestMaxBid);
-                        log.info("[CANCEL] Pure-manual winner {} refunded {} VND for auction {}",
-                                snapshot.winnerUserId, snapshot.highestMaxBid, auctionId);
-                    } else {
-                        long manualExtra = snapshot.highestMaxBid - autoBidMaxBid;
-                        if (manualExtra > 0) {
-                            refundManualWinner(conn, auctionId, snapshot.winnerUserId, manualExtra);
-                            log.info("[CANCEL] Winner {} has BOTH AutoBid (maxBid={}) and manual bids "
-                                            + "(highestMaxBid={}). Refunding manual extra {} VND now.",
-                                    snapshot.winnerUserId, autoBidMaxBid, snapshot.highestMaxBid, manualExtra);
-                        } else {
-                            log.debug("[CANCEL] Winner {} AutoBid max_bid ({}) covers full highestMaxBid ({}).",
-                                    snapshot.winnerUserId, autoBidMaxBid, snapshot.highestMaxBid);
-                        }
-                    }
+                    refundManualWinner(conn, auctionId, snapshot.winnerUserId, totalWinnerRefund);
+                    log.info("[CANCEL] Winner {} fully refunded {} VND (highestMaxBid={}, botMaxBid={}) for auction {}",
+                            snapshot.winnerUserId, totalWinnerRefund, snapshot.highestMaxBid, winnerBotMaxBid, auctionId);
                 } else {
                     log.info("[CANCEL] Auction {} had no winning bidder — skipping manual refund.", auctionId);
                 }
@@ -107,6 +95,10 @@ public class AdminAuctionService {
                         activeBids.size(), auctionId);
 
                 for (AutoBidRecord record : activeBids) {
+                    if (snapshot.winnerUserId != null && record.userId.equals(snapshot.winnerUserId)) {
+                        log.info("[CANCEL] Skipping double refund for winning active AutoBid user {}", record.userId);
+                        continue;
+                    }
                     if (record.maxBid <= 0) {
                         log.warn("[CANCEL] Skipping zero-amount AutoBid for user {} on auction {}",
                                 record.userId, auctionId);
@@ -170,7 +162,7 @@ public class AdminAuctionService {
     }
 
     private long fetchWinnerAutoBidMaxBid(Connection conn, String auctionId, String winnerUserId) throws SQLException {
-        final String sql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
+        final String sql = "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, auctionId);
             ps.setString(2, winnerUserId);

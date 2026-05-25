@@ -216,8 +216,25 @@ public class ServerAdminController {
                         return "NOT_FOUND";
                     }
 
-                    String userId = (String) request.get("userId");
-                    long amount = ((Number) request.get("amount")).longValue();
+                    Object uIdObj = request.get("userId");
+                    Object amtObj = request.get("amount");
+                    if (uIdObj == null || amtObj == null) {
+                        conn.rollback();
+                        return "WALLET_ERROR";
+                    }
+
+                    String userId = uIdObj.toString().trim();
+                    long amount;
+                    if (amtObj instanceof Number) {
+                        amount = ((Number) amtObj).longValue();
+                    } else {
+                        try {
+                            amount = Long.parseLong(amtObj.toString().trim());
+                        } catch (NumberFormatException e) {
+                            conn.rollback();
+                            return "WALLET_ERROR";
+                        }
+                    }
 
                     if (isApproved) {
                         if (!walletDAO.deductFromLocked(conn, userId, amount)) {
@@ -254,9 +271,13 @@ public class ServerAdminController {
                     }
                     return "SUCCESS";
 
-                } catch (SQLException e) {
-                    conn.rollback();
-                    log.error("[WITHDRAW-{}] SQL error processing request {}: {}", action, requestId, e.getMessage(), e);
+                } catch (Exception e) {
+                    try {
+                        conn.rollback();
+                    } catch (SQLException rollbackEx) {
+                        log.error("[WITHDRAW-{}] Rollback failed for request {}: {}", action, requestId, rollbackEx.getMessage(), rollbackEx);
+                    }
+                    log.error("[WITHDRAW-{}] Error processing request {}: {}", action, requestId, e.getMessage(), e);
                     return "DB_ERROR";
                 }
             } catch (SQLException e) {

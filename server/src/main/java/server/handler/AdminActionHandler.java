@@ -53,14 +53,39 @@ public class AdminActionHandler implements CommandHandler {
         }
 
         Admin admin = new Admin(adminUser);
+        String rawData = parseStringSafe(message.getData());
 
         switch (command) {
             case "FETCH_USERS" -> handleFetchUsers(client);
-            case "BLOCK_USER" -> handleUserBlock(admin, message.getData().toString(), true, client);
-            case "UNBLOCK_USER" -> handleUserBlock(admin, message.getData().toString(), false, client);
+            case "BLOCK_USER" -> {
+                if (rawData.isBlank()) {
+                    client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "User ID không được để trống."));
+                } else {
+                    handleUserBlock(admin, rawData, true, client);
+                }
+            }
+            case "UNBLOCK_USER" -> {
+                if (rawData.isBlank()) {
+                    client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "User ID không được để trống."));
+                } else {
+                    handleUserBlock(admin, rawData, false, client);
+                }
+            }
             case "TOGGLE_GOOD_STATUS" -> handleToggleGoodStatus(admin, message.getData(), client);
-            case "APPROVE_AUCTION" -> handleAuctionAction(admin, (String) message.getData(), true, client);
-            case "REJECT_AUCTION" -> handleAuctionAction(admin, (String) message.getData(), false, client);
+            case "APPROVE_AUCTION" -> {
+                if (rawData.isBlank()) {
+                    client.sendResponse("ERROR", new ErrorPayload("ERR_AUC_002", "Auction ID không được để trống."));
+                } else {
+                    handleAuctionAction(admin, rawData, true, client);
+                }
+            }
+            case "REJECT_AUCTION" -> {
+                if (rawData.isBlank()) {
+                    client.sendResponse("ERROR", new ErrorPayload("ERR_AUC_002", "Auction ID không được để trống."));
+                } else {
+                    handleAuctionAction(admin, rawData, false, client);
+                }
+            }
             case "FETCH_WITHDRAW_REQUESTS" -> handleFetchWithdrawRequests(admin, client);
             case "APPROVE_WITHDRAW" -> handleWithdrawAction(admin, message.getData(), true, client);
             case "REJECT_WITHDRAW" -> handleWithdrawAction(admin, message.getData(), false, client);
@@ -70,13 +95,8 @@ public class AdminActionHandler implements CommandHandler {
     }
 
     private void handleToggleGoodStatus(Admin admin, Object data, ClientHandler client) {
-        String targetUserId;
-        try {
-            targetUserId = data.toString().trim();
-            if (targetUserId.isBlank()) {
-                throw new IllegalArgumentException("userId is blank");
-            }
-        } catch (Exception e) {
+        String targetUserId = parseStringSafe(data);
+        if (targetUserId.isBlank()) {
             client.sendResponse("ERROR", new ErrorPayload("ERR_PAY_030", "User ID không hợp lệ hoặc bị thiếu trong payload."));
             return;
         }
@@ -122,7 +142,7 @@ public class AdminActionHandler implements CommandHandler {
         boolean success = block ? adminCtrl.blockUser(admin, userId) : adminCtrl.unblockUser(admin, userId);
 
         if (!success) {
-            client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "Không thể cập nhật trạng thái người dùng. Kiểm tra lại quyền hoặc ID người dùng."));
+            client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "Không thể cập nhật trạng thái người dùng. Kiểm lại quyền hoặc ID người dùng."));
             return;
         }
 
@@ -187,13 +207,8 @@ public class AdminActionHandler implements CommandHandler {
     }
 
     private void handleWithdrawAction(Admin admin, Object data, boolean isApproved, ClientHandler client) {
-        String requestId;
-        try {
-            requestId = data.toString().trim();
-            if (requestId.isBlank()) {
-                throw new IllegalArgumentException("requestId is blank");
-            }
-        } catch (Exception e) {
+        String requestId = parseStringSafe(data);
+        if (requestId.isBlank()) {
             client.sendResponse("ERROR", new ErrorPayload("ERR_PAY_020", "ID yêu cầu rút tiền không hợp lệ."));
             return;
         }
@@ -221,15 +236,8 @@ public class AdminActionHandler implements CommandHandler {
     }
 
     private void handleCancelAuction(Admin admin, Object data, ClientHandler client) {
-        String auctionId;
-        try {
-            auctionId = (String) data;
-        } catch (ClassCastException e) {
-            client.sendResponse("ERROR", new ErrorPayload(ERR_CANCEL_INVALID_PAYLOAD, "Payload không hợp lệ. Cần chuỗi auctionId."));
-            return;
-        }
-
-        if (auctionId == null || auctionId.isBlank()) {
+        String auctionId = parseStringSafe(data);
+        if (auctionId.isBlank()) {
             client.sendResponse("ERROR", new ErrorPayload(ERR_CANCEL_INVALID_PAYLOAD, "auctionId không được để trống."));
             return;
         }
@@ -251,5 +259,10 @@ public class AdminActionHandler implements CommandHandler {
                     client.sendResponse("ERROR", new ErrorPayload("ERR_SYS_500", "Lỗi hệ thống nghiêm trọng khi hủy phiên đấu giá."));
                     return null;
                 });
+    }
+
+    private String parseStringSafe(Object val) {
+        if (val == null) return "";
+        return val.toString().trim();
     }
 }
