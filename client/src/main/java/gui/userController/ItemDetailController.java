@@ -70,6 +70,7 @@ public class ItemDetailController {
 
     private Runnable onReturnToMarketplace;
     private PropertyChangeListener priceUpdateListener;
+    private PropertyChangeListener transactionsLoadedListener;
 
     private BidPanelController bidPanel;
 
@@ -137,6 +138,7 @@ public class ItemDetailController {
         handleBackToMarketplace();
     }
 
+    @FXML
     private void handleBackToMarketplace() {
         if (onReturnToMarketplace != null) {
             onReturnToMarketplace.run();
@@ -202,6 +204,9 @@ public class ItemDetailController {
     public void setAuctionData(Auction auction) {
         this.currentAuctionId = auction.getId();
         this.currentPriceValue = auction.getCurrentPrice();
+
+        // Subscribe to real-time price updates for this auction room
+        client.network.NetworkService.sendMessage("JOIN_AUCTION", java.util.Map.of("auctionId", currentAuctionId));
 
         populateTextFields(auction);
         configureRoleVisibility(auction);
@@ -269,6 +274,47 @@ public class ItemDetailController {
             });
         };
         AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
+
+        // Request historical transaction list for the chart
+        client.service.AuctionService.fetchTransactions(currentAuctionId);
+
+        transactionsLoadedListener = event -> {
+            if (event.getNewValue() instanceof NetworkMessage msg) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> transactions = (List<Map<String, Object>>) msg.getData();
+                if (transactions == null) {
+                    return;
+                }
+
+                Platform.runLater(() -> {
+                    if (priceSeries != null) {
+                        priceSeries.getData().clear();
+
+                        for (Map<String, Object> t : transactions) {
+                            long amount = ((Number) t.get("bid_amount")).longValue();
+                            String bidTimeStr = (String) t.get("bid_time");
+                            String timeLabel = "";
+                            if (bidTimeStr != null && !bidTimeStr.trim().isEmpty()) {
+                                try {
+                                    LocalDateTime ldt = LocalDateTime.parse(bidTimeStr);
+                                    timeLabel = ldt.format(timeFormatter);
+                                } catch (Exception e) {
+                                    timeLabel = bidTimeStr;
+                                }
+                            }
+                            priceSeries.getData().add(new XYChart.Data<>(timeLabel, amount));
+                        }
+
+                        // Crop to MAX_CHART_POINTS
+                        while (priceSeries.getData().size() > MAX_CHART_POINTS) {
+                            priceSeries.getData().remove(0);
+                        }
+                    }
+                });
+            }
+        };
+        AuctionEventBus.addListener(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS, transactionsLoadedListener);
+
         log.debug("[ItemDetail] Loaded auction {} and registered price listener.", currentAuctionId);
     }
 
@@ -277,10 +323,19 @@ public class ItemDetailController {
      * Must be called before this controller is discarded to prevent memory leaks.
      */
     public void dispose() {
+        if (currentAuctionId != null) {
+            // Unsubscribe from real-time updates for this auction room
+            client.network.NetworkService.sendMessage("LEAVE_AUCTION", java.util.Map.of("auctionId", currentAuctionId));
+        }
         if (priceUpdateListener != null) {
             AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED, priceUpdateListener);
             priceUpdateListener = null;
             log.debug("[ItemDetail] Removed price listener for auction {}.", currentAuctionId);
+        }
+        if (transactionsLoadedListener != null) {
+            AuctionEventBus.removeListener(AuctionEventBus.FETCH_TRANSACTIONS_SUCCESS, transactionsLoadedListener);
+            transactionsLoadedListener = null;
+            log.debug("[ItemDetail] Removed transactions listener for auction {}.", currentAuctionId);
         }
         lblTimeLeft.stop();
         if (bidPanel != null) {

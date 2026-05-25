@@ -1,6 +1,7 @@
 package server.handler;
 
 import controller.ServerBidderController;
+import database.DatabaseManager;
 import database.dao.AuctionDAO;
 import exception.AuctionExceptions;
 import model.auction.Auction;
@@ -12,6 +13,10 @@ import org.slf4j.LoggerFactory;
 import server.ClientHandler;
 import server.ServerExtension.AuctionManager;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -123,6 +128,14 @@ public class BidActionHandler implements CommandHandler {
 
         Auction auction = requireAuction(auctionId);
 
+        if (maxBid > 0 && increment < auction.getBidIncrement()) {
+            client.sendResponse("ERROR", new ErrorPayload(
+                    "ERR_AUTOBID_INCREMENT",
+                    "Bước tăng tự động phải lớn hơn hoặc bằng bước giá của phiên đấu giá ("
+                            + auction.getBidIncrement() + " VNĐ)."));
+            return;
+        }
+
         if (auction.getSeller() != null && auction.getSeller().getId().equals(currentUser.getId())) {
             throw new AuctionExceptions.UnauthorizedAccessException(
                     "Người bán không thể đặt Auto Bid cho phiên của chính mình.");
@@ -210,12 +223,41 @@ public class BidActionHandler implements CommandHandler {
     }
 
     private Auction requireAuction(String auctionId) {
+        for (Auction a : AuctionManager.getAuctionList()) {
+            if (a.getId().equals(auctionId)) {
+                return a;
+            }
+        }
         try {
             Auction auction = auctionDAO.getAuctionById(auctionId);
             if (auction == null) {
                 throw new AuctionExceptions.AuctionClosedException(
                         "Phiên đấu giá '" + auctionId + "' không tồn tại.");
             }
+
+            // Restore active auto-bids from DB to RAM
+            try (Connection conn = DatabaseManager.getConnection()) {
+                String selectAbSql = "SELECT bidder_id, max_bid, increment_amount FROM auto_bids WHERE auction_id = ? AND is_active = 1";
+                try (PreparedStatement ps = conn.prepareStatement(selectAbSql)) {
+                    ps.setString(1, auctionId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            String bidderId = rs.getString("bidder_id");
+                            long maxBid = rs.getLong("max_bid");
+                            long increment = rs.getLong("increment_amount");
+
+                            User bidder = loadUserForBot(conn, bidderId);
+                            if (bidder != null) {
+                                auction.registerAutoBid(bidder, maxBid, increment);
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed to restore active auto-bids from DB for auction {}: {}", auctionId, e.getMessage(), e);
+            }
+
+            AuctionManager.addAuctionToMonitor(auction);
             return auction;
         } catch (AuctionExceptions.AuctionBaseException e) {
             throw e;
@@ -228,6 +270,23 @@ public class BidActionHandler implements CommandHandler {
             throw new AuctionExceptions.AuctionClosedException(
                     "Lỗi không xác định khi truy xuất phiên đấu giá: " + auctionId);
         }
+    }
+
+    private User loadUserForBot(Connection conn, String userId) throws SQLException {
+        String sql = "SELECT id, username, role FROM users WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    User u = new User();
+                    u.setId(rs.getString("id"));
+                    u.setUserName(rs.getString("username"));
+                    u.setRole(rs.getString("role"));
+                    return u;
+                }
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

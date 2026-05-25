@@ -39,6 +39,7 @@ public class CreateAuctionController extends ScrollPane {
 
     private Runnable onAuctionCreated;
     private File imagefile;
+    private User currentUser;
 
     @FXML private TextField ca_itemName;
     @FXML private TextArea ca_description;
@@ -58,7 +59,9 @@ public class CreateAuctionController extends ScrollPane {
     /**
      * Loads the graphical layout tree hierarchy and establishes this instance as the contextual root handler.
      */
-    public CreateAuctionController() {
+    public CreateAuctionController(User currentUser) {
+        this.currentUser = currentUser; // Gán giá trị người dùng được truyền vào
+
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/CreateAuction.fxml"));
         loader.setRoot(this);
         loader.setController(this);
@@ -118,11 +121,9 @@ public class CreateAuctionController extends ScrollPane {
                     name, selector.getChoice(), desc, Long.parseLong(startPrice), imagefile
             );
 
-            User sessionUser = new User();
             Auction auction = CreateAuctionModel.createAuction(
-                    item, sessionUser, Long.parseLong(bidInc), startDT, startDT.plus(dr)
+                    item, this.currentUser, Long.parseLong(bidInc), startDT, startDT.plus(dr)
             );
-
             AuctionService.createAuction(auction);
 
         } catch (NumberFormatException e) {

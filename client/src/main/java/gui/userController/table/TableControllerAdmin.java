@@ -111,7 +111,9 @@ public class TableControllerAdmin extends TableController {
         String id = (String) map.get("id");
         String name = (String) map.get("itemName");
         String status = (String) map.get("status");
-        long price = ((Number) map.get("currentPrice")).longValue();
+
+        Object currentPriceVal = map.get("currentPrice");
+        long price = currentPriceVal instanceof Number ? ((Number) currentPriceVal).longValue() : 0L;
 
         Auction auction = Auction.buildAuctionFromMap(map);
 

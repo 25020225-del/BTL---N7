@@ -5,6 +5,11 @@ package model.item;
  */
 public class DigitalItem extends Item {
 
+    public DigitalItem() {        
+        super();
+        this.setType(ItemFactory.TYPE_DIGITAL);
+    }
+
     public DigitalItem(String id, String itemName, String description, long startingPrice) {
         super(id, itemName, description, startingPrice);
         this.setType(ItemFactory.TYPE_DIGITAL);

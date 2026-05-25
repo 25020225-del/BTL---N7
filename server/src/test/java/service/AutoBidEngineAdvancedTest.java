@@ -129,4 +129,41 @@ class AutoBidEngineAdvancedTest {
 
         assertFalse(scans.get(auction.getId()).get(), "NGUY HIỂM: Lỗi hệ thống đã xảy ra nhưng isScanning không được reset!");
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void processNextBot_WhenWinningBidderIsAlreadyLeader_ShouldPlaceBidOnBehalfOfLosingBot() throws Exception {
+        User leader = new User();
+        leader.setId("LEADER-BOT");
+        leader.setUserName("tay1");
+
+        User challenger = new User();
+        challenger.setId("CHALLENGER-BOT");
+        challenger.setUserName("mixi");
+
+        auction.setWinningBidder(leader);
+        auction.setHighestMaxBid(10000L);
+        auction.setCurrentPrice(3000L);
+        auction.setBidIncrement(1000L);
+
+        AutoBid leaderBot = new AutoBid(leader, 10000L, 1000L);
+        AutoBid challengerBot = new AutoBid(challenger, 7000L, 1000L);
+
+        auction.getActiveAutoBids().offer(leaderBot);
+        auction.getActiveAutoBids().offer(challengerBot);
+
+        when(mockBidderCtrl.placeBidOnAuctionFromBot(any(User.class), eq(auction), anyLong()))
+                .thenReturn(CompletableFuture.completedFuture(true));
+
+        AutoBidEngine.triggerBotScan(auction);
+
+        verify(mockBidderCtrl, timeout(3000).times(1))
+                .placeBidOnAuctionFromBot(eq(challenger), eq(auction), eq(7000L));
+
+        waitForLockRelease(auction.getId());
+        ConcurrentHashMap<String, AtomicBoolean> scans =
+                (ConcurrentHashMap<String, AtomicBoolean>) activeScansField.get(null);
+
+        assertFalse(scans.get(auction.getId()).get(), "isScanning should be reset");
+    }
 }

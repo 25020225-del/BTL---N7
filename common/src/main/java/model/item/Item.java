@@ -1,6 +1,20 @@
 package model.item;
 
 import model.base.Entity;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
+@JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        property = "type",
+        visible = true,
+        defaultImpl = TangibleItem.class     
+)
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = TangibleItem.class,  name = "TANGIBLE"),
+        @JsonSubTypes.Type(value = DigitalItem.class,   name = "DIGITAL"),
+        @JsonSubTypes.Type(value = ServicePackage.class, name = "SERVICE")
+})
 
 /**
  * Abstract base domain model capturing fundamental invariants, state properties,

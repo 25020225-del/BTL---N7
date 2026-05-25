@@ -85,7 +85,7 @@ public class AutoBidEngine {
     static void processNextBot(Auction auction) {
         AtomicBoolean isScanning = activeScans.computeIfAbsent(auction.getId(), k -> new AtomicBoolean(false));
 
-        if (!auction.getStatus().equals(Auction.STATUS_RUNNING)) {
+        if (!Auction.STATUS_RUNNING.equals(auction.getStatus()) && !Auction.STATUS_WAITING_FOR_BID.equals(auction.getStatus())) {
             isScanning.set(false);
             return;
         }
@@ -155,17 +155,41 @@ public class AutoBidEngine {
         finalPrice = Math.max(finalPrice, minRequired);
 
         if (auction.getWinningBidder() != null && auction.getWinningBidder().getId().equals(top1.getBidder().getId())) {
-            if (finalPrice <= auction.getCurrentPrice()) {
+            if (top2 == null || finalPrice <= auction.getCurrentPrice()) {
                 isScanning.set(false);
                 return;
             }
         }
 
-        final AutoBid winnerBot = top1;
-        final long computedFinalPrice = finalPrice;
+        final AutoBid winnerBot;
+        final long computedFinalPrice;
 
-        log.info("Bot of {} mathematically won at Vickrey price={}. Submitting ASYNC transaction.",
-                winnerBot.getBidder().getUserName(), computedFinalPrice);
+        if (top2 != null && auction.getWinningBidder() != null
+                && auction.getWinningBidder().getId().equals(top1.getBidder().getId())) {
+            // top1 is already the current leader.
+            // Place the bid on behalf of the losing bot (top2) at its full maxBid.
+            // calculateBidResult will correctly compute the Vickrey price:
+            //   nextCurrentPrice = min(top2.maxBid + inc, top1.highestMaxBid)
+            // This ONLY works correctly when top1's highestMaxBid in DB equals top1.getMaxBid().
+            // If highestMaxBid < top1.getMaxBid() (e.g. because a prior engine pass stored the wrong
+            // value), a re-anchor pass (the else-if below) would be needed first.
+            winnerBot = top2;
+            computedFinalPrice = top2.getMaxBid();
+            log.info("Winning bot {} is already leader. Placing bid via challenger {} at maxBid={} "
+                    + "(highestMaxBid={}) to drive Vickrey price.",
+                    top1.getBidder().getUserName(), top2.getBidder().getUserName(),
+                    computedFinalPrice, auction.getHighestMaxBid());
+        } else {
+            // top1 is NOT the current leader (either no winner yet, or top1 is a new challenger).
+            // Pass top1's FULL maxBid so calculateBidResult stores the correct highestMaxBid.
+            // The Vickrey current price is derived automatically by calculateBidResult:
+            //   if top1 outbids current holder → nextCurrentPrice = old_highestMaxBid + increment
+            winnerBot = top1;
+            computedFinalPrice = top1.getMaxBid();
+            log.info("Bot {} is new challenger / first bidder. Submitting at full maxBid={} "
+                    + "(Vickrey price computed by calculateBidResult).",
+                    winnerBot.getBidder().getUserName(), computedFinalPrice);
+        }
 
         try {
             bidderCtrl.placeBidOnAuctionFromBot(winnerBot.getBidder(), auction, computedFinalPrice)

@@ -125,7 +125,8 @@ public class BidDAO {
                 highestMaxBid = rs.getLong("highest_max_bid");
                 bidIncrement = rs.getLong("bid_increment");
                 durationMinutes = rs.getInt("duration_minutes");
-                startTime = LocalDateTime.parse(rs.getString("start_time"));
+                String startTimeStr = rs.getString("start_time");
+                startTime = (startTimeStr != null && !startTimeStr.trim().isEmpty()) ? LocalDateTime.parse(startTimeStr) : null;
                 winningBidderId = rs.getString("winning_bidder_id");
                 sellerId = rs.getString("seller_id");
                 itemType = rs.getString("item_type");
