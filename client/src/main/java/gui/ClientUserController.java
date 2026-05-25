@@ -89,7 +89,7 @@ public class ClientUserController {
         mainLoader.setController(this);
         mainView = mainLoader.load();
 
-        createAuctionController = new CreateAuctionController();
+        createAuctionController = new CreateAuctionController(user);
         walletView = new WalletController();
         walletView.setOnReturnAction(() -> marketplaceBtn.fire());
 

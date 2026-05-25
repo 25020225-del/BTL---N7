@@ -78,6 +78,7 @@ public class BidPanelController {
     @FXML private TextField txtAutoMax;
     @FXML private TextField txtAutoIncrement;
     @FXML private Label     lblAutoError;
+    @FXML private Label     lblAutoBidStatus;
     @FXML private Button    btnSaveAuto;
     @FXML private Button    btnCancelAuto;
     @FXML private Circle    dotBotStatus;
@@ -112,15 +113,29 @@ public class BidPanelController {
     // ── Listeners ────────────────────────────────────────────────────────────
 
     private final PropertyChangeListener auctionUpdateListener = evt -> {
-        if (evt.getNewValue() instanceof Auction updated
-                && auction != null
-                && auction.getId().equals(updated.getId())) {
-            Platform.runLater(() -> syncAuctionState(updated));
+        if (evt.getNewValue() instanceof Map<?, ?> data) {
+            String updatedId = (String) data.get("auctionId");
+            if (auction != null && auction.getId().equals(updatedId)) {
+                long newPrice = ((Number) data.get("newPrice")).longValue();
+                String winnerName = (String) data.get("winnerName");
+
+                auction.setCurrentPrice(newPrice);
+                if (winnerName != null) {
+                    User winner = new User();
+                    winner.setUserName(winnerName);
+                    auction.setWinningBidder(winner);
+                } else {
+                    auction.setWinningBidder(null);
+                }
+
+                Platform.runLater(() -> syncAuctionState(auction));
+            }
         }
     };
 
     private final PropertyChangeListener errorListener = evt -> {
-        if (evt.getNewValue() instanceof Map<?, ?> errorMap) {
+        Object rawVal = evt.getNewValue();
+        if (rawVal instanceof Map<?, ?> errorMap) {
             String code = extractErrorCode(errorMap);
             if (code != null && code.contains("CONFLICT") && retryCount < 3) {
                 retryCount++;
@@ -129,6 +144,61 @@ public class BidPanelController {
                 retryDelay.play();
             } else {
                 Platform.runLater(() -> handleIncomingError(errorMap));
+            }
+        } else if (rawVal instanceof String errorMsg) {
+            Platform.runLater(() -> {
+                btnPlaceBid.setDisable(false);
+                btnSaveAuto.setDisable(false);
+                btnCancelAuto.setDisable(false);
+                switch (pendingOperation) {
+                    case AUTOBID -> showAutoError(errorMsg);
+                    case MANUAL, NONE -> showManualError(errorMsg);
+                }
+                pendingOperation = PendingOperation.NONE;
+            });
+        } else {
+            Platform.runLater(() -> {
+                btnPlaceBid.setDisable(false);
+                btnSaveAuto.setDisable(false);
+                btnCancelAuto.setDisable(false);
+                pendingOperation = PendingOperation.NONE;
+            });
+        }
+    };
+
+    private final PropertyChangeListener bidSuccessListener = evt -> {
+        Platform.runLater(() -> {
+            btnPlaceBid.setDisable(false);
+            txtManualBid.clear();
+            String msg = evt.getNewValue() != null ? evt.getNewValue().toString() : "Đặt giá thành công!";
+            AlertUtils.showInfo("Thành công", msg);
+        });
+    };
+
+    private final PropertyChangeListener autoBidSuccessListener = evt -> {
+        if (evt.getNewValue() instanceof Map<?, ?> data) {
+            String updatedId = (String) data.get("auctionId");
+            if (auction != null && auction.getId().equals(updatedId)) {
+                Platform.runLater(() -> {
+                    btnSaveAuto.setDisable(false);
+                    btnCancelAuto.setDisable(false);
+                    boolean isActive = Boolean.TRUE.equals(data.get("isActive"));
+                    if (isActive) {
+                        dotBotStatus.setStyle("-fx-fill: #2ecc71;");
+                        lblAutoBidStatus.setText("Đã kích hoạt");
+                        btnCancelAuto.setVisible(true);
+                        btnCancelAuto.setManaged(true);
+                        btnSaveAuto.setVisible(false);
+                        btnSaveAuto.setManaged(false);
+                    } else {
+                        dotBotStatus.setStyle("-fx-fill: #95a5a6;");
+                        lblAutoBidStatus.setText("Chưa kích hoạt");
+                        btnCancelAuto.setVisible(false);
+                        btnCancelAuto.setManaged(false);
+                        btnSaveAuto.setVisible(true);
+                        btnSaveAuto.setManaged(true);
+                    }
+                });
             }
         }
     };
@@ -146,8 +216,10 @@ public class BidPanelController {
         btnSaveAuto.setOnAction(e -> triggerSaveAutoBidWorkflow());
         btnCancelAuto.setOnAction(e -> triggerCancelAutoBidWorkflow());
 
-        AuctionEventBus.addListener("UPDATE_AUCTION_PRICE", auctionUpdateListener);
+        AuctionEventBus.addListener(AuctionEventBus.PRICE_UPDATED, auctionUpdateListener);
         AuctionEventBus.addListener("ERROR", errorListener);
+        AuctionEventBus.addListener(AuctionEventBus.BID_SUCCESS, bidSuccessListener);
+        AuctionEventBus.addListener("AUTOBID_SETUP_SUCCESS", autoBidSuccessListener);
     }
 
     /**
@@ -160,7 +232,7 @@ public class BidPanelController {
      */
     public static BidPanelController load(Auction auction, User currentUser) throws IOException {
         FXMLLoader loader = new FXMLLoader(
-                BidPanelController.class.getResource("/gui/widget/BidPanel.fxml"));
+                BidPanelController.class.getResource("/gui/BidPanel.fxml"));
         loader.load();
         BidPanelController ctrl = loader.getController();
         ctrl.auction = auction;
@@ -174,8 +246,10 @@ public class BidPanelController {
      * Must be called before this controller is discarded to prevent memory leaks.
      */
     public void destroy() {
-        AuctionEventBus.removeListener("UPDATE_AUCTION_PRICE", auctionUpdateListener);
+        AuctionEventBus.removeListener(AuctionEventBus.PRICE_UPDATED, auctionUpdateListener);
         AuctionEventBus.removeListener("ERROR", errorListener);
+        AuctionEventBus.removeListener(AuctionEventBus.BID_SUCCESS, bidSuccessListener);
+        AuctionEventBus.removeListener("AUTOBID_SETUP_SUCCESS", autoBidSuccessListener);
         retryDelay.stop();
         pendingOperation = PendingOperation.NONE;
     }
@@ -306,12 +380,18 @@ public class BidPanelController {
 
         if (hasActiveBot) {
             dotBotStatus.setStyle("-fx-fill: #2ecc71;");
+            lblAutoBidStatus.setText("Đã kích hoạt");
             btnCancelAuto.setVisible(true);
+            btnCancelAuto.setManaged(true);
             btnSaveAuto.setVisible(false);
+            btnSaveAuto.setManaged(false);
         } else {
             dotBotStatus.setStyle("-fx-fill: #95a5a6;");
+            lblAutoBidStatus.setText("Chưa kích hoạt");
             btnCancelAuto.setVisible(false);
+            btnCancelAuto.setManaged(false);
             btnSaveAuto.setVisible(true);
+            btnSaveAuto.setManaged(true);
         }
     }
 

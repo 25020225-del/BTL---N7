@@ -30,8 +30,12 @@ public class AuctionDAO {
      * @throws Exception if a database operation fails.
      */
     public List<Map<String, Object>> getAuctionsBySeller(String sellerId) throws Exception {
-        String sql = "SELECT id, item_name, description, starting_price, current_price, " +
-                "end_time, image_url, seller_id, status, bid_increment, item_type FROM auctions WHERE seller_id = ?";
+        String sql = "SELECT a.id, a.item_name, a.description, a.starting_price, a.current_price, " +
+                "a.end_time, a.image_url, a.seller_id, a.status, a.bid_increment, a.item_type, " +
+                "a.winning_bidder_id, u.username AS winner_username " +
+                "FROM auctions a " +
+                "LEFT JOIN users u ON a.winning_bidder_id = u.id " +
+                "WHERE a.seller_id = ?";
         List<Map<String, Object>> result = new ArrayList<>();
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -44,12 +48,19 @@ public class AuctionDAO {
                 map.put("description", rs.getString("description"));
                 map.put("startingPrice", rs.getLong("starting_price"));
                 map.put("currentPrice", rs.getLong("current_price"));
-                map.put("endTime", LocalDateTime.parse(rs.getString("end_time")).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                String endTimeStr = rs.getString("end_time");
+                if (endTimeStr != null && !endTimeStr.trim().isEmpty()) {
+                    map.put("endTime", LocalDateTime.parse(endTimeStr).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                } else {
+                    map.put("endTime", null);
+                }
                 map.put("imageUrl", rs.getString("image_url"));
                 map.put("sellerId", rs.getString("seller_id"));
                 map.put("status", rs.getString("status"));
                 map.put("bidIncrement", rs.getLong("bid_increment"));
                 map.put("itemType", rs.getString("item_type"));
+                map.put("winningBidderId", rs.getString("winning_bidder_id"));
+                map.put("winnerName", rs.getString("winner_username"));
                 result.add(map);
             }
         }
@@ -64,7 +75,7 @@ public class AuctionDAO {
      * @throws SQLException if retrieval fails.
      */
     public Auction getAuctionById(String auctionId) throws SQLException {
-        String sql = "SELECT * FROM auctions WHERE id = ?";
+        String sql = "SELECT a.*, u.username AS winner_username FROM auctions a LEFT JOIN users u ON a.winning_bidder_id = u.id WHERE a.id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, auctionId);
@@ -90,14 +101,22 @@ public class AuctionDAO {
                     auction.setCurrentPrice(rs.getLong("current_price"));
                     auction.setHighestMaxBid(rs.getLong("highest_max_bid"));
                     auction.setBidIncrement(rs.getLong("bid_increment"));
-                    auction.setStartTime(LocalDateTime.parse(rs.getString("start_time")));
-                    auction.setEndTime(LocalDateTime.parse(rs.getString("end_time")));
+                    auction.setDurationMinutes(rs.getInt("duration_minutes"));
+                    String startTimeStr = rs.getString("start_time");
+                    if (startTimeStr != null && !startTimeStr.trim().isEmpty()) {
+                        auction.setStartTime(LocalDateTime.parse(startTimeStr));
+                    }
+                    String endTimeStr = rs.getString("end_time");
+                    if (endTimeStr != null && !endTimeStr.trim().isEmpty()) {
+                        auction.setEndTime(LocalDateTime.parse(endTimeStr));
+                    }
                     auction.setStatus(rs.getString("status"));
 
                     String winnerId = rs.getString("winning_bidder_id");
                     if (winnerId != null) {
                         User winner = new User();
                         winner.setId(winnerId);
+                        winner.setUserName(rs.getString("winner_username"));
                         auction.setWinningBidder(winner);
                     }
 
@@ -116,7 +135,7 @@ public class AuctionDAO {
      * @throws SQLException on database transaction failures.
      */
     public boolean addAuction(Auction auction) throws SQLException {
-        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url, winning_bidder_id, highest_max_bid, item_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO auctions (id, item_name, description, starting_price, current_price, bid_increment, start_time, end_time, status, seller_id, image_url, winning_bidder_id, highest_max_bid, duration_minutes, item_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -128,13 +147,16 @@ public class AuctionDAO {
             pstmt.setLong(5, auction.getCurrentPrice());
             pstmt.setLong(6, auction.getBidIncrement());
             pstmt.setString(7, auction.getStartTime().toString());
-            pstmt.setString(8, auction.getEndTime().toString());
+
+            pstmt.setString(8, auction.getEndTime() != null
+                    ? auction.getEndTime().toString() : null);
             pstmt.setString(9, auction.getStatus());
             pstmt.setString(10, auction.getSeller().getId());
             pstmt.setString(11, item.getImageUrl());
             pstmt.setString(12, auction.getWinningBidder() != null ? auction.getWinningBidder().getId() : null);
             pstmt.setLong(13, auction.getHighestMaxBid());
-            pstmt.setString(14, item.getType());
+            pstmt.setInt(14, auction.getDurationMinutes());
+            pstmt.setString(15, item.getType());
 
             return pstmt.executeUpdate() > 0;
         }
@@ -159,7 +181,7 @@ public class AuctionDAO {
     }
 
     public List<Map<String, Object>> getAuctionsByStatus(String... statuses) throws SQLException {
-        StringBuilder sql = new StringBuilder("SELECT id, item_name, description, starting_price, current_price, end_time, image_url, seller_id, bid_increment, status, item_type FROM auctions WHERE status IN (");
+        StringBuilder sql = new StringBuilder("SELECT a.id, a.item_name, a.description, a.starting_price, a.current_price, a.end_time, a.image_url, a.seller_id, a.bid_increment, a.status, a.item_type, a.winning_bidder_id, u.username AS winner_username FROM auctions a LEFT JOIN users u ON a.winning_bidder_id = u.id WHERE a.status IN (");
         for (int i = 0; i < statuses.length; i++) {
             sql.append("?");
             if (i < statuses.length - 1) sql.append(", ");
@@ -180,12 +202,19 @@ public class AuctionDAO {
                     map.put("description", rs.getString("description"));
                     map.put("startingPrice", rs.getLong("starting_price"));
                     map.put("currentPrice", rs.getLong("current_price"));
-                    map.put("endTime", LocalDateTime.parse(rs.getString("end_time")).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                    String endTimeStr = rs.getString("end_time");
+                    if (endTimeStr != null && !endTimeStr.trim().isEmpty()) {
+                        map.put("endTime", LocalDateTime.parse(endTimeStr).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                    } else {
+                        map.put("endTime", null);
+                    }
                     map.put("imageUrl", rs.getString("image_url"));
                     map.put("sellerId", rs.getString("seller_id"));
                     map.put("status", rs.getString("status"));
                     map.put("bidIncrement", rs.getLong("bid_increment"));
                     map.put("itemType", rs.getString("item_type"));
+                    map.put("winningBidderId", rs.getString("winning_bidder_id"));
+                    map.put("winnerName", rs.getString("winner_username"));
                     list.add(map);
                 }
             }
@@ -249,8 +278,8 @@ public class AuctionDAO {
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, status);
-            pstmt.setString(2, startTime.toString());
-            pstmt.setString(3, endTime.toString());
+            pstmt.setString(2, startTime != null ? startTime.toString() : null);
+            pstmt.setString(3, endTime != null ? endTime.toString() : null);
             pstmt.setString(4, auctionId);
             return pstmt.executeUpdate() > 0;
         }

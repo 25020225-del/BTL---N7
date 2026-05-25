@@ -27,6 +27,11 @@ public class CountdownClock extends Label {
         this.endTime = endTimeTimestamp;
         if (timeline != null) timeline.stop();
 
+        if (endTimeTimestamp <= 0) {
+            this.setText("Chờ kích hoạt");
+            return;
+        }
+
         timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
             long diff = endTime - utils.TimeUtil.getCurrentServerTime();
             this.setText(formatTime(diff));

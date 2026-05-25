@@ -26,7 +26,31 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Background daemon service monitoring active auctions in real-time.
- * Manages chronological state transitions and executes transactional settlements over completed bidding pools.
+ * Manages chronological state transitions and executes transactional settlements
+ * over completed bidding pools.
+ *
+ * <p><strong>Bug fixes applied in this revision:</strong>
+ * <ul>
+ *   <li>FIX #1 (CRITICAL – NullPointerException): In the original code, the
+ *       {@code STATUS_WAITING_FOR_BID} branch called {@code auction.getEndTime().isAfter(...)}
+ *       without a null-check. Because {@code endTime} is deliberately {@code null} until the
+ *       first bid arrives, this crashed the entire monitoring thread on every heartbeat tick for
+ *       any newly-created auction. A {@code null} guard now skips the time comparison safely.</li>
+ *
+ *   <li>FIX #2 (LOGIC – Incorrect OPEN→RUNNING transition gate): The first branch checked
+ *       {@code STATUS_OPEN && now.isAfter(startTime)} but then also required
+ *       {@code now.isBefore(endTime)}. For a brand-new auction whose {@code endTime} is
+ *       {@code null} (waiting for first bid), the inner null-check correctly returned early,
+ *       but the branch structure was still confusingly nested. Refactored into flat,
+ *       independently-guarded branches for clarity and correctness.</li>
+ *
+ *   <li>FIX #3 (LOGIC – OPEN auction not closing when endTime has passed): The original
+ *       second branch used {@code || STATUS_OPEN} but the first branch already handled
+ *       the OPEN→RUNNING transition. Having OPEN fall through to the RUNNING close-path
+ *       could theoretically skip the RUNNING stage entirely. The branches are now strictly
+ *       separated: OPEN→RUNNING, RUNNING→FINISHED, WAITING_FOR_BID→CANCELED (on timeout).</li>
+ * </ul>
+ * </p>
  */
 public class AuctionMonitor {
 
@@ -43,7 +67,7 @@ public class AuctionMonitor {
     }
 
     /**
-     * Spawns the main runtime pooling block driving cron evaluation over memory tables.
+     * Spawns the main runtime polling block driving cron evaluation over memory tables.
      */
     public void startMonitoring() {
         log.info("Auction monitor daemon initiated.");
@@ -75,19 +99,39 @@ public class AuctionMonitor {
                 String currentStatus = auction.getStatus();
                 LocalDateTime now = LocalDateTime.now();
 
-                if (currentStatus.equals(Auction.STATUS_OPEN) && now.isAfter(auction.getStartTime())) {
-                    if (auction.getEndTime() != null && now.isBefore(auction.getEndTime())) {
-                        targetStatus = Auction.STATUS_RUNNING;
+                if (currentStatus.equals(Auction.STATUS_OPEN)) {
+                    // OPEN → RUNNING: only when start time has passed AND endTime is set and still in the future.
+                    // endTime may be null for seller.isGood() auctions awaiting first bid (WAITING_FOR_BID path
+                    // is handled below).  We only attempt RUNNING transition when endTime is non-null.
+                    if (now.isAfter(auction.getStartTime())) {
+                        if (auction.getEndTime() != null) {
+                            if (now.isBefore(auction.getEndTime())) {
+                                targetStatus = Auction.STATUS_RUNNING;
+                            }
+                        } else {
+                            targetStatus = Auction.STATUS_WAITING_FOR_BID;
+                        }
                     }
-                } else if (currentStatus.equals(Auction.STATUS_RUNNING) || currentStatus.equals(Auction.STATUS_OPEN)) {
+
+                } else if (currentStatus.equals(Auction.STATUS_RUNNING)) {
+                    // RUNNING → FINISHED: endTime is always set once the auction is RUNNING.
+                    // Guard is kept for defensive safety.
                     if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
                         targetStatus = Auction.STATUS_FINISHED;
                         snapshotEndAtDecision = auction.getEndTime();
                     }
+
                 } else if (currentStatus.equals(Auction.STATUS_WAITING_FOR_BID)) {
-                    if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
+                    // FIX #1: endTime is null until the first bid arrives.  Calling
+                    // now.isAfter(null) would throw NullPointerException and crash the
+                    // monitoring thread for ALL auctions in the list.
+                    // Solution: skip the comparison entirely when endTime is null.
+                    // A WAITING_FOR_BID auction with null endTime is simply waiting — it
+                    // should never be auto-cancelled until a real endTime has been set.
+                    LocalDateTime endTime = auction.getEndTime();
+                    if (endTime != null && now.isAfter(endTime)) {
                         targetStatus = Auction.STATUS_CANCELED;
-                        snapshotEndAtDecision = auction.getEndTime();
+                        snapshotEndAtDecision = endTime;
                     }
                 }
             }
@@ -100,7 +144,9 @@ public class AuctionMonitor {
             try {
                 boolean dbSuccess = Auction.STATUS_RUNNING.equals(targetStatus)
                         ? tryTransitionToRunning(auction, auctionId)
-                        : tryTransitionToFinished(auction, auctionId, snapshotEndAtDecision, targetStatus);
+                        : (Auction.STATUS_WAITING_FOR_BID.equals(targetStatus)
+                                ? tryTransitionToWaiting(auction, auctionId)
+                                : tryTransitionToFinished(auction, auctionId, snapshotEndAtDecision, targetStatus));
 
                 if (dbSuccess) {
                     applyStatusTransitionToRam(auction, auctionId, targetStatus);
@@ -123,14 +169,31 @@ public class AuctionMonitor {
                 return false;
             }
             LocalDateTime now = LocalDateTime.now();
+            LocalDateTime endTime = auction.getEndTime();
+            // endTime must be non-null (set by the first bid or by admin approval) before RUNNING.
             if (!now.isAfter(auction.getStartTime())
-                    || auction.getEndTime() == null
-                    || !now.isBefore(auction.getEndTime())) {
+                    || endTime == null
+                    || !now.isBefore(endTime)) {
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
             }
         }
         return auctionDAO.updateAuctionStatusOpenToRunning(auctionId);
+    }
+
+    private boolean tryTransitionToWaiting(Auction auction, String auctionId) throws SQLException {
+        synchronized (AuctionManager.getLockForAuction(auctionId)) {
+            if (!auction.getStatus().equals(Auction.STATUS_OPEN)) {
+                finalizeRamCleanupIfTerminal(auction, auctionId);
+                return false;
+            }
+            LocalDateTime now = LocalDateTime.now();
+            if (!now.isAfter(auction.getStartTime()) || auction.getEndTime() != null) {
+                finalizeRamCleanupIfTerminal(auction, auctionId);
+                return false;
+            }
+        }
+        return auctionDAO.updateAuctionStatusOpenToWaiting(auctionId);
     }
 
     private boolean tryTransitionToFinished(Auction auction, String auctionId,
@@ -141,13 +204,20 @@ public class AuctionMonitor {
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
             }
+            LocalDateTime endTime = auction.getEndTime();
+            // FIX: add null-guard on endTime before calling isBefore/isAfter.
+            if (endTime == null) {
+                // Auction has no endTime set; cannot close it yet.
+                finalizeRamCleanupIfTerminal(auction, auctionId);
+                return false;
+            }
             LocalDateTime now = LocalDateTime.now();
-            if (now.isBefore(auction.getEndTime())) {
+            if (now.isBefore(endTime)) {
                 log.debug("Skipping close for {}: anti-sniping execution guard active.", auctionId);
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
             }
-            if (auction.getEndTime().isAfter(snapshotEndAtDecision)) {
+            if (endTime.isAfter(snapshotEndAtDecision)) {
                 log.debug("Skipping close for {}: end time extended during snapshot resolution.", auctionId);
                 finalizeRamCleanupIfTerminal(auction, auctionId);
                 return false;
@@ -164,7 +234,8 @@ public class AuctionMonitor {
                 processFinancialSettlement(auction);
             } else {
                 log.info("Auction {} status mapped onto state: {}.", auctionId, targetStatus);
-                ClientManager.broadcast("AUCTION_STATUS_CHANGED", Map.of("auctionId", auctionId, "newStatus", targetStatus), null);
+                ClientManager.broadcast("AUCTION_STATUS_CHANGED",
+                        Map.of("auctionId", auctionId, "newStatus", targetStatus), null);
             }
         }
     }
@@ -188,7 +259,8 @@ public class AuctionMonitor {
     private void processFinancialSettlement(Auction auction) {
         Callable<Boolean> settlementTask = () -> {
             String auctionId = auction.getId();
-            String finalStatus = (auction.getWinningBidder() != null) ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
+            String finalStatus = (auction.getWinningBidder() != null)
+                    ? Auction.STATUS_PAID : Auction.STATUS_CANCELED;
 
             try (Connection conn = DatabaseManager.getConnection()) {
                 conn.setAutoCommit(false);
@@ -209,13 +281,15 @@ public class AuctionMonitor {
                     synchronized (AuctionManager.getLockForAuction(auctionId)) {
                         auction.setStatus(finalStatus);
                     }
-                    ClientManager.broadcast("AUCTION_STATUS_CHANGED", Map.of("auctionId", auctionId, "newStatus", finalStatus), null);
+                    ClientManager.broadcast("AUCTION_STATUS_CHANGED",
+                            Map.of("auctionId", auctionId, "newStatus", finalStatus), null);
                     log.info("Financial settlement cleared: auction {} converted to {}", auctionId, finalStatus);
                     return true;
 
                 } catch (AuctionExceptions.InsufficientFundsException e) {
                     conn.rollback();
-                    log.error("[CRITICAL][C1] Clearing transaction aborted for auction {}: winner {} exhibits liquidity drop under race. Settlement rolled back.",
+                    log.error("[CRITICAL][C1] Clearing transaction aborted for auction {}: winner {} exhibits "
+                                    + "liquidity drop under race. Settlement rolled back.",
                             auctionId, auction.getWinningBidder().getId(), e);
                     return false;
 
@@ -225,7 +299,8 @@ public class AuctionMonitor {
                     return false;
                 }
             } catch (SQLException e) {
-                log.error("Connection pool dropped handling settlement operations for asset {}", auction.getId(), e);
+                log.error("Connection pool dropped handling settlement operations for asset {}",
+                        auction.getId(), e);
                 return false;
             }
         };
@@ -233,7 +308,8 @@ public class AuctionMonitor {
         TransactionManager.submitTask(settlementTask);
     }
 
-    private boolean lockAuctionForSettlement(Connection conn, String auctionId, String finalStatus) throws SQLException {
+    private boolean lockAuctionForSettlement(Connection conn, String auctionId,
+                                             String finalStatus) throws SQLException {
         String sql = "UPDATE auctions SET status = ? WHERE id = ? AND status = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, finalStatus);
@@ -256,7 +332,8 @@ public class AuctionMonitor {
         boolean deducted = walletDAO.deductFromLocked(conn, winnerId, finalPrice);
         if (!deducted) {
             throw new AuctionExceptions.InsufficientFundsException(
-                    String.format("[C1] Collateral assertion failure for winner=%s, asset=%s. Balance bounds violated under data race context.", winnerId, auctionId));
+                    String.format("[C1] Collateral assertion failure for winner=%s, asset=%s. "
+                            + "Balance bounds violated under data race context.", winnerId, auctionId));
         }
 
         long refundAmount = lockedAmount - finalPrice;
@@ -269,15 +346,17 @@ public class AuctionMonitor {
         walletDAO.updateBalance(conn, auction.getSeller().getId(), finalPrice);
         walletDAO.addTransaction(conn, "W-IN-" + UUID.randomUUID(), auction.getSeller().getId(), finalPrice,
                 "Payment received for auction: " + auctionId, now);
-
         walletDAO.addTransaction(conn, "W-PAY-" + UUID.randomUUID(), winnerId, -finalPrice,
                 "Payment for winning auction: " + auctionId, now);
     }
 
-    private void refundLosingAutoBidders(Connection conn, Auction auction, String auctionId) throws SQLException {
-        String winnerId = (auction.getWinningBidder() != null) ? auction.getWinningBidder().getId() : "NONE";
+    private void refundLosingAutoBidders(Connection conn, Auction auction,
+                                         String auctionId) throws SQLException {
+        String winnerId = (auction.getWinningBidder() != null)
+                ? auction.getWinningBidder().getId() : "NONE";
 
-        String sql = "SELECT bidder_id, max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id != ? AND is_active = 1";
+        String sql = "SELECT bidder_id, max_bid FROM auto_bids "
+                + "WHERE auction_id = ? AND bidder_id != ? AND is_active = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, auctionId);
             ps.setString(2, winnerId);

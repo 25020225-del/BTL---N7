@@ -49,7 +49,7 @@ class UserControllerTest {
                         anyString()
                 );
 
-        String result = userController.register(userName, "password123", "Kiên", "USER");
+        String result = userController.register(userName, "Password123!", "Kiên", "USER");
 
         assertEquals(
                 "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!",

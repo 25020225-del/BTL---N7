@@ -41,10 +41,32 @@ public class UserController {
     }
 
     public String register(String userName, String password, String name, String role) {
+        if (userName == null || userName.trim().isBlank()) {
+            return "Tên đăng nhập không được để trống.";
+        }
+        if (name == null || name.trim().isBlank()) {
+            return "Họ tên không được để trống.";
+        }
+        if (password == null || password.length() < 8) {
+            return "Mật khẩu phải có ít nhất 8 ký tự.";
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            return "Mật khẩu phải chứa ít nhất 1 chữ hoa (A-Z).";
+        }
+        if (!password.matches(".*[0-9].*")) {
+            return "Mật khẩu phải chứa ít nhất 1 chữ số (0-9).";
+        }
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{}|;':\",./<>?].*")) {
+            return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt (!@#$%^&*...).";
+        }
+
+        // Force role to be USER to prevent Privilege Escalation
+        String safeRole = "USER";
+
         try (Connection conn = DatabaseManager.getConnection()) {
             String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
             String userId = utils.IdGenerator.generateUUIDv7();
-            userDAO.createUserAndWallet(conn, userId, userName, hashedPassword, name, role);
+            userDAO.createUserAndWallet(conn, userId, userName, hashedPassword, name, safeRole);
             return "SUCCESS";
         } catch (SQLException e) {
             boolean isConstraintViolated = (e.getErrorCode() == 19) || (e.getSQLState() != null && e.getSQLState().startsWith("23"));

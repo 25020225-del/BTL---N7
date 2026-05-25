@@ -19,19 +19,15 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.Circle?>
-<?import java.lang.String?>
-
 <TabPane
         fx:id="tabPane"
         tabClosingPolicy="UNAVAILABLE"
         styleClass="bid-panel"
+        stylesheets="@bid-panel.css"
         xmlns:fx="http://javafx.com/fxml/1"
         xmlns="http://javafx.com/javafx/17"
         fx:controller="gui.widget.BidPanelController"
 >
-    <stylesheets>
-        <String value="@bid-panel.css"/>
-    </stylesheets>
 
     <!-- ══════════════════════════════════════════════════════════════════════
          Tab 1 — Manual Bid

@@ -104,8 +104,12 @@ public class TableControllerUser extends TableController {
         String name = (String) map.get("itemName");
         String itemType = (String) map.get("itemType");
         String imageUrl = (String) map.get("imageUrl");
-        double price = ((Number) map.get("currentPrice")).doubleValue();
-        long endTime = ((Number) map.get("endTime")).longValue();
+
+        Object currentPriceVal = map.get("currentPrice");
+        double price = currentPriceVal instanceof Number ? ((Number) currentPriceVal).doubleValue() : 0.0;
+
+        Object endTimeVal = map.get("endTime");
+        long endTime = endTimeVal instanceof Number ? ((Number) endTimeVal).longValue() : 0L;
 
         Auction auction = Auction.buildAuctionFromMap(map);
 

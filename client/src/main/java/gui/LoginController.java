@@ -92,7 +92,7 @@ public class LoginController {
         loginButton.setText("ĐANG ĐĂNG NHẬP...");
 
         networkClient.setOnMessageReceived(this::handleServerResponse);
-        networkClient.sendMessage("LOGIN", new User("", username, password, ""));
+        networkClient.sendMessage("LOGIN", Map.of("userName", username, "password", password));
     }
 
     @FXML

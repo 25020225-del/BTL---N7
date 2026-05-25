@@ -153,6 +153,22 @@ public class ClientHandler {
         sendResponse("REDIRECT", url);
     }
 
+    /**
+     * Encrypts and transmits a pre-serialized JSON payload directly down the WebSocket.
+     * Prevents double-wrapping payloads that have already been formatted as NetworkMessages.
+     *
+     * @param jsonPayload pre-serialized JSON string of a NetworkMessage
+     */
+    public void sendPreSerializedResponse(String jsonPayload) {
+        try {
+            if (conn == null || !conn.isOpen() || !isAesKeyEstablished) return;
+            String encryptedPayload = CryptoUtil.encryptAES(jsonPayload, sharedAesKey);
+            conn.send(encryptedPayload);
+        } catch (Exception e) {
+            log.error("Encryption or transmission of pre-serialized response failed: {}", e.getMessage());
+        }
+    }
+
     public User getPendingUser() { return pendingUser; }
     public void setPendingUser(User user) { this.pendingUser = user; }
     public String getPendingTotpSecret() { return pendingTotpSecret; }

@@ -109,12 +109,15 @@ public class Auction extends Entity {
         Auction auction = new Auction();
         auction.setId((String) map.get("id"));
 
+        Object startingPriceVal = map.get("startingPrice");
+        long startingPrice = startingPriceVal instanceof Number ? ((Number) startingPriceVal).longValue() : 0L;
+
         Item item = ItemFactory.createItem(
                 (String) map.get("itemType"),
                 "ITM-" + map.get("id"),
                 (String) map.get("itemName"),
                 (String) map.get("description"),
-                ((Number) map.get("startingPrice")).longValue()
+                startingPrice
         );
         item.setImageUrl((String) map.get("imageUrl"));
         auction.setItem(item);
@@ -122,12 +125,29 @@ public class Auction extends Entity {
         User seller = new User();
         seller.setId((String) map.get("sellerId"));
         auction.setSeller(seller);
-        auction.setCurrentPrice(((Number) map.get("currentPrice")).longValue());
-        auction.setEndTime(
-                Instant.ofEpochMilli(((Number) map.get("endTime")).longValue())
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDateTime()
-        );
+
+        Object currentPriceVal = map.get("currentPrice");
+        long currentPrice = currentPriceVal instanceof Number ? ((Number) currentPriceVal).longValue() : 0L;
+        auction.setCurrentPrice(currentPrice);
+
+        Object endTimeVal = map.get("endTime");
+        if (endTimeVal instanceof Number endTimeNum) {
+            auction.setEndTime(
+                    Instant.ofEpochMilli(endTimeNum.longValue())
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime()
+            );
+        } else {
+            auction.setEndTime(null);
+        }
+
+        String winnerId = (String) map.get("winningBidderId");
+        if (winnerId != null) {
+            User winner = new User();
+            winner.setId(winnerId);
+            winner.setUserName((String) map.get("winnerName"));
+            auction.setWinningBidder(winner);
+        }
         return auction;
     }
 
@@ -160,6 +180,10 @@ public class Auction extends Entity {
      * @return calculated immutable {@link BidResult} snapshot metrics, or null if boundaries violate domain constraints
      */
     public BidResult calculateBidResult(User bidder, long newMaxBid) {
+        return calculateBidResult(bidder, newMaxBid, false);
+    }
+
+    public BidResult calculateBidResult(User bidder, long newMaxBid, boolean isManual) {
         boolean isWaiting = STATUS_WAITING_FOR_BID.equals(status);
         boolean isRunning = STATUS_RUNNING.equals(status);
 
@@ -182,28 +206,52 @@ public class Auction extends Entity {
         long nextHighestMaxBid = highestMaxBid;
         long nextCurrentPrice = currentPrice;
 
-        if (winningBidder == null) {
-            nextCurrentPrice = item.getStartingPrice();
-            nextHighestMaxBid = newMaxBid;
-            nextWinner = bidder;
-
-        } else if (bidder.getId().equals(winningBidder.getId())) {
-            if (newMaxBid > highestMaxBid) {
-                nextHighestMaxBid = newMaxBid;
-            }
-
-        } else {
-            if (newMaxBid > highestMaxBid) {
-                nextCurrentPrice = highestMaxBid + bidIncrement;
-                if (nextCurrentPrice > newMaxBid) {
-                    nextCurrentPrice = newMaxBid;
-                }
+        if (isManual) {
+            if (winningBidder == null) {
+                nextCurrentPrice = newMaxBid;
                 nextHighestMaxBid = newMaxBid;
                 nextWinner = bidder;
+            } else if (bidder.getId().equals(winningBidder.getId())) {
+                if (newMaxBid > highestMaxBid) {
+                    nextHighestMaxBid = newMaxBid;
+                    nextCurrentPrice = newMaxBid;
+                }
             } else {
-                nextCurrentPrice = newMaxBid + bidIncrement;
-                if (nextCurrentPrice > highestMaxBid) {
-                    nextCurrentPrice = highestMaxBid;
+                if (newMaxBid > highestMaxBid) {
+                    nextCurrentPrice = newMaxBid;
+                    nextHighestMaxBid = newMaxBid;
+                    nextWinner = bidder;
+                } else {
+                    nextCurrentPrice = newMaxBid + bidIncrement;
+                    if (nextCurrentPrice > highestMaxBid) {
+                        nextCurrentPrice = highestMaxBid;
+                    }
+                }
+            }
+        } else {
+            if (winningBidder == null) {
+                nextCurrentPrice = item.getStartingPrice();
+                nextHighestMaxBid = newMaxBid;
+                nextWinner = bidder;
+
+            } else if (bidder.getId().equals(winningBidder.getId())) {
+                if (newMaxBid > highestMaxBid) {
+                    nextHighestMaxBid = newMaxBid;
+                }
+
+            } else {
+                if (newMaxBid > highestMaxBid) {
+                    nextCurrentPrice = highestMaxBid + bidIncrement;
+                    if (nextCurrentPrice > newMaxBid) {
+                        nextCurrentPrice = newMaxBid;
+                    }
+                    nextHighestMaxBid = newMaxBid;
+                    nextWinner = bidder;
+                } else {
+                    nextCurrentPrice = newMaxBid + bidIncrement;
+                    if (nextCurrentPrice > highestMaxBid) {
+                        nextCurrentPrice = highestMaxBid;
+                    }
                 }
             }
         }
@@ -293,6 +341,10 @@ public class Auction extends Entity {
     public boolean registerAutoBid(User bidder, long maxBid, long userIncrement) {
         boolean isActive = STATUS_RUNNING.equals(status) || STATUS_WAITING_FOR_BID.equals(status);
         if (!isActive) {
+            return false;
+        }
+
+        if (userIncrement < bidIncrement) {
             return false;
         }
 

@@ -3,6 +3,7 @@ module common {
     requires com.fasterxml.jackson.datatype.jsr310;
     requires org.slf4j;
     opens model.auction to com.fasterxml.jackson.databind;
+    opens model.item to com.fasterxml.jackson.databind;
 
     exports network;
     exports utils;

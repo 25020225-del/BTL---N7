@@ -41,6 +41,7 @@ public class ResponseDispatcher {
         handlers.put("GENERAL_ERROR", systemHandler);
 
         ResponseHandler errorHandler = (message, client) -> {
+            AuctionEventBus.fireEvent("ERROR", message.getData());
             if (client.getOnMessageReceived() != null) {
                 Platform.runLater(() -> client.getOnMessageReceived().accept(message));
             } else {

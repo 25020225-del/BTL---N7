@@ -23,10 +23,6 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Controller handling administrative control operations including account enforcement,
- * auction approval pipelines, and financial withdrawal validations (Maker-Checker verification).
- */
 public class ServerAdminController {
 
     private static final Logger log = LoggerFactory.getLogger(ServerAdminController.class);
@@ -102,20 +98,17 @@ public class ServerAdminController {
 
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime newStart = times[0];
-            LocalDateTime newEnd = times[1];
-
-            if (newStart == null || !newStart.isAfter(now)) {
-                long durationMinutes = (newStart != null && newEnd != null)
-                        ? java.time.Duration.between(newStart, newEnd).toMinutes()
-                        : 60L;
+            if (newStart == null || newStart.isBefore(now)) {
                 newStart = now;
-                newEnd = now.plusMinutes(durationMinutes);
-                log.info("Auction {} approved: recalculated start time to NOW.", auctionId);
             }
 
-            boolean dbSuccess = auctionDAO.updateApprovalStatus(auctionId, Auction.STATUS_OPEN, newStart, newEnd);
+            String approvedStatus = newStart.isAfter(now) ? Auction.STATUS_OPEN : Auction.STATUS_WAITING_FOR_BID;
+
+            // Duration starts only when the first bid is placed
+            boolean dbSuccess = auctionDAO.updateApprovalStatus(auctionId, approvedStatus, newStart, null);
             if (dbSuccess) {
-                log.info("Admin {} approved auction {}.", admin.getUserName(), auctionId);
+                log.info("Admin {} approved auction {}. Status set to {}, start time to {}.",
+                        admin.getUserName(), auctionId, approvedStatus, newStart);
                 Auction approvedAuction = auctionDAO.getAuctionById(auctionId);
                 if (approvedAuction != null) {
                     AuctionManager.addAuctionToMonitor(approvedAuction);
@@ -219,8 +212,25 @@ public class ServerAdminController {
                         return "NOT_FOUND";
                     }
 
-                    String userId = (String) request.get("userId");
-                    long amount = ((Number) request.get("amount")).longValue();
+                    Object uIdObj = request.get("userId");
+                    Object amtObj = request.get("amount");
+                    if (uIdObj == null || amtObj == null) {
+                        conn.rollback();
+                        return "WALLET_ERROR";
+                    }
+
+                    String userId = uIdObj.toString().trim();
+                    long amount;
+                    if (amtObj instanceof Number) {
+                        amount = ((Number) amtObj).longValue();
+                    } else {
+                        try {
+                            amount = Long.parseLong(amtObj.toString().trim());
+                        } catch (NumberFormatException e) {
+                            conn.rollback();
+                            return "WALLET_ERROR";
+                        }
+                    }
 
                     if (isApproved) {
                         if (!walletDAO.deductFromLocked(conn, userId, amount)) {
@@ -257,9 +267,13 @@ public class ServerAdminController {
                     }
                     return "SUCCESS";
 
-                } catch (SQLException e) {
-                    conn.rollback();
-                    log.error("[WITHDRAW-{}] SQL error processing request {}: {}", action, requestId, e.getMessage(), e);
+                } catch (Exception e) {
+                    try {
+                        conn.rollback();
+                    } catch (SQLException rollbackEx) {
+                        log.error("[WITHDRAW-{}] Rollback failed for request {}: {}", action, requestId, rollbackEx.getMessage(), rollbackEx);
+                    }
+                    log.error("[WITHDRAW-{}] Error processing request {}: {}", action, requestId, e.getMessage(), e);
                     return "DB_ERROR";
                 }
             } catch (SQLException e) {

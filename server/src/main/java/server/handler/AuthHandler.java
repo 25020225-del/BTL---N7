@@ -44,10 +44,16 @@ public class AuthHandler implements CommandHandler {
         User loginAttempt;
         try {
             loginAttempt = mapper.convertValue(data, User.class);
-            log.info("[LOGIN] Parsed username: {}", loginAttempt.getUserName());
+            log.info("[LOGIN] Parsed username: {}", loginAttempt != null ? loginAttempt.getUserName() : "null");
         } catch (IllegalArgumentException e) {
             log.error("[LOGIN] Jackson deserialization FAILED: {}", e.getMessage());
             throw new AuctionExceptions.InvalidPayloadException("Dữ liệu đăng nhập không hợp lệ.");
+        }
+
+        if (loginAttempt == null || loginAttempt.getUserName() == null || loginAttempt.getUserName().trim().isBlank()
+                || loginAttempt.getPassword() == null || loginAttempt.getPassword().isBlank()) {
+            client.sendResponse("ERROR", new ErrorPayload("ERR_AUTH_003", "Tên đăng nhập và mật khẩu không được để trống."));
+            return;
         }
 
         User user = client.getUserController().login(loginAttempt.getUserName(), loginAttempt.getPassword());
@@ -109,6 +115,11 @@ public class AuthHandler implements CommandHandler {
             regUser = mapper.convertValue(data, User.class);
         } catch (IllegalArgumentException e) {
             throw new AuctionExceptions.InvalidPayloadException("Dữ liệu đăng ký không đúng định dạng.");
+        }
+
+        if (regUser == null) {
+            client.sendResponse("ERROR", new ErrorPayload("ERR_AUTH_005", "Dữ liệu đăng ký trống."));
+            return;
         }
 
         String result = client.getUserController().register(
@@ -222,7 +233,7 @@ public class AuthHandler implements CommandHandler {
             @SuppressWarnings("unchecked")
             Map<String, Object> map = (Map<String, Object>) data;
             if (map.containsKey("password")) {
-                password = (String) map.get("password");
+                password = parseStringSafe(map.get("password"));
             }
             if (map.containsKey("code") && map.get("code") != null) {
                 code = ((Number) map.get("code")).intValue();
@@ -290,7 +301,7 @@ public class AuthHandler implements CommandHandler {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> map = (Map<String, Object>) data;
-            identifier = ((String) map.get("identifier")).trim();
+            identifier = parseStringSafe(map.get("identifier"));
             totpCode = ((Number) map.get("totpCode")).intValue();
         } catch (Exception e) {
             client.sendResponse("ERROR", new network.ErrorPayload(
@@ -340,8 +351,8 @@ public class AuthHandler implements CommandHandler {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> map = (Map<String, Object>) data;
-            resetToken   = (String) map.get("resetToken");
-            newPassword  = (String) map.get("newPassword");
+            resetToken   = parseStringSafe(map.get("resetToken"));
+            newPassword  = parseStringSafe(map.get("newPassword"));
         } catch (Exception e) {
             client.sendResponse("ERROR", new network.ErrorPayload(
                     "ERR_RESET_010",
@@ -349,12 +360,12 @@ public class AuthHandler implements CommandHandler {
             return;
         }
 
-        if (resetToken == null || resetToken.isBlank()) {
+        if (resetToken.isBlank()) {
             client.sendResponse("ERROR", new network.ErrorPayload(
                     "ERR_RESET_011", "Reset token bị thiếu."));
             return;
         }
-        if (newPassword == null || newPassword.isBlank()) {
+        if (newPassword.isBlank()) {
             client.sendResponse("ERROR", new network.ErrorPayload(
                     "ERR_RESET_012", "Mật khẩu mới không được để trống."));
             return;
@@ -367,5 +378,9 @@ public class AuthHandler implements CommandHandler {
         } else {
             client.sendResponse("ERROR", new network.ErrorPayload("ERR_RESET_013", error));
         }
+    }
+
+    private String parseStringSafe(Object val) {
+        return (val == null) ? "" : val.toString().trim();
     }
 }

@@ -75,16 +75,28 @@ public class MinimalSellerItem extends MinimalItem {
      * @return a fully populated initialization node instance
      */
     public static MinimalSellerItem newMinimalSellerItemFromMap(Map<String, Object> map) {
+        Object startingPriceVal = map.get("startingPrice");
+        long startingPrice = startingPriceVal instanceof Number ? ((Number) startingPriceVal).longValue() : 0L;
+
+        Object currentPriceVal = map.get("currentPrice");
+        long currentPrice = currentPriceVal instanceof Number ? ((Number) currentPriceVal).longValue() : 0L;
+
+        Object bidIncrementVal = map.get("bidIncrement");
+        long bidIncrement = bidIncrementVal instanceof Number ? ((Number) bidIncrementVal).longValue() : 0L;
+
+        Object endTimeVal = map.get("endTime");
+        long endTime = endTimeVal instanceof Number ? ((Number) endTimeVal).longValue() : 0L;
+
         return new MinimalSellerItem(
                 (String) map.get("id"),
                 (String) map.get("imageUrl"),
                 (String) map.get("itemName"),
                 (String) map.get("itemType"),
                 (String) map.get("status"),
-                ((Number) map.get("startingPrice")).longValue(),
-                ((Number) map.get("currentPrice")).longValue(),
-                ((Number) map.get("bidIncrement")).longValue(),
-                ((Number) map.get("endTime")).longValue()
+                startingPrice,
+                currentPrice,
+                bidIncrement,
+                endTime
         );
     }
 

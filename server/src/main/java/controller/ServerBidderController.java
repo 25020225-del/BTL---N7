@@ -33,6 +33,11 @@ public class ServerBidderController {
     private static final Logger log = LoggerFactory.getLogger(ServerBidderController.class);
     static final String MSG_ACCOUNT_BLOCKED = "Tài khoản của bạn đã bị Quản trị viên khóa, không thể thực hiện thao tác này.";
     static final String ERR_CODE_BLOCKED = "ERR_BID_403";
+    
+    // Virtual Thread Executor to decouple networking socket writes/broadcasts from DB connection pool
+    private static final java.util.concurrent.ExecutorService networkExecutor = 
+            java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+
     private final BidDAO bidDAO;
 
     public ServerBidderController(BidDAO bidDAO) {
@@ -66,7 +71,9 @@ public class ServerBidderController {
             long expectedMaxBid;
 
             synchronized (AuctionManager.getLockForAuction(auction.getId())) {
-                if (!Auction.STATUS_RUNNING.equals(auction.getStatus())) {
+                boolean isActive = Auction.STATUS_RUNNING.equals(auction.getStatus())
+                        || Auction.STATUS_WAITING_FOR_BID.equals(auction.getStatus());
+                if (!isActive) {
                     return "NOT_RUNNING";
                 }
                 expectedPrice = auction.getCurrentPrice();
@@ -126,7 +133,7 @@ public class ServerBidderController {
         };
 
         return TransactionManager.submitTask(bidTask)
-                .thenApply(result -> {
+                .thenApplyAsync(result -> {
                     switch (result) {
                         case "SUCCESS" -> {
                             Map<String, Object> update = new HashMap<>();
@@ -159,7 +166,7 @@ public class ServerBidderController {
                             return false;
                         }
                     }
-                })
+                }, networkExecutor)
                 .exceptionally(ex -> {
                     log.error("Uncaught error during placeBidOnAuction task for auction {}: {}", auction.getId(), ex.getMessage(), ex);
                     return false;
@@ -234,10 +241,10 @@ public class ServerBidderController {
         };
 
         return TransactionManager.submitTask(task)
-                .thenApply(success -> {
+                .thenApplyAsync(success -> {
                     if (success) AutoBidEngine.triggerBotScan(auction);
                     return success;
-                })
+                }, networkExecutor)
                 .exceptionally(ex -> {
                     log.error("[AutoBid] Uncaught error for auction {}: {}",
                             auction.getId(), ex.getMessage(), ex);

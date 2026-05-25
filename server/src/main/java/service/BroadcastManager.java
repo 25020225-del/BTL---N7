@@ -71,7 +71,7 @@ public class BroadcastManager {
                 networkIoPool.submit(() -> {
                     for (ClientHandler client : subscribers) {
                         try {
-                            client.sendMessage(payload);
+                            client.sendPreSerializedResponse(payload);
                         } catch (Exception e) {
                             unsubscribe(auctionId, client);
                         }

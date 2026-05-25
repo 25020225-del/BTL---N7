@@ -125,7 +125,20 @@ public class AuctionActionHandler implements CommandHandler {
         if (newAuction != null) {
             log.info("{} has created an auction.", authenticatedUser.getUserName());
             if (authenticatedUser.isGood()) {
-                newAuction.setStatus(Auction.STATUS_RUNNING);
+                String initialStatus = reqStart.isAfter(now) ? Auction.STATUS_OPEN : Auction.STATUS_WAITING_FOR_BID;
+                newAuction.setStatus(initialStatus);
+                if (initialStatus.equals(Auction.STATUS_WAITING_FOR_BID)) {
+                    try (java.sql.Connection conn = database.DatabaseManager.getConnection()) {
+                        String sql = "UPDATE auctions SET status = ? WHERE id = ?";
+                        try (java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
+                            ps.setString(1, Auction.STATUS_WAITING_FOR_BID);
+                            ps.setString(2, newAuction.getId());
+                            ps.executeUpdate();
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to update initial status in DB: {}", e.getMessage());
+                    }
+                }
                 AuctionManager.addAuctionToMonitor(newAuction);
 
                 String alertMsg = "[System]: Seller \"" + authenticatedUser.getName()

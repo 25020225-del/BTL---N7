@@ -71,17 +71,17 @@ public class BidDAO {
         }
     }
 
-    private boolean wasPreviousBidBot(Connection conn, String auctionId, String previousWinnerId) {
-        if (previousWinnerId == null) return false;
-        String sql = "SELECT is_bot FROM bid_transactions WHERE auction_id = ? AND bidder_id = ? ORDER BY bid_time DESC LIMIT 1";
+    private boolean hasActiveAutoBid(Connection conn, String auctionId, String userId) {
+        if (userId == null) return false;
+        String sql = "SELECT 1 FROM auto_bids WHERE auction_id = ? AND bidder_id = ? AND is_active = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, auctionId);
-            ps.setString(2, previousWinnerId);
+            ps.setString(2, userId);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getInt("is_bot") == 1;
+                return rs.next();
             }
         } catch (SQLException e) {
-            log.error("Failed to evaluate chronological bot identity context: {}", e.getMessage());
+            log.error("Failed to evaluate active auto-bid status: {}", e.getMessage());
         }
         return false;
     }
@@ -125,7 +125,8 @@ public class BidDAO {
                 highestMaxBid = rs.getLong("highest_max_bid");
                 bidIncrement = rs.getLong("bid_increment");
                 durationMinutes = rs.getInt("duration_minutes");
-                startTime = LocalDateTime.parse(rs.getString("start_time"));
+                String startTimeStr = rs.getString("start_time");
+                startTime = (startTimeStr != null && !startTimeStr.trim().isEmpty()) ? LocalDateTime.parse(startTimeStr) : null;
                 winningBidderId = rs.getString("winning_bidder_id");
                 sellerId = rs.getString("seller_id");
                 itemType = rs.getString("item_type");
@@ -147,8 +148,16 @@ public class BidDAO {
         seller.setId(sellerId);
         auctionSnapshot.setSeller(seller);
 
+        boolean previousWinnerHasActiveBot = hasActiveAutoBid(conn, auctionId, winningBidderId);
+        long previousHighestMaxBid = highestMaxBid;
+
+        long competitionMaxBid = highestMaxBid;
+        if (winningBidderId != null && !previousWinnerHasActiveBot) {
+            competitionMaxBid = currentPrice;
+        }
+
         auctionSnapshot.setCurrentPrice(currentPrice);
-        auctionSnapshot.setHighestMaxBid(highestMaxBid);
+        auctionSnapshot.setHighestMaxBid(competitionMaxBid);
         auctionSnapshot.setBidIncrement(bidIncrement);
         auctionSnapshot.setStartTime(startTime);
         auctionSnapshot.setEndTime(endTime);
@@ -161,12 +170,10 @@ public class BidDAO {
             auctionSnapshot.setWinningBidder(winner);
         }
 
-        Auction.BidResult result = auctionSnapshot.calculateBidResult(currentUser, newMaxBid);
+        Auction.BidResult result = auctionSnapshot.calculateBidResult(currentUser, newMaxBid, !isBot);
         if (result == null) return null;
-
         String now = LocalDateTime.now().toString();
-        long previousHighestMaxBid = highestMaxBid;
-        boolean wasPreviousWinnerBot = wasPreviousBidBot(conn, auctionId, winningBidderId);
+        boolean shouldUnlockPreviousWinner = false;
 
         if (result.newWinner != null && result.newWinner.getId().equals(currentUser.getId())) {
             if (winningBidderId != null && winningBidderId.equals(currentUser.getId())) {
@@ -178,18 +185,8 @@ public class BidDAO {
                     walletDAO.addTransaction(conn, "W-LCK-" + java.util.UUID.randomUUID(), currentUser.getId(), -extraAmount, "Lock incremental bid raise for auction: " + auctionId, now);
                 }
             } else {
-                if (winningBidderId != null && !wasPreviousWinnerBot) {
-                    walletDAO.unlockBalance(conn, winningBidderId, previousHighestMaxBid);
-                    walletDAO.addTransaction(conn, "W-UNL-" + java.util.UUID.randomUUID(), winningBidderId, previousHighestMaxBid, "Unlock outbid reserve for auction: " + auctionId, now);
-                    server.ServerExtension.ClientManager.sendToUser(
-                            winningBidderId,
-                            "OUTBID",
-                            java.util.Map.of(
-                                    "auctionId", auctionId,
-                                    "newPrice",  result.newCurrentPrice
-                            )
-                    );
-
+                if (winningBidderId != null) {
+                    shouldUnlockPreviousWinner = true;
                 }
 
                 if (!isBot) {
@@ -213,9 +210,6 @@ public class BidDAO {
         }
 
         if (result.isFirstBid) {
-            // The condition (end_time IS NULL OR end_time > ?) forces an inline wall-clock check.
-            // This bypasses the AuctionMonitor's 10-second cron sleep interval, causing any post-deadline
-            // late bids to match zero mutated rows and safely fail via standard CAS reject routes.
             final String firstBidSql = "UPDATE auctions SET current_price = ?, end_time = ?, winning_bidder_id = ?, highest_max_bid = ?, status = ? "
                     + "WHERE id = ? AND winning_bidder_id IS NULL AND status = ? "
                     + "AND (end_time IS NULL OR end_time > ?)";
@@ -257,6 +251,28 @@ public class BidDAO {
                 }
                 if (ps.executeUpdate() == 0) return null;
             }
+        }
+
+        if (shouldUnlockPreviousWinner) {
+            walletDAO.unlockBalance(conn, winningBidderId, previousHighestMaxBid);
+            walletDAO.addTransaction(conn, "W-UNL-" + java.util.UUID.randomUUID(), winningBidderId, previousHighestMaxBid, "Unlock outbid reserve for auction: " + auctionId, now);
+            if (previousWinnerHasActiveBot) {
+                String deactivateSql = "UPDATE auto_bids SET is_active = 0 WHERE auction_id = ? AND bidder_id = ?";
+                try (PreparedStatement ps = conn.prepareStatement(deactivateSql)) {
+                    ps.setString(1, auctionId);
+                    ps.setString(2, winningBidderId);
+                    ps.executeUpdate();
+                }
+            }
+            server.ServerExtension.ClientManager.sendToUser(
+                    winningBidderId,
+                    "OUTBID",
+                    java.util.Map.of(
+                            "auctionId", auctionId,
+                            "newPrice",  result.newCurrentPrice
+                    )
+            );
+            log.warn("Deactivated automation for outbid leading bidder {}. Locked collateral boundary released.", winningBidderId);
         }
 
         return new BidCommitResult(auctionId, result.newCurrentPrice, result.newHighestMaxBid,

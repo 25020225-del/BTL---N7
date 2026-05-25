@@ -27,6 +27,7 @@ public class CommandDispatcher {
     private final controller.ServerPaymentController paymentCtrl;
     private final database.dao.WithdrawalDAO withdrawalDAO;
     private final service.PasswordResetService passwordResetService;
+    private PaymentHandler paymentHandler;
 
     public CommandDispatcher(
             database.dao.UserDAO userDAO,
@@ -73,7 +74,7 @@ public class CommandDispatcher {
         AuctionActionHandler auctionHandler = new AuctionActionHandler(sellerCtrl);
         handlers.put("CREATE_AUCTION", auctionHandler);
 
-        PaymentHandler paymentHandler = new PaymentHandler(paymentCtrl, totpService, walletDAO);
+        this.paymentHandler = new PaymentHandler(paymentCtrl, totpService, walletDAO);
         handlers.put("CREATE_DEPOSIT", paymentHandler);
         handlers.put("CONFIRM_DEPOSIT", paymentHandler);
         handlers.put("FETCH_WALLET", paymentHandler);
@@ -149,6 +150,15 @@ public class CommandDispatcher {
         } else {
             log.warn("Unrecognized command: {}", command);
             client.sendResponse("ERROR", new network.ErrorPayload("ERR_SYS_404", "Unrecognized command"));
+        }
+    }
+
+    /**
+     * Gracefully shuts down the Dispatcher and delegates to handler cleanup lifecycles.
+     */
+    public void shutdown() {
+        if (paymentHandler != null) {
+            paymentHandler.shutdown();
         }
     }
 }

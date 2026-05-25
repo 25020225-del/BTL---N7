@@ -72,7 +72,12 @@ public class RegisterController {
 
         registerButton.setDisable(true);
         networkClient.setOnMessageReceived(this::handleServerResponse);
-        networkClient.sendMessage("REGISTER", new User("", username, password, name, "USER"));
+        networkClient.sendMessage("REGISTER", java.util.Map.of(
+                "userName", username,
+                "password", password,
+                "name", name,
+                "role", "USER"
+        ));
     }
 
     @FXML
