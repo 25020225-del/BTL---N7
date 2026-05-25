@@ -13,7 +13,7 @@
 /* Khung nội dung: Bo góc, đổ bóng xanh dương nhạt */
 .auth-card {
     -fx-background-color: #ffffff;
-    -fx-background-radius: 12;
+    -fx-background-radius: 14;
     -fx-border-color: #d1e2f2;
     -fx-border-width: 1;
     /* Đổ bóng tông xanh dương để đồng bộ */
@@ -224,30 +224,6 @@
     -fx-font-weight: bold;
     -fx-text-fill: #111820;
 }
-
-<
-<
-<
-<
-<
-<
-<
-HEAD
-
-/*nut dang xuất*/
-=
-=
-=
-=
-=
-=
-=
-
-/*nut dang xuất*/
->>> >>> >
-
-89
-dfeebe728517716e9e02ef0007a89fd2b33f70
 .button-logout {
     -fx-background-color: transparent;
     -fx-text-fill: #dd1e31;

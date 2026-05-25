@@ -33,6 +33,8 @@ public class AuthHandler implements CommandHandler {
             case "VERIFY_2FA_SETUP", "CONFIRM_SETUP_2FA" -> processVerify2FASetup(message.getData(), client);
             case "DISABLE_2FA" -> processDisable2FA(message.getData(), client);
             case "UPDATE_TOTP_PREFS" -> processUpdateTotpPrefs(message.getData(), client);
+            case "VERIFY_TOTP_FOR_RESET" -> processVerifyTotpForReset(message.getData(), client);
+            case "RESET_PASSWORD"         -> processResetPassword(message.getData(), client);
             default -> throw new AuctionExceptions.InvalidPayloadException("Lệnh xác thực không hợp lệ: " + message.getCommand());
         }
     }
@@ -268,6 +270,102 @@ public class AuthHandler implements CommandHandler {
             log.info("TOTP prefs updated for user {}: login={}, payment={}", currentUser.getUserName(), loginEnabled, paymentEnabled);
         } else {
             client.sendResponse("ERROR", new ErrorPayload("ERR_AUTH_032", error));
+        }
+    }
+    /**
+     * Handles Step 1 of the forgot-password flow.
+     *
+     * <p>Expected payload (JSON object):</p>
+     * <pre>{@code
+     * { "identifier": "username_here", "totpCode": 123456 }
+     * }</pre>
+     *
+     * <p>Success response: {@code TOTP_RESET_VERIFIED} with {@code { "resetToken": "uuid" }}</p>
+     * <p>Failure response: {@code ERROR} with a Vietnamese error message</p>
+     */
+    private void processVerifyTotpForReset(Object data, ClientHandler client) {
+        String identifier;
+        int totpCode;
+
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) data;
+            identifier = ((String) map.get("identifier")).trim();
+            totpCode = ((Number) map.get("totpCode")).intValue();
+        } catch (Exception e) {
+            client.sendResponse("ERROR", new network.ErrorPayload(
+                    "ERR_RESET_001",
+                    "Dữ liệu không đúng định dạng. Cần có: identifier (String) và totpCode (Number)."));
+            return;
+        }
+
+        if (identifier.isBlank()) {
+            client.sendResponse("ERROR", new network.ErrorPayload(
+                    "ERR_RESET_002", "Tên đăng nhập không được để trống."));
+            return;
+        }
+
+        try {
+            String resetToken = client.getUserController().verifyTotpForReset(identifier, totpCode);
+            if (resetToken == null) {
+                client.sendResponse("ERROR", new network.ErrorPayload(
+                        "ERR_RESET_003",
+                        "Tên đăng nhập không đúng, TOTP chưa bật, hoặc mã TOTP không hợp lệ."));
+                return;
+            }
+            client.sendResponse("TOTP_RESET_VERIFIED", Map.of("resetToken", resetToken));
+            log.info("[RESET] TOTP_RESET_VERIFIED sent to client (identifier={})", identifier);
+        } catch (java.sql.SQLException e) {
+            log.error("[RESET] DB error during TOTP reset verification: {}", e.getMessage(), e);
+            client.sendResponse("ERROR", new network.ErrorPayload(
+                    "ERR_RESET_004", "Lỗi hệ thống. Vui lòng thử lại sau."));
+        }
+    }
+
+    /**
+     * Handles Step 2 of the forgot-password flow.
+     *
+     * <p>Expected payload (JSON object):</p>
+     * <pre>{@code
+     * { "resetToken": "uuid-here", "newPassword": "NewPass@123" }
+     * }</pre>
+     *
+     * <p>Success response: {@code RESET_PASSWORD_SUCCESS} with a confirmation message</p>
+     * <p>Failure response: {@code ERROR} with a Vietnamese error message</p>
+     */
+    private void processResetPassword(Object data, ClientHandler client) {
+        String resetToken;
+        String newPassword;
+
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) data;
+            resetToken   = (String) map.get("resetToken");
+            newPassword  = (String) map.get("newPassword");
+        } catch (Exception e) {
+            client.sendResponse("ERROR", new network.ErrorPayload(
+                    "ERR_RESET_010",
+                    "Dữ liệu không đúng định dạng. Cần có: resetToken (String) và newPassword (String)."));
+            return;
+        }
+
+        if (resetToken == null || resetToken.isBlank()) {
+            client.sendResponse("ERROR", new network.ErrorPayload(
+                    "ERR_RESET_011", "Reset token bị thiếu."));
+            return;
+        }
+        if (newPassword == null || newPassword.isBlank()) {
+            client.sendResponse("ERROR", new network.ErrorPayload(
+                    "ERR_RESET_012", "Mật khẩu mới không được để trống."));
+            return;
+        }
+        String error = client.getUserController().resetPassword(resetToken, newPassword);
+        if (error == null) {
+            client.sendResponse("RESET_PASSWORD_SUCCESS",
+                    Map.of("message", "Mật khẩu đã được cập nhật thành công. Vui lòng đăng nhập lại."));
+            log.info("[RESET] Password reset completed successfully for a client.");
+        } else {
+            client.sendResponse("ERROR", new network.ErrorPayload("ERR_RESET_013", error));
         }
     }
 }

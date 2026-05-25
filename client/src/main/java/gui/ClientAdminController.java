@@ -163,9 +163,6 @@ public class ClientAdminController {
     }
 
     private void setMainViewController() {
-        AuctionEventBus.addListener("ADMIN_ACTION_SUCCESS", event ->
-                Platform.runLater(() -> AlertUtils.showInfo("Success", (String) event.getNewValue()))
-        );
         AuctionEventBus.addListener(AuctionEventBus.ADMIN_ACTION_SUCCESS, event ->
                 Platform.runLater(() -> {
                     AlertUtils.showInfo("Success", event.getNewValue().toString());

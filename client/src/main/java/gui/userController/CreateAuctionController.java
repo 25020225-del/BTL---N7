@@ -21,6 +21,7 @@ import model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
@@ -34,6 +35,7 @@ import java.time.LocalDateTime;
 public class CreateAuctionController extends ScrollPane {
 
     private static final Logger log = LoggerFactory.getLogger(CreateAuctionController.class);
+    private PropertyChangeListener auctionCreatedListener;
 
     private Runnable onAuctionCreated;
     private File imagefile;
@@ -148,14 +150,15 @@ public class CreateAuctionController extends ScrollPane {
         selector = new Selector("type", ItemFactory.TYPE_TANGIBLE, ItemFactory.TYPE_DIGITAL, ItemFactory.TYPE_SERVICE);
         ca_details.getChildren().add(selector);
 
-        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, event ->
+        auctionCreatedListener = event ->
                 Platform.runLater(() -> {
                     resetForm();
-                    if (onAuctionCreated != null) {
-                        onAuctionCreated.run();
-                    }
-                })
-        );
+                    if (onAuctionCreated != null) onAuctionCreated.run();
+                });
+        AuctionEventBus.addListener(AuctionEventBus.AUCTION_CREATED, auctionCreatedListener);
+    }
+    public void dispose() {
+        AuctionEventBus.removeListener(AuctionEventBus.AUCTION_CREATED, auctionCreatedListener);
     }
 
     private void resetForm() {

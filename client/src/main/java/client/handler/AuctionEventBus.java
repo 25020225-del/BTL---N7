@@ -22,6 +22,7 @@ public class AuctionEventBus {
     public static final String FETCH_USERS_SUCCESS = "FETCH_USERS_SUCCESS";
     public static final String ADMIN_ACTION_SUCCESS = "ADMIN_ACTION_SUCCESS";
     public static final String FETCH_WALLET_SUCCESS = "FETCH_WALLET_SUCCESS";
+    public static final String OUTBID = "OUTBID";
 
     public static void addListener(String propertyName, PropertyChangeListener listener) {
         support.addPropertyChangeListener(propertyName, listener);

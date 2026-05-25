@@ -3,6 +3,7 @@ package database.dao;
 import database.DatabaseManager;
 import model.user.User;
 import model.user.User.TwoFactorStatus;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -190,6 +191,33 @@ public class UserDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, userId);
             return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Overwrites the password hash for a specific user record.
+     *
+     * <p>Only called after the reset token has been verified and the new
+     * password has been validated and hashed by the controller layer.
+     * Never call this method with a plain-text password.</p>
+     *
+     * @param userId         the unique identity of the target user
+     * @param hashedPassword the BCrypt hash of the new password (cost factor ≥ 10)
+     * @return {@code true} if the row was updated successfully
+     * @throws SQLException if the underlying database operation fails
+     */
+    public boolean updatePassword(String userId, String hashedPassword) throws SQLException {
+        String sql = "UPDATE users SET password = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, hashedPassword);
+            ps.setString(2, userId);
+            int rows = ps.executeUpdate();
+            if (rows > 0) {
+                LoggerFactory.getLogger(UserDAO.class)
+                        .info("[RESET] Password updated for userId={}", userId);
+            }
+            return rows > 0;
         }
     }
 

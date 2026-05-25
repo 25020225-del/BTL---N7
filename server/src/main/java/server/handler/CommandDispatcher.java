@@ -26,6 +26,7 @@ public class CommandDispatcher {
     private final controller.ServerSellerController sellerCtrl;
     private final controller.ServerPaymentController paymentCtrl;
     private final database.dao.WithdrawalDAO withdrawalDAO;
+    private final service.PasswordResetService passwordResetService;
 
     public CommandDispatcher(
             database.dao.UserDAO userDAO,
@@ -45,6 +46,7 @@ public class CommandDispatcher {
         this.sellerCtrl = sellerCtrl;
         this.paymentCtrl = paymentCtrl;
         this.withdrawalDAO = withdrawalDAO;
+        this.passwordResetService = new service.PasswordResetService();
 
         registerHandlers();
     }
@@ -110,6 +112,9 @@ public class CommandDispatcher {
         AuctionRoomHandler roomHandler = new AuctionRoomHandler();
         handlers.put("JOIN_AUCTION", roomHandler);
         handlers.put("LEAVE_AUCTION", roomHandler);
+
+        handlers.put("VERIFY_TOTP_FOR_RESET", authHandler);
+        handlers.put("RESET_PASSWORD",         authHandler);
     }
 
     /**
