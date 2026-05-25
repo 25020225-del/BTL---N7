@@ -17,10 +17,6 @@ import service.AdminAuctionService;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Privileged security gateway ingress controller routing high-level
- * administrative actions including enforcement, session evaluation, and financial checks.
- */
 public class AdminActionHandler implements CommandHandler {
 
     private static final Logger log = LoggerFactory.getLogger(AdminActionHandler.class);

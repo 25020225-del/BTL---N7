@@ -22,10 +22,6 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Service orchestrating authoritative administrative lifecycle operations for active auctions.
- * Guarantees cross-user financial escrow holds liquidation within a single atomic database transaction context.
- */
 public class AdminAuctionService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminAuctionService.class);
@@ -44,13 +40,6 @@ public class AdminAuctionService {
         DB_ERROR
     }
 
-    /**
-     * Forcibly liquidates an active auction instance, voids security states, and restores
-     * exact financial collateral guarantees back to manual and proxy participant ledgers.
-     *
-     * @param auctionId unique system identifier matching the target resource aggregate
-     * @return a concrete {@link CancelResult} documenting the explicit completion boundary status
-     */
     public CancelResult cancelAuctionAndRefund(String auctionId) {
         log.info("[CANCEL] Admin initiated cancel for auction: {}", auctionId);
 

@@ -23,10 +23,6 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Controller handling administrative control operations including account enforcement,
- * auction approval pipelines, and financial withdrawal validations (Maker-Checker verification).
- */
 public class ServerAdminController {
 
     private static final Logger log = LoggerFactory.getLogger(ServerAdminController.class);
@@ -108,7 +104,7 @@ public class ServerAdminController {
 
             String approvedStatus = newStart.isAfter(now) ? Auction.STATUS_OPEN : Auction.STATUS_WAITING_FOR_BID;
 
-            // We set endTime = null so the duration starts only when the first bid is placed!
+            // Duration starts only when the first bid is placed
             boolean dbSuccess = auctionDAO.updateApprovalStatus(auctionId, approvedStatus, newStart, null);
             if (dbSuccess) {
                 log.info("Admin {} approved auction {}. Status set to {}, start time to {}.",
