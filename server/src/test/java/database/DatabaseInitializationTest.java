@@ -1,12 +1,13 @@
 package database;
 
-import database.DatabaseManager;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -18,6 +19,15 @@ class DatabaseInitializationTest {
     @BeforeAll
     static void init() {
         DatabaseManager.initializeDatabase();
+    }
+
+    @AfterEach
+    void tearDown() {
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("DELETE FROM auctions WHERE id LIKE 'AUC-test-%'");
+        } catch (Exception ignored) {
+        }
     }
 
     @Test
@@ -32,7 +42,7 @@ class DatabaseInitializationTest {
             try (Connection conn = DatabaseManager.getConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-                pstmt.setString(1, "AUC-test-15cols");
+                pstmt.setString(1, "AUC-15-" + java.util.UUID.randomUUID());
                 pstmt.setString(2, "Test Item 15 Cols");
                 pstmt.setString(3, "Description context");
                 pstmt.setLong(4, 1000L);
@@ -66,7 +76,7 @@ class DatabaseInitializationTest {
             try (Connection conn = DatabaseManager.getConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-                pstmt.setString(1, "AUC-test-14cols");
+                pstmt.setString(1, "AUC-14-" + java.util.UUID.randomUUID());
                 pstmt.setString(2, "Test Item 14 Cols");
                 pstmt.setString(3, "Description context");
                 pstmt.setLong(4, 1000L);

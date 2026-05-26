@@ -77,19 +77,6 @@ public class Auction extends Entity {
     }
 
     /**
-     * @deprecated Use 7-parameter constructor to explicitly pass structural original duration bounds.
-     */
-    @Deprecated
-    public Auction(String id, Item item, User seller,
-                   long bidIncrement,
-                   LocalDateTime startTime, LocalDateTime endTime) {
-        this(id, item, seller, bidIncrement, startTime, endTime,
-                (endTime != null && startTime != null)
-                        ? (int) java.time.Duration.between(startTime, endTime).toMinutes()
-                        : 60);
-    }
-
-    /**
      * Factory assembly routine initializing a deferred-clock auction session pending activation triggers.
      */
     public static Auction createNewAuction(Item item, User seller,
@@ -362,26 +349,6 @@ public class Auction extends Entity {
      */
     public long getMinAutoBidRequired() {
         return (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
-    }
-
-    /**
-     * @deprecated Use thread-safe decoupled workflows via {@link #calculateBidResult} and {@link #applyBidResult}
-     */
-    @Deprecated
-    public BidTransaction placeBid(User bidder, long newMaxBid) {
-        boolean canBid = STATUS_WAITING_FOR_BID.equals(status) || STATUS_RUNNING.equals(status);
-        if (!canBid) return null;
-        if (STATUS_RUNNING.equals(status) && (endTime == null || LocalDateTime.now().isAfter(endTime))) {
-            return null;
-        }
-        if (newMaxBid < 0) return null;
-
-        long minRequired = (winningBidder == null) ? currentPrice : (currentPrice + bidIncrement);
-        if (newMaxBid < minRequired) return null;
-
-        BidResult result = calculateBidResult(bidder, newMaxBid);
-        if (result == null) return null;
-        return applyBidResult(bidder, result);
     }
 
     @Override

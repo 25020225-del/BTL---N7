@@ -53,7 +53,7 @@ class ConcurrentBiddingTest {
         Item item = new TangibleItem("ITEM-" + runId, "Test Item", "", 1000L);
 
         LocalDateTime now = LocalDateTime.now().minusSeconds(5);
-        Auction auction = new Auction("AUC-" + runId, item, seller, 50L, now, now.plusMinutes(10));
+        Auction auction = new Auction("AUC-" + runId, item, seller, 50L, now, now.plusMinutes(10), 10);
         auction.setStatus(Auction.STATUS_RUNNING);
 
         List<User> bidders = new ArrayList<>();

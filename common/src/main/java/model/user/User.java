@@ -126,10 +126,6 @@ public class User extends Entity {
     /**
      * @deprecated Prefer direct updates via {@link #setTwoFactorStatus(TwoFactorStatus)}
      */
-    @Deprecated
-    public void set2FAEnabled(boolean v) {
-        setTwoFactorStatus(v ? TwoFactorStatus.ENABLED : TwoFactorStatus.DISABLED);
-    }
 
     @JsonIgnore
     public String getTotpSecret() {

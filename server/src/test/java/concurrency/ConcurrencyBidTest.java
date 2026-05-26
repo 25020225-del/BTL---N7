@@ -40,7 +40,7 @@ class ConcurrencyBidTest {
         LocalDateTime start = LocalDateTime.now().minusMinutes(10);
         LocalDateTime end = LocalDateTime.now().plusMinutes(10);
 
-        auction = new Auction("AUC-MATH-TEST", item, seller, 50L, start, end);
+        auction = new Auction("AUC-MATH-TEST", item, seller, 50L, start, end, 20);
         auction.setStatus(Auction.STATUS_RUNNING);
     }
 

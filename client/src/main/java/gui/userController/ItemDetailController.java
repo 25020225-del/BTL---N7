@@ -353,12 +353,6 @@ public class ItemDetailController {
         return detailView;
     }
 
-    /** @deprecated Use {@link #getParent()} instead. */
-    @Deprecated
-    public Parent getView() {
-        return detailView;
-    }
-
     public void setOnReturnToMarketplace(Runnable callback) {
         this.onReturnToMarketplace = callback;
     }
