@@ -53,7 +53,7 @@ public class MultiThreadedServer {
 
     private static final int NETWORK_TIMEOUT_MS = 5000;
 
-    public static void updateAddress(String currentIp, int currentPort) {
+    public static boolean updateAddress(String currentIp, int currentPort) {
         try {
             HttpURLConnection conn = getJSONBinConnection();
 
@@ -66,11 +66,14 @@ public class MultiThreadedServer {
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
                 log.debug("New IP - Port synced: {}:{}", currentIp, currentPort);
+                return true;
             } else {
                 log.error("Unexpected HTTP response code {} from address sync endpoint", responseCode);
+                return false;
             }
         } catch (Exception e) {
             log.error("Connection error: {}", e.getMessage());
+            return false;
         }
     }
 
@@ -233,15 +236,17 @@ public class MultiThreadedServer {
                     int newPort = Integer.parseInt(publicAddress[1]);
 
                     if (!newIp.equals(lastSyncedIp) || newPort != lastSyncedPort) {
-                        updateAddress(newIp, newPort);
-                        lastSyncedIp = newIp;
-                        lastSyncedPort = newPort;
+                        if (updateAddress(newIp, newPort)) {
+                            lastSyncedIp = newIp;
+                            lastSyncedPort = newPort;
+                        }
                     }
                 } else if (lastSyncedIp.isEmpty()) {
                     log.warn("Cannot get public address. Using fallback localhost addressing scheme.");
-                    updateAddress("127.0.0.1", PORT);
-                    lastSyncedIp = "127.0.0.1";
-                    lastSyncedPort = PORT;
+                    if (updateAddress("127.0.0.1", PORT)) {
+                        lastSyncedIp = "127.0.0.1";
+                        lastSyncedPort = PORT;
+                    }
                 }
             } catch (Exception e) {
                 log.error("Network initialization background error: {}", e.getMessage());

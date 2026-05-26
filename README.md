@@ -60,16 +60,18 @@ Mở terminal tại thư mục gốc BTL---N7 và chạy lệnh:
 ```text
 mvn clean package -DskipTests
 ```
-**Bước 2:** trong thư mục cùng file với file jar của server, tạo một file .env và cấu hình các thông tin sau:
-```azure
+**Bước 2:** Trong thư mục gốc của dự án (hoặc cùng thư mục với file jar của Server), tạo một file `.env` và cấu hình các thông tin môi trường sau:
+```env
 LOCALTONET_API_TOKEN=[?]
-JSONBIN_API_KEY=$2a$10$KUTxarrdyYhaWz1dwui2.uQkxGR44FqLLD2u4CAkHF6.Xk.qrNWn6
-BIN_ID=69eb461436566621a8e85d68
-CLOUDINARY_CLOUD_NAME=[?]
-CLOUDINARY_API_KEY=[?]
-CLOUDINARY_API_SECRET=[?]
+JSONBIN_API_KEY=$2a$10$aUHAf8TlnNuGwO8/5/I2yeiLKj8Fqh2xaAZ09R/UF/9JTpGhdqRZK
+BIN_ID=69d4960b856a6821890813a2
+CLOUDINARY_CLOUD_NAME=de1isjzur
+CLOUDINARY_API_KEY=748352485873877
+CLOUDINARY_API_SECRET=_6OeXCYYcSL05fVZmqyGh3vtgvg
 ```
-Hệ thống sử dụng localtonet để kết nối các client thông qua mạng wan và cloundinary để làm kho chứa ảnh.
+> [!NOTE]
+> * Hệ thống sử dụng Localtonet để kết nối Client qua mạng WAN/Internet rộng lớn và Cloudinary để làm kho chứa ảnh sản phẩm.
+> * **Giải pháp chạy Offline (Localhost)**: Trong trường hợp dịch vụ Internet trung gian `jsonbin.io` gặp sự cố (như lỗi máy chủ 500/504), bạn vẫn có thể kiểm thử cục bộ hoàn hảo! Chỉ cần khởi chạy Server, sau đó mở Client lên. Do không liên lạc được với JsonBin, Client sẽ tự động kích hoạt cơ chế dự phòng và kết nối trực tiếp vào máy của bạn qua cổng địa chỉ nội bộ `ws://localhost:6969`.
 
 **Bước 3:** Khởi chạy Socket Server
 ```text
