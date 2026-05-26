@@ -84,12 +84,12 @@ public class LoginController {
 
         setNetworkClient(NetworkService.get());
         if (networkClient == null) {
-            AlertUtils.showError("Lỗi kết nối", "Không thể kết nối đến máy chủ.");
+            AlertUtils.showError("Network Error", "Cannot connect to the server.");
             return;
         }
 
         loginButton.setDisable(true);
-        loginButton.setText("ĐANG ĐĂNG NHẬP...");
+        loginButton.setText("Logging in...");
 
         networkClient.setOnMessageReceived(this::handleServerResponse);
         networkClient.sendMessage("LOGIN", Map.of("userName", username, "password", password));
@@ -105,7 +105,7 @@ public class LoginController {
     private void handleServerResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             loginButton.setDisable(false);
-            loginButton.setText("ĐĂNG NHẬP");
+            loginButton.setText("Log In");
 
             String command = response.getCommand();
             log.debug("Server Response: {}", command);
@@ -117,7 +117,7 @@ public class LoginController {
                 case "LOGIN_FAIL", "ERROR" -> {
                     String err = ErrorParser.parse(response.getData());
                     log.warn("Login failed: {}", err);
-                    AlertUtils.showError("Đăng nhập thất bại", err);
+                    AlertUtils.showError("Log In failed", err);
                 }
                 default -> log.warn("Unknown command during login: {}", command);
             }
@@ -127,9 +127,9 @@ public class LoginController {
     private void handleRequire2FA() {
         log.info("Server requires 2FA. Showing OTP dialog...");
         TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Xác thực 2 lớp (2FA)");
-        dialog.setHeaderText("Tài khoản của bạn được bảo vệ bởi 2FA.");
-        dialog.setContentText("Nhập mã 6 số từ Google Authenticator:");
+        dialog.setTitle("2FA verification");
+        dialog.setHeaderText("Your account has 2FA enabled.");
+        dialog.setContentText("Enter 6 digits code provided by Google Authenticator:");
 
         Optional<String> result = dialog.showAndWait();
         result.ifPresentOrElse(otpText -> {
@@ -137,15 +137,15 @@ public class LoginController {
                 int code = Integer.parseInt(otpText.trim());
                 networkClient.sendMessage("VERIFY_2FA", Map.of("code", code));
                 loginButton.setDisable(true);
-                loginButton.setText("ĐANG XÁC THỰC...");
+                loginButton.setText("Authenticating...");
             } catch (NumberFormatException e) {
                 loginButton.setDisable(false);
-                loginButton.setText("ĐĂNG NHẬP");
-                AlertUtils.showWarning("OTP không hợp lệ", "Mã OTP phải là 6 chữ số. Vui lòng thử lại.");
+                loginButton.setText("Log In");
+                AlertUtils.showWarning("Invalid OTP", "OTP code must be a 6 digits code. Please try again.");
             }
         }, () -> {
             loginButton.setDisable(false);
-            loginButton.setText("ĐĂNG NHẬP");
+            loginButton.setText("Log In");
         });
     }
 
@@ -159,7 +159,7 @@ public class LoginController {
             MainController.start(loggedInUser);
         } catch (Exception e) {
             log.error("Error processing LOGIN_SUCCESS: {}", e.getMessage(), e);
-            AlertUtils.showError("Lỗi", "Không thể tải dữ liệu tài khoản.");
+            AlertUtils.showError("Error", "Cannot load account data.");
         }
     }
 
@@ -197,7 +197,7 @@ public class LoginController {
         totpResetErrorLabel.setText("");
 
         if (identifier.isEmpty()) {
-            totpResetErrorLabel.setText("Vui lòng nhập tên đăng nhập.");
+            totpResetErrorLabel.setText("Please enter username.");
             return;
         }
 
@@ -206,18 +206,18 @@ public class LoginController {
             totpCode = Integer.parseInt(totpRaw);
             if (totpRaw.length() != 6) throw new NumberFormatException();
         } catch (NumberFormatException e) {
-            totpResetErrorLabel.setText("Mã TOTP phải là đúng 6 chữ số.");
+            totpResetErrorLabel.setText("TOTP code must be a 6 digits code.");
             return;
         }
 
         setNetworkClient(NetworkService.get());
         if (networkClient == null) {
-            totpResetErrorLabel.setText("Không thể kết nối máy chủ.");
+            totpResetErrorLabel.setText("Cannot connect to the server.");
             return;
         }
 
         verifyTotpResetButton.setDisable(true);
-        verifyTotpResetButton.setText("ĐANG XÁC THỰC...");
+        verifyTotpResetButton.setText("Authenticating...");
 
         networkClient.setOnMessageReceived(this::handleTotpResetResponse);
         networkClient.sendMessage("VERIFY_TOTP_FOR_RESET", Map.of(
@@ -229,7 +229,7 @@ public class LoginController {
     private void handleTotpResetResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             verifyTotpResetButton.setDisable(false);
-            verifyTotpResetButton.setText("XÁC THỰC");
+            verifyTotpResetButton.setText("Authenticate");
 
             String command = response.getCommand();
             if ("TOTP_RESET_VERIFIED".equals(command)) {
@@ -245,7 +245,7 @@ public class LoginController {
                     confirmNewPasswordField.clear();
                 } catch (Exception e) {
                     log.error("[RESET] Error reading resetToken: {}", e.getMessage(), e);
-                    totpResetErrorLabel.setText("Lỗi hệ thống. Vui lòng thử lại.");
+                    totpResetErrorLabel.setText("System Error. Please try again.");
                 }
             } else {
                 // ERROR or unexpected command
@@ -267,31 +267,46 @@ public class LoginController {
         newPasswordErrorLabel.setText("");
 
         if (newPass.isEmpty() || confirm.isEmpty()) {
-            newPasswordErrorLabel.setText("Vui lòng nhập đầy đủ mật khẩu mới và xác nhận.");
+            newPasswordErrorLabel.setText("Please enter new password.");
             return;
         }
         if (!newPass.equals(confirm)) {
-            newPasswordErrorLabel.setText("Mật khẩu mới và xác nhận không khớp.");
+            newPasswordErrorLabel.setText("New password cannot be the same as old one.");
             return;
         }
+
+        // Client-Side Entropy Synchronization Alignment
         if (newPass.length() < 8) {
-            newPasswordErrorLabel.setText("Mật khẩu mới phải có ít nhất 8 ký tự.");
+            newPasswordErrorLabel.setText("Password must contain at least 8 characters.");
             return;
         }
+        if (!newPass.matches(".*[A-Z].*")) {
+            newPasswordErrorLabel.setText("Password must contain at least an uppercase letter (A-Z).");
+            return;
+        }
+        if (!newPass.matches(".*[0-9].*")) {
+            newPasswordErrorLabel.setText("Password must contain at least a digit (0-9).");
+            return;
+        }
+        if (!newPass.matches(".*[!@#$%^&*()_+\\-=\\[\\]{}|;':\",./<>?].*")) {
+            newPasswordErrorLabel.setText("Password must contain at least a special character (!@#$%^&*...).");
+            return;
+        }
+
         if (pendingResetToken == null) {
-            newPasswordErrorLabel.setText("Phiên đặt lại mật khẩu đã hết hạn. Vui lòng bắt đầu lại.");
+            newPasswordErrorLabel.setText("Resetting password session is expired. Please restart.");
             showPane(forgotTotpPane);
             return;
         }
 
         setNetworkClient(NetworkService.get());
         if (networkClient == null) {
-            newPasswordErrorLabel.setText("Không thể kết nối máy chủ.");
+            newPasswordErrorLabel.setText("Cannot connect to the server.");
             return;
         }
 
         resetPasswordButton.setDisable(true);
-        resetPasswordButton.setText("ĐANG CẬP NHẬT...");
+        resetPasswordButton.setText("Updating...");
 
         networkClient.setOnMessageReceived(this::handleResetPasswordResponse);
         networkClient.sendMessage("RESET_PASSWORD", Map.of(
@@ -303,7 +318,7 @@ public class LoginController {
     private void handleResetPasswordResponse(NetworkMessage response) {
         Platform.runLater(() -> {
             resetPasswordButton.setDisable(false);
-            resetPasswordButton.setText("ĐẶT LẠI MẬT KHẨU");
+            resetPasswordButton.setText("Reset Password");
 
             String command = response.getCommand();
             if ("RESET_PASSWORD_SUCCESS".equals(command)) {
@@ -314,8 +329,8 @@ public class LoginController {
                 confirmNewPasswordField.clear();
 
                 AlertUtils.showInfo(
-                        "Thành công",
-                        "Mật khẩu của bạn đã được cập nhật thành công!\nVui lòng đăng nhập lại với mật khẩu mới."
+                        "Success",
+                        "Your password has been updated.\nYou can log in with new password."
                 );
 
                 showPane(loginPane);
@@ -327,7 +342,7 @@ public class LoginController {
                 if (err != null && err.contains("hết hạn")) {
                     pendingResetToken = null;
                     showPane(forgotTotpPane);
-                    totpResetErrorLabel.setText("Phiên hết hạn. Vui lòng xác thực lại TOTP.");
+                    totpResetErrorLabel.setText("Session expired. Please try TOTP again.");
                 }
             }
         });

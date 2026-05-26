@@ -196,8 +196,8 @@ public class MultiThreadedServer {
         database.dao.WalletDAO walletDAO = new database.dao.WalletDAO();
         database.dao.WithdrawalDAO withdrawalDAO = new database.dao.WithdrawalDAO();
         service.TOTPService totpService = new service.TOTPService();
-
         service.PasswordResetService passwordResetService = new service.PasswordResetService();
+
         userController = new UserController(userDAO, totpService, passwordResetService);
         controller.ServerSellerController sellerCtrl = new controller.ServerSellerController(auctionDAO);
         controller.ServerPaymentController paymentCtrl = new controller.ServerPaymentController(walletDAO, withdrawalDAO);
@@ -206,7 +206,15 @@ public class MultiThreadedServer {
         service.AutoBidEngine.setBidderController(bidderCtrl);
 
         commandDispatcher = new server.handler.CommandDispatcher(
-                userDAO, auctionDAO, bidDAO, walletDAO, withdrawalDAO, totpService, sellerCtrl, paymentCtrl
+                userDAO,
+                auctionDAO,
+                bidDAO,
+                walletDAO,
+                withdrawalDAO,
+                totpService,
+                sellerCtrl,
+                paymentCtrl,
+                passwordResetService
         );
 
         AuctionMonitor monitor = new AuctionMonitor(AuctionManager.getAuctionList(), auctionDAO, walletDAO);
