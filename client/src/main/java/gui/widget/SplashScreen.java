@@ -4,7 +4,6 @@ import javafx.animation.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -37,6 +36,7 @@ public class SplashScreen extends StackPane {
         mainContainer.setAlignment(Pos.CENTER);
         mainContainer.setMaxWidth(350);
 
+        // ── KHU VỰC LOGO ───────────────────────────────────────────────────────
         StackPane logoContainer = new StackPane();
         logoContainer.setPrefSize(100, 100);
         logoContainer.setMaxSize(100, 100);
@@ -72,44 +72,22 @@ public class SplashScreen extends StackPane {
 
         logoContainer.getChildren().addAll(trackCircle, logoCard, brandLabel, spinnerWrapper);
 
+        // ── TIÊU ĐỀ HỆ THỐNG ────────────────────────────────────────────────────
         Label systemTitle = new Label("N7 Auction System");
         systemTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: #0f172a;" + FONT_FAMILY);
         systemTitle.setOpacity(0);
         VBox.setMargin(systemTitle, new Insets(0, 0, 24, 0));
 
-        VBox stepsWrapper = new VBox(12);
-        stepsWrapper.setAlignment(Pos.CENTER_LEFT);
-        stepsWrapper.setMaxWidth(240);
-        VBox.setMargin(stepsWrapper, new Insets(0, 0, 20, 0));
-
-        String[] processes = {
-                "Fetching server address...",
-                "Establishing secure channel...",
-                "RSA handshake successful"
-        };
-        HBox[] processRows = new HBox[processes.length];
-        Circle[] statusDots = new Circle[processes.length];
-
-        for (int i = 0; i < processes.length; i++) {
-            statusDots[i] = new Circle(3.5, Color.web("#cbd5e1"));
-
-            Label textLabel = new Label(processes[i]);
-            textLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #64748b; -fx-font-weight: 500;" + FONT_FAMILY);
-
-            processRows[i] = new HBox(12, statusDots[i], textLabel);
-            processRows[i].setAlignment(Pos.CENTER_LEFT);
-            processRows[i].setOpacity(0);
-
-            stepsWrapper.getChildren().add(processRows[i]);
-        }
-
+        // ── FOOTER META ────────────────────────────────────────────────────────
         Label metaLabel = new Label("v1.0.0  ·  N7 Group Project");
         metaLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8; -fx-font-weight: 600;" + FONT_FAMILY);
         metaLabel.setOpacity(0);
 
-        mainContainer.getChildren().addAll(logoContainer, systemTitle, stepsWrapper, metaLabel);
+        // Nạp tất cả linh kiện vào Container chính (Đã loại bỏ stepsWrapper)
+        mainContainer.getChildren().addAll(logoContainer, systemTitle, metaLabel);
         getChildren().add(mainContainer);
 
+        // ── HOẠT ẢNH XOAY VÒNG (SPINNER ANIMATION) ────────────────────────────────
         Rotate rotateTransform = new Rotate(0, 50, 50);
         loadingArc.getTransforms().add(rotateTransform);
 
@@ -119,24 +97,14 @@ public class SplashScreen extends StackPane {
         );
         rotateAnimation.setCycleCount(Animation.INDEFINITE);
 
-        SequentialTransition stepSequence = new SequentialTransition();
-        for (int i = 0; i < processRows.length; i++) {
-            FadeTransition displayRow = new FadeTransition(Duration.millis(350), processRows[i]);
-            displayRow.setToValue(1);
-
-            final int index = i;
-            displayRow.setOnFinished(e -> statusDots[index].setFill(Color.web("#3b82f6")));
-
-            stepSequence.getChildren().addAll(new PauseTransition(Duration.millis(i == 0 ? 0 : 500)), displayRow);
-        }
-
+        // ── HOẠT ẢNH HIỆN TỪNG THÀNH PHẦN (FADE IN TIMELINE) ─────────────────────
         textSequenceAnimation = new SequentialTransition(
                 new PauseTransition(Duration.millis(150)),
                 createFadeTransition(logoCard, 350),
                 createFadeTransition(brandLabel, 350),
                 new PauseTransition(Duration.millis(150)),
                 createFadeTransition(systemTitle, 400),
-                stepSequence,
+                new PauseTransition(Duration.millis(400)), // Tạo khoảng nghỉ tinh tế thay cho luồng text cũ
                 createFadeTransition(metaLabel, 350)
         );
     }

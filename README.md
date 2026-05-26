@@ -60,13 +60,24 @@ Mở terminal tại thư mục gốc BTL---N7 và chạy lệnh:
 ```text
 mvn clean package -DskipTests
 ```
-**Bước 2:** Khởi chạy Socket Server
+**Bước 2:** trong thư mục cùng file với file jar của server, tạo một file .env và cấu hình các thông tin sau:
+```azure
+LOCALTONET_API_TOKEN=[?]
+JSONBIN_API_KEY=$2a$10$KUTxarrdyYhaWz1dwui2.uQkxGR44FqLLD2u4CAkHF6.Xk.qrNWn6
+BIN_ID=69eb461436566621a8e85d68
+CLOUDINARY_CLOUD_NAME=[?]
+CLOUDINARY_API_KEY=[?]
+CLOUDINARY_API_SECRET=[?]
+```
+Hệ thống sử dụng localtonet để kết nối các client thông qua mạng wan và cloundinary để làm kho chứa ảnh.
+
+**Bước 3:** Khởi chạy Socket Server
 ```text
 java -jar server/target/server-1.0-SNAPSHOT.jar
 ```
 Hệ thống sẽ tự động khởi tạo cơ sở dữ liệu SQLite auction_system.db nếu chưa tồn tại, chuẩn bị các luồng socket nhận kết nối.
 
-**Bước 3:** Khởi chạy Desktop Client (Mở nhiều terminal để giả lập nhiều người chơi)
+**Bước 4:** Khởi chạy Desktop Client (Mở nhiều terminal để giả lập nhiều người chơi)
 
 ```text
 java -jar client/target/client-1.0-SNAPSHOT.jar
