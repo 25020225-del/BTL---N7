@@ -35,7 +35,7 @@ class RegisterAutoBidC4Test {
 
         auction = new Auction("AUC-C4", item, seller, BID_INCREMENT,
                 LocalDateTime.now().minusMinutes(1),
-                LocalDateTime.now().plusHours(1));
+                LocalDateTime.now().plusHours(1), 60);
         auction.setStatus(Auction.STATUS_RUNNING);
     }
 

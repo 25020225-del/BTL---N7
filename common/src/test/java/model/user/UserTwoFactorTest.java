@@ -97,25 +97,6 @@ class UserTwoFactorTest {
     }
 
     @Test
-    @DisplayName("set2FAEnabled(true) tương đương setTwoFactorStatus(ENABLED)")
-    @SuppressWarnings("deprecation")
-    void set2FAEnabled_true_setsStatusToEnabled() {
-        user.set2FAEnabled(true);
-        assertEquals(User.TwoFactorStatus.ENABLED, user.getTwoFactorStatus());
-        assertTrue(user.is2FAEnabled());
-    }
-
-    @Test
-    @DisplayName("set2FAEnabled(false) tương đương setTwoFactorStatus(DISABLED)")
-    @SuppressWarnings("deprecation")
-    void set2FAEnabled_false_setsStatusToDisabled() {
-        user.setTwoFactorStatus(User.TwoFactorStatus.ENABLED);
-        user.set2FAEnabled(false);
-        assertEquals(User.TwoFactorStatus.DISABLED, user.getTwoFactorStatus());
-        assertFalse(user.is2FAEnabled());
-    }
-
-    @Test
     @DisplayName("setTwoFactorStatus(null) → DISABLED (không NullPointerException)")
     void setStatus_null_shouldFallbackToDisabled() {
         user.setTwoFactorStatus(User.TwoFactorStatus.ENABLED);

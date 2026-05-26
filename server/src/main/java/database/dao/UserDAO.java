@@ -155,16 +155,6 @@ public class UserDAO {
         }
     }
 
-    @Deprecated
-    public boolean updateTotpSetup(String userId, String secret, boolean enabled) throws SQLException {
-        return enabled ? updateTotpEnabled(userId, secret) : resetTotpToDisabled(userId);
-    }
-
-    @Deprecated
-    public boolean updateTotpEnabledFlag(String userId, boolean enabled) throws SQLException {
-        return !enabled && resetTotpToDisabled(userId);
-    }
-
     public boolean updateUserBlockStatus(String userId, boolean isBlocked) throws SQLException {
         String sql = "UPDATE users SET is_blocked = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();

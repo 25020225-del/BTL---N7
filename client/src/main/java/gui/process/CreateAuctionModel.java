@@ -141,6 +141,12 @@ public class CreateAuctionModel {
             LocalDateTime startDateTime, LocalDateTime endDateTime
     ) {
         String auctionId = "AUC-" + utils.IdGenerator.generateUUIDv7();
-        return new Auction(auctionId, item, user, bidInc, startDateTime, endDateTime);
+
+        int durationMinutes = 0;
+        if (startDateTime != null && endDateTime != null) {
+            durationMinutes = (int) java.time.Duration.between(startDateTime, endDateTime).toMinutes();
+        }
+
+        return new Auction(auctionId, item, user, bidInc, startDateTime, endDateTime, durationMinutes);
     }
 }

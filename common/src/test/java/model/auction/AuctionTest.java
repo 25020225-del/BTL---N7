@@ -39,7 +39,7 @@ class AuctionTest {
 
         item = new TangibleItem("ITEM-1", "Vintage Watch", "", 1000L);
 
-        auction = new Auction("AUC-1", item, seller, 50L, LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusMinutes(9));
+        auction = new Auction("AUC-1", item, seller, 50L, LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusMinutes(9), 10);
         auction.setStatus(Auction.STATUS_RUNNING);
     }
 

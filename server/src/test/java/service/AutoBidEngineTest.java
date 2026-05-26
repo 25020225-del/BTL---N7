@@ -47,7 +47,7 @@ class AutoBidEngineTest {
 
         Auction auction = new Auction("AUC-AE", item, seller, 50L,
                 LocalDateTime.now().minusSeconds(5),
-                LocalDateTime.now().plusMinutes(10));
+                LocalDateTime.now().plusMinutes(10), 10);
         auction.setStatus(Auction.STATUS_RUNNING);
 
         User u1 = new User();

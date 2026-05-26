@@ -43,7 +43,7 @@ class AutoBidEngineAdvancedTest {
 
         auction = new Auction("AUC-DEADLOCK-TEST", item, seller, 50L,
                 LocalDateTime.now().minusMinutes(5),
-                LocalDateTime.now().plusMinutes(10));
+                LocalDateTime.now().plusMinutes(10), 10);
         auction.setStatus(Auction.STATUS_RUNNING);
 
         activeScansField = AutoBidEngine.class.getDeclaredField("activeScans");
