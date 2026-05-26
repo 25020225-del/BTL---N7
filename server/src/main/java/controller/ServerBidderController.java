@@ -74,6 +74,9 @@ public class ServerBidderController {
                 boolean isActive = Auction.STATUS_RUNNING.equals(auction.getStatus())
                         || Auction.STATUS_WAITING_FOR_BID.equals(auction.getStatus());
                 if (!isActive) {
+                    if (Auction.STATUS_OPEN.equals(auction.getStatus()) || (auction.getStartTime() != null && java.time.LocalDateTime.now().isBefore(auction.getStartTime()))) {
+                        return "NOT_STARTED";
+                    }
                     return "NOT_RUNNING";
                 }
                 expectedPrice = auction.getCurrentPrice();
@@ -155,6 +158,14 @@ public class ServerBidderController {
                         }
                         case "NOT_RUNNING" -> {
                             if (!isBot) ClientManager.sendToUser(currentUser.getId(), "ERROR", "Phiên đấu giá này đã đóng, không thể đặt giá nữa!");
+                            return false;
+                        }
+                        case "NOT_STARTED" -> {
+                            if (!isBot) {
+                                java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                                String startTimeStr = auction.getStartTime() != null ? auction.getStartTime().format(dtf) : "Chưa xác định";
+                                ClientManager.sendToUser(currentUser.getId(), "ERROR", new ErrorPayload("ERR_BID_NOT_STARTED", "Phiên đấu giá chưa bắt đầu! Vui lòng đợi đến: " + startTimeStr));
+                            }
                             return false;
                         }
                         case "INSUFFICIENT_FUNDS" -> {
