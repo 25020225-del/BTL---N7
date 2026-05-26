@@ -158,11 +158,21 @@ public class SettingsController extends VBox {
      * Breaks down listener relationships registered across global state hubs to secure garbage allocation.
      */
     public void dispose() {
-        AuctionEventBus.removeListener("SETUP_2FA_SUCCESS", setup2FAListener);
-        AuctionEventBus.removeListener("CONFIRM_2FA_SUCCESS", confirm2FAListener);
-        AuctionEventBus.removeListener("CANCEL_2FA_SUCCESS", cancel2FAListener);
-        AuctionEventBus.removeListener("DISABLE_2FA_SUCCESS", disable2FAListener);
-        AuctionEventBus.removeListener("UPDATE_TOTP_PREFS_SUCCESS", updatePrefsListener);
+        if (setup2FAListener != null) {
+            AuctionEventBus.removeListener("SETUP_2FA_SUCCESS", setup2FAListener);
+        }
+        if (confirm2FAListener != null) {
+            AuctionEventBus.removeListener("CONFIRM_2FA_SUCCESS", confirm2FAListener);
+        }
+        if (cancel2FAListener != null) {
+            AuctionEventBus.removeListener("CANCEL_2FA_SUCCESS", cancel2FAListener);
+        }
+        if (disable2FAListener != null) {
+            AuctionEventBus.removeListener("DISABLE_2FA_SUCCESS", disable2FAListener);
+        }
+        if (updatePrefsListener != null) {
+            AuctionEventBus.removeListener("UPDATE_TOTP_PREFS_SUCCESS", updatePrefsListener);
+        }
     }
 
     private void onSetup2FASuccess(Object eventData) {
@@ -306,6 +316,9 @@ public class SettingsController extends VBox {
     }
 
     private void registerEventListeners() {
+        // Gỡ bỏ listener cũ trước khi đăng ký mới để tránh trùng lặp
+        dispose();
+
         setup2FAListener = e -> onSetup2FASuccess(e.getNewValue());
         confirm2FAListener = e -> onConfirm2FASuccess(e.getNewValue());
         cancel2FAListener = e -> onCancel2FASuccess(e.getNewValue());

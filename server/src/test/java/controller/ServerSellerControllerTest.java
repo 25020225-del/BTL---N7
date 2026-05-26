@@ -52,10 +52,10 @@ class ServerSellerControllerTest {
         auction.setStatus(Auction.STATUS_FINISHED);
 
         boolean result = sellerController.editAuction(
-                seller, auction, "Tên mới", "Mô tả mới", 2000L, null, null
+                seller, auction, "Tên mới", "Mô tả mới", 2000L, null, null, 0
         );
 
         assertFalse(result, "Không được phép sửa phiên đấu giá đã FINISHED.");
-        verify(auctionDAO, never()).updateAuction(any(), anyString(), anyString(), anyLong(), any(), any(), anyString());
+        verify(auctionDAO, never()).updateAuction(any(), anyString(), anyString(), anyLong(), any(), any(), anyInt(), anyString());
     }
 }

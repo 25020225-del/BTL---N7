@@ -37,7 +37,7 @@ public class ServerSellerController {
         return null;
     }
 
-    public boolean editAuction(User currentUser, Auction auction, String newName, String newDesc, long newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime) {
+    public boolean editAuction(User currentUser, Auction auction, String newName, String newDesc, long newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime, int newDurationMinutes) {
         if (!auction.getSeller().getId().equals(currentUser.getId())) {
             log.warn("Edit denied: not owner of auction {}", auction.getId());
             return false;
@@ -56,7 +56,7 @@ public class ServerSellerController {
                 ? Auction.STATUS_PENDING : currentStatus;
 
         try {
-            if (auctionDAO.updateAuction(auction, newName, newDesc, newStartPrice, newStartTime, newEndTime, newStatus)) {
+            if (auctionDAO.updateAuction(auction, newName, newDesc, newStartPrice, newStartTime, newEndTime, newDurationMinutes, newStatus)) {
                 synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                     auction.getItem().setItemName(newName);
                     auction.getItem().setDescription(newDesc);
@@ -64,6 +64,7 @@ public class ServerSellerController {
                     auction.setCurrentPrice(newStartPrice);
                     auction.setStartTime(newStartTime);
                     auction.setEndTime(newEndTime);
+                    auction.setDurationMinutes(newDurationMinutes);
                     auction.setStatus(newStatus);
                 }
 

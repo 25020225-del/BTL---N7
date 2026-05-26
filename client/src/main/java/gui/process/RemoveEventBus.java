@@ -32,6 +32,13 @@ public final class RemoveEventBus {
         AuctionEventBus.removeAllListeners("REMOVE_AUCTION");
         AuctionEventBus.removeAllListeners("DELETE_SUCCESS");
         AuctionEventBus.removeAllListeners("EDIT_SUCCESS");
+
+        // Dọn dẹp các listener liên quan đến TOTP / 2FA khi người dùng đăng xuất
+        AuctionEventBus.removeAllListeners("SETUP_2FA_SUCCESS");
+        AuctionEventBus.removeAllListeners("CONFIRM_2FA_SUCCESS");
+        AuctionEventBus.removeAllListeners("CANCEL_2FA_SUCCESS");
+        AuctionEventBus.removeAllListeners("DISABLE_2FA_SUCCESS");
+        AuctionEventBus.removeAllListeners("UPDATE_TOTP_PREFS_SUCCESS");
     }
 
     /**
