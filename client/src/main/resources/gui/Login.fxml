@@ -1,195 +1,150 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.shape.*?>
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
 
-<StackPane xmlns="http://javafx.com/javafx"
-           xmlns:fx="http://javafx.com/fxml"
-           fx:controller="gui.LoginController"
-           prefWidth="420" prefHeight="560"
-           style="-fx-background-color: #1a1a2e;">
+<StackPane prefHeight="720.0" prefWidth="1280.0" styleClass="auth-root" stylesheets="@index.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.LoginController">
+    <children>
+        <HBox fx:id="loginBox" alignment="CENTER" fillHeight="true" maxHeight="-Infinity" maxWidth="-Infinity" spacing="0.0" style="-fx-background-color: white; -fx-background-radius: 15;">
+            <children>
 
-    <VBox fx:id="loginPane"
-          visible="true" managed="true"
-          alignment="CENTER" spacing="14"
-          style="-fx-background-color: #16213e; -fx-background-radius: 16; -fx-padding: 40;">
-        <StackPane.margin>
-            <Insets top="40" right="40" bottom="40" left="40"/>
-        </StackPane.margin>
+                <VBox alignment="CENTER" minWidth="450.0" prefHeight="550.0" prefWidth="450.0" spacing="20.0" style="-fx-background-color: linear-gradient(to bottom right, #3665f3, #2c3e50); -fx-background-radius: 15 0 0 15;">
+                    <children>
+                        <StackPane maxWidth="-Infinity" style="-fx-background-color: white; -fx-background-radius: 60; -fx-padding: 10;">
+                            <children>
+                                <ImageView fitHeight="100.0" fitWidth="100.0" pickOnBounds="true" preserveRatio="true">
+                                    <image>
+                                        <Image url="@images/logo4.png" />
+                                    </image>
+                                </ImageView>
+                            </children>
+                        </StackPane>
+                        <Text style="-fx-fill: white; -fx-font-size: 32; -fx-font-weight: bold;" text="Online Auction Service" />
+                    </children>
+                </VBox>
 
-        <Circle fx:id="myava1" radius="48"
-                fill="#0f3460" stroke="#e94560" strokeWidth="3"/>
+                <StackPane minWidth="450.0" prefHeight="550.0" prefWidth="450.0" style="-fx-background-color: white; -fx-background-radius: 0 15 15 0;">
+                    <children>
 
-        <Label text="ĐĂNG NHẬP"
-               style="-fx-text-fill: #e94560; -fx-font-size: 22px; -fx-font-weight: bold;"/>
+                        <VBox fx:id="loginPane" alignment="CENTER" spacing="25.0" visible="true" managed="true">
+                            <padding>
+                                <Insets left="40" right="40" />
+                            </padding>
+                            <children>
+                                <VBox alignment="CENTER_LEFT" prefWidth="320.0" spacing="5.0">
+                                    <children>
+                                        <Text style="-fx-font-size: 28; -fx-font-weight: bold;" text="MEMBER LOGIN" />
+                                        <Text style="-fx-fill: #777;" text="Please log in to continue" />
+                                    </children>
+                                </VBox>
 
-        <TextField fx:id="loginAccountName"
-                   promptText="Tên đăng nhập"
-                   style="-fx-background-color: #0f3460; -fx-text-fill: white;
-                          -fx-prompt-text-fill: #8888aa; -fx-background-radius: 8;
-                          -fx-padding: 10 14; -fx-font-size: 14px;"
-                   maxWidth="300"/>
+                                <VBox prefWidth="320.0" spacing="15.0">
+                                    <children>
+                                        <TextField fx:id="loginAccountName" prefHeight="45.0" promptText="Username" styleClass="auth-input" />
+                                        <PasswordField fx:id="loginPasswordAccount" prefHeight="45.0" promptText="Password" styleClass="auth-input" />
+                                    </children>
+                                </VBox>
 
-        <PasswordField fx:id="loginPasswordAccount"
-                       promptText="Mật khẩu"
-                       style="-fx-background-color: #0f3460; -fx-text-fill: white;
-                              -fx-prompt-text-fill: #8888aa; -fx-background-radius: 8;
-                              -fx-padding: 10 14; -fx-font-size: 14px;"
-                       maxWidth="300"/>
+                                <VBox alignment="CENTER" spacing="10.0">
+                                    <children>
+                                        <Button fx:id="loginButton" onAction="#onMainViewButtonClick" prefHeight="45.0" prefWidth="320.0" style="-fx-cursor: hand;" styleClass="auth-btn-primary" text="SIGN IN" />
 
-        <Button fx:id="loginButton"
-                text="ĐĂNG NHẬP"
-                onAction="#onMainViewButtonClick"
-                maxWidth="300"
-                style="-fx-background-color: #e94560; -fx-text-fill: white;
-                       -fx-font-weight: bold; -fx-font-size: 14px;
-                       -fx-background-radius: 8; -fx-padding: 12;
-                       -fx-cursor: hand;"/>
+                                        <Hyperlink fx:id="forgotPasswordLink" onAction="#onForgotPasswordClick" style="-fx-text-fill: #777777; -fx-font-size: 13px; -fx-border-color: transparent;" text="Forgot Password?" />
 
-        <Hyperlink fx:id="forgotPasswordLink"
-                   text="Quên mật khẩu?"
-                   onAction="#onForgotPasswordClick"
-                   style="-fx-text-fill: #8888bb; -fx-font-size: 12px;
-                          -fx-border-color: transparent;"/>
+                                        <Separator maxWidth="320.0" style="-fx-padding: 5 0;" />
 
-        <Separator style="-fx-background-color: #2a2a4a;" maxWidth="300"/>
+                                        <Button onAction="#onRegisterViewButtonClick" style="-fx-background-color: transparent; -fx-text-fill: #3665f3; -fx-font-weight: bold;" text="Don't have an account? Register Now" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
 
-        <Button text="TẠO TÀI KHOẢN"
-                onAction="#onRegisterViewButtonClick"
-                maxWidth="300"
-                style="-fx-background-color: transparent; -fx-text-fill: #e94560;
-                       -fx-border-color: #e94560; -fx-border-radius: 8;
-                       -fx-background-radius: 8; -fx-font-size: 13px;
-                       -fx-padding: 10; -fx-cursor: hand;"/>
-    </VBox>
+                        <VBox fx:id="forgotTotpPane" alignment="CENTER" spacing="20.0" visible="false" managed="false">
+                            <padding>
+                                <Insets left="40" right="40" />
+                            </padding>
+                            <children>
+                                <VBox alignment="CENTER_LEFT" prefWidth="320.0" spacing="5.0">
+                                    <children>
+                                        <Text style="-fx-font-size: 26; -fx-font-weight: bold;" text="XÁC THỰC TOTP" />
+                                        <Text style="-fx-fill: #3665f3; -fx-font-weight: bold;" text="Bước 1/2: Xác thực danh tính" />
+                                    </children>
+                                </VBox>
 
-    <!-- ═══════════════════════════════════════════════════
-         PANE 2: Forgot Password — Step 1 (TOTP Verification)
-         ═══════════════════════════════════════════════════ -->
-    <VBox fx:id="forgotTotpPane"
-          visible="false" managed="false"
-          alignment="CENTER" spacing="14"
-          style="-fx-background-color: #16213e; -fx-background-radius: 16; -fx-padding: 40;">
-        <StackPane.margin>
-            <Insets top="40" right="40" bottom="40" left="40"/>
-        </StackPane.margin>
+                                <VBox prefWidth="320.0" spacing="12.0">
+                                    <children>
+                                        <Label style="-fx-text-fill: #555; -fx-font-weight: bold; -fx-font-size: 12px;" text="Tên đăng nhập" />
+                                        <TextField fx:id="resetIdentifierField" prefHeight="45.0" promptText="Nhập tên đăng nhập của bạn" styleClass="auth-input" />
 
-        <Label text="🔐 QUÊN MẬT KHẨU"
-               style="-fx-text-fill: #e94560; -fx-font-size: 20px; -fx-font-weight: bold;"/>
+                                        <Label style="-fx-text-fill: #555; -fx-font-weight: bold; -fx-font-size: 12px;" text="Mã TOTP (6 chữ số)" />
+                                        <TextField fx:id="resetTotpCodeField" prefHeight="45.0" promptText="Ví dụ: 123456" style="-fx-alignment: center; -fx-font-size: 16px; -fx-font-weight: bold;" styleClass="auth-input" />
+                                    </children>
+                                </VBox>
 
-        <Label text="Bước 1/2: Xác thực danh tính qua TOTP"
-               wrapText="true" maxWidth="300" textAlignment="CENTER"
-               style="-fx-text-fill: #aaaacc; -fx-font-size: 12px;"/>
+                                <Label fx:id="totpResetErrorLabel" maxWidth="320.0" textAlignment="CENTER" wrapText="true" style="-fx-text-fill: #e74c3c; -fx-font-size: 13px;" />
 
-        <Separator style="-fx-background-color: #2a2a4a;" maxWidth="300"/>
+                                <VBox alignment="CENTER" spacing="12.0">
+                                    <children>
+                                        <Button fx:id="verifyTotpResetButton" onAction="#onVerifyTotpForReset" prefHeight="45.0" prefWidth="320.0" style="-fx-cursor: hand;" styleClass="auth-btn-primary" text="XÁC THỰC CODE" />
+                                        <Button fx:id="backToLoginBtn1" onAction="#onBackToLoginFromStep1" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="← Quay lại đăng nhập" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
 
-        <Label text="Tên đăng nhập" maxWidth="300" alignment="CENTER_LEFT"
-               style="-fx-text-fill: #ccccee; -fx-font-size: 12px;"/>
-        <TextField fx:id="resetIdentifierField"
-                   promptText="Nhập tên đăng nhập của bạn"
-                   style="-fx-background-color: #0f3460; -fx-text-fill: white;
-                          -fx-prompt-text-fill: #8888aa; -fx-background-radius: 8;
-                          -fx-padding: 10 14; -fx-font-size: 14px;"
-                   maxWidth="300"/>
+                        <VBox fx:id="newPasswordPane" alignment="CENTER" spacing="20.0" visible="false" managed="false">
+                            <padding>
+                                <Insets left="40" right="40" />
+                            </padding>
+                            <children>
+                                <VBox alignment="CENTER_LEFT" prefWidth="320.0" spacing="5.0">
+                                    <children>
+                                        <Text style="-fx-font-size: 26; -fx-font-weight: bold;" text="MẬT KHẨU MỚI" />
+                                        <Text style="-fx-fill: #27ae60; -fx-font-weight: bold;" text="Bước 2/2: Thiết lập bảo mật mới" />
+                                    </children>
+                                </VBox>
 
-        <Label text="Mã TOTP (6 số từ Authenticator)" maxWidth="300" alignment="CENTER_LEFT"
-               style="-fx-text-fill: #ccccee; -fx-font-size: 12px;"/>
-        <TextField fx:id="resetTotpCodeField"
-                   promptText="Ví dụ: 123456"
-                   style="-fx-background-color: #0f3460; -fx-text-fill: white;
-                          -fx-prompt-text-fill: #8888aa; -fx-background-radius: 8;
-                          -fx-padding: 10 14; -fx-font-size: 18px; -fx-alignment: center;"
-                   maxWidth="300"/>
+                                <VBox prefWidth="320.0" spacing="12.0">
+                                    <children>
+                                        <Label style="-fx-text-fill: #777; -fx-font-size: 11px;" text="✔ Tối thiểu 8 ký tự, gồm chữ Hoa, Số và Ký tự đặc biệt" wrapText="true" />
 
-        <!-- Inline error label -->
-        <Label fx:id="totpResetErrorLabel"
-               text="" wrapText="true" maxWidth="300" textAlignment="CENTER"
-               style="-fx-text-fill: #ff6b6b; -fx-font-size: 12px;"/>
+                                        <Label style="-fx-text-fill: #555; -fx-font-weight: bold; -fx-font-size: 12px;" text="Mật khẩu mới" />
+                                        <PasswordField fx:id="newPasswordField" prefHeight="45.0" promptText="Nhập mật khẩu mới" styleClass="auth-input" />
 
-        <Button fx:id="verifyTotpResetButton"
-                text="XÁC THỰC"
-                onAction="#onVerifyTotpForReset"
-                maxWidth="300"
-                style="-fx-background-color: #e94560; -fx-text-fill: white;
-                       -fx-font-weight: bold; -fx-font-size: 14px;
-                       -fx-background-radius: 8; -fx-padding: 12;
-                       -fx-cursor: hand;"/>
+                                        <Label style="-fx-text-fill: #555; -fx-font-weight: bold; -fx-font-size: 12px;" text="Xác nhận mật khẩu" />
+                                        <PasswordField fx:id="confirmNewPasswordField" prefHeight="45.0" promptText="Nhập lại mật khẩu mới" styleClass="auth-input" />
+                                    </children>
+                                </VBox>
 
-        <Button fx:id="backToLoginBtn1"
-                text="← Quay lại đăng nhập"
-                onAction="#onBackToLoginFromStep1"
-                maxWidth="300"
-                style="-fx-background-color: transparent; -fx-text-fill: #8888bb;
-                       -fx-font-size: 12px; -fx-cursor: hand;
-                       -fx-border-color: transparent;"/>
-    </VBox>
+                                <Label fx:id="newPasswordErrorLabel" maxWidth="320.0" textAlignment="CENTER" wrapText="true" style="-fx-text-fill: #e74c3c; -fx-font-size: 13px;" />
 
-    <!-- ═══════════════════════════════════════════════════
-         PANE 3: Forgot Password — Step 2 (New Password)
-         ═══════════════════════════════════════════════════ -->
-    <VBox fx:id="newPasswordPane"
-          visible="false" managed="false"
-          alignment="CENTER" spacing="14"
-          style="-fx-background-color: #16213e; -fx-background-radius: 16; -fx-padding: 40;">
-        <StackPane.margin>
-            <Insets top="40" right="40" bottom="40" left="40"/>
-        </StackPane.margin>
+                                <VBox alignment="CENTER" spacing="12.0">
+                                    <children>
+                                        <Button fx:id="resetPasswordButton" onAction="#onResetPassword" prefHeight="45.0" prefWidth="320.0" style="-fx-cursor: hand; -fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;" text="ĐẶT LẠI MẬT KHẨU" />
+                                        <Button fx:id="backToLoginBtn2" onAction="#onBackToLoginFromStep2" style="-fx-background-color: transparent; -fx-text-fill: #777;" text="← Quay lại đăng nhập" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
 
-        <Label text="🔑 ĐẶT LẠI MẬT KHẨU"
-               style="-fx-text-fill: #e94560; -fx-font-size: 20px; -fx-font-weight: bold;"/>
-
-        <Label text="Bước 2/2: Tạo mật khẩu mới" maxWidth="300" textAlignment="CENTER"
-               wrapText="true"
-               style="-fx-text-fill: #aaaacc; -fx-font-size: 12px;"/>
-
-        <Label text="✔  Ít nhất 8 ký tự  ·  1 chữ hoa  ·  1 số  ·  1 ký tự đặc biệt"
-               wrapText="true" maxWidth="300" textAlignment="CENTER"
-               style="-fx-text-fill: #6688aa; -fx-font-size: 11px;"/>
-
-        <Separator style="-fx-background-color: #2a2a4a;" maxWidth="300"/>
-
-        <Label text="Mật khẩu mới" maxWidth="300"
-               style="-fx-text-fill: #ccccee; -fx-font-size: 12px;"/>
-        <PasswordField fx:id="newPasswordField"
-                       promptText="Nhập mật khẩu mới"
-                       style="-fx-background-color: #0f3460; -fx-text-fill: white;
-                              -fx-prompt-text-fill: #8888aa; -fx-background-radius: 8;
-                              -fx-padding: 10 14; -fx-font-size: 14px;"
-                       maxWidth="300"/>
-
-        <Label text="Xác nhận mật khẩu mới" maxWidth="300"
-               style="-fx-text-fill: #ccccee; -fx-font-size: 12px;"/>
-        <PasswordField fx:id="confirmNewPasswordField"
-                       promptText="Nhập lại mật khẩu mới"
-                       style="-fx-background-color: #0f3460; -fx-text-fill: white;
-                              -fx-prompt-text-fill: #8888aa; -fx-background-radius: 8;
-                              -fx-padding: 10 14; -fx-font-size: 14px;"
-                       maxWidth="300"/>
-
-        <!-- Inline error label -->
-        <Label fx:id="newPasswordErrorLabel"
-               text="" wrapText="true" maxWidth="300" textAlignment="CENTER"
-               style="-fx-text-fill: #ff6b6b; -fx-font-size: 12px;"/>
-
-        <Button fx:id="resetPasswordButton"
-                text="ĐẶT LẠI MẬT KHẨU"
-                onAction="#onResetPassword"
-                maxWidth="300"
-                style="-fx-background-color: #27ae60; -fx-text-fill: white;
-                       -fx-font-weight: bold; -fx-font-size: 14px;
-                       -fx-background-radius: 8; -fx-padding: 12;
-                       -fx-cursor: hand;"/>
-
-        <Button fx:id="backToLoginBtn2"
-                text="← Quay lại đăng nhập"
-                onAction="#onBackToLoginFromStep2"
-                maxWidth="300"
-                style="-fx-background-color: transparent; -fx-text-fill: #8888bb;
-                       -fx-font-size: 12px; -fx-cursor: hand;
-                       -fx-border-color: transparent;"/>
-    </VBox>
-
+                    </children>
+                </StackPane>
+            </children>
+            <effect>
+                <DropShadow color="0x00000033" radius="20" />
+            </effect>
+        </HBox>
+    </children>
 </StackPane>
