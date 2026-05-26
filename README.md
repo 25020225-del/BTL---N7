@@ -158,7 +158,6 @@ Nhằm cung cấp cái nhìn toàn diện và trực quan nhất về Hệ thố
 ### 🎬 Video Demo hoạt động Hệ thống (Video MP4)
 *   **Xem trực tiếp hoặc tải xuống:** [Tải xuống Video Demo](asset/video.mp4)
 
-
 <div align="center">
   <video src="asset/video.mp4" controls width="100%" poster="asset/poster.png" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
     Trình duyệt của bạn không hỗ trợ phát thẻ video HTML5. Bạn có thể <a href="asset/video.mp4">tải xuống video tại đây</a> để xem.
