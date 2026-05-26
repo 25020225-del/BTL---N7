@@ -50,6 +50,7 @@ public class CreateAuctionController extends ScrollPane {
     @FXML private TextField ca_startMinute;
     @FXML private TextField ca_durationDays;
     @FXML private TextField ca_durationHours;
+    @FXML private TextField ca_durationMinutes;
     @FXML private ImageView ca_image;
     @FXML private VBox ca_details;
     @FXML private Label lblError;
@@ -114,7 +115,8 @@ public class CreateAuctionController extends ScrollPane {
             );
             Duration dr = CreateAuctionModel.checkEndTime(
                     ca_durationDays.getText(),
-                    ca_durationHours.getText()
+                    ca_durationHours.getText(),
+                    ca_durationMinutes.getText()
             );
 
             Item item = CreateAuctionModel.createItem(
@@ -172,6 +174,7 @@ public class CreateAuctionController extends ScrollPane {
         ca_startDate.setValue(null);
         ca_durationDays.clear();
         ca_durationHours.clear();
+        ca_durationMinutes.clear();
         ca_image.setImage(null);
         ca_image.setFitHeight(-1.0);
         ca_image.setFitWidth(-1.0);

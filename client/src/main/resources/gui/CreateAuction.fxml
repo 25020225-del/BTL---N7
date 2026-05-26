@@ -132,6 +132,9 @@
                                 <TextField fx:id="ca_durationHours" alignment="CENTER" prefHeight="35.0"
                                            prefWidth="55.0" promptText="0"/>
                                 <Label text="Hours"/>
+                                <TextField fx:id="ca_durationMinutes" alignment="CENTER" prefHeight="35.0"
+                                           prefWidth="55.0" promptText="0"/>
+                                <Label text="Minutes"/>
                             </children>
                         </HBox>
                     </children>
