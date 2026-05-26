@@ -108,13 +108,15 @@ public class CreateAuctionModel {
      * @return the verified structural duration configuration block
      * @throws IllegalArgumentException if the processed calculation yields zero temporal delta
      */
-    public static Duration checkEndTime(String days, String hours) {
-        if (days == null || hours == null || days.trim().isEmpty() || hours.trim().isEmpty()) {
+    public static Duration checkEndTime(String days, String hours, String minutes) {
+        if (days == null || hours == null || minutes == null 
+                || days.trim().isEmpty() || hours.trim().isEmpty() || minutes.trim().isEmpty()) {
             throw new NumberFormatException("Vui lòng nhập thời lượng đấu giá.");
         }
         int d = Integer.parseInt(days.trim());
         int h = Integer.parseInt(hours.trim());
-        Duration duration = Duration.ofDays(d).plusHours(h);
+        int m = Integer.parseInt(minutes.trim());
+        Duration duration = Duration.ofDays(d).plusHours(h).plusMinutes(m);
         if (duration.isZero()) {
             throw new IllegalArgumentException("Thời lượng đấu giá phải lớn hơn 0.");
         }

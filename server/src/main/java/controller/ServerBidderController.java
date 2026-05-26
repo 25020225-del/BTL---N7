@@ -74,6 +74,9 @@ public class ServerBidderController {
                 boolean isActive = Auction.STATUS_RUNNING.equals(auction.getStatus())
                         || Auction.STATUS_WAITING_FOR_BID.equals(auction.getStatus());
                 if (!isActive) {
+                    if (Auction.STATUS_OPEN.equals(auction.getStatus()) || (auction.getStartTime() != null && java.time.LocalDateTime.now().isBefore(auction.getStartTime()))) {
+                        return "NOT_STARTED";
+                    }
                     return "NOT_RUNNING";
                 }
                 expectedPrice = auction.getCurrentPrice();
@@ -110,8 +113,25 @@ public class ServerBidderController {
                 final BidDAO.BidCommitResult committed = commitResult;
                 synchronized (AuctionManager.getLockForAuction(auction.getId())) {
                     if (auction.getCurrentPrice() <= committed.newCurrentPrice) {
-                        User winner = committed.newWinnerId != null ? new User() : null;
-                        if (winner != null) winner.setId(committed.newWinnerId);
+                        User prevWinner = auction.getWinningBidder();
+                        String prevWinnerId = prevWinner != null ? prevWinner.getId() : null;
+
+                        User winner = null;
+                        if (committed.newWinnerId != null) {
+                            if (committed.newWinnerId.equals(currentUser.getId())) {
+                                winner = currentUser;
+                            } else {
+                                try {
+                                    winner = new database.dao.UserDAO().getUserById(committed.newWinnerId);
+                                } catch (Exception e) {
+                                    log.error("Failed to load winner user details: {}", e.getMessage());
+                                }
+                                if (winner == null) {
+                                    winner = new User();
+                                    winner.setId(committed.newWinnerId);
+                                }
+                            }
+                        }
 
                         /*
                          * FIX #7 (MEDIUM): The unsafe (long) casts of committed.newHighestMaxBid and
@@ -125,6 +145,11 @@ public class ServerBidderController {
                                 committed.newEndTime,
                                 Auction.STATUS_WAITING_FOR_BID.equals(auction.getStatus())
                         ));
+
+                        // If the winner has changed, remove the outbid user's bot from RAM
+                        if (prevWinnerId != null && !prevWinnerId.equals(committed.newWinnerId)) {
+                            auction.getActiveAutoBids().removeIf(ab -> ab.getBidder().getId().equals(prevWinnerId));
+                        }
                     }
                 }
                 log.info("Bid committed: user={}, auction={}, newPrice={}", currentUser.getUserName(), auction.getId(), commitResult.newCurrentPrice);
@@ -139,7 +164,17 @@ public class ServerBidderController {
                             Map<String, Object> update = new HashMap<>();
                             update.put("auctionId", auction.getId());
                             update.put("newPrice", auction.getCurrentPrice());
-                            update.put("winnerName", currentUser.getUserName());
+
+                            String winnerName = null;
+                            synchronized (AuctionManager.getLockForAuction(auction.getId())) {
+                                if (auction.getWinningBidder() != null) {
+                                    winnerName = auction.getWinningBidder().getUserName();
+                                }
+                            }
+                            if (winnerName == null) {
+                                winnerName = currentUser.getUserName();
+                            }
+                            update.put("winnerName", winnerName);
                             update.put("newEndTime", auction.getEndTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
 
                             try {
@@ -155,6 +190,14 @@ public class ServerBidderController {
                         }
                         case "NOT_RUNNING" -> {
                             if (!isBot) ClientManager.sendToUser(currentUser.getId(), "ERROR", "Phiên đấu giá này đã đóng, không thể đặt giá nữa!");
+                            return false;
+                        }
+                        case "NOT_STARTED" -> {
+                            if (!isBot) {
+                                java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                                String startTimeStr = auction.getStartTime() != null ? auction.getStartTime().format(dtf) : "Chưa xác định";
+                                ClientManager.sendToUser(currentUser.getId(), "ERROR", new ErrorPayload("ERR_BID_NOT_STARTED", "Phiên đấu giá chưa bắt đầu! Vui lòng đợi đến: " + startTimeStr));
+                            }
                             return false;
                         }
                         case "INSUFFICIENT_FUNDS" -> {

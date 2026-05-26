@@ -52,7 +52,12 @@ public class IconButton extends Button {
             fontIcon.setIconLiteral(iconName);
         } catch (Exception e) {
             log.error("Failed to resolve visual asset identifier: '{}'. Applying fallback diagnostic glyph.", iconName);
-            fontIcon.setIconLiteral(FALLBACK_ICON);
+            try {
+                fontIcon.setIconLiteral(FALLBACK_ICON);
+            } catch (Exception ex) {
+                log.error("Failed to resolve fallback asset identifier: '{}'. No icon will be applied.", FALLBACK_ICON);
+                return;
+            }
         }
         fontIcon.setIconSize(30);
         this.setGraphic(fontIcon);

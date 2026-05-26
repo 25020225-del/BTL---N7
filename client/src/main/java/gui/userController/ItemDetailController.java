@@ -52,6 +52,7 @@ public class ItemDetailController {
     @FXML private Label lblItemType;
     @FXML private Label lblDetailTitle;
     @FXML private Label lblStartPrice;
+    @FXML private Label lblStartTime;
     @FXML private Label lblCurrentPrice;
     @FXML private Label lblLeader;
     @FXML private TextArea txtDescription;
@@ -74,6 +75,7 @@ public class ItemDetailController {
 
     private BidPanelController bidPanel;
 
+    private Auction currentAuction;
     private String currentAuctionId;
     private long endTimeMillis;
     private long currentPriceValue = 0L;
@@ -110,7 +112,9 @@ public class ItemDetailController {
 
     @FXML
     private void handleEditAuction() {
-        EditAuction.edit(currentAuctionId);
+        if (currentAuction != null) {
+            EditAuction.edit(currentAuction);
+        }
     }
 
     @FXML
@@ -175,6 +179,13 @@ public class ItemDetailController {
         lblDetailTitle.setText(auction.getItem().getItemName());
         txtDescription.setText(auction.getItem().getDescription());
         lblStartPrice.setText(String.format("%,d VND", auction.getItem().getStartingPrice()));
+        
+        if (auction.getStartTime() != null) {
+            lblStartTime.setText(auction.getStartTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        } else {
+            lblStartTime.setText("Chưa xác định");
+        }
+
         lblCurrentPrice.setText(String.format("%,d VND", auction.getCurrentPrice()));
         lblLeader.setText(leader);
     }
@@ -202,6 +213,7 @@ public class ItemDetailController {
      * @param auction the auction aggregate root to display
      */
     public void setAuctionData(Auction auction) {
+        this.currentAuction = auction;
         this.currentAuctionId = auction.getId();
         this.currentPriceValue = auction.getCurrentPrice();
 

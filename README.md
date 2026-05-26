@@ -1,7 +1,7 @@
 # 🔨 Hệ Thống Đấu Giá Trực Tuyến Thời Gian Thực (Online Auction System)
 
 > **Môn học:** Lập Trình Nâng Cao (LTNC) - Trường Đại học Công nghệ, ĐHQGHN
-> **Nhóm thực hiện:** Team N7
+> **Nhóm thực hiện:** Nhóm 7
 > **Hạn cuối dự án:** 23:59 ngày 31/05/2026
 
 ---
@@ -55,29 +55,79 @@ BTL---N7/
         └── resources/gui/   # Giao diện FXML & tệp styling CSS tối tân
 ```
 ## 🚀 4. Hướng dẫn Khởi chạy Hệ thống qua dòng lệnh
-**Bước 1:** Build dự án bằng Maven
-Mở terminal tại thư mục gốc BTL---N7 và chạy lệnh:
-```text
-mvn clean package -DskipTests
-```
-**Bước 2:** trong thư mục cùng file với file jar của server, tạo một file .env và cấu hình các thông tin sau:
-```azure
+
+Hệ thống được thiết kế theo phương pháp **Runtime-Configuration** – mọi cấu hình được đọc động từ file `.env` nằm cùng thư mục chạy tại thời điểm khởi động chương trình. Bạn chỉ cần sửa các giá trị khóa trong file `.env` bằng trình soạn thảo văn bản (như Notepad) .
+**Bước 1:** Thiết lập file .env
+### 🔗 A. Hướng dẫn lấy khóa Localtonet (Để kết nối mạng diện rộng WAN/Internet)
+Nếu muốn chạy Server và cho phép các máy tính khác ngoài mạng LAN kết nối vào thông qua Internet:
+1. Truy cập trang web chính thức của **Localtonet**: [https://localtonet.com](https://localtonet.com)
+2. Đăng ký một tài khoản miễn phí.
+3. Sau khi đăng nhập, đi tới trang **Dashboard** (Bảng điều khiển).
+4. Bạn sẽ nhìn thấy mục **API Token**. Hãy copy đoạn mã này.
+5. Mở file `.env` bằng Notepad và dán vào dòng:
+   ```env
+   LOCALTONET_API_TOKEN=đoạn_mã_token_của_bạn
+   ```
+*(Lưu ý: Nếu chỉ chạy cục bộ và kiểm thử trên cùng một máy qua Localhost, bạn có thể bỏ qua phần này).*
+6. Tải và cài đặt **Localtonet** theo hướng dẫn: https://localtonet.com/documents/windows
+7. Tạo và khởi động server theo hướng dẫn: https://localtonet.com/documents/udp
+### ☁️ B. Hướng dẫn lấy khóa Cloudinary (Dùng làm kho lưu trữ ảnh sản phẩm)
+Hệ thống tải ảnh sản phẩm lên đám mây Cloudinary để tối ưu tốc độ truyền tải và lưu trữ:
+1. Truy cập trang web chính thức của **Cloudinary**: [https://cloudinary.com](https://cloudinary.com)
+2. Đăng ký một tài khoản miễn phí (Free Account).
+3. Đăng nhập vào và đi tới giao diện **Console / Dashboard**.
+4. Ngay tại trang chủ Dashboard, bạn sẽ thấy thông tin về:
+    * **Cloud name**
+    * **API Key**
+    * **API Secret**
+5. Mở file `.env` bằng Notepad và điền chính xác 3 giá trị này vào các dòng tương ứng:
+   ```env
+   CLOUDINARY_CLOUD_NAME=tên_cloud_của_bạn
+   CLOUDINARY_API_KEY=mã_api_key_của_bạn
+   CLOUDINARY_API_SECRET=mã_api_secret_của_bạn
+   ```
+
+### 💳 C. Hướng dẫn lấy khóa PayPal Sandbox (Dùng cho tính năng nạp tiền thử nghiệm)
+Hệ thống sử dụng cổng thanh toán PayPal REST API (Sandbox) để mô phỏng quy trình nạp tiền ảo vào ví người dùng:
+1. Truy cập trang web chính thức của **PayPal Developer Portal**: [https://developer.paypal.com](https://developer.paypal.com)
+2. Đăng nhập bằng tài khoản PayPal của bạn (hoặc tạo một tài khoản mới).
+3. Tại giao diện Developer, chọn mục **Apps & Credentials** (Ứng dụng & Chứng chỉ) trong menu bên trái.
+4. Nhấn nút **Create App** (Tạo ứng dụng), điền tên app (ví dụ: `AuctionApp`) và chọn loại tài khoản là **Merchant / Sandbox**.
+5. Sau khi tạo ứng dụng thành công, bạn sẽ thấy thông tin về:
+   * **Client ID** (Khóa công khai)
+   * **Secret** (Khóa bảo mật - hãy nhấn *Show* để xem)
+6. Mở file `.env` bằng Notepad và điền 2 giá trị trên vào:
+   ```env
+   PAYPAL_CLIENT_ID=mã_client_id_của_bạn
+   PAYPAL_SECRET=mã_secret_của_bạn
+   PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com
+   ```
+
+***.env mẫu hoàn thiện sẽ trông như sau:***
+```env
 LOCALTONET_API_TOKEN=[?]
-JSONBIN_API_KEY=$2a$10$KUTxarrdyYhaWz1dwui2.uQkxGR44FqLLD2u4CAkHF6.Xk.qrNWn6
-BIN_ID=69eb461436566621a8e85d68
+JSONBIN_API_KEY=$2a$10$aUHAf8TlnNuGwO8/5/I2yeiLKj8Fqh2xaAZ09R/UF/9JTpGhdqRZK
+BIN_ID=69d4960b856a6821890813a2
+
 CLOUDINARY_CLOUD_NAME=[?]
 CLOUDINARY_API_KEY=[?]
 CLOUDINARY_API_SECRET=[?]
-```
-Hệ thống sử dụng localtonet để kết nối các client thông qua mạng wan và cloundinary để làm kho chứa ảnh.
 
-**Bước 3:** Khởi chạy Socket Server
+PAYPAL_CLIENT_ID=[?]
+PAYPAL_SECRET=[?]
+PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com
+```
+> [!NOTE]
+> * Hệ thống sử dụng Localtonet để kết nối Client qua mạng WAN/Internet rộng lớn, Cloudinary để làm kho chứa ảnh sản phẩm, và PayPal Sandbox để nạp tiền ảo.
+> * **Giải pháp chạy Offline (Localhost)**: Trong trường hợp dịch vụ Internet trung gian `jsonbin.io` gặp sự cố! Chỉ cần khởi chạy Server, sau đó mở Client lên. Do không liên lạc được với JsonBin, Client sẽ tự động kích hoạt cơ chế dự phòng và kết nối trực tiếp vào máy qua cổng địa chỉ nội bộ `ws://localhost:6969`.
+
+**Bước 2:** Khởi chạy Socket Server
 ```text
 java -jar server/target/server-1.0-SNAPSHOT.jar
 ```
 Hệ thống sẽ tự động khởi tạo cơ sở dữ liệu SQLite auction_system.db nếu chưa tồn tại, chuẩn bị các luồng socket nhận kết nối.
 
-**Bước 4:** Khởi chạy Desktop Client (Mở nhiều terminal để giả lập nhiều người chơi)
+**Bước 4:** Khởi chạy Desktop Client 
 
 ```text
 java -jar client/target/client-1.0-SNAPSHOT.jar
@@ -93,3 +143,24 @@ java -jar client/target/client-1.0-SNAPSHOT.jar
 * **Đấu giá thủ công:** Người dùng đặt giá lớn hơn giá hiện tại cộng với bước giá tối thiểu.
 * **Động cơ Tự động Đấu giá (Auto-Bid Engine):** Người dùng cài đặt mức giá tối đa sẵn sàng trả. Hệ thống sẽ tự động đặt giá tăng dần một cách thông minh bất cứ khi nào có đối thủ vượt mặt, cho đến khi chạm hạn mức tối đa của họ.
 * **Chống tranh chấp ghi dữ liệu đồng thời (Optimistic Locking):** Áp dụng cơ chế so sánh phiên bản (versioning) trong SQLite để phát hiện và ngăn chặn xung đột khi nhiều người dùng cùng bắn phá lệnh thầu ở cùng một mili-giây.
+
+---
+
+## 🎥 6. Tài liệu & Video Minh họa (Documentation & Video Demo)
+
+Nhằm cung cấp cái nhìn toàn diện và trực quan nhất về Hệ thống Đấu giá Trực tuyến, chúng tôi đã chuẩn bị đầy đủ tài liệu đặc tả kiến trúc chi tiết cùng video hoạt động thực tế dưới đây:
+
+### 📄 Tài liệu Dự án (PDF)
+*   **Báo cáo kỹ thuật chi tiết:** [Xem & Tải xuống Báo cáo PDF](asset/PDF.pdf)
+    > [!TIP]
+    > Tài liệu PDF cung cấp chi tiết sơ đồ thực thể liên kết (ERD), thiết kế cơ sở dữ liệu SQLite, sơ đồ Sequence mô tả luồng Socket, thiết kế Class cùng biểu đồ hoạt động của tính năng Đấu giá tự động (Auto-bid Engine).
+
+### 🎬 Video Demo hoạt động Hệ thống (Video MP4)
+*   **Xem trực tiếp hoặc tải xuống:** [Tải xuống Video Demo](asset/video.mp4)
+
+
+<div align="center">
+  <video src="asset/video.mp4" controls width="100%" poster="asset/poster.png" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
+    Trình duyệt của bạn không hỗ trợ phát thẻ video HTML5. Bạn có thể <a href="asset/video.mp4">tải xuống video tại đây</a> để xem.
+  </video>
+</div>

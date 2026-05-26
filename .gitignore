@@ -56,3 +56,5 @@ dependency-reduced-pom.xml
 .env
 checkstyle.cache
 *.txt
+
+.continue/

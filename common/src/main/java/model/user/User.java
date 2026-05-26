@@ -1,6 +1,8 @@
 package model.user;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import model.base.Entity;
 
 /**
@@ -147,6 +149,7 @@ public class User extends Entity {
         this.tempSecretKey = v;
     }
 
+    @JsonProperty("totpLoginEnabled")
     public boolean isTotpLoginEnabled() {
         return isTotpLoginEnabled;
     }
@@ -157,6 +160,7 @@ public class User extends Entity {
      * @param enabled activation toggle preference flag
      * @throws IllegalStateException if verified secret key data is missing from current context
      */
+    @JsonIgnore
     public void setTotpLoginEnabled(boolean enabled) {
         if (enabled && (totpSecret == null || totpSecret.isBlank())) {
             throw new IllegalStateException("isTotpLoginEnabled chỉ được set true khi totpSecret đã được xác nhận (ENABLED).");
@@ -164,6 +168,7 @@ public class User extends Entity {
         this.isTotpLoginEnabled = enabled;
     }
 
+    @JsonProperty("totpPaymentEnabled")
     public boolean isTotpPaymentEnabled() {
         return isTotpPaymentEnabled;
     }
@@ -174,6 +179,7 @@ public class User extends Entity {
      * @param enabled activation toggle preference flag
      * @throws IllegalStateException if verified secret key data is missing from current context
      */
+    @JsonIgnore
     public void setTotpPaymentEnabled(boolean enabled) {
         if (enabled && (totpSecret == null || totpSecret.isBlank())) {
             throw new IllegalStateException("isTotpPaymentEnabled chỉ được set true khi totpSecret đã được xác nhận (ENABLED).");
@@ -181,10 +187,12 @@ public class User extends Entity {
         this.isTotpPaymentEnabled = enabled;
     }
 
+    @JsonSetter("totpLoginEnabled")
     public void setTotpLoginEnabledRaw(boolean v) {
         this.isTotpLoginEnabled = v;
     }
 
+    @JsonSetter("totpPaymentEnabled")
     public void setTotpPaymentEnabledRaw(boolean v) {
         this.isTotpPaymentEnabled = v;
     }

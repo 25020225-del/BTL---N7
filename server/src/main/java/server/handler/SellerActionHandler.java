@@ -82,7 +82,12 @@ public class SellerActionHandler implements CommandHandler {
             newEndTime = java.time.LocalDateTime.parse((String) payload.get("newEndTime"));
         }
 
-        boolean success = sellerCtrl.editAuction(client.getUser(), auction, newName, newDesc, newStartPrice, newStartTime, newEndTime);
+        int newDurationMinutes = auction.getDurationMinutes();
+        if (payload.containsKey("durationMinutes")) {
+            newDurationMinutes = ((Number) payload.get("durationMinutes")).intValue();
+        }
+
+        boolean success = sellerCtrl.editAuction(client.getUser(), auction, newName, newDesc, newStartPrice, newStartTime, newEndTime, newDurationMinutes);
 
         if (success) {
             client.sendResponse("EDIT_SUCCESS", "Cập nhật phiên đấu giá thành công.");

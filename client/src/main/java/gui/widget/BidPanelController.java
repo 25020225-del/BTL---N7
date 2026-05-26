@@ -268,6 +268,12 @@ public class BidPanelController {
         clearErrors();
         retryCount = 0;
 
+        if (auction.getStartTime() != null && java.time.LocalDateTime.now().isBefore(auction.getStartTime())) {
+            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            AlertUtils.showError("Phiên đấu giá chưa bắt đầu", "Phiên đấu giá chưa bắt đầu! Vui lòng đợi đến: " + auction.getStartTime().format(dtf));
+            return;
+        }
+
         long amount = parseAmount(txtManualBid.getText());
         long minRequired = computeMinRequired();
 
@@ -315,6 +321,12 @@ public class BidPanelController {
      */
     private void triggerSaveAutoBidWorkflow() {
         clearErrors();
+
+        if (auction.getStartTime() != null && java.time.LocalDateTime.now().isBefore(auction.getStartTime())) {
+            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            AlertUtils.showError("Phiên đấu giá chưa bắt đầu", "Phiên đấu giá chưa bắt đầu! Vui lòng đợi đến: " + auction.getStartTime().format(dtf));
+            return;
+        }
 
         long maxBid = parseAmount(txtAutoMax.getText());
         String incrementText = txtAutoIncrement.getText();

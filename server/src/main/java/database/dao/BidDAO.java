@@ -301,25 +301,28 @@ public class BidDAO {
             throws SQLException, AutoBidLockService.InsufficientFundsException {
 
         final String checkSql =
-                "SELECT max_bid FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
+                "SELECT max_bid, is_active FROM auto_bids WHERE auction_id = ? AND bidder_id = ?";
         final String upsertSql =
                 "INSERT OR REPLACE INTO auto_bids "
                         + "(id, auction_id, bidder_id, max_bid, increment_amount, is_active) "
                         + "VALUES (?, ?, ?, ?, ?, 1)";
 
         long oldMaxBid = 0L;
+        boolean wasActive = false;
         try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
             ps.setString(1, auction.getId());
             ps.setString(2, currentUser.getId());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     oldMaxBid = rs.getLong("max_bid");
+                    wasActive = rs.getInt("is_active") == 1;
                 }
             }
         }
 
+        long actualOldLock = wasActive ? oldMaxBid : 0L;
         // May throw InsufficientFundsException — caller must catch and rollback
-        autoBidLockService.applyLockDifference(conn, currentUser, oldMaxBid, maxBid, auction.getId());
+        autoBidLockService.applyLockDifference(conn, currentUser, actualOldLock, maxBid, auction.getId());
 
         try (PreparedStatement ps = conn.prepareStatement(upsertSql)) {
             ps.setString(1, "AB-" + java.util.UUID.randomUUID());

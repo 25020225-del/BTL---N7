@@ -378,6 +378,9 @@ public class Auction extends Entity {
             return false;
         }
 
+        // Prevent duplicate bot configurations in RAM
+        activeAutoBids.removeIf(ab -> ab.getBidder().getId().equals(bidder.getId()));
+
         activeAutoBids.offer(new AutoBid(bidder, maxBid, userIncrement));
         return true;
     }

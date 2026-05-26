@@ -170,8 +170,8 @@ public class AuctionDAO {
         }
     }
 
-    public boolean updateAuction(Auction auction, String newName, String newDesc, long newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime, String newStatus) throws SQLException {
-        String sql = "UPDATE auctions SET item_name = ?, description = ?, starting_price = ?, current_price = ?, start_time = ?, end_time = ?, status = ? WHERE id = ?";
+    public boolean updateAuction(Auction auction, String newName, String newDesc, long newStartPrice, LocalDateTime newStartTime, LocalDateTime newEndTime, int newDurationMinutes, String newStatus) throws SQLException {
+        String sql = "UPDATE auctions SET item_name = ?, description = ?, starting_price = ?, current_price = ?, start_time = ?, end_time = ?, duration_minutes = ?, status = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -179,10 +179,11 @@ public class AuctionDAO {
             pstmt.setString(2, newDesc);
             pstmt.setLong(3, newStartPrice);
             pstmt.setLong(4, newStartPrice);
-            pstmt.setString(5, newStartTime.toString());
-            pstmt.setString(6, newEndTime.toString());
-            pstmt.setString(7, newStatus);
-            pstmt.setString(8, auction.getId());
+            pstmt.setString(5, newStartTime != null ? newStartTime.toString() : null);
+            pstmt.setString(6, newEndTime != null ? newEndTime.toString() : null);
+            pstmt.setInt(7, newDurationMinutes);
+            pstmt.setString(8, newStatus);
+            pstmt.setString(9, auction.getId());
 
             return pstmt.executeUpdate() > 0;
         }

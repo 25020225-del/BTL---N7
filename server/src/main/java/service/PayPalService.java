@@ -195,7 +195,7 @@ public class PayPalService {
                 String valueStr = purchaseUnits.get(0).get("amount").get("value").asText();
                 double amountUSD = Double.parseDouble(valueStr);
                 long amountVND = ExchangeRateService.getInstance().usdToVnd(amountUSD);
-                log.info("Captured: {:.2f} USD -> {} VND (live rate: {:.2f})",
+                log.info("Captured: {} USD -> {} VND (live rate: {})",
                         amountUSD, amountVND, ExchangeRateService.getInstance().getUsdToVndRate());
                 return amountVND;
             }
@@ -203,5 +203,52 @@ public class PayPalService {
 
         log.warn("Failed to verify the captured amount for Order ID: {}. HTTP Status: {}", orderId, response.statusCode());
         return 0L;
+    }
+
+    /**
+     * Executes an automated money transfer via PayPal Payouts API.
+     * 
+     * @param userEmail target PayPal account email to send funds to
+     * @param amountVND target numerical VND amount to be converted and paid
+     * @return true if the payout transaction was successfully registered on PayPal
+     * @throws Exception if network or authentication error occurs
+     */
+    public boolean executePayPalPayout(String userEmail, long amountVND) throws Exception {
+        double amountUSD = ExchangeRateService.getInstance().vndToUsd(amountVND);
+        String token = getAccessToken();
+
+        ObjectNode requestBody = mapper.createObjectNode();
+        ObjectNode senderHeader = requestBody.putObject("sender_batch_header");
+        senderHeader.put("sender_batch_id", "Payout-" + System.currentTimeMillis() + "-" + java.util.UUID.randomUUID().toString().substring(0, 4));
+        senderHeader.put("email_subject", "You received a withdrawal from N7 Auction System!");
+
+        ArrayNode items = requestBody.putArray("items");
+        ObjectNode item = mapper.createObjectNode();
+        item.put("recipient_type", "EMAIL");
+        item.put("receiver", userEmail);
+        item.put("note", "Automated withdrawal settlement transaction.");
+        
+        ObjectNode amountNode = item.putObject("amount");
+        amountNode.put("value", String.format(java.util.Locale.US, "%.2f", amountUSD));
+        amountNode.put("currency", "USD");
+
+        items.add(item);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v1/payments/payouts"))
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(requestBody)))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 201 || response.statusCode() == 200) {
+            log.info("PayPal Payout created successfully for {} ({} VND / {} USD)", userEmail, amountVND, amountUSD);
+            return true;
+        }
+
+        log.error("PayPal Payout failed with status {}: {}", response.statusCode(), response.body());
+        return false;
     }
 }

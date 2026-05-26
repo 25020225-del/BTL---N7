@@ -65,6 +65,15 @@
                                         <HBox alignment="CENTER_LEFT">
                                             <children>
                                                 <Label prefWidth="130.0" style="-fx-font-size: 14;"
+                                                       text="Thời gian bắt đầu:"/>
+                                                <Label fx:id="lblStartTime"
+                                                       style="-fx-font-weight: bold; -fx-font-size: 16;" text="Chưa xác định"
+                                                       textFill="#2c3e50"/>
+                                            </children>
+                                        </HBox>
+                                        <HBox alignment="CENTER_LEFT">
+                                            <children>
+                                                <Label prefWidth="130.0" style="-fx-font-size: 14;"
                                                        text="Giá hiện tại:"/>
                                                 <Label fx:id="lblCurrentPrice"
                                                        style="-fx-font-weight: bold; -fx-font-size: 22;" text="0 VND"
