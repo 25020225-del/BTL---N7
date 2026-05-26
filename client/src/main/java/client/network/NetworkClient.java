@@ -165,6 +165,15 @@ public class NetworkClient {
             try {
                 String jsonMessage = CryptoUtil.decryptAES(message, myAesKey);
                 NetworkMessage response = mapper.readValue(jsonMessage, NetworkMessage.class);
+                Consumer<NetworkMessage> transientCallback = getOnMessageReceived();
+                if (transientCallback != null) {
+                    String cmd = response.getCommand();
+                    if ("LOGIN_SUCCESS".equals(cmd) || "REQUIRE_2FA".equals(cmd) ||
+                            "VERIFY_2FA_SUCCESS".equals(cmd) || "LOGIN_FAIL".equals(cmd) || "ERROR".equals(cmd)) {
+                        transientCallback.accept(response);
+                        return;
+                    }
+                }
                 dispatcher.dispatch(response, NetworkClient.this);
             } catch (Exception e) {
                 log.warn("Ingress pipeline rejected corrupted or untrusted packet: {}", e.getMessage());

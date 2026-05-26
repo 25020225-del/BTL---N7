@@ -199,24 +199,23 @@ public class UserController {
             return null;
         }
 
-        if (!user.is2FAEnabled()) {
-            log.warn("[RESET] Account '{}' does not have TOTP enabled — cannot use this flow.", identifier);
-            return null;
-        }
-
-        String secret = user.getTotpSecret();
-        if (secret == null) {
-            log.error("[RESET] TOTP enabled but secret is null for userId={}", user.getId());
-            return null;
-        }
-
-        if (!totpService.verifyCode(secret, totpCode)) {
-            log.warn("[RESET] Invalid TOTP code for account: {}", identifier);
-            return null;
+        if (user.is2FAEnabled()) {
+            String secret = user.getTotpSecret();
+            if (secret == null) {
+                log.error("[RESET] TOTP enabled but secret is null for userId={}", user.getId());
+                return null;
+            }
+            if (!totpService.verifyCode(secret, totpCode)) {
+                log.warn("[RESET] Invalid TOTP code for account: {}", identifier);
+                return null;
+            }
+            log.info("[RESET] Identity authenticated via multi-factor challenge for userId={}", user.getId());
+        } else {
+            log.info("[RESET] Non-2FA protected recovery tracking initialized for userId={}", user.getId());
         }
 
         String resetToken = passwordResetService.createResetToken(user.getId());
-        log.info("[RESET] TOTP verified. Reset token issued for userId={}", user.getId());
+        log.info("[RESET] Short-lived reset token issued safely for userId={}", user.getId());
         return resetToken;
     }
 

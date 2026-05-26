@@ -37,7 +37,8 @@ public class CommandDispatcher {
             database.dao.WithdrawalDAO withdrawalDAO,
             service.TOTPService totpService,
             controller.ServerSellerController sellerCtrl,
-            controller.ServerPaymentController paymentCtrl) {
+            controller.ServerPaymentController paymentCtrl,
+            service.PasswordResetService passwordResetService) {
 
         this.userDAO = userDAO;
         this.auctionDAO = auctionDAO;
@@ -47,7 +48,7 @@ public class CommandDispatcher {
         this.sellerCtrl = sellerCtrl;
         this.paymentCtrl = paymentCtrl;
         this.withdrawalDAO = withdrawalDAO;
-        this.passwordResetService = new service.PasswordResetService();
+        this.passwordResetService = passwordResetService;
 
         registerHandlers();
     }
