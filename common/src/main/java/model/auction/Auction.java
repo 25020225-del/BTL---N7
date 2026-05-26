@@ -117,6 +117,38 @@ public class Auction extends Entity {
         long currentPrice = currentPriceVal instanceof Number ? ((Number) currentPriceVal).longValue() : 0L;
         auction.setCurrentPrice(currentPrice);
 
+        Object highestMaxBidVal = map.get("highestMaxBid");
+        long highestMaxBid = highestMaxBidVal instanceof Number ? ((Number) highestMaxBidVal).longValue() : 0L;
+        auction.setHighestMaxBid(highestMaxBid);
+
+        Object bidIncrementVal = map.get("bidIncrement");
+        long bidIncrement = bidIncrementVal instanceof Number ? ((Number) bidIncrementVal).longValue() : 0L;
+        auction.setBidIncrement(bidIncrement);
+
+        Object durationMinutesVal = map.get("durationMinutes");
+        int durationMinutes = durationMinutesVal instanceof Number ? ((Number) durationMinutesVal).intValue() : 0;
+        auction.setDurationMinutes(durationMinutes);
+
+        String status = (String) map.get("status");
+        auction.setStatus(status);
+
+        Object startTimeVal = map.get("startTime");
+        if (startTimeVal instanceof Number startTimeNum) {
+            auction.setStartTime(
+                    Instant.ofEpochMilli(startTimeNum.longValue())
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime()
+            );
+        } else if (startTimeVal instanceof String startTimeStr && !startTimeStr.trim().isEmpty()) {
+            try {
+                auction.setStartTime(LocalDateTime.parse(startTimeStr));
+            } catch (Exception e) {
+                auction.setStartTime(null);
+            }
+        } else {
+            auction.setStartTime(null);
+        }
+
         Object endTimeVal = map.get("endTime");
         if (endTimeVal instanceof Number endTimeNum) {
             auction.setEndTime(
@@ -124,6 +156,12 @@ public class Auction extends Entity {
                             .atZone(ZoneId.systemDefault())
                             .toLocalDateTime()
             );
+        } else if (endTimeVal instanceof String endTimeStr && !endTimeStr.trim().isEmpty()) {
+            try {
+                auction.setEndTime(LocalDateTime.parse(endTimeStr));
+            } catch (Exception e) {
+                auction.setEndTime(null);
+            }
         } else {
             auction.setEndTime(null);
         }
