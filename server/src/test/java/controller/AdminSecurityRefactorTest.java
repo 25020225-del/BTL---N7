@@ -64,6 +64,9 @@ class AdminSecurityRefactorTest {
     @Mock
     private ResultSet resultSet;
 
+    @Mock
+    private service.PayPalService payPalService;
+
     private ServerAdminController adminController;
     private AdminAuctionService adminAuctionService;
     private AdminActionHandler adminActionHandler;
@@ -71,8 +74,14 @@ class AdminSecurityRefactorTest {
     private Admin adminUser;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         adminController = new ServerAdminController(userDAO, auctionDAO, walletDAO, withdrawalDAO);
+
+        // Inject mock PayPalService using reflection
+        java.lang.reflect.Field paypalField = ServerAdminController.class.getDeclaredField("payPalService");
+        paypalField.setAccessible(true);
+        paypalField.set(adminController, payPalService);
+
         adminAuctionService = new AdminAuctionService(auctionDAO, walletDAO);
         adminActionHandler = new AdminActionHandler(auctionDAO, userDAO, adminController, adminAuctionService);
         adminUser = new Admin("admin-id", "adminUser", "pass", "Administrator");
@@ -199,5 +208,81 @@ class AdminSecurityRefactorTest {
         verify(clientHandler).sendResponse(eq("ERROR"), errCaptor.capture());
         assertEquals("ERR_ADMIN_013", errCaptor.getValue().getErrorCode());
         assertEquals("auctionId không được để trống.", errCaptor.getValue().getErrorMessage());
+    }
+
+    @Test
+    void testWithdrawalPayPalPayout_Success_EC305() throws Exception {
+        try (MockedStatic<DatabaseManager> mockedDb = mockStatic(DatabaseManager.class);
+             MockedStatic<TransactionManager> mockedTx = mockStatic(TransactionManager.class)) {
+            mockedDb.when(DatabaseManager::getConnection).thenReturn(connection);
+
+            mockedTx.when(() -> TransactionManager.submitTask(any())).thenAnswer(invocation -> {
+                java.util.concurrent.Callable<?> task = invocation.getArgument(0);
+                try {
+                    Object result = task.call();
+                    return CompletableFuture.completedFuture(result);
+                } catch (Exception e) {
+                    CompletableFuture<?> f = new CompletableFuture<>();
+                    f.completeExceptionally(e);
+                    return f;
+                }
+            });
+
+            Map<String, Object> pendingRequest = new HashMap<>();
+            pendingRequest.put("userId", "user-b");
+            pendingRequest.put("amount", 5000L);
+            pendingRequest.put("payoutMethod", "E_WALLET");
+            pendingRequest.put("payoutDetails", "user@example.com");
+
+            when(withdrawalDAO.getRequestByIdWithLock(eq(connection), eq("REQ-003"))).thenReturn(pendingRequest);
+            when(payPalService.executePayPalPayout("user@example.com", 5000L)).thenReturn(true);
+            when(walletDAO.deductFromLocked(eq(connection), eq("user-b"), eq(5000L))).thenReturn(true);
+            when(withdrawalDAO.approveWithdrawal(eq(connection), eq("REQ-003"), anyString(), anyString())).thenReturn(true);
+
+            CompletableFuture<String> futureResult = adminController.processWithdrawal(adminUser, "REQ-003", true);
+            String resultStr = futureResult.get();
+
+            assertEquals("SUCCESS", resultStr);
+            verify(connection).commit();
+            verify(connection, never()).rollback();
+            verify(payPalService).executePayPalPayout("user@example.com", 5000L);
+        }
+    }
+
+    @Test
+    void testWithdrawalPayPalPayout_Failure_EC306() throws Exception {
+        try (MockedStatic<DatabaseManager> mockedDb = mockStatic(DatabaseManager.class);
+             MockedStatic<TransactionManager> mockedTx = mockStatic(TransactionManager.class)) {
+            mockedDb.when(DatabaseManager::getConnection).thenReturn(connection);
+
+            mockedTx.when(() -> TransactionManager.submitTask(any())).thenAnswer(invocation -> {
+                java.util.concurrent.Callable<?> task = invocation.getArgument(0);
+                try {
+                    Object result = task.call();
+                    return CompletableFuture.completedFuture(result);
+                } catch (Exception e) {
+                    CompletableFuture<?> f = new CompletableFuture<>();
+                    f.completeExceptionally(e);
+                    return f;
+                }
+            });
+
+            Map<String, Object> pendingRequest = new HashMap<>();
+            pendingRequest.put("userId", "user-b");
+            pendingRequest.put("amount", 5000L);
+            pendingRequest.put("payoutMethod", "E_WALLET");
+            pendingRequest.put("payoutDetails", "user@example.com");
+
+            when(withdrawalDAO.getRequestByIdWithLock(eq(connection), eq("REQ-003"))).thenReturn(pendingRequest);
+            when(payPalService.executePayPalPayout("user@example.com", 5000L)).thenReturn(false);
+
+            CompletableFuture<String> futureResult = adminController.processWithdrawal(adminUser, "REQ-003", true);
+            String resultStr = futureResult.get();
+
+            assertEquals("PAYPAL_ERROR", resultStr);
+            verify(connection).rollback();
+            verify(connection, never()).commit();
+            verify(walletDAO, never()).deductFromLocked(any(), anyString(), anyLong());
+        }
     }
 }

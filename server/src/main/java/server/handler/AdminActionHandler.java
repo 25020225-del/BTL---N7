@@ -222,6 +222,7 @@ public class AdminActionHandler implements CommandHandler {
                         case "NOT_FOUND" -> client.sendResponse("ERROR", new ErrorPayload("ERR_PAY_021", "Yêu cầu rút tiền không tồn tại hoặc đã được xử lý trước đó. Vui lòng làm mới danh sách."));
                         case "WALLET_ERROR" -> client.sendResponse("ERROR", new ErrorPayload("ERR_PAY_022", "Lỗi thao tác ví (số dư không đủ hoặc dữ liệu không nhất quán). Vui lòng liên hệ kỹ thuật viên."));
                         case "UNAUTHORIZED" -> client.sendResponse("ERROR", new ErrorPayload("ERR_AUTH_403", "Bạn không có quyền thực hiện thao tác này."));
+                        case "PAYPAL_ERROR" -> client.sendResponse("ERROR", new ErrorPayload("ERR_PAY_500", "Lỗi giao dịch qua cổng PayPal Payouts. Vui lòng kiểm tra lại tài khoản người nhận hoặc số dư ví hệ thống."));
                         default -> client.sendResponse("ERROR", new ErrorPayload("ERR_DB_005", "Lỗi cơ sở dữ liệu khi xử lý yêu cầu rút tiền. Vui lòng thử lại."));
                     }
                 }).exceptionally(ex -> {

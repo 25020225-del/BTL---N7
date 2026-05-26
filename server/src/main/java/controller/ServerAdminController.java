@@ -30,6 +30,7 @@ public class ServerAdminController {
     private final AuctionDAO auctionDAO;
     private final WalletDAO walletDAO;
     private final WithdrawalDAO withdrawalDAO;
+    private final service.PayPalService payPalService = new service.PayPalService();
 
     public ServerAdminController(UserDAO userDAO, AuctionDAO auctionDAO, WalletDAO walletDAO, WithdrawalDAO withdrawalDAO) {
         this.userDAO = userDAO;
@@ -233,6 +234,26 @@ public class ServerAdminController {
                     }
 
                     if (isApproved) {
+                        String method = request.get("payoutMethod") != null ? request.get("payoutMethod").toString() : "";
+                        if ("E_WALLET".equals(method)) {
+                            String email = request.get("payoutDetails") != null ? request.get("payoutDetails").toString() : "";
+                            if (email.isBlank()) {
+                                conn.rollback();
+                                return "WALLET_ERROR";
+                            }
+                            try {
+                                boolean payoutSuccess = payPalService.executePayPalPayout(email, amount);
+                                if (!payoutSuccess) {
+                                    conn.rollback();
+                                    return "PAYPAL_ERROR";
+                                }
+                            } catch (Exception e) {
+                                log.error("Failed to execute automatic PayPal payout for request {}: {}", requestId, e.getMessage(), e);
+                                conn.rollback();
+                                return "PAYPAL_ERROR";
+                            }
+                        }
+
                         if (!walletDAO.deductFromLocked(conn, userId, amount)) {
                             conn.rollback();
                             return "WALLET_ERROR";
