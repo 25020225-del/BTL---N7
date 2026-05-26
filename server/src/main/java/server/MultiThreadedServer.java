@@ -4,6 +4,7 @@ import controller.AuctionMonitor;
 import controller.UserController;
 import database.DatabaseManager;
 import io.github.cdimascio.dotenv.Dotenv;
+import model.auction.Auction;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
@@ -13,12 +14,16 @@ import server.ServerExtension.AuctionManager;
 import server.ServerExtension.ClientManager;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -30,7 +35,7 @@ import static utils.ConsoleColors.RESET;
 import static utils.ConsoleColors.YELLOW;
 
 /**
- * Bootstrap entry-point for the N7 Auction System Server.
+ * Bootstrap entry-point for server.
  * Provisions data storage, configures dynamic address discovery, and activates engine daemons.
  */
 public class MultiThreadedServer {
@@ -46,23 +51,11 @@ public class MultiThreadedServer {
     private static UserController userController;
     private static server.handler.CommandDispatcher commandDispatcher;
 
-    /**
-     * Dispatches current connection credentials to a remote key-value storage bin location.
-     *
-     * @param currentIp   discovered alternate host route address
-     * @param currentPort bound incoming socket adapter port
-     */
+    private static final int NETWORK_TIMEOUT_MS = 5000;
+
     public static void updateAddress(String currentIp, int currentPort) {
         try {
-            String urlString = "https://api.jsonbin.io/v3/b/" + BIN_ID;
-            URL url = new URL(urlString);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-            conn.setRequestProperty("X-Bin-Versioning", "false");
-            conn.setRequestMethod("PUT");
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("X-Master-Key", JSONBIN_KEY);
-            conn.setDoOutput(true);
+            HttpURLConnection conn = getJSONBinConnection();
 
             String jsonInputString = "{\"ip\": \"" + currentIp + "\", \"port\": " + currentPort + "}";
             try (OutputStream os = conn.getOutputStream()) {
@@ -72,7 +65,7 @@ public class MultiThreadedServer {
 
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
-                log.debug("New IP - Port (JSON-Bin) synced: {}:{}", currentIp, currentPort);
+                log.debug("New IP - Port synced: {}:{}", currentIp, currentPort);
             } else {
                 log.error("Unexpected HTTP response code {} from address sync endpoint", responseCode);
             }
@@ -81,21 +74,25 @@ public class MultiThreadedServer {
         }
     }
 
+    private static HttpURLConnection getJSONBinConnection() throws IOException {
+        String urlString = "https://api.jsonbin.io/v3/b/" + BIN_ID;
+        URL url = new URL(urlString);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+        conn.setConnectTimeout(NETWORK_TIMEOUT_MS);
+        conn.setReadTimeout(NETWORK_TIMEOUT_MS);
+
+        conn.setRequestProperty("X-Bin-Versioning", "false");
+        conn.setRequestMethod("PUT");
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setRequestProperty("X-Master-Key", JSONBIN_KEY);
+        conn.setDoOutput(true);
+        return conn;
+    }
+
     private static String[] getAddress() {
         try {
-            URL url = new URL("https://localtonet.com/api/GetTunnels");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Authorization", "Bearer " + LOCALTONET_TOKEN);
-            conn.setRequestProperty("Accept", "application/json");
-
-            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            String inputLine;
-            StringBuilder content = new StringBuilder();
-            while ((inputLine = in.readLine()) != null) content.append(inputLine);
-            in.close();
-
-            String jsonResponse = content.toString();
+            String jsonResponse = getLocaltonetResponse();
             Matcher tunnelStatus = Pattern.compile("\"status\":(\\d+)").matcher(jsonResponse);
             if (tunnelStatus.find() && Integer.parseInt(tunnelStatus.group(1)) == 0) return null;
 
@@ -112,6 +109,26 @@ public class MultiThreadedServer {
             log.error("Localtonet API Error: {}", e.getMessage());
         }
         return null;
+    }
+
+    private static String getLocaltonetResponse() throws IOException {
+        URL url = new URL("https://localtonet.com/api/GetTunnels");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+        conn.setConnectTimeout(NETWORK_TIMEOUT_MS);
+        conn.setReadTimeout(NETWORK_TIMEOUT_MS);
+
+        conn.setRequestMethod("GET");
+        conn.setRequestProperty("Authorization", "Bearer " + LOCALTONET_TOKEN);
+        conn.setRequestProperty("Accept", "application/json");
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        String inputLine;
+        StringBuilder content = new StringBuilder();
+        while ((inputLine = in.readLine()) != null) content.append(inputLine);
+        in.close();
+
+        return content.toString();
     }
 
     private static class AuctionWSServer extends WebSocketServer {
@@ -160,36 +177,7 @@ public class MultiThreadedServer {
     public static void main(String[] args) {
         final int PORT = 6969;
 
-        scheduler.scheduleAtFixedRate(() -> {
-            try {
-                String[] publicAddress = getAddress();
-                if (publicAddress != null) {
-                    String newIp = publicAddress[0];
-                    int newPort = Integer.parseInt(publicAddress[1]);
-
-                    if (!newIp.equals(lastSyncedIp) || newPort != lastSyncedPort) {
-                        updateAddress(newIp, newPort);
-                        lastSyncedIp = newIp;
-                        lastSyncedPort = newPort;
-                    }
-                }
-            } catch (Exception e) {
-                log.error(e.getMessage());
-            }
-        }, 0, 30, TimeUnit.SECONDS);
-
-        log.info("Getting address...");
-        String[] publicAddress = getAddress();
-
-        if (publicAddress != null) {
-            updateAddress(publicAddress[0], Integer.parseInt(publicAddress[1]));
-        } else {
-            log.warn("Cannot get public address. Using localhost");
-            updateAddress("127.0.0.1", PORT);
-        }
-
         database.DatabaseManager.initializeDatabase();
-
         database.dao.UserDAO userDAO = new database.dao.UserDAO();
         database.dao.AuctionDAO auctionDAO = new database.dao.AuctionDAO();
         database.dao.BidDAO bidDAO = new database.dao.BidDAO();
@@ -217,11 +205,48 @@ public class MultiThreadedServer {
                 passwordResetService
         );
 
+        try {
+            log.info("Hydrating active auctions from database status parameters into RAM infrastructure...");
+            List<Map<String, Object>> activeAuctionsFromDb = auctionDAO.getAuctionsByStatus("RUNNING", "OPEN", "WAITING_FOR_BID");
+            for (Map<String, Object> map : activeAuctionsFromDb) {
+                Auction auction = Auction.buildAuctionFromMap(map);
+                AuctionManager.addAuctionToMonitor(auction);
+            }
+            log.info("Successfully hydrated {} active auction rooms into memory.", activeAuctionsFromDb.size());
+        } catch (Exception e) {
+            log.error("Fatal failure compiling database state recovery mappings: {}", e.getMessage());
+        }
+
         AuctionMonitor monitor = new AuctionMonitor(AuctionManager.getAuctionList(), auctionDAO, walletDAO);
         monitor.startMonitoring();
 
         AuctionWSServer wsServer = new AuctionWSServer(PORT);
         wsServer.start();
+
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                log.info("Spawning transport initialization worker background sequence loop...");
+                String[] publicAddress = getAddress();
+
+                if (publicAddress != null) {
+                    String newIp = publicAddress[0];
+                    int newPort = Integer.parseInt(publicAddress[1]);
+
+                    if (!newIp.equals(lastSyncedIp) || newPort != lastSyncedPort) {
+                        updateAddress(newIp, newPort);
+                        lastSyncedIp = newIp;
+                        lastSyncedPort = newPort;
+                    }
+                } else if (lastSyncedIp.isEmpty()) {
+                    log.warn("Cannot get public address. Using fallback localhost addressing scheme.");
+                    updateAddress("127.0.0.1", PORT);
+                    lastSyncedIp = "127.0.0.1";
+                    lastSyncedPort = PORT;
+                }
+            } catch (Exception e) {
+                log.error("Network initialization background error: {}", e.getMessage());
+            }
+        }, 0, 30, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             ClientManager.broadcast(YELLOW + "[System]: Server is shutting down. Every connecting client will be disconnected shortly." + RESET, null);
@@ -242,9 +267,13 @@ public class MultiThreadedServer {
         }));
 
         Scanner scanner = new Scanner(System.in);
-        while (true) {
-            if (scanner.hasNextLine()) {
+        try {
+            while (true) {
                 String serverMessage = scanner.nextLine();
+                serverMessage = serverMessage.trim();
+
+                if (serverMessage.isEmpty()) continue;
+
                 if (serverMessage.startsWith("/kick ")) {
                     String target = serverMessage.substring(6);
                     System.out.print("Reason: ");
@@ -261,13 +290,16 @@ public class MultiThreadedServer {
                     } catch (NumberFormatException e) {
                         log.error("/kickn must be followed by an integer.");
                     }
+                    continue;
                 }
                 if (serverMessage.startsWith("/msg ")) {
                     String data = serverMessage.substring(5);
                     int firstIndexOfSpace = data.indexOf(" ");
-                    String receiver = data.substring(0, firstIndexOfSpace);
-                    String message = data.substring(firstIndexOfSpace + 1);
-                    ClientManager.privateMsg(receiver, message);
+                    if (firstIndexOfSpace != -1) {
+                        String receiver = data.substring(0, firstIndexOfSpace);
+                        String message = data.substring(firstIndexOfSpace + 1);
+                        ClientManager.privateMsg(receiver, message);
+                    }
                     continue;
                 }
                 if (serverMessage.startsWith("/clist")) {
@@ -283,6 +315,18 @@ public class MultiThreadedServer {
                 }
                 ClientManager.broadcast("[Admin]: " + serverMessage, null);
             }
+        } catch (NoSuchElementException | IllegalStateException e) {
+            log.info("Console input stream closed context safely. Keeping server thread bounds alive.");
+            while (true) {
+                try {
+                    Thread.sleep(Long.MAX_VALUE);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        } finally {
+            scanner.close();
         }
     }
 }
