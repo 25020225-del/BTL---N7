@@ -3,6 +3,8 @@ package model.user;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import utils.JacksonConfig;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -102,5 +104,19 @@ class UserTwoFactorTest {
         user.setTwoFactorStatus(User.TwoFactorStatus.ENABLED);
         assertDoesNotThrow(() -> user.setTwoFactorStatus(null));
         assertEquals(User.TwoFactorStatus.DISABLED, user.getTwoFactorStatus());
+    }
+
+    @Test
+    @DisplayName("Jackson deserialization should bypass guards and successfully deserialize even when totpSecret is null")
+    void jacksonDeserialization_shouldBypassGuards() {
+        ObjectMapper mapper = JacksonConfig.mapper();
+        String json = "{\"id\":\"U-1\",\"userName\":\"testuser\",\"twoFactorStatus\":\"ENABLED\",\"totpLoginEnabled\":true,\"totpPaymentEnabled\":true}";
+        
+        assertDoesNotThrow(() -> {
+            User deserialized = mapper.readValue(json, User.class);
+            assertTrue(deserialized.isTotpLoginEnabled());
+            assertTrue(deserialized.isTotpPaymentEnabled());
+            assertNull(deserialized.getTotpSecret());
+        });
     }
 }
