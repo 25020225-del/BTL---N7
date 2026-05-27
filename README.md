@@ -57,6 +57,7 @@ BTL---N7/
 ## 🚀 4. Hướng dẫn Khởi chạy Hệ thống qua dòng lệnh
 
 Hệ thống được thiết kế theo phương pháp **Runtime-Configuration** – mọi cấu hình được đọc động từ file `.env` nằm cùng thư mục chạy tại thời điểm khởi động chương trình. Bạn chỉ cần sửa các giá trị khóa trong file `.env` bằng trình soạn thảo văn bản (như Notepad) .
+
 **Bước 1:** Thiết lập file .env
 ### 🔗 A. Hướng dẫn lấy khóa Localtonet (Để kết nối mạng diện rộng WAN/Internet)
 Nếu muốn chạy Server và cho phép các máy tính khác ngoài mạng LAN kết nối vào thông qua Internet:
@@ -128,7 +129,7 @@ java -jar server/target/server-1.0-SNAPSHOT.jar
 ```
 Hệ thống sẽ tự động khởi tạo cơ sở dữ liệu SQLite auction_system.db nếu chưa tồn tại, chuẩn bị các luồng socket nhận kết nối.
 
-**Bước 4:** Khởi chạy Desktop Client 
+**Bước 3:** Khởi chạy Desktop Client 
 
 ```text
 java -jar client/target/client-1.0-SNAPSHOT.jar
