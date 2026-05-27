@@ -69,6 +69,7 @@ Nếu muốn chạy Server và cho phép các máy tính khác ngoài mạng LAN
    LOCALTONET_API_TOKEN=đoạn_mã_token_của_bạn
    ```
 *(Lưu ý: Nếu chỉ chạy cục bộ và kiểm thử trên cùng một máy qua Localhost, bạn có thể bỏ qua phần này).*
+
 6. Tải và cài đặt **Localtonet** theo hướng dẫn: https://localtonet.com/documents/windows
 7. Tạo và khởi động server theo hướng dẫn: https://localtonet.com/documents/udp
 ### ☁️ B. Hướng dẫn lấy khóa Cloudinary (Dùng làm kho lưu trữ ảnh sản phẩm)
