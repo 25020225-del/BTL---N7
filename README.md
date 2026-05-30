@@ -123,8 +123,11 @@ PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com
 > * Hệ thống sử dụng Localtonet để kết nối Client qua mạng WAN/Internet rộng lớn, Cloudinary để làm kho chứa ảnh sản phẩm, và PayPal Sandbox để nạp tiền ảo.
 > * **Giải pháp chạy Offline (Localhost)**: Trong trường hợp dịch vụ Internet trung gian `jsonbin.io` gặp sự cố! Chỉ cần khởi chạy Server, sau đó mở Client lên. Do không liên lạc được với JsonBin, Client sẽ tự động kích hoạt cơ chế dự phòng và kết nối trực tiếp vào máy qua cổng địa chỉ nội bộ `ws://localhost:6969`.
 
+
+
 **Bước 2:** Khởi chạy Socket Server
 ```text
+mvn clean package
 java -jar server/target/server-1.0-SNAPSHOT.jar
 ```
 Hệ thống sẽ tự động khởi tạo cơ sở dữ liệu SQLite auction_system.db nếu chưa tồn tại, chuẩn bị các luồng socket nhận kết nối.
@@ -134,6 +137,7 @@ Hệ thống sẽ tự động khởi tạo cơ sở dữ liệu SQLite auction_
 ```text
 java -jar client/target/client-1.0-SNAPSHOT.jar
 ```
+
 ## ✨ 5. Các Tính năng Cốt lõi đã Hoàn thiện
 ### 🔐 A. Xác thực & Bảo mật (Auth & 2FA)
 * **Mã hóa mật khẩu:** Sử dụng thuật toán BCrypt băm mật khẩu kèm muối (salt) ngẫu nhiên, chống tấn công bảng băm ngược.
