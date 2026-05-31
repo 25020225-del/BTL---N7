@@ -153,37 +153,40 @@ java -jar client/target/client-1.0-SNAPSHOT.jar
 
 ---
 
-## 📐 6. Các Mẫu Thiết Kế Áp Dụng (Design Patterns in Action)
+## 📐 6. Các Mẫu Thiết Kế Áp Dụng 
 
 Dự án áp dụng chặt chẽ các mẫu thiết kế kinh điển (Design Patterns) để đảm bảo khả năng mở rộng (scalability), dễ bảo trì (maintainability), và tính đóng gói cao. Dưới đây là mô tả chi tiết và các vị trí áp dụng cụ thể trong mã nguồn:
 
 ### 1️⃣ Command Pattern 
 *   **Mục đích:** Tách biệt và đóng gói các yêu cầu mạng gửi lên từ phía Client thành các đối tượng lệnh độc lập để dễ dàng định tuyến xử lý bất đồng bộ.
 *   **Vị trí áp dụng cụ thể:**
-    *   `[CommandHandler.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/server/src/main/java/server/handler/CommandHandler.java)`: Giao diện chức năng (Functional Interface) định nghĩa hợp đồng chung cho việc thực thi mọi lệnh nghiệp vụ.
-    *   `[CommandDispatcher.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/server/src/main/java/server/handler/CommandDispatcher.java)`: Bộ điều hướng trung tâm quản lý một bảng ánh xạ `Map<String, CommandHandler>` (đăng ký các lệnh như `LOGIN`, `PLACE_BID`, `CREATE_DEPOSIT`,...). Khi nhận tin nhắn, nó định tuyến trực tiếp đến handler tương ứng mà không dùng chuỗi `if-else` lồng nhau phức tạp.
+    *   `[CommandHandler.java](file:BTL---N7/server/src/main/java/server/handler/CommandHandler.java)`: Giao diện chức năng (Functional Interface) định nghĩa hợp đồng chung cho việc thực thi mọi lệnh nghiệp vụ.
+    *   `[CommandDispatcher.java](file:/BTL---N7/server/src/main/java/server/handler/CommandDispatcher.java)`: Bộ điều hướng trung tâm quản lý một bảng ánh xạ `Map<String, CommandHandler>` (đăng ký các lệnh như `LOGIN`, `PLACE_BID`, `CREATE_DEPOSIT`,...). Khi nhận tin nhắn, nó định tuyến trực tiếp đến handler tương ứng mà không dùng chuỗi `if-else` lồng nhau phức tạp.
 
 ### 2️⃣ Factory Method Pattern 
 *   **Mục đích:** Đóng gói toàn bộ logic khởi tạo phức tạp của các loại vật phẩm đấu giá đa dạng và cung cấp giao diện đa hình cho phía sử dụng.
 *   **Vị trí áp dụng cụ thể:**
-    *   `[ItemFactory.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/common/src/main/java/model/item/ItemFactory.java)`: Lớp nhà máy trung tâm cung cấp phương thức tĩnh `createItem(...)` để ánh xạ từ chuỗi định danh loại vật phẩm (`TANGIBLE`, `DIGITAL`, `SERVICE`) sang các lớp kế thừa tương ứng.
-    *   `[TangibleItem.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/common/src/main/java/model/item/TangibleItem.java)` (Vật phẩm vật lý), `[DigitalItem.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/common/src/main/java/model/item/DigitalItem.java)` (Vật phẩm số/NFT), `[ServicePackage.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/common/src/main/java/model/item/ServicePackage.java)` (Gói dịch vụ): Các lớp con kế thừa từ lớp cơ sở `Item`.
+    *   `[ItemFactory.java](file:/BTL---N7/common/src/main/java/model/item/ItemFactory.java)`: Lớp nhà máy trung tâm cung cấp phương thức tĩnh `createItem(...)` để ánh xạ từ chuỗi định danh loại vật phẩm (`TANGIBLE`, `DIGITAL`, `SERVICE`) sang các lớp kế thừa tương ứng.
+    *   `[TangibleItem.java](file:/BTL---N7/common/src/main/java/model/item/TangibleItem.java)`
+    *   (Vật phẩm vật lý), `[DigitalItem.java](file:/BTL---N7/common/src/main/java/model/item/DigitalItem.java)`
+    *   (Vật phẩm số/NFT), `[ServicePackage.java](file:/BTL---N7/common/src/main/java/model/item/ServicePackage.java)`
+    *   (Gói dịch vụ): Các lớp con kế thừa từ lớp cơ sở `Item`.
 
 ### 3️⃣ Observer Pattern 
 *   **Mục đích:** Đồng bộ trạng thái dữ liệu nhận được từ Socket thời gian thực lên giao diện hiển thị mà không làm nghẽn luồng xử lý chính và giảm thiểu tối đa liên kết cứng giữa các lớp.
 *   **Vị trí áp dụng cụ thể:**
-    *   `[AuctionEventBus.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/client/src/main/java/client/handler/AuctionEventBus.java)`: Triển khai bộ phát sự kiện trung tâm thông qua `PropertyChangeSupport` của Java.
-    *   `[ClientUserController.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/client/src/main/java/gui/ClientUserController.java)` & `[ClientAdminController.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/client/src/main/java/gui/ClientAdminController.java)`: Đóng vai trò là các Listener đăng ký nhận thông báo sự kiện (như `PRICE_UPDATED`, `OUTBID`, `DEPOSIT_SUCCESS`,...) và cập nhật giao diện JavaFX một cách an toàn.
+    *   `[AuctionEventBus.java](file:/BTL---N7/client/src/main/java/client/handler/AuctionEventBus.java)`: Triển khai bộ phát sự kiện trung tâm thông qua `PropertyChangeSupport` của Java.
+    *   `[ClientUserController.java](file:/BTL---N7/client/src/main/java/gui/ClientUserController.java)` & `[ClientAdminController.java](file:/BTL---N7/client/src/main/java/gui/ClientAdminController.java)`: Đóng vai trò là các Listener đăng ký nhận thông báo sự kiện (như `PRICE_UPDATED`, `OUTBID`, `DEPOSIT_SUCCESS`,...) và cập nhật giao diện JavaFX một cách an toàn.
 
 ### 4️⃣ Singleton Pattern 
 *   **Mục đích:** Đảm bảo một tài nguyên/dịch vụ dùng chung chỉ được khởi tạo một thực thể duy nhất trong bộ nhớ RAM suốt vòng đời chạy của Server để tối ưu hiệu năng.
 *   **Vị trí áp dụng cụ thể:**
-    *   `[ExchangeRateService.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/server/src/main/java/service/ExchangeRateService.java)`: Lớp dịch vụ lấy tỷ giá ngoại tệ USD/VND trực tuyến. Sử dụng thuộc tính `instance` tĩnh và phương thức `getInstance()` để cấp phát duy nhất một đối tượng cho toàn bộ ứng dụng sử dụng.
+    *   `[ExchangeRateService.java](file:/BTL---N7/server/src/main/java/service/ExchangeRateService.java)`: Lớp dịch vụ lấy tỷ giá ngoại tệ USD/VND trực tuyến. Sử dụng thuộc tính `instance` tĩnh và phương thức `getInstance()` để cấp phát duy nhất một đối tượng cho toàn bộ ứng dụng sử dụng.
 
 ### 5️⃣ Aggregate Root (Kiến trúc DDD - Domain-Driven Design)
 *   **Mục đích:** Thiết lập ranh giới bảo toàn tính nhất quán dữ liệu cho một nhóm các thực thể phụ thuộc lẫn nhau, mọi biến đổi dữ liệu buộc phải điều hướng thông qua Gốc tập hợp.
 *   **Vị trí áp dụng cụ thể:**
-    *   `[Auction.java](file:///d:/tailieuhoctap/laptrinhnangcao/th/btl/BTL---N7/common/src/main/java/model/auction/Auction.java)`: Đóng vai trò là Aggregate Root quản lý trực tiếp thực thể `Item`, `User` (Winner), và danh sách `ActiveAutoBids`. Tất cả logic đấu giá như tính giá hiện tại mới, kiểm tra bước tăng giá đều được kiểm soát tập trung tại đây.
+    *   `[Auction.java](file:/BTL---N7/common/src/main/java/model/auction/Auction.java)`: Đóng vai trò là Aggregate Root quản lý trực tiếp thực thể `Item`, `User` (Winner), và danh sách `ActiveAutoBids`. Tất cả logic đấu giá như tính giá hiện tại mới, kiểm tra bước tăng giá đều được kiểm soát tập trung tại đây.
 
 ---
 
