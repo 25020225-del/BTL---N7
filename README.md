@@ -184,12 +184,6 @@ Dự án áp dụng chặt chẽ các mẫu thiết kế kinh điển (Design Pa
 *   **Vị trí áp dụng cụ thể:**
     *   `[ExchangeRateService.java](file:/BTL---N7/server/src/main/java/service/ExchangeRateService.java)`: Lớp dịch vụ lấy tỷ giá ngoại tệ USD/VND trực tuyến. Sử dụng thuộc tính `instance` tĩnh và phương thức `getInstance()` để cấp phát duy nhất một đối tượng cho toàn bộ ứng dụng sử dụng.
 
-### 5️⃣ Aggregate Root (Kiến trúc DDD - Domain-Driven Design)
-*   **Mục đích:** Thiết lập ranh giới bảo toàn tính nhất quán dữ liệu cho một nhóm các thực thể phụ thuộc lẫn nhau, mọi biến đổi dữ liệu buộc phải điều hướng thông qua Gốc tập hợp.
-*   **Vị trí áp dụng cụ thể:**
-    *   `[Auction.java](file:/BTL---N7/common/src/main/java/model/auction/Auction.java)`: Đóng vai trò là Aggregate Root quản lý trực tiếp thực thể `Item`, `User` (Winner), và danh sách `ActiveAutoBids`. Tất cả logic đấu giá như tính giá hiện tại mới, kiểm tra bước tăng giá đều được kiểm soát tập trung tại đây.
-
----
 
 ## 🎥 7. Tài liệu & Video Minh họa (Documentation & Video Demo)
 
