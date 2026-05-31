@@ -167,10 +167,11 @@ Dự án áp dụng chặt chẽ các mẫu thiết kế kinh điển (Design Pa
 *   **Mục đích:** Đóng gói toàn bộ logic khởi tạo phức tạp của các loại vật phẩm đấu giá đa dạng và cung cấp giao diện đa hình cho phía sử dụng.
 *   **Vị trí áp dụng cụ thể:**
     *   `[ItemFactory.java](file:/BTL---N7/common/src/main/java/model/item/ItemFactory.java)`: Lớp nhà máy trung tâm cung cấp phương thức tĩnh `createItem(...)` để ánh xạ từ chuỗi định danh loại vật phẩm (`TANGIBLE`, `DIGITAL`, `SERVICE`) sang các lớp kế thừa tương ứng.
-    *   `[TangibleItem.java](file:/BTL---N7/common/src/main/java/model/item/TangibleItem.java)`
-    *   (Vật phẩm vật lý), `[DigitalItem.java](file:/BTL---N7/common/src/main/java/model/item/DigitalItem.java)`
-    *   (Vật phẩm số/NFT), `[ServicePackage.java](file:/BTL---N7/common/src/main/java/model/item/ServicePackage.java)`
-    *   (Gói dịch vụ): Các lớp con kế thừa từ lớp cơ sở `Item`.
+    *    Các lớp con kế thừa từ lớp cơ sở `Item`.
+         *    `[TangibleItem.java](file:/BTL---N7/common/src/main/java/model/item/TangibleItem.java)`(Vật phẩm vật lý),
+         *    `[DigitalItem.java](file:/BTL---N7/common/src/main/java/model/item/DigitalItem.java)`(Vật phẩm số/NFT),
+         *    `[ServicePackage.java](file:/BTL---N7/common/src/main/java/model/item/ServicePackage.java)`(Gói dịch vụ).
+  
 
 ### 3️⃣ Observer Pattern 
 *   **Mục đích:** Đồng bộ trạng thái dữ liệu nhận được từ Socket thời gian thực lên giao diện hiển thị mà không làm nghẽn luồng xử lý chính và giảm thiểu tối đa liên kết cứng giữa các lớp.
